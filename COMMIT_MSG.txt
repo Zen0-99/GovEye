@@ -1,19 +1,14 @@
-fix(01-02): UAT fixes — crash, splash, theme consolidation, color tuning
+fix(01-02): single Sky color scheme, conditional AMOLED toggle
 
-- Fix NavKey rememberSaveable crash: store tab as Int index (Bundle-safe)
-  instead of NavKey data object which can't serialize to Bundle
-- Fix splash screen visibility: add 600ms setKeepOnScreenCondition delay
-  so splash is perceptible on fast cold starts
-- Consolidate Sky/Monet: remove static SkyColorScheme, rename Monet to Sky
-  (dynamic wallpaper-based colors). AppTheme enum reduced 5 to 4 options
-- Adjust Forest colors: dark mode less intense (darkened primary/container),
-  light mode less bright/saturated (muted container tones)
-- Adjust Ember colors: shifted hue toward red from terracotta to avoid
-  peach appearance (light) and brown (dark)
-- AMOLED toggle always enabled: consistent appearance across all mode
-  settings; AMOLED only takes visual effect in dark mode
-
-All 7 UAT items pass human verification on emulator.
+- Remove color scheme picker from Settings UI — Sky (dynamic) is the
+  only scheme now. Backend (AppTheme enum, color scheme classes,
+  ThemeViewModel.setAppTheme) remains intact for future re-enabling
+- Default app theme changed from CORAL to SKY in ThemePreferences
+  and ThemeViewModel
+- AMOLED toggle only visible when app is effectively dark (Dark mode
+  or System mode with system in dark). Hidden in Light mode and
+  System mode with system in light — toggle has no effect when
+  app is light
 
 Generated with [Devin](https://devin.ai)
 

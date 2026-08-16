@@ -36,7 +36,7 @@ constructor(private val themePreferences: ThemePreferences) : ViewModel() {
             .stateIn(
                 viewModelScope,
                 SharingStarted.WhileSubscribed(5_000),
-                AppTheme.CORAL
+                AppTheme.SKY
             )
 
     val isAmoled: StateFlow<Boolean> =

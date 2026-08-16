@@ -58,7 +58,7 @@ constructor(private val dataStore: DataStore<Preferences>) {
         val AMOLED_KEY = booleanPreferencesKey("is_amoled")
 
         val DEFAULT_THEME_MODE = ThemeMode.SYSTEM
-        val DEFAULT_APP_THEME = AppTheme.CORAL
+        val DEFAULT_APP_THEME = AppTheme.SKY
         const val DEFAULT_AMOLED = false
     }
 }

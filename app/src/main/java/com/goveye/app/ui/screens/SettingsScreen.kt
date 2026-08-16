@@ -1,5 +1,6 @@
 package com.goveye.app.ui.screens
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -7,41 +8,43 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.goveye.app.domain.AppTheme
 import com.goveye.app.domain.ThemeMode
 import com.goveye.app.ui.theme.ThemeViewModel
 import com.goveye.app.ui.theme.padding
 
 /**
- * Settings tab — functional theme picker (D-18).
+ * Settings tab — appearance controls (D-18).
  *
- * 4 scheme options (Forest/Sky/Ember/Coral) as filter chips,
- * light/dark/system mode toggle, and AMOLED switch. All changes write
- * to [ThemeViewModel] → [com.goveye.app.data.preference.ThemePreferences]
- * and the theme updates live via animated transitions.
+ * Light/dark/system mode toggle and AMOLED switch. The color scheme is
+ * fixed to Sky (dynamic color) and not user-selectable. The backend
+ * theme system ([com.goveye.app.domain.AppTheme] enum, color scheme
+ * classes, [ThemeViewModel.setAppTheme]) remains intact for future
+ * re-enabling of scheme selection.
  */
 @Composable
 fun SettingsScreen(themeViewModel: ThemeViewModel, modifier: Modifier = Modifier) {
-    val currentTheme by themeViewModel.appTheme.collectAsStateWithLifecycle()
     val themeMode by themeViewModel.themeMode.collectAsStateWithLifecycle()
     val isAmoled by themeViewModel.isAmoled.collectAsStateWithLifecycle()
+
+    // AMOLED toggle only makes sense when the app is actually rendering dark.
+    // In SYSTEM mode, that depends on the system dark setting.
+    val isEffectivelyDark =
+        when (themeMode) {
+            ThemeMode.LIGHT -> false
+            ThemeMode.DARK -> true
+            ThemeMode.SYSTEM -> isSystemInDarkTheme()
+        }
 
     Column(
         modifier =
@@ -57,39 +60,11 @@ fun SettingsScreen(themeViewModel: ThemeViewModel, modifier: Modifier = Modifier
             color = MaterialTheme.colorScheme.onSurface
         )
 
-        // --- Color scheme picker ---
-        Text(
-            text = "Color scheme",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small)
-        ) {
-            AppTheme.entries.forEach { theme ->
-                FilterChip(
-                    selected = currentTheme == theme,
-                    onClick = { themeViewModel.setAppTheme(theme) },
-                    label = { Text(theme.displayName) },
-                    leadingIcon = {
-                        if (theme != AppTheme.SKY) {
-                            Surface(
-                                modifier = Modifier.size(16.dp).clip(CircleShape),
-                                color = theme.previewColor
-                            ) {}
-                        }
-                    }
-                )
-            }
-        }
-
         // --- Theme mode picker ---
         Text(
             text = "Appearance",
             style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(top = MaterialTheme.padding.medium)
+            color = MaterialTheme.colorScheme.onSurface
         )
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small)
@@ -103,42 +78,26 @@ fun SettingsScreen(themeViewModel: ThemeViewModel, modifier: Modifier = Modifier
             }
         }
 
-        // --- AMOLED toggle ---
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(top = MaterialTheme.padding.medium),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "AMOLED dark mode",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Switch(
-                checked = isAmoled,
-                onCheckedChange = { themeViewModel.setAmoled(it) }
-            )
+        // --- AMOLED toggle (only visible when app is effectively dark) ---
+        if (isEffectivelyDark) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = MaterialTheme.padding.medium),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "AMOLED dark mode",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Switch(
+                    checked = isAmoled,
+                    onCheckedChange = { themeViewModel.setAmoled(it) }
+                )
+            }
         }
     }
 }
-
-private val AppTheme.displayName: String
-    get() =
-        when (this) {
-            AppTheme.FOREST -> "Forest"
-            AppTheme.SKY -> "Sky"
-            AppTheme.EMBER -> "Ember"
-            AppTheme.CORAL -> "Coral"
-        }
-
-private val AppTheme.previewColor: Color
-    get() =
-        when (this) {
-            AppTheme.FOREST -> Color(0xFF3D6B50)
-            AppTheme.SKY -> Color(0xFF5B8DB8)
-            AppTheme.EMBER -> Color(0xFFA04030)
-            AppTheme.CORAL -> Color(0xFF6B5A80)
-        }
 
 private val ThemeMode.displayName: String
     get() =
