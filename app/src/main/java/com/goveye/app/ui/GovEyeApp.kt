@@ -75,8 +75,18 @@ private fun GovEyeAppContent(themeViewModel: ThemeViewModel) {
     val followingBackStack = rememberNavBackStack(FollowingRoute)
     val settingsBackStack = rememberNavBackStack(SettingsRoute)
 
-    // Current tab — Feed is default (D-15)
-    var currentTab by rememberSaveable { mutableStateOf<NavKey>(FeedRoute) }
+    // Current tab — Feed is default (D-15).
+    // Stored as an ordinal string because NavKey data objects cannot be saved to a Bundle
+    // by rememberSaveable's default Saver (IllegalArgumentException at runtime).
+    var currentTabIndex by rememberSaveable { mutableStateOf(0) }
+    val currentTab: NavKey =
+        when (currentTabIndex) {
+            0 -> FeedRoute
+            1 -> DirectoryRoute
+            2 -> FollowingRoute
+            3 -> SettingsRoute
+            else -> FeedRoute
+        }
 
     val currentBackStack =
         when (currentTab) {
@@ -127,26 +137,26 @@ private fun GovEyeAppContent(themeViewModel: ThemeViewModel) {
         bottomBar = {
             NavigationBar {
                 NavigationBarItem(
-                    selected = currentTab == FeedRoute,
-                    onClick = { currentTab = FeedRoute },
+                    selected = currentTabIndex == 0,
+                    onClick = { currentTabIndex = 0 },
                     icon = { Icon(Icons.Outlined.Home, contentDescription = "Feed") },
                     label = { Text("Feed") }
                 )
                 NavigationBarItem(
-                    selected = currentTab == DirectoryRoute,
-                    onClick = { currentTab = DirectoryRoute },
+                    selected = currentTabIndex == 1,
+                    onClick = { currentTabIndex = 1 },
                     icon = { Icon(Icons.Outlined.Search, contentDescription = "Directory") },
                     label = { Text("Directory") }
                 )
                 NavigationBarItem(
-                    selected = currentTab == FollowingRoute,
-                    onClick = { currentTab = FollowingRoute },
+                    selected = currentTabIndex == 2,
+                    onClick = { currentTabIndex = 2 },
                     icon = { Icon(Icons.Outlined.PersonAdd, contentDescription = "Following") },
                     label = { Text("Following") }
                 )
                 NavigationBarItem(
-                    selected = currentTab == SettingsRoute,
-                    onClick = { currentTab = SettingsRoute },
+                    selected = currentTabIndex == 3,
+                    onClick = { currentTabIndex = 3 },
                     icon = { Icon(Icons.Outlined.Settings, contentDescription = "Settings") },
                     label = { Text("Settings") }
                 )

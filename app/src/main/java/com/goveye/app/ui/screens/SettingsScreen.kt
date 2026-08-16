@@ -32,7 +32,7 @@ import com.goveye.app.ui.theme.padding
 /**
  * Settings tab — functional theme picker (D-18).
  *
- * 5 scheme options (Forest/Sky/Ember/Coral/Monet) as filter chips,
+ * 4 scheme options (Forest/Sky/Ember/Coral) as filter chips,
  * light/dark/system mode toggle, and AMOLED switch. All changes write
  * to [ThemeViewModel] → [com.goveye.app.data.preference.ThemePreferences]
  * and the theme updates live via animated transitions.
@@ -73,7 +73,7 @@ fun SettingsScreen(themeViewModel: ThemeViewModel, modifier: Modifier = Modifier
                     onClick = { themeViewModel.setAppTheme(theme) },
                     label = { Text(theme.displayName) },
                     leadingIcon = {
-                        if (theme != AppTheme.MONET) {
+                        if (theme != AppTheme.SKY) {
                             Surface(
                                 modifier = Modifier.size(16.dp).clip(CircleShape),
                                 color = theme.previewColor
@@ -116,8 +116,7 @@ fun SettingsScreen(themeViewModel: ThemeViewModel, modifier: Modifier = Modifier
             )
             Switch(
                 checked = isAmoled,
-                onCheckedChange = { themeViewModel.setAmoled(it) },
-                enabled = themeMode != ThemeMode.LIGHT
+                onCheckedChange = { themeViewModel.setAmoled(it) }
             )
         }
     }
@@ -130,17 +129,15 @@ private val AppTheme.displayName: String
             AppTheme.SKY -> "Sky"
             AppTheme.EMBER -> "Ember"
             AppTheme.CORAL -> "Coral"
-            AppTheme.MONET -> "Monet"
         }
 
 private val AppTheme.previewColor: Color
     get() =
         when (this) {
-            AppTheme.FOREST -> Color(0xFF386B46)
-            AppTheme.SKY -> Color(0xFF446B8C)
-            AppTheme.EMBER -> Color(0xFF8C4B3A)
+            AppTheme.FOREST -> Color(0xFF3D6B50)
+            AppTheme.SKY -> Color(0xFF5B8DB8)
+            AppTheme.EMBER -> Color(0xFFA04030)
             AppTheme.CORAL -> Color(0xFF6B5A80)
-            AppTheme.MONET -> Color(0xFF8B6FA3)
         }
 
 private val ThemeMode.displayName: String

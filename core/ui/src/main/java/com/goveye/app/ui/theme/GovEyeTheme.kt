@@ -21,7 +21,6 @@ import com.goveye.app.ui.theme.colorscheme.BaseColorScheme
 import com.goveye.app.ui.theme.colorscheme.CoralColorScheme
 import com.goveye.app.ui.theme.colorscheme.EmberColorScheme
 import com.goveye.app.ui.theme.colorscheme.ForestColorScheme
-import com.goveye.app.ui.theme.colorscheme.MonetColorScheme
 import com.goveye.app.ui.theme.colorscheme.SkyColorScheme
 
 /**
@@ -33,13 +32,13 @@ import com.goveye.app.ui.theme.colorscheme.SkyColorScheme
  * - No Injekt — theme state passed as parameters (collected from
  *   [com.goveye.app.data.preference.ThemePreferences] by the caller in :app)
  * - M3 default typography (D-09 — no custom Typography.kt)
- * - No material-color-utilities for Monet — system dynamic color API + Coral fallback
+ * - No material-color-utilities for Sky (dynamic) — system dynamic color API + Coral fallback
  *
  * Colors animate via a single synchronized [Animatable] progress value that
  * drives [lerp] across every color slot — all colors reach their target
  * simultaneously over ~400ms (D-05).
  *
- * @param appTheme the selected color scheme (Forest/Sky/Ember/Coral/Monet)
+ * @param appTheme the selected color scheme (Forest/Sky/Ember/Coral)
  * @param themeMode light/dark/system preference
  * @param isAmoled AMOLED toggle — sets surfaces to pure black in dark mode
  * @param content the composable content to theme
@@ -175,8 +174,8 @@ private fun lerpScheme(from: ColorScheme, to: ColorScheme, progress: Float): Col
 @ReadOnlyComposable
 private fun getThemeColorScheme(appTheme: AppTheme, isAmoled: Boolean, isDark: Boolean): ColorScheme {
     val colorScheme: BaseColorScheme =
-        if (appTheme == AppTheme.MONET) {
-            MonetColorScheme(LocalContext.current)
+        if (appTheme == AppTheme.SKY) {
+            SkyColorScheme(LocalContext.current)
         } else {
             colorSchemes.getValue(appTheme)
         }
@@ -189,7 +188,6 @@ private fun getThemeColorScheme(appTheme: AppTheme, isAmoled: Boolean, isDark: B
 private val colorSchemes: Map<AppTheme, BaseColorScheme> =
     mapOf(
         AppTheme.FOREST to ForestColorScheme,
-        AppTheme.SKY to SkyColorScheme,
         AppTheme.EMBER to EmberColorScheme,
         AppTheme.CORAL to CoralColorScheme
     )
