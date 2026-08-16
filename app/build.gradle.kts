@@ -48,6 +48,11 @@ dependencies {
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)
 
+    // DI module dependencies — types referenced by Hilt modules in :app
+    implementation(libs.androidx.datastore.preferences)
+    implementation(libs.bundles.networking)
+    implementation(libs.bundles.room)
+
     // Testing
     testImplementation(libs.junit)
 }

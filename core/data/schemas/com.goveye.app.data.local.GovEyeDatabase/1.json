@@ -1,0 +1,96 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "cb5d7028e7c02623b91c7b5b2152b997",
+    "entities": [
+      {
+        "tableName": "mps",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `name` TEXT NOT NULL, `constituency` TEXT NOT NULL, `party` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "constituency",
+            "columnName": "constituency",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "party",
+            "columnName": "party",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "mps_fts",
+        "createSql": "CREATE VIRTUAL TABLE IF NOT EXISTS `${TABLE_NAME}` USING FTS4(`name` TEXT NOT NULL, `constituency` TEXT NOT NULL, `party` TEXT NOT NULL, content=`mps`)",
+        "fields": [
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "constituency",
+            "columnName": "constituency",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "party",
+            "columnName": "party",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "rowid"
+          ]
+        },
+        "ftsVersion": "FTS4",
+        "ftsOptions": {
+          "tokenizer": "simple",
+          "tokenizerArgs": [],
+          "contentTable": "mps",
+          "languageIdColumnName": "",
+          "matchInfo": "FTS4",
+          "notIndexedColumns": [],
+          "prefixSizes": [],
+          "preferredOrder": "ASC"
+        },
+        "contentSyncTriggers": [
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_mps_fts_BEFORE_UPDATE BEFORE UPDATE ON `mps` BEGIN DELETE FROM `mps_fts` WHERE `docid`=OLD.`rowid`; END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_mps_fts_BEFORE_DELETE BEFORE DELETE ON `mps` BEGIN DELETE FROM `mps_fts` WHERE `docid`=OLD.`rowid`; END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_mps_fts_AFTER_UPDATE AFTER UPDATE ON `mps` BEGIN INSERT INTO `mps_fts`(`docid`, `name`, `constituency`, `party`) VALUES (NEW.`rowid`, NEW.`name`, NEW.`constituency`, NEW.`party`); END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_mps_fts_AFTER_INSERT AFTER INSERT ON `mps` BEGIN INSERT INTO `mps_fts`(`docid`, `name`, `constituency`, `party`) VALUES (NEW.`rowid`, NEW.`name`, NEW.`constituency`, NEW.`party`); END"
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'cb5d7028e7c02623b91c7b5b2152b997')"
+    ]
+  }
+}

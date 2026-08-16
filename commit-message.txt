@@ -1,0 +1,18 @@
+feat(01-02): app shell with M3 theme, Nav3 bottom nav, Hilt DI, splash, Room FTS
+
+- M3 theme system ported from Miko: 4 custom schemes (Forest/Sky/Ember/Coral)
+  + Monet dynamic color, light/dark/AMOLED variants, animated transitions (~400ms)
+- Navigation 3 bottom-nav with 4 tabs (Feed/Directory/Following/Settings),
+  per-tab back stack preservation
+- Hilt DI: DatabaseModule, NetworkModule, DataStoreModule
+- Splash screen (Theme.SplashScreen.IconBackground)
+- Deep link intent filters for goveye:// scheme (mp/division/bill hosts)
+- Room FTS scaffold: MpEntity stub + MpFtsEntity + SearchDao
+- ThemePreferences DataStore (ThemeMode/AppTheme/isAmoled)
+- Functional theme picker in SettingsScreen
+
+Build verified: assembleDebug + spotlessCheck pass.
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>
