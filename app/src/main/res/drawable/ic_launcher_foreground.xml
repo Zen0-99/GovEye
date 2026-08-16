@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Simple eye motif placeholder -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,30 C36,30 22,42 18,54 C22,66 36,78 54,78 C72,78 86,66 90,54 C86,42 72,30 54,30 Z M54,40 C61,40 66,46 66,54 C66,62 61,68 54,68 C47,68 42,62 42,54 C42,46 47,40 54,40 Z" />
+    <path
+        android:fillColor="#1C1B1F"
+        android:pathData="M54,46 C50,46 47,50 47,54 C47,58 50,62 54,62 C58,62 61,58 61,54 C61,50 58,46 54,46 Z" />
+</vector>

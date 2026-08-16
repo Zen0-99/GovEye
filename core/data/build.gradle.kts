@@ -1,0 +1,29 @@
+plugins {
+    alias(libs.plugins.goveye.android.library)
+    alias(libs.plugins.goveye.android.hilt)
+    alias(libs.plugins.goveye.android.room)
+    alias(libs.plugins.kotlin.serialization)
+}
+
+android {
+    namespace = "com.goveye.app.data"
+}
+
+dependencies {
+    implementation(project(":core:domain"))
+
+    // Networking
+    implementation(libs.bundles.networking)
+
+    // Persistence
+    implementation(libs.bundles.room)
+    implementation(libs.androidx.datastore.preferences)
+
+    // Coroutines
+    implementation(libs.kotlinx.coroutines.core)
+
+    // Testing
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.turbine)
+}

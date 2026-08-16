@@ -1,1 +1,24 @@
 .planning/
+
+# Gradle
+.gradle/
+build/
+**/build/
+local.properties
+
+# Android
+*.apk
+*.aab
+*.ap_
+*.dex
+*.iml
+.idea/
+captures/
+.cxx/
+
+# Kotlin
+*.kotlin-metadata
+
+# OS
+.DS_Store
+Thumbs.db
