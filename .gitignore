@@ -18,6 +18,12 @@ captures/
 
 # Kotlin
 *.kotlin-metadata
+.kotlin/
+
+# Secrets
+google-services.json
+*.keystore
+*.jks
 
 # OS
 .DS_Store
