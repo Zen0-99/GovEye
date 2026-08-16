@@ -128,6 +128,9 @@ private fun GovEyeAppContent(themeViewModel: ThemeViewModel) {
                         MpProfileScreen(
                             memberId = key.memberId,
                             onBack = { currentBackStack.removeLastOrNull() },
+                            onNavigateToProfile = { targetId ->
+                                currentBackStack.add(MpProfileRoute(targetId))
+                            },
                             modifier = Modifier.fillMaxSize(),
                         )
                     }

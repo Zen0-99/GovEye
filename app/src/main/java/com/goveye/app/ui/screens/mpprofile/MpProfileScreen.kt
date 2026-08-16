@@ -32,6 +32,7 @@ import com.goveye.app.ui.theme.padding
 fun MpProfileScreen(
     memberId: Int,
     onBack: () -> Unit,
+    onNavigateToProfile: (Int) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: MpProfileViewModel = hiltViewModel(),
 ) {
@@ -80,6 +81,15 @@ fun MpProfileScreen(
                 item { FollowButtonPlaceholder() }
                 item { BioSection(synopsis = uiState.synopsis) }
                 item { ContactSection(contacts = uiState.contacts) }
+                item { CommitteeChipsSection(committees = uiState.committees) }
+                item { CareerTimelineSection(experiences = uiState.experiences) }
+                item {
+                    RelatedMpsSection(
+                        samePartyMps = uiState.samePartyMps,
+                        committeePeerMps = uiState.committeePeerMps,
+                        onNavigateToProfile = onNavigateToProfile,
+                    )
+                }
             }
         }
     }

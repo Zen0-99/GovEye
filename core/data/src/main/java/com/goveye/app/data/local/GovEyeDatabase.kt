@@ -8,16 +8,19 @@ import com.goveye.app.data.local.dao.DivisionDao
 import com.goveye.app.data.local.dao.FollowDao
 import com.goveye.app.data.local.dao.HansardDao
 import com.goveye.app.data.local.dao.InterestDao
+import com.goveye.app.data.local.dao.CommitteeDao
 import com.goveye.app.data.local.dao.MpDao
 import com.goveye.app.data.local.dao.RemoteKeyDao
 import com.goveye.app.data.local.dao.SearchDao
 import com.goveye.app.data.local.entity.BillEntity
 import com.goveye.app.data.local.entity.BillStageEntity
+import com.goveye.app.data.local.entity.CommitteeEntity
 import com.goveye.app.data.local.entity.DivisionEntity
 import com.goveye.app.data.local.entity.DivisionVoteEntity
 import com.goveye.app.data.local.entity.FollowEntity
 import com.goveye.app.data.local.entity.HansardContributionEntity
 import com.goveye.app.data.local.entity.InterestEntity
+import com.goveye.app.data.local.entity.MpCommitteeCrossRef
 import com.goveye.app.data.local.entity.MpEntity
 import com.goveye.app.data.local.entity.MpFtsEntity
 import com.goveye.app.data.local.entity.RemoteKeyEntity
@@ -27,6 +30,8 @@ import com.goveye.app.data.local.entity.RemoteKeyEntity
         MpEntity::class,
         MpFtsEntity::class,
         RemoteKeyEntity::class,
+        CommitteeEntity::class,
+        MpCommitteeCrossRef::class,
         DivisionEntity::class,
         DivisionVoteEntity::class,
         BillEntity::class,
@@ -35,7 +40,7 @@ import com.goveye.app.data.local.entity.RemoteKeyEntity
         InterestEntity::class,
         FollowEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -43,6 +48,7 @@ abstract class GovEyeDatabase : RoomDatabase() {
     abstract fun searchDao(): SearchDao
     abstract fun mpDao(): MpDao
     abstract fun remoteKeyDao(): RemoteKeyDao
+    abstract fun committeeDao(): CommitteeDao
     abstract fun divisionDao(): DivisionDao
     abstract fun billDao(): BillDao
     abstract fun hansardDao(): HansardDao

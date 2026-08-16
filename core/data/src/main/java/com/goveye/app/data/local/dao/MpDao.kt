@@ -21,6 +21,9 @@ interface MpDao {
     @Query("SELECT * FROM mps WHERE id = :id")
     suspend fun getMp(id: Int): MpEntity?
 
+    @Query("SELECT * FROM mps WHERE partyId = :partyId AND id != :excludeId AND isActive = 1 ORDER BY nameListAs LIMIT :limit")
+    suspend fun getMpsByParty(partyId: Int, excludeId: Int, limit: Int = 8): List<MpEntity>
+
     @Upsert
     suspend fun upsertAll(mps: List<MpEntity>)
 

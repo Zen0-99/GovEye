@@ -32,6 +32,16 @@ data class BiographyItem(
     val isCurrent: Boolean,
 )
 
+data class Committee(
+    val id: Int,
+    val name: String,
+    val house: String?,
+    val categoryName: String?,
+    val startDate: String?,
+    val endDate: String?,
+    val isActive: Boolean,
+)
+
 data class Contact(
     val type: String?,
     val isPreferred: Boolean?,
