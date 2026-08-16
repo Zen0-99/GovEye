@@ -93,3 +93,45 @@ data class ContactDto(
     val email: String? = null,
     val website: String? = null,
 )
+
+@Serializable
+data class ExperienceResponse(
+    val value: List<BiographyExperienceDto> = emptyList(),
+    val links: List<LinkDto> = emptyList(),
+)
+
+@Serializable
+data class BiographyExperienceDto(
+    val id: Int,
+    val type: String? = null,
+    val typeId: Int? = null,
+    val title: String? = null,
+    val organisation: String? = null,
+    val startMonth: Int? = null,
+    val startYear: Int? = null,
+    val endMonth: Int? = null,
+    val endYear: Int? = null,
+)
+
+@Serializable
+data class BiographyResponse(
+    val value: List<BiographyItemDto> = emptyList(),
+    val links: List<LinkDto> = emptyList(),
+)
+
+@Serializable
+data class BiographyItemDto(
+    val house: HouseDto? = null,
+    val name: String? = null,
+    val id: Int? = null,
+    val startDate: String? = null,
+    val endDate: String? = null,
+    val additionalInfo: String? = null,
+    val additionalInfoLink: String? = null,
+)
+
+@Serializable
+data class HouseDto(
+    val id: Int,
+    val name: String? = null,
+)

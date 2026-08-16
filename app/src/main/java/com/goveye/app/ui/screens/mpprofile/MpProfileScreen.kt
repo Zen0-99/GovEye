@@ -1,11 +1,10 @@
 package com.goveye.app.ui.screens.mpprofile
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material3.CircularProgressIndicator
@@ -13,19 +12,20 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.goveye.app.ui.screens.directory.MpAvatar
 import com.goveye.app.ui.theme.padding
-import com.goveye.app.ui.theme.parseMutedPartyColor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,7 +35,11 @@ fun MpProfileScreen(
     modifier: Modifier = Modifier,
     viewModel: MpProfileViewModel = hiltViewModel(),
 ) {
-    val uiState by viewModel.observeProfile(memberId).collectAsStateWithLifecycle(MpProfileUiState())
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(memberId) {
+        viewModel.loadProfile(memberId)
+    }
 
     Scaffold(
         topBar = {
@@ -46,11 +50,14 @@ fun MpProfileScreen(
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
                     }
                 },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                ),
             )
         },
         modifier = modifier,
     ) { innerPadding ->
-        if (uiState.isLoading) {
+        if (uiState.isLoading && uiState.mp == null) {
             Box(
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
                 contentAlignment = Alignment.Center,
@@ -65,38 +72,28 @@ fun MpProfileScreen(
                 Text("MP not found", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
-            val mp = uiState.mp!!
-            val partyColor = parseMutedPartyColor(mp.party?.backgroundColour)
-
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .padding(MaterialTheme.padding.large),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.medium),
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = innerPadding,
             ) {
-                MpAvatar(
-                    thumbnailUrl = mp.thumbnailUrl,
-                    displayName = mp.nameDisplayAs,
-                    partyColorHex = mp.party?.backgroundColour,
-                    size = 96.dp,
-                )
-                Text(
-                    text = mp.nameDisplayAs,
-                    style = MaterialTheme.typography.headlineSmall,
-                )
-                Text(
-                    text = mp.party?.name ?: "",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = partyColor,
-                )
-                Text(
-                    text = mp.constituency?.name ?: "",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                item { ProfileHeader(mp = uiState.mp!!) }
+                item { FollowButtonPlaceholder() }
+                item { BioSection(synopsis = uiState.synopsis) }
+                item { ContactSection(contacts = uiState.contacts) }
             }
         }
+    }
+}
+
+@Composable
+private fun FollowButtonPlaceholder() {
+    OutlinedButton(
+        onClick = { /* Phase 6 */ },
+        enabled = false,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = MaterialTheme.padding.large, vertical = MaterialTheme.padding.small),
+    ) {
+        Text("Follow (coming soon)")
     }
 }

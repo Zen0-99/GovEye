@@ -10,6 +10,9 @@ import com.goveye.app.data.local.dao.MpDao
 import com.goveye.app.data.local.dao.RemoteKeyDao
 import com.goveye.app.data.local.entity.MpEntity
 import com.goveye.app.data.mapper.MemberMapper
+import com.goveye.app.domain.model.BiographyExperience
+import com.goveye.app.domain.model.BiographyItem
+import com.goveye.app.domain.model.Contact
 import com.goveye.app.domain.model.Mp
 import com.goveye.app.domain.model.RepositoryResult
 import com.goveye.app.domain.model.SyncStatus
@@ -84,6 +87,73 @@ class MembersRepository @Inject constructor(
             mpDao.upsertAll(listOf(mapper.toEntity(mp, System.currentTimeMillis())))
         } catch (e: Exception) {
             // Cache is still served via Flow
+        }
+    }
+
+    // --- In-memory cached profile data (one-shot fetches) ---
+
+    private val synopsisCache = mutableMapOf<Int, Pair<String, Long>>()
+    private val contactCache = mutableMapOf<Int, Pair<List<Contact>, Long>>()
+    private val experienceCache = mutableMapOf<Int, Pair<List<BiographyExperience>, Long>>()
+    private val biographyCache = mutableMapOf<Int, Pair<List<BiographyItem>, Long>>()
+
+    suspend fun getSynopsis(memberId: Int): String? {
+        val cached = synopsisCache[memberId]
+        if (cached != null && System.currentTimeMillis() - cached.second < CacheTtl.MPS_MS) {
+            return cached.first
+        }
+        return try {
+            val response = membersApi.getMemberSynopsis(memberId)
+            val synopsis = response.value ?: ""
+            synopsisCache[memberId] = synopsis to System.currentTimeMillis()
+            synopsis
+        } catch (e: Exception) {
+            cached?.first
+        }
+    }
+
+    suspend fun getContact(memberId: Int): List<Contact> {
+        val cached = contactCache[memberId]
+        if (cached != null && System.currentTimeMillis() - cached.second < CacheTtl.MPS_MS) {
+            return cached.first
+        }
+        return try {
+            val response = membersApi.getMemberContact(memberId)
+            val contacts = response.value.map { mapper.toContactDomain(it) }
+            contactCache[memberId] = contacts to System.currentTimeMillis()
+            contacts
+        } catch (e: Exception) {
+            cached?.first ?: emptyList()
+        }
+    }
+
+    suspend fun getExperience(memberId: Int): List<BiographyExperience> {
+        val cached = experienceCache[memberId]
+        if (cached != null && System.currentTimeMillis() - cached.second < CacheTtl.MPS_MS) {
+            return cached.first
+        }
+        return try {
+            val response = membersApi.getMemberExperience(memberId)
+            val experiences = response.value.map { mapper.toExperienceDomain(it) }
+            experienceCache[memberId] = experiences to System.currentTimeMillis()
+            experiences
+        } catch (e: Exception) {
+            cached?.first ?: emptyList()
+        }
+    }
+
+    suspend fun getBiography(memberId: Int): List<BiographyItem> {
+        val cached = biographyCache[memberId]
+        if (cached != null && System.currentTimeMillis() - cached.second < CacheTtl.MPS_MS) {
+            return cached.first
+        }
+        return try {
+            val response = membersApi.getMemberBiography(memberId)
+            val biographies = response.value.map { mapper.toBiographyDomain(it) }
+            biographyCache[memberId] = biographies to System.currentTimeMillis()
+            biographies
+        } catch (e: Exception) {
+            cached?.first ?: emptyList()
         }
     }
 

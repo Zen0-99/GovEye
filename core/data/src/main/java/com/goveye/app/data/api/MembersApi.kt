@@ -1,6 +1,8 @@
 package com.goveye.app.data.api
 
+import com.goveye.app.data.dto.members.BiographyResponse
 import com.goveye.app.data.dto.members.ContactResponse
+import com.goveye.app.data.dto.members.ExperienceResponse
 import com.goveye.app.data.dto.members.MemberResponse
 import com.goveye.app.data.dto.members.MemberSearchResponse
 import com.goveye.app.data.dto.members.SynopsisResponse
@@ -25,4 +27,10 @@ interface MembersApi {
 
     @GET("Members/{id}/Contact")
     suspend fun getMemberContact(@Path("id") id: Int): ContactResponse
+
+    @GET("Members/{id}/Experience")
+    suspend fun getMemberExperience(@Path("id") id: Int): ExperienceResponse
+
+    @GET("Members/{id}/Biography")
+    suspend fun getMemberBiography(@Path("id") id: Int): BiographyResponse
 }

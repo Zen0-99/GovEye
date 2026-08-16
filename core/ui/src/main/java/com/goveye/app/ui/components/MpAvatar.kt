@@ -1,4 +1,4 @@
-package com.goveye.app.ui.screens.directory
+package com.goveye.app.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box

@@ -1,9 +1,15 @@
 package com.goveye.app.data.mapper
 
+import com.goveye.app.data.dto.members.BiographyExperienceDto
+import com.goveye.app.data.dto.members.BiographyItemDto
+import com.goveye.app.data.dto.members.ContactDto
 import com.goveye.app.data.dto.members.MemberDto
 import com.goveye.app.data.dto.members.MemberItem
 import com.goveye.app.data.local.entity.MpEntity
+import com.goveye.app.domain.model.BiographyExperience
+import com.goveye.app.domain.model.BiographyItem
 import com.goveye.app.domain.model.Constituency
+import com.goveye.app.domain.model.Contact
 import com.goveye.app.domain.model.Mp
 import com.goveye.app.domain.model.Party
 
@@ -39,6 +45,43 @@ object MemberMapper {
         )
 
     fun toDomain(items: List<MemberItem>): List<Mp> = items.map { toDomain(it.value) }
+
+    fun toExperienceDomain(dto: BiographyExperienceDto): BiographyExperience =
+        BiographyExperience(
+            id = dto.id,
+            type = dto.type,
+            title = dto.title,
+            organisation = dto.organisation,
+            startMonth = dto.startMonth,
+            startYear = dto.startYear,
+            endMonth = dto.endMonth,
+            endYear = dto.endYear,
+        )
+
+    fun toBiographyDomain(dto: BiographyItemDto): BiographyItem =
+        BiographyItem(
+            house = dto.house?.name,
+            name = dto.name,
+            startDate = dto.startDate,
+            endDate = dto.endDate,
+            isCurrent = dto.endDate == null,
+        )
+
+    fun toContactDomain(dto: ContactDto): Contact =
+        Contact(
+            type = dto.type,
+            isPreferred = dto.isPreferred,
+            isWebAddress = dto.isWebAddress,
+            line1 = dto.line1,
+            line2 = dto.line2,
+            line3 = dto.line3,
+            line4 = dto.line4,
+            line5 = dto.line5,
+            postcode = dto.postcode,
+            phone = dto.phone,
+            email = dto.email,
+            website = dto.website,
+        )
 
     fun toEntity(mp: Mp, timestamp: Long): MpEntity =
         MpEntity(

@@ -17,4 +17,8 @@ dependencies {
 
     // Material 3
     implementation(libs.androidx.material3)
+
+    // Coil 3 (image loading)
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
 }

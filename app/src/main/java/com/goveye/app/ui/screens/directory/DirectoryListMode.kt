@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.goveye.app.domain.model.Mp
+import com.goveye.app.ui.components.MpAvatar
 import com.goveye.app.ui.theme.padding
 
 @Composable
