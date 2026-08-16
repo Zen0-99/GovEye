@@ -1,28 +1,35 @@
-feat(02-03): Bills + Hansard + Interests API clients with DTOs, mappers, and tests
+feat(02-04): Room database v2 + 6 cache-first repositories + tests
 
-Bills API:
-- BillDtos.kt: 7 @Serializable DTOs (camelCase, {items:[...]} envelope)
-- BillsApi.kt: 3 endpoints (getBills, getBill, getBillStages)
-- BillMapper.kt: DTO-to-domain with null-safe currentStage, sittingDates filtering, sortOrder sorting
-- BillsApiModule.kt: Hilt DI providing BillsApi from @Named("billsApi")
-- Domain models: Bill, BillStage in :core:domain
-- 3 fixtures + BillsApiTest (5 tests) + BillMapperTest (5 tests)
+Room schema (v2, 9 entities):
+- MpEntity expanded from 4 to 19 fields (denormalized party/constituency per D-15)
+- MpFtsEntity updated FTS columns (nameListAs, nameDisplayAs, constituencyName, partyName)
+- DivisionEntity, DivisionVoteEntity (composite PK), BillEntity, BillStageEntity (composite PK)
+- HansardContributionEntity, InterestEntity (fieldsJson for dynamic fields), FollowEntity (no TTL)
+- Converters.kt: @TypeConverter for List<String> <-> String
+- GovEyeDatabase v2 with @TypeConverters, 7 DAO declarations
 
-Hansard API:
-- HansardDtos.kt: 2 @Serializable DTOs with @SerialName for PascalCase fields
-- HansardApi.kt: 1 endpoint (search) with custom envelope (Total* counters + Contributions array)
-- HansardMapper.kt: DTO-to-domain mapping
-- HansardApiModule.kt: Hilt DI providing HansardApi from @Named("hansardApi")
-- Domain model: HansardContribution in :core:domain
-- 1 fixture + HansardApiTest (5 tests) + HansardMapperTest (2 tests)
+DAOs (7 total):
+- MpDao, DivisionDao, BillDao, HansardDao, InterestDao, FollowDao
+- SearchDao updated for expanded FTS columns
+- All DAOs: Flow for reads, suspend for writes (D-20)
 
-Interests API:
-- InterestDtos.kt: 7 @Serializable DTOs (camelCase, JsonElement for dynamic field values)
-- InterestsApi.kt: 1 endpoint (getInterests)
-- InterestMapper.kt: DTO-to-domain, serializes dynamic fields to JSON string
-- InterestsApiModule.kt: Hilt DI providing InterestsApi from @Named("interestsApi")
-- Domain model: Interest with fieldsJson: String in :core:domain
-- 1 fixture + InterestsApiTest (4 tests) + InterestMapperTest (4 tests)
+Repositories (6 cache-first + 1 local-only):
+- MembersRepository: 7-day TTL, pull-to-refresh bypass (D-05/D-07)
+- VotesRepository: 1-hour TTL for divisions
+- BillsRepository: 1-hour TTL for bills
+- HansardRepository: 4-hour TTL, runCatching for graceful degradation (D-09)
+- InterestsRepository: 30-day TTL
+- FollowRepository: local-only, no API, no TTL (D-16)
+
+DatabaseModule:
+- 7 DAO providers + 5 mapper providers + 6 repository providers
+
+Tests:
+- MembersRepositoryTest (5 tests): FRESH, STALE, EMPTY, refresh bypass, API failure
+- VotesRepositoryTest (3 tests): cached, empty, stale
+- BillsRepositoryTest (3 tests): cached, empty, stale
+- GovEyeDatabaseTest (6 tests): MP CRUD, division+votes, bill+stages, FTS, follow, type converter
+- All Robolectric tests use @Config(sdk = [34]) for compatibility
 
 Generated with [Devin](https://devin.ai)
 

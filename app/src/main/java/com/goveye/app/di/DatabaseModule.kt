@@ -3,7 +3,24 @@ package com.goveye.app.di
 import android.content.Context
 import androidx.room.Room
 import com.goveye.app.data.local.GovEyeDatabase
+import com.goveye.app.data.local.dao.BillDao
+import com.goveye.app.data.local.dao.DivisionDao
+import com.goveye.app.data.local.dao.FollowDao
+import com.goveye.app.data.local.dao.HansardDao
+import com.goveye.app.data.local.dao.InterestDao
+import com.goveye.app.data.local.dao.MpDao
 import com.goveye.app.data.local.dao.SearchDao
+import com.goveye.app.data.mapper.BillMapper
+import com.goveye.app.data.mapper.DivisionMapper
+import com.goveye.app.data.mapper.HansardMapper
+import com.goveye.app.data.mapper.InterestMapper
+import com.goveye.app.data.mapper.MemberMapper
+import com.goveye.app.data.repo.BillsRepository
+import com.goveye.app.data.repo.FollowRepository
+import com.goveye.app.data.repo.HansardRepository
+import com.goveye.app.data.repo.InterestsRepository
+import com.goveye.app.data.repo.MembersRepository
+import com.goveye.app.data.repo.VotesRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -20,10 +37,92 @@ object DatabaseModule {
         .databaseBuilder(
             context,
             GovEyeDatabase::class.java,
-            GovEyeDatabase.DATABASE_NAME
+            GovEyeDatabase.DATABASE_NAME,
         ).fallbackToDestructiveMigration(dropAllTables = true)
         .build()
 
     @Provides
     fun provideSearchDao(database: GovEyeDatabase): SearchDao = database.searchDao()
+
+    @Provides
+    fun provideMpDao(database: GovEyeDatabase): MpDao = database.mpDao()
+
+    @Provides
+    fun provideDivisionDao(database: GovEyeDatabase): DivisionDao = database.divisionDao()
+
+    @Provides
+    fun provideBillDao(database: GovEyeDatabase): BillDao = database.billDao()
+
+    @Provides
+    fun provideHansardDao(database: GovEyeDatabase): HansardDao = database.hansardDao()
+
+    @Provides
+    fun provideInterestDao(database: GovEyeDatabase): InterestDao = database.interestDao()
+
+    @Provides
+    fun provideFollowDao(database: GovEyeDatabase): FollowDao = database.followDao()
+
+    @Provides
+    @Singleton
+    fun provideMemberMapper(): MemberMapper = MemberMapper
+
+    @Provides
+    @Singleton
+    fun provideDivisionMapper(): DivisionMapper = DivisionMapper
+
+    @Provides
+    @Singleton
+    fun provideBillMapper(): BillMapper = BillMapper
+
+    @Provides
+    @Singleton
+    fun provideHansardMapper(): HansardMapper = HansardMapper
+
+    @Provides
+    @Singleton
+    fun provideInterestMapper(): InterestMapper = InterestMapper
+
+    @Provides
+    @Singleton
+    fun provideMembersRepository(
+        mpDao: MpDao,
+        membersApi: com.goveye.app.data.api.MembersApi,
+        memberMapper: MemberMapper,
+    ): MembersRepository = MembersRepository(mpDao, membersApi, memberMapper)
+
+    @Provides
+    @Singleton
+    fun provideVotesRepository(
+        divisionDao: DivisionDao,
+        votesApi: com.goveye.app.data.api.VotesApi,
+        divisionMapper: DivisionMapper,
+    ): VotesRepository = VotesRepository(divisionDao, votesApi, divisionMapper)
+
+    @Provides
+    @Singleton
+    fun provideBillsRepository(
+        billDao: BillDao,
+        billsApi: com.goveye.app.data.api.BillsApi,
+        billMapper: BillMapper,
+    ): BillsRepository = BillsRepository(billDao, billsApi, billMapper)
+
+    @Provides
+    @Singleton
+    fun provideHansardRepository(
+        hansardDao: HansardDao,
+        hansardApi: com.goveye.app.data.api.HansardApi,
+        hansardMapper: HansardMapper,
+    ): HansardRepository = HansardRepository(hansardDao, hansardApi, hansardMapper)
+
+    @Provides
+    @Singleton
+    fun provideInterestsRepository(
+        interestDao: InterestDao,
+        interestsApi: com.goveye.app.data.api.InterestsApi,
+        interestMapper: InterestMapper,
+    ): InterestsRepository = InterestsRepository(interestDao, interestsApi, interestMapper)
+
+    @Provides
+    @Singleton
+    fun provideFollowRepository(followDao: FollowDao): FollowRepository = FollowRepository(followDao)
 }
