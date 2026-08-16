@@ -1,13 +1,21 @@
-feat(02-01): expand networking core to 5 named Retrofit instances
+feat(02-02): Members + Votes API clients with DTOs, mappers, and tests
 
-- 5 @Named @Singleton Retrofit providers (members, votes, bills, hansard, interests)
-- @Named("hansardClient") OkHttpClient with 15s read timeout for flaky Hansard API
-- Shared OkHttpClient with User-Agent header + RetryInterceptor (3 retries, exp backoff)
-- Domain types: SyncStatus enum (FRESH/STALE/OFFLINE/ERROR/EMPTY), RepositoryResult<T>
-- Data types: CacheTtl (8 TTL constants), ApiException sealed class, ApiErrorMapper
-- MockWebServer tracer test proving JSON parsing through the networking stack
-- Switched mockwebserver3 to mockwebserver artifact for standard API
-- Added mockk, mockwebserver, robolectric test deps to core:data
+Members API:
+- MemberDtos.kt: 11 @Serializable DTOs (camelCase, no @SerialName needed)
+- MembersApi.kt: 4 endpoints (searchMembers, getMember, getMemberSynopsis, getMemberContact)
+- MemberMapper.kt: DTO-to-domain with null-safe party/constituency handling
+- MembersApiModule.kt: Hilt DI module providing MembersApi from @Named("membersApi")
+- Domain models: Mp, Party, Constituency in :core:domain
+- 3 fixture JSON files + MembersApiTest (5 tests) + MemberMapperTest (4 tests)
+
+Votes API:
+- VoteDtos.kt: 5 @Serializable DTOs with @SerialName for PascalCase fields
+- VotesApi.kt: 3 endpoints (searchDivisions, getDivision, getMemberVoting)
+  - searchDivisions and getMemberVoting return bare arrays (no envelope)
+- DivisionMapper.kt: DTO-to-domain with null-safe publishedDivision handling
+- VotesApiModule.kt: Hilt DI module providing VotesApi from @Named("votesApi")
+- Domain models: Division, DivisionVote, VoteType enum in :core:domain
+- 3 fixture JSON files + VotesApiTest (5 tests) + DivisionMapperTest (5 tests)
 
 Generated with [Devin](https://devin.ai)
 

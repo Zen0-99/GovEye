@@ -1,0 +1,59 @@
+{
+  "items": [
+    {
+      "value": {
+        "id": 172,
+        "nameListAs": "Abbott, Ms Diane",
+        "nameDisplayAs": "Diane Abbott",
+        "nameFullTitle": "Ms Diane Abbott",
+        "nameAddressAs": "Ms Abbott",
+        "latestParty": {
+          "id": 15,
+          "name": "Labour",
+          "abbreviation": "Lab",
+          "backgroundColour": "d50000",
+          "foregroundColour": "ffffff"
+        },
+        "gender": "F",
+        "latestHouseMembership": {
+          "membershipFrom": "Hackney North and Stoke Newington",
+          "membershipFromId": 4074,
+          "house": 1,
+          "membershipStartDate": "1987-06-11T00:00:00",
+          "membershipStatus": {
+            "statusIsActive": true,
+            "statusDescription": "Active"
+          }
+        },
+        "thumbnailUrl": "https://members-api.parliament.uk/api/Members/172/Thumbnail"
+      },
+      "links": []
+    },
+    {
+      "value": {
+        "id": 39,
+        "nameListAs": "Whittingdale, Sir John",
+        "nameDisplayAs": "John Whittingdale",
+        "nameFullTitle": "Sir John Whittingdale",
+        "latestParty": {
+          "id": 4,
+          "name": "Conservative",
+          "abbreviation": "Con",
+          "backgroundColour": "0063ba",
+          "foregroundColour": "ffffff"
+        },
+        "gender": "M",
+        "latestHouseMembership": {
+          "membershipFrom": "Maldon",
+          "membershipFromId": 3702,
+          "house": 1,
+          "membershipStartDate": "1992-04-09T00:00:00",
+          "membershipStatus": {
+            "statusIsActive": true
+          }
+        }
+      },
+      "links": []
+    }
+  ]
+}

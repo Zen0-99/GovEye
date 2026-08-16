@@ -1,0 +1,22 @@
+{
+  "value": [
+    {
+      "type": "Parliamentary office",
+      "typeId": 1,
+      "isPreferred": true,
+      "line1": "House of Commons",
+      "line2": "London",
+      "postcode": "SW1A 0AA",
+      "phone": "020 7219 1234",
+      "email": "abbott.d@parliament.uk"
+    },
+    {
+      "type": "Website",
+      "typeId": 6,
+      "isPreferred": false,
+      "isWebAddress": true,
+      "line1": "https://www.dianeabbott.org.uk"
+    }
+  ],
+  "links": []
+}

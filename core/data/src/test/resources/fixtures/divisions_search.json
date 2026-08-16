@@ -1,0 +1,27 @@
+[
+  {
+    "DivisionId": 2411,
+    "Date": "2026-07-15T00:00:00",
+    "PublicationUpdated": "2026-07-15T12:00:00",
+    "Number": 47,
+    "IsDeferred": true,
+    "Title": "Draft Code of Practice for the Regulation of Immigration Advisors",
+    "AyeCount": 330,
+    "NoCount": 109,
+    "Ayes": [],
+    "Noes": [],
+    "NoVoteRecorded": []
+  },
+  {
+    "DivisionId": 2409,
+    "Date": "2026-07-14T00:00:00",
+    "Number": 46,
+    "IsDeferred": false,
+    "Title": "Employment Rights Bill: Report Stage",
+    "AyeCount": 280,
+    "NoCount": 150,
+    "Ayes": [],
+    "Noes": [],
+    "NoVoteRecorded": []
+  }
+]

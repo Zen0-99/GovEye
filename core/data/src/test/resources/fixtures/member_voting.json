@@ -1,0 +1,28 @@
+[
+  {
+    "MemberId": 172,
+    "MemberVotedAye": false,
+    "MemberVotedNo": true,
+    "MemberWasTeller": false,
+    "PublishedDivision": {
+      "DivisionId": 2406,
+      "Date": "2026-07-13T22:16:00",
+      "Title": "Immigration and Asylum Bill: Second Reading",
+      "AyeCount": 264,
+      "NoCount": 90
+    }
+  },
+  {
+    "MemberId": 172,
+    "MemberVotedAye": true,
+    "MemberVotedNo": false,
+    "MemberWasTeller": false,
+    "PublishedDivision": {
+      "DivisionId": 2405,
+      "Date": "2026-07-12T15:00:00",
+      "Title": "Finance Bill: Committee Stage",
+      "AyeCount": 300,
+      "NoCount": 200
+    }
+  }
+]

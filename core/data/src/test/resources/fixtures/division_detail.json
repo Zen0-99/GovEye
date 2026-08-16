@@ -1,0 +1,58 @@
+{
+  "DivisionId": 2409,
+  "Date": "2026-07-14T00:00:00",
+  "PublicationUpdated": "2026-07-14T18:00:00",
+  "Number": 46,
+  "IsDeferred": false,
+  "Title": "Employment Rights Bill: Report Stage",
+  "AyeCount": 280,
+  "NoCount": 150,
+  "AyeTellers": [
+    {
+      "MemberId": 1001,
+      "Name": "Smith, Jane",
+      "Party": "Labour",
+      "PartyColour": "d50000",
+      "PartyAbbreviation": "Lab"
+    }
+  ],
+  "NoTellers": [
+    {
+      "MemberId": 1002,
+      "Name": "Jones, Bob",
+      "Party": "Conservative",
+      "PartyColour": "0063ba",
+      "PartyAbbreviation": "Con"
+    }
+  ],
+  "Ayes": [
+    {
+      "MemberId": 39,
+      "Name": "John Whittingdale",
+      "Party": "Conservative",
+      "PartyColour": "0063ba",
+      "PartyAbbreviation": "Con",
+      "MemberFrom": "Maldon",
+      "ListAs": "Whittingdale, Sir John"
+    },
+    {
+      "MemberId": 100,
+      "Name": "Another MP",
+      "Party": "Conservative",
+      "PartyColour": "0063ba",
+      "PartyAbbreviation": "Con",
+      "MemberFrom": "Some Constituency"
+    }
+  ],
+  "Noes": [
+    {
+      "MemberId": 172,
+      "Name": "Diane Abbott",
+      "Party": "Labour",
+      "PartyColour": "d50000",
+      "PartyAbbreviation": "Lab",
+      "MemberFrom": "Hackney North and Stoke Newington"
+    }
+  ],
+  "NoVoteRecorded": []
+}
