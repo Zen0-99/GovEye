@@ -1,21 +1,28 @@
-feat(02-02): Members + Votes API clients with DTOs, mappers, and tests
+feat(02-03): Bills + Hansard + Interests API clients with DTOs, mappers, and tests
 
-Members API:
-- MemberDtos.kt: 11 @Serializable DTOs (camelCase, no @SerialName needed)
-- MembersApi.kt: 4 endpoints (searchMembers, getMember, getMemberSynopsis, getMemberContact)
-- MemberMapper.kt: DTO-to-domain with null-safe party/constituency handling
-- MembersApiModule.kt: Hilt DI module providing MembersApi from @Named("membersApi")
-- Domain models: Mp, Party, Constituency in :core:domain
-- 3 fixture JSON files + MembersApiTest (5 tests) + MemberMapperTest (4 tests)
+Bills API:
+- BillDtos.kt: 7 @Serializable DTOs (camelCase, {items:[...]} envelope)
+- BillsApi.kt: 3 endpoints (getBills, getBill, getBillStages)
+- BillMapper.kt: DTO-to-domain with null-safe currentStage, sittingDates filtering, sortOrder sorting
+- BillsApiModule.kt: Hilt DI providing BillsApi from @Named("billsApi")
+- Domain models: Bill, BillStage in :core:domain
+- 3 fixtures + BillsApiTest (5 tests) + BillMapperTest (5 tests)
 
-Votes API:
-- VoteDtos.kt: 5 @Serializable DTOs with @SerialName for PascalCase fields
-- VotesApi.kt: 3 endpoints (searchDivisions, getDivision, getMemberVoting)
-  - searchDivisions and getMemberVoting return bare arrays (no envelope)
-- DivisionMapper.kt: DTO-to-domain with null-safe publishedDivision handling
-- VotesApiModule.kt: Hilt DI module providing VotesApi from @Named("votesApi")
-- Domain models: Division, DivisionVote, VoteType enum in :core:domain
-- 3 fixture JSON files + VotesApiTest (5 tests) + DivisionMapperTest (5 tests)
+Hansard API:
+- HansardDtos.kt: 2 @Serializable DTOs with @SerialName for PascalCase fields
+- HansardApi.kt: 1 endpoint (search) with custom envelope (Total* counters + Contributions array)
+- HansardMapper.kt: DTO-to-domain mapping
+- HansardApiModule.kt: Hilt DI providing HansardApi from @Named("hansardApi")
+- Domain model: HansardContribution in :core:domain
+- 1 fixture + HansardApiTest (5 tests) + HansardMapperTest (2 tests)
+
+Interests API:
+- InterestDtos.kt: 7 @Serializable DTOs (camelCase, JsonElement for dynamic field values)
+- InterestsApi.kt: 1 endpoint (getInterests)
+- InterestMapper.kt: DTO-to-domain, serializes dynamic fields to JSON string
+- InterestsApiModule.kt: Hilt DI providing InterestsApi from @Named("interestsApi")
+- Domain model: Interest with fieldsJson: String in :core:domain
+- 1 fixture + InterestsApiTest (4 tests) + InterestMapperTest (4 tests)
 
 Generated with [Devin](https://devin.ai)
 

@@ -1,0 +1,64 @@
+{
+  "links": [],
+  "skip": 0,
+  "take": 20,
+  "totalResults": 5,
+  "items": [
+    {
+      "id": 13091,
+      "summary": "Payment received on 12 March 2025 - £18,450.00",
+      "registrationDate": "2025-08-08",
+      "publishedDate": "2025-08-08",
+      "category": {
+        "id": 1,
+        "number": "1.1",
+        "name": "Employment and earnings - Ad hoc payments",
+        "type": "Commons",
+        "parentCategoryIds": []
+      },
+      "member": {
+        "id": 172,
+        "nameDisplayAs": "Ms Diane Abbott",
+        "nameListAs": "Abbott, Ms Diane",
+        "house": "Commons",
+        "memberFrom": "Hackney North and Stoke Newington",
+        "party": "Labour"
+      },
+      "fields": [
+        { "name": "PaymentReceived", "type": "Boolean", "value": true },
+        { "name": "ReceivedDate", "type": "DateOnly", "value": "2025-03-12" },
+        { "name": "PaymentType", "type": "String", "value": "Monetary" },
+        { "name": "PaymentDescription", "type": "String", "value": "Payment for autobiography sales" },
+        { "name": "Value", "type": "Decimal", "value": "18450.00", "typeInfo": { "currencyCode": "GBP" } },
+        { "name": "HoursWorked", "type": "Decimal", "value": "0.00" }
+      ],
+      "rectified": true,
+      "rectifiedDetails": "This is a late entry due to administrative error."
+    },
+    {
+      "id": 13092,
+      "summary": "Directorship of company XYZ Ltd",
+      "registrationDate": "2025-01-15",
+      "publishedDate": "2025-01-20",
+      "category": {
+        "id": 2,
+        "number": "1.2",
+        "name": "Directorships",
+        "type": "Commons",
+        "parentCategoryIds": []
+      },
+      "member": {
+        "id": 172,
+        "nameDisplayAs": "Ms Diane Abbott",
+        "nameListAs": "Abbott, Ms Diane",
+        "house": "Commons",
+        "party": "Labour"
+      },
+      "fields": [
+        { "name": "CompanyName", "type": "String", "value": "XYZ Ltd" },
+        { "name": "CompanyNumber", "type": "String", "value": "12345678" }
+      ],
+      "rectified": false
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "items": [
+    {
+      "id": 19928,
+      "stageId": 6,
+      "sessionId": 2024,
+      "description": "1st reading",
+      "abbreviation": "1R",
+      "house": "Commons",
+      "sortOrder": 1,
+      "stageSittings": [
+        { "id": 1, "date": "2025-06-15T00:00:00" }
+      ]
+    },
+    {
+      "id": 19929,
+      "stageId": 7,
+      "sessionId": 2024,
+      "description": "2nd reading",
+      "abbreviation": "2R",
+      "house": "Commons",
+      "sortOrder": 2,
+      "stageSittings": [
+        { "id": 2, "date": "2025-07-11T00:00:00" }
+      ]
+    }
+  ],
+  "totalResults": 2,
+  "itemsPerPage": 20
+}

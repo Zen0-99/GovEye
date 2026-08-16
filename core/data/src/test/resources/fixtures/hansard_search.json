@@ -1,0 +1,36 @@
+{
+  "TotalMembers": 0,
+  "TotalContributions": 62623,
+  "TotalWrittenStatements": 1643,
+  "TotalWrittenAnswers": 10665,
+  "TotalCorrections": 37,
+  "TotalPetitions": 0,
+  "TotalDebates": 647,
+  "TotalCommittees": 0,
+  "TotalDivisions": 38,
+  "SearchTerms": ["climate"],
+  "Members": [],
+  "Contributions": [
+    {
+      "MemberName": "The Lord Bishop of Oxford",
+      "MemberId": 4279,
+      "ContributionText": "My Lords, it is a real honour to speak in this debate on climate policy.",
+      "ContributionTextFull": "My Lords, it is a real honour to speak in this debate on climate policy. The need for urgent action...",
+      "SittingDate": "2026-07-23T00:00:00",
+      "House": "Lords",
+      "DebateSection": "Digital and Technology Policy: National Sovereignty",
+      "ItemId": 50236437,
+      "DebateSectionId": 12345
+    },
+    {
+      "MemberName": "Ms Diane Abbott",
+      "MemberId": 172,
+      "ContributionText": "Mr Speaker, I rise to address the House on the critical issue of climate change.",
+      "SittingDate": "2026-07-22T00:00:00",
+      "House": "Commons",
+      "DebateSection": "Climate Emergency Debate",
+      "ItemId": 50236438,
+      "DebateSectionId": 12346
+    }
+  ]
+}
