@@ -1,14 +1,13 @@
-fix(01-02): single Sky color scheme, conditional AMOLED toggle
+feat(02-01): expand networking core to 5 named Retrofit instances
 
-- Remove color scheme picker from Settings UI — Sky (dynamic) is the
-  only scheme now. Backend (AppTheme enum, color scheme classes,
-  ThemeViewModel.setAppTheme) remains intact for future re-enabling
-- Default app theme changed from CORAL to SKY in ThemePreferences
-  and ThemeViewModel
-- AMOLED toggle only visible when app is effectively dark (Dark mode
-  or System mode with system in dark). Hidden in Light mode and
-  System mode with system in light — toggle has no effect when
-  app is light
+- 5 @Named @Singleton Retrofit providers (members, votes, bills, hansard, interests)
+- @Named("hansardClient") OkHttpClient with 15s read timeout for flaky Hansard API
+- Shared OkHttpClient with User-Agent header + RetryInterceptor (3 retries, exp backoff)
+- Domain types: SyncStatus enum (FRESH/STALE/OFFLINE/ERROR/EMPTY), RepositoryResult<T>
+- Data types: CacheTtl (8 TTL constants), ApiException sealed class, ApiErrorMapper
+- MockWebServer tracer test proving JSON parsing through the networking stack
+- Switched mockwebserver3 to mockwebserver artifact for standard API
+- Added mockk, mockwebserver, robolectric test deps to core:data
 
 Generated with [Devin](https://devin.ai)
 

@@ -7,6 +7,12 @@ plugins {
 
 android {
     namespace = "com.goveye.app.data"
+
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
 }
 
 dependencies {
@@ -26,4 +32,7 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)
+    testImplementation(libs.mockk)
+    testImplementation(libs.mockwebserver)
+    testImplementation(libs.robolectric)
 }
