@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.goveye.app.ui.components.SyncStatusBanner
 import com.goveye.app.ui.theme.padding
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -78,6 +79,7 @@ fun MpProfileScreen(
                 contentPadding = innerPadding,
             ) {
                 item { ProfileHeader(mp = uiState.mp!!) }
+                item { SyncStatusBanner(status = uiState.syncStatus) }
                 item { FollowButtonPlaceholder() }
                 item { BioSection(synopsis = uiState.synopsis) }
                 item { ContactSection(contacts = uiState.contacts) }

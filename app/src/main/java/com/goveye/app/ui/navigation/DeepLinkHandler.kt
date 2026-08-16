@@ -6,16 +6,13 @@ import android.util.Log
 import androidx.navigation3.runtime.NavKey
 
 /**
- * Parses `goveye://` deep link intents into [NavKey] routes (D-21).
+ * Parses `goveye://` deep link intents into [NavKey] routes (D-21, D-11).
  *
- * Supported hosts:
- * - `goveye://mp` → Directory (MP detail screen in later phases)
+ * Supported patterns:
+ * - `goveye://mp` → Directory tab
+ * - `goveye://mp/{memberId}` → MP profile screen for the given member
  * - `goveye://division` → Feed (division detail in later phases)
  * - `goveye://bill` → Feed (bill detail in later phases)
- *
- * Phase 1 stub: returns the appropriate top-level route. Later phases
- * will parse path/query parameters and push detail screens onto the
- * relevant tab's back stack.
  */
 object DeepLinkHandler {
     private const val TAG = "DeepLinkHandler"
@@ -27,7 +24,19 @@ object DeepLinkHandler {
 
         val route: NavKey? =
             when (data.host) {
-                "mp" -> DirectoryRoute
+                "mp" -> {
+                    val pathSegments = data.pathSegments
+                    if (pathSegments.isNotEmpty()) {
+                        val memberId = pathSegments.firstOrNull()?.toIntOrNull()
+                        if (memberId != null) {
+                            MpProfileRoute(memberId)
+                        } else {
+                            DirectoryRoute
+                        }
+                    } else {
+                        DirectoryRoute
+                    }
+                }
                 "division" -> FeedRoute
                 "bill" -> FeedRoute
                 else -> null

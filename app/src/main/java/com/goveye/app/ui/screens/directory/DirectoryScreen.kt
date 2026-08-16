@@ -102,44 +102,88 @@ fun DirectoryScreen(
                 }
             }
         } else {
-            when (viewMode) {
-                DirectoryViewMode.LIST -> {
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(
-                            count = lazyPagingItems.itemCount,
-                            key = lazyPagingItems.itemKey { it.id },
-                        ) { index ->
-                            val mp = lazyPagingItems[index]
-                            if (mp != null) {
-                                MpListRow(
-                                    mp = mp,
-                                    onClick = { onNavigateToProfile(mp.id) },
-                                )
-                            }
+            val refreshState = lazyPagingItems.loadState.refresh
+            when {
+                refreshState is androidx.paging.LoadState.Loading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        androidx.compose.material3.CircularProgressIndicator()
+                    }
+                }
+                refreshState is androidx.paging.LoadState.Error -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "Couldn't load MPs",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Text(
+                                text = "Check your connection and try again",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                         }
                     }
                 }
-                DirectoryViewMode.GRID -> {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
+                refreshState is androidx.paging.LoadState.NotLoading && lazyPagingItems.itemCount == 0 -> {
+                    Box(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(
-                            horizontal = MaterialTheme.padding.medium,
-                            vertical = MaterialTheme.padding.small,
-                        ),
-                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
-                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        items(
-                            count = lazyPagingItems.itemCount,
-                            key = lazyPagingItems.itemKey { it.id },
-                        ) { index ->
-                            val mp = lazyPagingItems[index]
-                            if (mp != null) {
-                                MpGridCard(
-                                    mp = mp,
-                                    onClick = { onNavigateToProfile(mp.id) },
-                                )
+                        Text(
+                            text = "No MPs found",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                else -> {
+                    when (viewMode) {
+                        DirectoryViewMode.LIST -> {
+                            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                                items(
+                                    count = lazyPagingItems.itemCount,
+                                    key = lazyPagingItems.itemKey { it.id },
+                                ) { index ->
+                                    val mp = lazyPagingItems[index]
+                                    if (mp != null) {
+                                        MpListRow(
+                                            mp = mp,
+                                            onClick = { onNavigateToProfile(mp.id) },
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        DirectoryViewMode.GRID -> {
+                            LazyVerticalGrid(
+                                columns = GridCells.Fixed(2),
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(
+                                    horizontal = MaterialTheme.padding.medium,
+                                    vertical = MaterialTheme.padding.small,
+                                ),
+                                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
+                                verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
+                            ) {
+                                items(
+                                    count = lazyPagingItems.itemCount,
+                                    key = lazyPagingItems.itemKey { it.id },
+                                ) { index ->
+                                    val mp = lazyPagingItems[index]
+                                    if (mp != null) {
+                                        MpGridCard(
+                                            mp = mp,
+                                            onClick = { onNavigateToProfile(mp.id) },
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

@@ -13,6 +13,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,6 +31,7 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.goveye.app.domain.AppTheme
 import com.goveye.app.domain.ThemeMode
+import com.goveye.app.ui.navigation.DeepLinkNavigator
 import com.goveye.app.ui.navigation.DirectoryRoute
 import com.goveye.app.ui.navigation.FeedRoute
 import com.goveye.app.ui.navigation.FollowingRoute
@@ -54,7 +56,7 @@ import com.goveye.app.ui.theme.ThemeViewModel
  * [SettingsScreen] so theme changes propagate live.
  */
 @Composable
-fun GovEyeApp() {
+fun GovEyeApp(deepLinkNavigator: DeepLinkNavigator) {
     val themeViewModel: ThemeViewModel = hiltViewModel()
     val appTheme by themeViewModel.appTheme.collectAsStateWithLifecycle()
     val themeMode by themeViewModel.themeMode.collectAsStateWithLifecycle()
@@ -65,12 +67,15 @@ fun GovEyeApp() {
         themeMode = themeMode,
         isAmoled = isAmoled
     ) {
-        GovEyeAppContent(themeViewModel)
+        GovEyeAppContent(themeViewModel, deepLinkNavigator)
     }
 }
 
 @Composable
-private fun GovEyeAppContent(themeViewModel: ThemeViewModel) {
+private fun GovEyeAppContent(
+    themeViewModel: ThemeViewModel,
+    deepLinkNavigator: DeepLinkNavigator,
+) {
     // Per-tab back stacks (D-20)
     val feedBackStack = rememberNavBackStack(FeedRoute)
     val directoryBackStack = rememberNavBackStack(DirectoryRoute)
@@ -98,6 +103,21 @@ private fun GovEyeAppContent(themeViewModel: ThemeViewModel) {
             SettingsRoute -> settingsBackStack
             else -> feedBackStack
         }
+
+    LaunchedEffect(Unit) {
+        deepLinkNavigator.deepLinkEvents.collect { route ->
+            when (route) {
+                is MpProfileRoute -> {
+                    currentTabIndex = 1
+                    directoryBackStack.add(route)
+                }
+                is DirectoryRoute -> {
+                    currentTabIndex = 1
+                }
+                else -> { }
+            }
+        }
+    }
 
     val decorators =
         listOf(
