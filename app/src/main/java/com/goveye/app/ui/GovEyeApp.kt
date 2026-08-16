@@ -33,11 +33,13 @@ import com.goveye.app.domain.ThemeMode
 import com.goveye.app.ui.navigation.DirectoryRoute
 import com.goveye.app.ui.navigation.FeedRoute
 import com.goveye.app.ui.navigation.FollowingRoute
+import com.goveye.app.ui.navigation.MpProfileRoute
 import com.goveye.app.ui.navigation.SettingsRoute
-import com.goveye.app.ui.screens.DirectoryScreen
 import com.goveye.app.ui.screens.FeedScreen
 import com.goveye.app.ui.screens.FollowingScreen
 import com.goveye.app.ui.screens.SettingsScreen
+import com.goveye.app.ui.screens.directory.DirectoryScreen
+import com.goveye.app.ui.screens.mpprofile.MpProfileScreen
 import com.goveye.app.ui.theme.GovEyeTheme
 import com.goveye.app.ui.theme.ThemeViewModel
 
@@ -113,7 +115,21 @@ private fun GovEyeAppContent(themeViewModel: ThemeViewModel) {
 
                 is DirectoryRoute ->
                     NavEntry(key) {
-                        DirectoryScreen(modifier = Modifier.fillMaxSize())
+                        DirectoryScreen(
+                            onNavigateToProfile = { memberId ->
+                                currentBackStack.add(MpProfileRoute(memberId))
+                            },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+
+                is MpProfileRoute ->
+                    NavEntry(key) {
+                        MpProfileScreen(
+                            memberId = key.memberId,
+                            onBack = { currentBackStack.removeLastOrNull() },
+                            modifier = Modifier.fillMaxSize(),
+                        )
                     }
 
                 is FollowingRoute ->

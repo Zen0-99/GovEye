@@ -25,6 +25,9 @@ dependencies {
     implementation(libs.bundles.room)
     implementation(libs.androidx.datastore.preferences)
 
+    // Paging 3
+    implementation(libs.androidx.paging.runtime)
+
     // Coroutines
     implementation(libs.kotlinx.coroutines.core)
 

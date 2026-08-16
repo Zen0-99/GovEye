@@ -9,6 +9,7 @@ import com.goveye.app.data.local.dao.FollowDao
 import com.goveye.app.data.local.dao.HansardDao
 import com.goveye.app.data.local.dao.InterestDao
 import com.goveye.app.data.local.dao.MpDao
+import com.goveye.app.data.local.dao.RemoteKeyDao
 import com.goveye.app.data.local.dao.SearchDao
 import com.goveye.app.data.mapper.BillMapper
 import com.goveye.app.data.mapper.DivisionMapper
@@ -20,6 +21,7 @@ import com.goveye.app.data.repo.FollowRepository
 import com.goveye.app.data.repo.HansardRepository
 import com.goveye.app.data.repo.InterestsRepository
 import com.goveye.app.data.repo.MembersRepository
+import com.goveye.app.data.repo.MpRemoteMediator
 import com.goveye.app.data.repo.VotesRepository
 import dagger.Module
 import dagger.Provides
@@ -46,6 +48,9 @@ object DatabaseModule {
 
     @Provides
     fun provideMpDao(database: GovEyeDatabase): MpDao = database.mpDao()
+
+    @Provides
+    fun provideRemoteKeyDao(database: GovEyeDatabase): RemoteKeyDao = database.remoteKeyDao()
 
     @Provides
     fun provideDivisionDao(database: GovEyeDatabase): DivisionDao = database.divisionDao()
@@ -84,11 +89,22 @@ object DatabaseModule {
 
     @Provides
     @Singleton
+    fun provideMpRemoteMediator(
+        mpDao: MpDao,
+        remoteKeyDao: RemoteKeyDao,
+        membersApi: com.goveye.app.data.api.MembersApi,
+        memberMapper: MemberMapper,
+    ): MpRemoteMediator = MpRemoteMediator(mpDao, remoteKeyDao, membersApi, memberMapper)
+
+    @Provides
+    @Singleton
     fun provideMembersRepository(
         mpDao: MpDao,
         membersApi: com.goveye.app.data.api.MembersApi,
         memberMapper: MemberMapper,
-    ): MembersRepository = MembersRepository(mpDao, membersApi, memberMapper)
+        mpRemoteMediator: MpRemoteMediator,
+        remoteKeyDao: RemoteKeyDao,
+    ): MembersRepository = MembersRepository(mpDao, membersApi, memberMapper, mpRemoteMediator, remoteKeyDao)
 
     @Provides
     @Singleton

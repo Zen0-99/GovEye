@@ -1,5 +1,6 @@
 package com.goveye.app.data.local.dao
 
+import androidx.paging.PagingSource
 import androidx.room.Dao
 import androidx.room.Query
 import androidx.room.Upsert
@@ -10,6 +11,9 @@ import kotlinx.coroutines.flow.Flow
 interface MpDao {
     @Query("SELECT * FROM mps WHERE isActive = 1 ORDER BY nameListAs")
     fun observeAllMps(): Flow<List<MpEntity>>
+
+    @Query("SELECT * FROM mps WHERE isActive = 1 ORDER BY nameListAs")
+    fun pagingSource(): PagingSource<Int, MpEntity>
 
     @Query("SELECT * FROM mps WHERE id = :id")
     fun observeMp(id: Int): Flow<MpEntity?>
@@ -22,4 +26,7 @@ interface MpDao {
 
     @Query("SELECT MIN(lastUpdated) FROM mps WHERE isActive = 1")
     suspend fun getOldestTimestamp(): Long?
+
+    @Query("DELETE FROM mps")
+    suspend fun clearAll()
 }

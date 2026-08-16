@@ -53,6 +53,14 @@ dependencies {
     implementation(libs.bundles.networking)
     implementation(libs.bundles.room)
 
+    // Paging 3
+    implementation(libs.androidx.paging.runtime)
+    implementation(libs.androidx.paging.compose)
+
+    // Coil 3 (image loading)
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
+
     // Testing
     testImplementation(libs.junit)
 }

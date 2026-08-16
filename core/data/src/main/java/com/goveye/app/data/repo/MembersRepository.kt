@@ -1,7 +1,13 @@
 package com.goveye.app.data.repo
 
+import androidx.paging.ExperimentalPagingApi
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
+import androidx.paging.map
 import com.goveye.app.data.api.MembersApi
 import com.goveye.app.data.local.dao.MpDao
+import com.goveye.app.data.local.dao.RemoteKeyDao
 import com.goveye.app.data.local.entity.MpEntity
 import com.goveye.app.data.mapper.MemberMapper
 import com.goveye.app.domain.model.Mp
@@ -13,10 +19,13 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
+@OptIn(ExperimentalPagingApi::class)
 class MembersRepository @Inject constructor(
     private val mpDao: MpDao,
     private val membersApi: MembersApi,
     private val mapper: MemberMapper,
+    private val remoteMediator: MpRemoteMediator,
+    private val remoteKeyDao: RemoteKeyDao,
 ) {
     fun observeAllMps(): Flow<RepositoryResult<List<Mp>>> =
         mpDao.observeAllMps().map { entities ->
@@ -39,6 +48,20 @@ class MembersRepository @Inject constructor(
             }
         }
 
+    fun observePagedMps(): Flow<PagingData<Mp>> =
+        Pager(
+            config = PagingConfig(
+                pageSize = 20,
+                prefetchDistance = 10,
+                initialLoadSize = 40,
+                enablePlaceholders = false,
+            ),
+            remoteMediator = remoteMediator,
+            pagingSourceFactory = { mpDao.pagingSource() },
+        ).flow.map { pagingData ->
+            pagingData.map { it.toDomain() }
+        }
+
     suspend fun refresh() = refreshMps()
 
     suspend fun refreshMps() {
@@ -46,11 +69,21 @@ class MembersRepository @Inject constructor(
             val response = membersApi.searchMembers(itemsPerPage = 200, skip = 0)
             val entities = response.items.map { item ->
                 val mp = mapper.toDomain(item.value)
-                mp.toEntity(System.currentTimeMillis())
+                mapper.toEntity(mp, System.currentTimeMillis())
             }
             mpDao.upsertAll(entities)
         } catch (e: Exception) {
             // Cache is still served via Flow; error is silent
+        }
+    }
+
+    suspend fun refreshMp(id: Int) {
+        try {
+            val response = membersApi.getMember(id)
+            val mp = mapper.toDomain(response.value)
+            mpDao.upsertAll(listOf(mapper.toEntity(mp, System.currentTimeMillis())))
+        } catch (e: Exception) {
+            // Cache is still served via Flow
         }
     }
 
@@ -67,28 +100,5 @@ class MembersRepository @Inject constructor(
             membershipStartDate = membershipStartDate,
             isActive = isActive,
             thumbnailUrl = thumbnailUrl,
-        )
-
-    private fun Mp.toEntity(timestamp: Long): MpEntity =
-        MpEntity(
-            id = id,
-            nameListAs = nameListAs,
-            nameDisplayAs = nameDisplayAs,
-            nameFullTitle = nameFullTitle,
-            nameAddressAs = null,
-            gender = gender,
-            partyId = party?.id ?: 0,
-            partyName = party?.name ?: "",
-            partyAbbreviation = party?.abbreviation ?: "",
-            partyBackgroundColour = party?.backgroundColour ?: "",
-            partyForegroundColour = party?.foregroundColour ?: "",
-            constituencyId = constituency?.id ?: 0,
-            constituencyName = constituency?.name ?: "",
-            house = house,
-            membershipStartDate = membershipStartDate,
-            membershipEndDate = null,
-            isActive = isActive,
-            thumbnailUrl = thumbnailUrl,
-            lastUpdated = timestamp,
         )
 }

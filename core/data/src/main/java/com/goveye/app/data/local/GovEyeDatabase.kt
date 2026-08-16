@@ -9,6 +9,7 @@ import com.goveye.app.data.local.dao.FollowDao
 import com.goveye.app.data.local.dao.HansardDao
 import com.goveye.app.data.local.dao.InterestDao
 import com.goveye.app.data.local.dao.MpDao
+import com.goveye.app.data.local.dao.RemoteKeyDao
 import com.goveye.app.data.local.dao.SearchDao
 import com.goveye.app.data.local.entity.BillEntity
 import com.goveye.app.data.local.entity.BillStageEntity
@@ -19,11 +20,13 @@ import com.goveye.app.data.local.entity.HansardContributionEntity
 import com.goveye.app.data.local.entity.InterestEntity
 import com.goveye.app.data.local.entity.MpEntity
 import com.goveye.app.data.local.entity.MpFtsEntity
+import com.goveye.app.data.local.entity.RemoteKeyEntity
 
 @Database(
     entities = [
         MpEntity::class,
         MpFtsEntity::class,
+        RemoteKeyEntity::class,
         DivisionEntity::class,
         DivisionVoteEntity::class,
         BillEntity::class,
@@ -32,13 +35,14 @@ import com.goveye.app.data.local.entity.MpFtsEntity
         InterestEntity::class,
         FollowEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
 abstract class GovEyeDatabase : RoomDatabase() {
     abstract fun searchDao(): SearchDao
     abstract fun mpDao(): MpDao
+    abstract fun remoteKeyDao(): RemoteKeyDao
     abstract fun divisionDao(): DivisionDao
     abstract fun billDao(): BillDao
     abstract fun hansardDao(): HansardDao

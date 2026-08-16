@@ -6,6 +6,7 @@ import com.goveye.app.data.dto.members.MemberSearchResponse
 import com.goveye.app.data.local.GovEyeDatabase
 import com.goveye.app.data.local.entity.MpEntity
 import com.goveye.app.data.mapper.MemberMapper
+import com.goveye.app.data.repo.MpRemoteMediator
 import com.goveye.app.domain.model.SyncStatus
 import io.mockk.coEvery
 import io.mockk.mockk
@@ -26,6 +27,7 @@ class MembersRepositoryTest {
     private lateinit var database: GovEyeDatabase
     private lateinit var repository: MembersRepository
     private val api: MembersApi = mockk(relaxed = true)
+    private val remoteMediator: MpRemoteMediator = mockk(relaxed = true)
 
     @Before
     fun setUp() {
@@ -33,7 +35,7 @@ class MembersRepositoryTest {
             RuntimeEnvironment.getApplication(),
             GovEyeDatabase::class.java,
         ).allowMainThreadQueries().build()
-        repository = MembersRepository(database.mpDao(), api, MemberMapper)
+        repository = MembersRepository(database.mpDao(), api, MemberMapper, remoteMediator, database.remoteKeyDao())
     }
 
     @After

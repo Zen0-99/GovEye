@@ -20,3 +20,6 @@ data object FollowingRoute : NavKey
 
 @Serializable
 data object SettingsRoute : NavKey
+
+@Serializable
+data class MpProfileRoute(val memberId: Int) : NavKey
