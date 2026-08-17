@@ -172,33 +172,37 @@ private fun GovEyeAppContent(
             }
         }
 
+    val showBottomBar = currentBackStack.lastOrNull()?.let { it !is MpProfileRoute } ?: true
+
     Scaffold(
         bottomBar = {
-            NavigationBar {
-                NavigationBarItem(
-                    selected = currentTabIndex == 0,
-                    onClick = { currentTabIndex = 0 },
-                    icon = { Icon(Icons.Outlined.Home, contentDescription = "Feed") },
-                    label = { Text("Feed") }
-                )
-                NavigationBarItem(
-                    selected = currentTabIndex == 1,
-                    onClick = { currentTabIndex = 1 },
-                    icon = { Icon(Icons.Outlined.Search, contentDescription = "Directory") },
-                    label = { Text("Directory") }
-                )
-                NavigationBarItem(
-                    selected = currentTabIndex == 2,
-                    onClick = { currentTabIndex = 2 },
-                    icon = { Icon(Icons.Outlined.PersonAdd, contentDescription = "Following") },
-                    label = { Text("Following") }
-                )
-                NavigationBarItem(
-                    selected = currentTabIndex == 3,
-                    onClick = { currentTabIndex = 3 },
-                    icon = { Icon(Icons.Outlined.Settings, contentDescription = "Settings") },
-                    label = { Text("Settings") }
-                )
+            if (showBottomBar) {
+                NavigationBar {
+                    NavigationBarItem(
+                        selected = currentTabIndex == 0,
+                        onClick = { currentTabIndex = 0 },
+                        icon = { Icon(Icons.Outlined.Home, contentDescription = "Feed") },
+                        label = { Text("Feed") }
+                    )
+                    NavigationBarItem(
+                        selected = currentTabIndex == 1,
+                        onClick = { currentTabIndex = 1 },
+                        icon = { Icon(Icons.Outlined.Search, contentDescription = "Directory") },
+                        label = { Text("Directory") }
+                    )
+                    NavigationBarItem(
+                        selected = currentTabIndex == 2,
+                        onClick = { currentTabIndex = 2 },
+                        icon = { Icon(Icons.Outlined.PersonAdd, contentDescription = "Following") },
+                        label = { Text("Following") }
+                    )
+                    NavigationBarItem(
+                        selected = currentTabIndex == 3,
+                        onClick = { currentTabIndex = 3 },
+                        icon = { Icon(Icons.Outlined.Settings, contentDescription = "Settings") },
+                        label = { Text("Settings") }
+                    )
+                }
             }
         }
     ) { innerPadding ->

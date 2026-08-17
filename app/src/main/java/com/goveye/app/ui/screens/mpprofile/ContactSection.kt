@@ -1,5 +1,8 @@
 package com.goveye.app.ui.screens.mpprofile
 
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,6 +21,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.goveye.app.domain.model.Contact
@@ -35,7 +39,7 @@ fun ContactSection(
             .fillMaxWidth()
             .padding(horizontal = MaterialTheme.padding.large, vertical = MaterialTheme.padding.small),
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        color = MaterialTheme.colorScheme.surfaceContainer,
     ) {
         Column(
             modifier = Modifier.padding(MaterialTheme.padding.medium),
@@ -55,6 +59,7 @@ fun ContactSection(
 
 @Composable
 private fun ContactRow(contact: Contact) {
+    val context = LocalContext.current
     val icon = when {
         contact.isWebAddress == true -> Icons.Outlined.Public
         contact.email != null -> Icons.Outlined.Email
@@ -69,8 +74,23 @@ private fun ContactRow(contact: Contact) {
     }
     if (primaryText.isBlank()) return
 
+    val clickAction: (() -> Unit)? = when {
+        contact.isWebAddress == true && contact.website != null -> {
+            { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(contact.website))) }
+        }
+        contact.email != null -> {
+            { context.startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:${contact.email}"))) }
+        }
+        contact.phone != null -> {
+            { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${contact.phone}"))) }
+        }
+        else -> null
+    }
+
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (clickAction != null) Modifier.clickable(onClick = clickAction) else Modifier),
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.medium),
     ) {

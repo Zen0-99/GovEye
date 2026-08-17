@@ -12,6 +12,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.goveye.app.domain.model.Mp
 import com.goveye.app.ui.theme.padding
@@ -33,9 +34,8 @@ fun ProfileStatsCard(
     }
 
     val stats = buildList {
-        yearsInParliament?.let { add("Years in Parliament" to "$it") }
+        yearsInParliament?.let { add("Years in\nParliament" to "$it") }
         mp.constituency?.name?.let { add("Constituency" to it) }
-        mp.party?.name?.let { add("Party" to it) }
     }
 
     if (stats.isEmpty()) return
@@ -45,7 +45,7 @@ fun ProfileStatsCard(
             .fillMaxWidth()
             .padding(horizontal = MaterialTheme.padding.large, vertical = MaterialTheme.padding.small),
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        color = MaterialTheme.colorScheme.surfaceContainer,
     ) {
         Row(
             modifier = Modifier
@@ -71,18 +71,21 @@ private fun StatItem(
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier,
+        modifier = modifier.padding(horizontal = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
             text = value,
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            textAlign = TextAlign.Center,
         )
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
         )
     }
 }

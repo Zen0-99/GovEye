@@ -19,6 +19,13 @@ interface MembersApi {
         @Query("skip") skip: Int = 0,
     ): MemberSearchResponse
 
+    @GET("Members/Search")
+    suspend fun searchMembersByName(
+        @Query("name") name: String,
+        @Query("House") house: Int = 1,
+        @Query("IsCurrentMember") isCurrentMember: Boolean = true,
+    ): MemberSearchResponse
+
     @GET("Members/{id}")
     suspend fun getMember(@Path("id") id: Int): MemberResponse
 

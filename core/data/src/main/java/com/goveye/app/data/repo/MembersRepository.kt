@@ -90,6 +90,25 @@ class MembersRepository @Inject constructor(
         }
     }
 
+    /**
+     * API-based search that queries the Parliament API directly.
+     * Works for all 650 MPs regardless of what's been paged into Room.
+     * Results are cached into Room for future use.
+     */
+    suspend fun searchMpsViaApi(query: String): List<Mp> {
+        return try {
+            val response = membersApi.searchMembersByName(name = query)
+            val mps = response.items.map { item -> mapper.toDomain(item.value) }
+            // Cache results into Room
+            val entities = mps.map { mapper.toEntity(it, System.currentTimeMillis()) }
+            mpDao.upsertAll(entities)
+            mps
+        } catch (e: Exception) {
+            // Fall back to local search
+            mpDao.searchMpsLocal(query).map { it.toDomain() }
+        }
+    }
+
     // --- In-memory cached profile data (one-shot fetches) ---
 
     private val synopsisCache = mutableMapOf<Int, Pair<String, Long>>()
