@@ -25,6 +25,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.ViewAgenda
@@ -38,8 +39,10 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -75,6 +78,9 @@ fun DirectoryScreen(
     val lazyPagingItems = viewModel.pagedMps.collectAsLazyPagingItems()
     val searchResults by viewModel.searchResults.collectAsStateWithLifecycle(emptyList())
     val tabCounts by viewModel.tabCounts.collectAsStateWithLifecycle(emptyMap())
+    val filterState by viewModel.filterState.collectAsStateWithLifecycle(DirectoryFilterState())
+    val distinctParties by viewModel.distinctParties.collectAsStateWithLifecycle(emptyList())
+    var showFilterSheet by remember { mutableStateOf(false) }
 
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val pagerState = rememberPagerState(pageCount = { DirectoryTab.entries.size })
@@ -93,6 +99,8 @@ fun DirectoryScreen(
                     else DirectoryViewMode.LIST
                 )
             },
+            onFilterClick = { showFilterSheet = true },
+            hasActiveFilters = filterState.hasActiveFilters,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = statusBarPadding + 6.dp)
@@ -142,6 +150,19 @@ fun DirectoryScreen(
                 DirectoryTab.DEBATES -> PlaceholderTabContent("Debates")
             }
         }
+    }
+
+    // Filter bottom sheet
+    if (showFilterSheet) {
+        FilterBottomSheet(
+            distinctParties = distinctParties,
+            filterState = filterState,
+            onPartyToggle = viewModel::togglePartyFilter,
+            onHouseChange = viewModel::setHouseFilter,
+            onCurrentOnlyChange = viewModel::setCurrentOnly,
+            onClearFilters = viewModel::clearFilters,
+            onDismiss = { showFilterSheet = false },
+        )
     }
 }
 
@@ -297,7 +318,7 @@ private fun PlaceholderTabContent(label: String) {
  * Miko-style floating search bar — rounded pill shape with solid
  * surfaceContainer background (same as nav bar, no shadow).
  *
- * Layout: [search icon] [text field / hint] [clear button] [view toggle]
+ * Layout: [search icon] [text field / hint] [clear button] [filter icon] [view toggle]
  */
 @Composable
 private fun FloatingSearchBar(
@@ -305,6 +326,8 @@ private fun FloatingSearchBar(
     onQueryChange: (String) -> Unit,
     viewMode: DirectoryViewMode,
     onViewModeToggle: () -> Unit,
+    onFilterClick: () -> Unit,
+    hasActiveFilters: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -373,6 +396,19 @@ private fun FloatingSearchBar(
                         modifier = Modifier.size(20.dp),
                     )
                 }
+            }
+
+            // Filter icon — changes color when filters are active (D-08)
+            IconButton(
+                onClick = onFilterClick,
+                modifier = Modifier.size(40.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.FilterList,
+                    contentDescription = "Filter",
+                    tint = if (hasActiveFilters) colorScheme.primary else colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(22.dp),
+                )
             }
 
             // View toggle
