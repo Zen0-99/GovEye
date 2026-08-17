@@ -30,6 +30,9 @@ interface MpDao {
     @Upsert
     suspend fun upsertAll(mps: List<MpEntity>)
 
+    @Query("SELECT DISTINCT partyName FROM mps WHERE isActive = 1 ORDER BY partyName")
+    fun observeDistinctParties(): Flow<List<String>>
+
     @Query("SELECT MIN(lastUpdated) FROM mps WHERE isActive = 1")
     suspend fun getOldestTimestamp(): Long?
 
