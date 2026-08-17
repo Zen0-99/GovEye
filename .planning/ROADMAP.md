@@ -223,14 +223,15 @@ Plans:
   8. App checks for DB updates on startup (manifest hash), downloads patch or full DB as needed
   9. Postcode lookup works offline against bundled DB (postcode → constituency → MP), with postcode→constituency mapping cached permanently (no postcode storage per UK GDPR)
 
-**Plans**: 4 plans
+**Plans**: 5 plans
 
 Plans:
 
 - [ ] 10-01: Compliance — OPL attribution, AboutLibraries, licensing review
 - [ ] 10-02: UX polish — empty/error/offline states, edge cases, notification reliability audit
 - [ ] 10-03: Bundled database + daily updates — seed DB in APK, GitHub Action build/diff/publish, DatabaseUpdateManager (see research/BUNDLED-DB-STRATEGY.md)
-- [ ] 10-04: Release — versioning, release build, Play Store listing prep
+- [ ] 10-04: Voting data pre-load — one-time bulk fetch of all 650 MPs' full voting records (paginated API calls, 25/page) baked into the seed DB. Daily GitHub Action incrementally fetches new divisions and updates vote counts. Eliminates the multi-minute API fetch on first MP profile open. The Commons Votes API caps at 25 items/page with no bulk endpoint, so the GitHub Action must loop through all MPs × all pages sequentially with rate limiting.
+- [ ] 10-05: Release — versioning, release build, Play Store listing prep
 
 ### Phase 11: API Enrichment
 

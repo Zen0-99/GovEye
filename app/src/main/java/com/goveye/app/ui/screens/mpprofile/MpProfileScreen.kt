@@ -313,36 +313,35 @@ private fun VotesTabContent(
             }
         }
 
-        // Charts section
+        // Charts section — each chart renders its own card with title
         if (monthlyVoting.isNotEmpty()) {
             item {
-                ChartSectionLabel("Voting Pattern")
                 VotingBarChart(data = monthlyVoting)
             }
         }
 
         if (attendanceTrend.isNotEmpty()) {
             item {
-                ChartSectionLabel("Attendance Rate")
                 AttendanceLineChart(data = attendanceTrend)
             }
         }
 
         if (rebellionTrend.isNotEmpty()) {
             item {
-                ChartSectionLabel("Rebellion Trend")
                 RebellionLineChart(data = rebellionTrend)
             }
         }
 
-        // Vote map
+        // Vote map — wrapped in a card
         if (voteMapTiles.isNotEmpty()) {
             item {
-                ChartSectionLabel("Vote Map")
-                com.goveye.app.ui.components.stats.VoteMapGrid(
-                    tiles = voteMapTiles,
-                    onTileClick = onNavigateToDivision,
-                )
+                com.goveye.app.ui.components.charts.ChartCard {
+                    com.goveye.app.ui.components.charts.ChartHeader(title = "Vote Map")
+                    com.goveye.app.ui.components.stats.VoteMapGrid(
+                        tiles = voteMapTiles,
+                        onTileClick = onNavigateToDivision,
+                    )
+                }
             }
         }
 
@@ -496,16 +495,6 @@ private fun VoteRecordRow(
             )
         }
     }
-}
-
-@Composable
-private fun ChartSectionLabel(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.titleSmall,
-        fontWeight = FontWeight.Bold,
-        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
-    )
 }
 
 private fun formatDivisionDate(dateString: String): String {

@@ -7,19 +7,29 @@ import com.goveye.app.domain.model.VoteType
  * Monthly voting data for stacked bar chart.
  */
 data class MonthlyVotingData(
-    val month: String, // YYYY-MM
+    val month: String, // YYYY-MM or YYYY-Q# or YYYY
     val ayeCount: Int,
     val noCount: Int,
     val noVoteCount: Int,
 ) {
-    /** Short label for chart X-axis, e.g. "Jul" */
+    /** Short label for chart X-axis, e.g. "Jul", "Q3", "2024" */
     val monthLabel: String
-        get() = try {
-            val parts = month.split("-")
-            val monthNum = parts[1].toIntOrNull() ?: 1
-            listOf("Jan","Feb","Mar","Apr","May","Jun",
-                "Jul","Aug","Sep","Oct","Nov","Dec").getOrElse(monthNum - 1) { month }
-        } catch (e: Exception) { month }
+        get() {
+            // Yearly: YYYY
+            if (month.length == 4) return month
+            // Quarterly: YYYY-Q#
+            if (month.contains("-Q")) {
+                val q = month.substringAfter("-Q")
+                return "Q$q ${month.take(4)}"
+            }
+            // Monthly: YYYY-MM
+            return try {
+                val parts = month.split("-")
+                val monthNum = parts[1].toIntOrNull() ?: 1
+                listOf("Jan","Feb","Mar","Apr","May","Jun",
+                    "Jul","Aug","Sep","Oct","Nov","Dec").getOrElse(monthNum - 1) { month }
+            } catch (e: Exception) { month }
+        }
 }
 
 /**
@@ -30,12 +40,19 @@ data class AttendanceTrend(
     val attendanceRate: Float, // 0-1
 ) {
     val monthLabel: String
-        get() = try {
-            val parts = month.split("-")
-            val monthNum = parts[1].toIntOrNull() ?: 1
-            listOf("Jan","Feb","Mar","Apr","May","Jun",
-                "Jul","Aug","Sep","Oct","Nov","Dec").getOrElse(monthNum - 1) { month }
-        } catch (e: Exception) { month }
+        get() {
+            if (month.length == 4) return month
+            if (month.contains("-Q")) {
+                val q = month.substringAfter("-Q")
+                return "Q$q ${month.take(4)}"
+            }
+            return try {
+                val parts = month.split("-")
+                val monthNum = parts[1].toIntOrNull() ?: 1
+                listOf("Jan","Feb","Mar","Apr","May","Jun",
+                    "Jul","Aug","Sep","Oct","Nov","Dec").getOrElse(monthNum - 1) { month }
+            } catch (e: Exception) { month }
+        }
 }
 
 /**
@@ -46,73 +63,109 @@ data class RebellionTrend(
     val rebellionRate: Float, // 0-1
 ) {
     val monthLabel: String
-        get() = try {
-            val parts = month.split("-")
-            val monthNum = parts[1].toIntOrNull() ?: 1
-            listOf("Jan","Feb","Mar","Apr","May","Jun",
-                "Jul","Aug","Sep","Oct","Nov","Dec").getOrElse(monthNum - 1) { month }
-        } catch (e: Exception) { month }
+        get() {
+            if (month.length == 4) return month
+            if (month.contains("-Q")) {
+                val q = month.substringAfter("-Q")
+                return "Q$q ${month.take(4)}"
+            }
+            return try {
+                val parts = month.split("-")
+                val monthNum = parts[1].toIntOrNull() ?: 1
+                listOf("Jan","Feb","Mar","Apr","May","Jun",
+                    "Jul","Aug","Sep","Oct","Nov","Dec").getOrElse(monthNum - 1) { month }
+            } catch (e: Exception) { month }
+        }
 }
 
 /**
  * Computes chart data from voting records.
+ * Automatically aggregates by month, quarter, or year depending on data span
+ * to prevent chart overflow with multi-year data.
  */
 object VotingStatsCalculator {
+    private const val MAX_POINTS = 12
+
+    private fun periodKey(date: String, totalMonths: Int): String {
+        if (totalMonths <= MAX_POINTS) {
+            return date.take(7) // YYYY-MM
+        }
+        // Aggregate by quarter
+        val parts = date.take(7).split("-")
+        val year = parts.getOrNull(0) ?: date.take(4)
+        val monthNum = parts.getOrNull(1)?.toIntOrNull() ?: 1
+        val quarter = (monthNum - 1) / 3 + 1
+        val quarterKey = "$year-Q$quarter"
+        // If even quarters exceed max points, aggregate by year
+        val totalQuarters = (totalMonths + 2) / 3
+        if (totalQuarters <= MAX_POINTS) return quarterKey
+        return year
+    }
+
+    private fun countUniqueMonths(votes: List<MemberVoteWithDivision>): Int {
+        return votes.mapNotNull { it.divisionDate.take(7).ifBlank { null } }.distinct().size
+    }
+
     /**
-     * Group votes by month and count Aye/No/NoVote.
+     * Group votes by period and count Aye/No/NoVote.
+     * Aggregates by month (≤12 months), quarter (13-36 months), or year (>36 months).
      */
     fun computeMonthlyVoting(votes: List<MemberVoteWithDivision>): List<MonthlyVotingData> {
+        val totalMonths = countUniqueMonths(votes)
         return votes
-            .groupBy { it.divisionDate.take(7) } // YYYY-MM
-            .map { (month, monthVotes) ->
+            .groupBy { periodKey(it.divisionDate, totalMonths) }
+            .map { (period, periodVotes) ->
                 MonthlyVotingData(
-                    month = month,
-                    ayeCount = monthVotes.count { it.vote == VoteType.AYE },
-                    noCount = monthVotes.count { it.vote == VoteType.NO },
-                    noVoteCount = monthVotes.count { it.vote == VoteType.NO_VOTE_RECORDED },
+                    month = period,
+                    ayeCount = periodVotes.count { it.vote == VoteType.AYE },
+                    noCount = periodVotes.count { it.vote == VoteType.NO },
+                    noVoteCount = periodVotes.count { it.vote == VoteType.NO_VOTE_RECORDED },
                 )
             }
             .sortedBy { it.month }
     }
 
     /**
-     * Compute monthly attendance rate.
-     * Attendance = (Ayes + Noes) / total votes in month.
+     * Compute attendance rate per period.
+     * Attendance = (Ayes + Noes) / total votes in period.
      */
     fun computeAttendanceTrend(votes: List<MemberVoteWithDivision>): List<AttendanceTrend> {
+        val totalMonths = countUniqueMonths(votes)
         return votes
-            .groupBy { it.divisionDate.take(7) }
-            .map { (month, monthVotes) ->
-                val attended = monthVotes.count { it.vote != VoteType.NO_VOTE_RECORDED }
+            .groupBy { periodKey(it.divisionDate, totalMonths) }
+            .map { (period, periodVotes) ->
+                val attended = periodVotes.count { it.vote != VoteType.NO_VOTE_RECORDED }
                 AttendanceTrend(
-                    month = month,
-                    attendanceRate = attended.toFloat() / monthVotes.size,
+                    month = period,
+                    attendanceRate = attended.toFloat() / periodVotes.size,
                 )
             }
             .sortedBy { it.month }
     }
 
     /**
-     * Compute monthly rebellion rate from rebellion instances.
+     * Compute rebellion rate per period from rebellion instances.
      * @param rebellionInstances The MP's rebellion instances
-     * @param allVotes The MP's full voting record (for total per month)
+     * @param allVotes The MP's full voting record (for total per period)
      */
     fun computeRebellionTrend(
         rebellionInstances: List<RebellionInstance>,
         allVotes: List<MemberVoteWithDivision>,
     ): List<RebellionTrend> {
-        val rebellionByMonth = rebellionInstances.groupBy { instance ->
-            allVotes.find { it.divisionId == instance.divisionId }?.divisionDate?.take(7) ?: ""
+        val totalMonths = countUniqueMonths(allVotes)
+        val rebellionByPeriod = rebellionInstances.groupBy { instance ->
+            val date = allVotes.find { it.divisionId == instance.divisionId }?.divisionDate ?: ""
+            periodKey(date, totalMonths)
         }
-        val totalByMonth = allVotes
+        val totalByPeriod = allVotes
             .filter { it.vote != VoteType.NO_VOTE_RECORDED }
-            .groupBy { it.divisionDate.take(7) }
+            .groupBy { periodKey(it.divisionDate, totalMonths) }
 
-        return totalByMonth.keys.sorted().map { month ->
-            val rebellions = rebellionByMonth[month]?.size ?: 0
-            val total = totalByMonth[month]?.size ?: 0
+        return totalByPeriod.keys.sorted().map { period ->
+            val rebellions = rebellionByPeriod[period]?.size ?: 0
+            val total = totalByPeriod[period]?.size ?: 0
             RebellionTrend(
-                month = month,
+                month = period,
                 rebellionRate = if (total > 0) rebellions.toFloat() / total else 0f,
             )
         }

@@ -5,11 +5,13 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
@@ -216,6 +218,8 @@ private fun GovEyeAppContent(
         it !is ProfileRoute && it !is DivisionDetailRoute
     } ?: true
 
+    val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+
     Scaffold(
         contentWindowInsets = WindowInsets.navigationBars.only(WindowInsetsSides.Horizontal),
         topBar = {
@@ -235,6 +239,7 @@ private fun GovEyeAppContent(
                     filterChips = searchConfig.filterChips,
                     modifier = Modifier
                         .fillMaxWidth()
+                        .padding(top = statusBarPadding)
                         .padding(horizontal = 12.dp, vertical = 6.dp),
                 )
             }

@@ -36,10 +36,12 @@ import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -84,8 +86,18 @@ fun DirectoryScreen(
     val distinctParties by viewModel.distinctParties.collectAsStateWithLifecycle(emptyList())
     var showFilterSheet by remember { mutableStateOf(false) }
 
-    val pagerState = rememberPagerState(pageCount = { DirectoryTab.entries.size })
+    // Save tab index across navigation — rememberSaveable survives screen changes
+    var savedTabIndex by rememberSaveable { mutableStateOf(0) }
+    val pagerState = rememberPagerState(
+        initialPage = savedTabIndex,
+        pageCount = { DirectoryTab.entries.size },
+    )
     val coroutineScope = rememberCoroutineScope()
+
+    // Persist tab changes
+    LaunchedEffect(pagerState.currentPage) {
+        savedTabIndex = pagerState.currentPage
+    }
 
     // Context-aware placeholder based on current tab
     val currentTab = DirectoryTab.entries[pagerState.currentPage]

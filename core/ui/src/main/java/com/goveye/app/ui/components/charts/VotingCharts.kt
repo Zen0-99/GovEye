@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -19,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.goveye.app.domain.stats.AttendanceTrend
 import com.goveye.app.domain.stats.MonthlyVotingData
@@ -49,8 +51,8 @@ private val NoVoteColor @Composable get() = VoteColors.noVote
 private val LineColor = Color(0xFF1976D2)
 
 /**
- * Stacked bar chart showing monthly voting pattern (Aye/No/NoVote).
- * Uses consistent teal/orange/gray colors with a legend.
+ * Stacked bar chart showing voting pattern (Aye/No/NoVote) in a card.
+ * Title and legend are on the same row. Animation is disabled.
  */
 @Composable
 fun VotingBarChart(
@@ -71,17 +73,26 @@ fun VotingBarChart(
         }
     }
 
-    val monthLabels = remember(data) {
+    val periodLabels = remember(data) {
         data.map { it.monthLabel }
     }
 
-    val bottomAxisFormatter = remember(monthLabels) {
+    val bottomAxisFormatter = remember(periodLabels) {
         CartesianValueFormatter { _, value, _ ->
-            monthLabels.getOrElse(value.toInt()) { "" }
+            periodLabels.getOrElse(value.toInt()) { "" }
         }
     }
 
-    Column(modifier = modifier) {
+    ChartCard(modifier = modifier) {
+        // Title + legend on same row
+        ChartHeaderWithLegend(
+            title = "Voting Pattern",
+            legendItems = listOf(
+                "Ayes" to AyeColor,
+                "Noes" to NoColor,
+                "No vote" to NoVoteColor,
+            ),
+        )
         ProvideVicoTheme(theme = rememberM3VicoTheme()) {
             CartesianChartHost(
                 chart = rememberCartesianChart(
@@ -98,26 +109,20 @@ fun VotingBarChart(
                     ),
                 ),
                 modelProducer = modelProducer,
+                animationSpec = null,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(200.dp)
                     .padding(8.dp),
             )
         }
-        // Legend
-        ChartLegend(
-            items = listOf(
-                "Ayes" to AyeColor,
-                "Noes" to NoColor,
-                "No vote" to NoVoteColor,
-            ),
-        )
     }
 }
 
 /**
- * Line chart showing monthly attendance rate.
- * Y-axis shows percentage values, X-axis shows month labels.
+ * Line chart showing attendance rate in a card.
+ * Y-axis shows percentage values, X-axis shows period labels.
+ * Animation is disabled.
  */
 @Composable
 fun AttendanceLineChart(
@@ -136,13 +141,13 @@ fun AttendanceLineChart(
         }
     }
 
-    val monthLabels = remember(data) {
+    val periodLabels = remember(data) {
         data.map { it.monthLabel }
     }
 
-    val bottomAxisFormatter = remember(monthLabels) {
+    val bottomAxisFormatter = remember(periodLabels) {
         CartesianValueFormatter { _, value, _ ->
-            monthLabels.getOrElse(value.toInt()) { "" }
+            periodLabels.getOrElse(value.toInt()) { "" }
         }
     }
 
@@ -150,33 +155,38 @@ fun AttendanceLineChart(
         CartesianValueFormatter { _, value, _ -> "${value.toInt()}%" }
     }
 
-    ProvideVicoTheme(theme = rememberM3VicoTheme()) {
-        CartesianChartHost(
-            chart = rememberCartesianChart(
-                rememberLineCartesianLayer(
-                    lineProvider = LineCartesianLayer.LineProvider.series(
-                        LineCartesianLayer.rememberLine(
-                            fill = LineCartesianLayer.LineFill.single(Fill(LineColor)),
+    ChartCard(modifier = modifier) {
+        ChartHeader(title = "Attendance Rate")
+        ProvideVicoTheme(theme = rememberM3VicoTheme()) {
+            CartesianChartHost(
+                chart = rememberCartesianChart(
+                    rememberLineCartesianLayer(
+                        lineProvider = LineCartesianLayer.LineProvider.series(
+                            LineCartesianLayer.rememberLine(
+                                fill = LineCartesianLayer.LineFill.single(Fill(LineColor)),
+                            ),
                         ),
                     ),
+                    startAxis = VerticalAxis.rememberStart(valueFormatter = startAxisFormatter),
+                    bottomAxis = HorizontalAxis.rememberBottom(
+                        valueFormatter = bottomAxisFormatter,
+                    ),
                 ),
-                startAxis = VerticalAxis.rememberStart(valueFormatter = startAxisFormatter),
-                bottomAxis = HorizontalAxis.rememberBottom(
-                    valueFormatter = bottomAxisFormatter,
-                ),
-            ),
-            modelProducer = modelProducer,
-            modifier = modifier
-                .fillMaxWidth()
-                .height(160.dp)
-                .padding(8.dp),
-        )
+                modelProducer = modelProducer,
+                animationSpec = null,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(160.dp)
+                    .padding(8.dp),
+            )
+        }
     }
 }
 
 /**
- * Line chart showing monthly rebellion rate.
- * Y-axis shows percentage values, X-axis shows month labels.
+ * Line chart showing rebellion rate in a card.
+ * Y-axis shows percentage values, X-axis shows period labels.
+ * Animation is disabled.
  */
 @Composable
 fun RebellionLineChart(
@@ -195,13 +205,13 @@ fun RebellionLineChart(
         }
     }
 
-    val monthLabels = remember(data) {
+    val periodLabels = remember(data) {
         data.map { it.monthLabel }
     }
 
-    val bottomAxisFormatter = remember(monthLabels) {
+    val bottomAxisFormatter = remember(periodLabels) {
         CartesianValueFormatter { _, value, _ ->
-            monthLabels.getOrElse(value.toInt()) { "" }
+            periodLabels.getOrElse(value.toInt()) { "" }
         }
     }
 
@@ -209,55 +219,111 @@ fun RebellionLineChart(
         CartesianValueFormatter { _, value, _ -> "${value.toInt()}%" }
     }
 
-    ProvideVicoTheme(theme = rememberM3VicoTheme()) {
-        CartesianChartHost(
-            chart = rememberCartesianChart(
-                rememberLineCartesianLayer(
-                    lineProvider = LineCartesianLayer.LineProvider.series(
-                        LineCartesianLayer.rememberLine(
-                            fill = LineCartesianLayer.LineFill.single(Fill(NoColor)),
+    ChartCard(modifier = modifier) {
+        ChartHeader(title = "Rebellion Trend")
+        ProvideVicoTheme(theme = rememberM3VicoTheme()) {
+            CartesianChartHost(
+                chart = rememberCartesianChart(
+                    rememberLineCartesianLayer(
+                        lineProvider = LineCartesianLayer.LineProvider.series(
+                            LineCartesianLayer.rememberLine(
+                                fill = LineCartesianLayer.LineFill.single(Fill(NoColor)),
+                            ),
                         ),
                     ),
+                    startAxis = VerticalAxis.rememberStart(valueFormatter = startAxisFormatter),
+                    bottomAxis = HorizontalAxis.rememberBottom(
+                        valueFormatter = bottomAxisFormatter,
+                    ),
                 ),
-                startAxis = VerticalAxis.rememberStart(valueFormatter = startAxisFormatter),
-                bottomAxis = HorizontalAxis.rememberBottom(
-                    valueFormatter = bottomAxisFormatter,
-                ),
-            ),
-            modelProducer = modelProducer,
-            modifier = modifier
-                .fillMaxWidth()
-                .height(160.dp)
-                .padding(8.dp),
-        )
+                modelProducer = modelProducer,
+                animationSpec = null,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(160.dp)
+                    .padding(8.dp),
+            )
+        }
     }
 }
 
+/**
+ * Rounded card wrapper for chart sections.
+ */
 @Composable
-private fun ChartLegend(items: List<Pair<String, Color>>) {
+fun ChartCard(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+        ) {
+            content()
+        }
+    }
+}
+
+/**
+ * Chart header with title only.
+ */
+@Composable
+fun ChartHeader(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.padding(bottom = 4.dp),
+    )
+}
+
+/**
+ * Chart header with title and inline legend on the same row.
+ */
+@Composable
+fun ChartHeaderWithLegend(
+    title: String,
+    legendItems: List<Pair<String, Color>>,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+            .padding(bottom = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        items.forEach { (label, color) ->
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(10.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(color),
-                )
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            legendItems.forEach { (label, color) ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(color),
+                    )
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
     }
