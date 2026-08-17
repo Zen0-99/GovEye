@@ -189,27 +189,27 @@ class VotesRepository @Inject constructor(
 
     /**
      * Fetch a member's full voting record from the API and cache it.
-     * Paginates through all available votes (API returns newest first).
+     * Paginates through all available votes (API returns newest first, max 25/page).
+     * Upserts after each page so UI can show data progressively.
      * Also stores division metadata so charts can join votes to dates.
      */
     suspend fun refreshMemberVoting(memberId: Int, house: Int) {
         try {
             val pageSize = 25
             var skip = 0
-            val allVotes = mutableListOf<DivisionVoteEntity>()
-            val allDivisions = mutableListOf<DivisionEntity>()
 
             if (house == 2) {
                 // Lords API
                 while (true) {
                     val dtos = lordsVotesApi.getMemberVoting(memberId, itemsPerPage = pageSize, skip = skip)
                     if (dtos.isEmpty()) break
+                    val pageVotes = mutableListOf<DivisionVoteEntity>()
+                    val pageDivisions = mutableListOf<DivisionEntity>()
                     dtos.forEach { dto ->
                         val vote = mapper.toDomain(dto) ?: return@forEach
-                        allVotes.add(vote.toEntity())
-                        // Store division metadata from the embedded PublishedDivision
+                        pageVotes.add(vote.toEntity())
                         val pub = dto.publishedDivision ?: return@forEach
-                        allDivisions.add(
+                        pageDivisions.add(
                             DivisionEntity(
                                 id = pub.divisionId,
                                 title = pub.title,
@@ -224,6 +224,8 @@ class VotesRepository @Inject constructor(
                             ),
                         )
                     }
+                    if (pageDivisions.isNotEmpty()) divisionDao.upsertAll(pageDivisions)
+                    if (pageVotes.isNotEmpty()) divisionDao.upsertVotes(pageVotes)
                     if (dtos.size < pageSize) break
                     skip += pageSize
                 }
@@ -232,12 +234,13 @@ class VotesRepository @Inject constructor(
                 while (true) {
                     val dtos = votesApi.getMemberVoting(memberId, itemsPerPage = pageSize, skip = skip)
                     if (dtos.isEmpty()) break
+                    val pageVotes = mutableListOf<DivisionVoteEntity>()
+                    val pageDivisions = mutableListOf<DivisionEntity>()
                     dtos.forEach { dto ->
                         val vote = mapper.toDomain(dto) ?: return@forEach
-                        allVotes.add(vote.toEntity())
-                        // Store division metadata from the embedded PublishedDivision
+                        pageVotes.add(vote.toEntity())
                         val pub = dto.publishedDivision ?: return@forEach
-                        allDivisions.add(
+                        pageDivisions.add(
                             DivisionEntity(
                                 id = pub.divisionId,
                                 title = pub.title,
@@ -252,13 +255,12 @@ class VotesRepository @Inject constructor(
                             ),
                         )
                     }
+                    if (pageDivisions.isNotEmpty()) divisionDao.upsertAll(pageDivisions)
+                    if (pageVotes.isNotEmpty()) divisionDao.upsertVotes(pageVotes)
                     if (dtos.size < pageSize) break
                     skip += pageSize
                 }
             }
-
-            if (allDivisions.isNotEmpty()) divisionDao.upsertAll(allDivisions)
-            if (allVotes.isNotEmpty()) divisionDao.upsertVotes(allVotes)
         } catch (e: Exception) {
             // Cache is still served
         }

@@ -96,22 +96,36 @@ class ProfileViewModel @Inject constructor(
             committeesRepository.refresh(memberId)
         }
 
-        // Load voting record + rebellion stats (lazy — loaded with profile)
+        // Load voting record — show cached data first, then refresh in background
         viewModelScope.launch {
             try {
-                // Get the MP's house from the DB first (needed for correct API)
+                // 1. Show cached votes immediately (from previous fetches)
+                val cachedVotes = votesRepository.getMemberVotingWithDivisions(memberId)
+                if (cachedVotes.isNotEmpty()) {
+                    _uiState.value = _uiState.value.copy(memberVotes = cachedVotes)
+                    // Compute rebellion stats from cached data right away
+                    val partyName = _uiState.value.mp?.party?.name
+                    if (partyName != null) {
+                        val memberVotesResult = votesRepository.observeMemberVoting(memberId).first()
+                        val memberVotes = memberVotesResult.data
+                        val divisionIds = memberVotes.map { it.divisionId }.distinct()
+                        val allVotesByDivision = votesRepository.getAllVotesForDivisions(divisionIds)
+                        val stats = RebellionCalculator.compute(memberVotes, allVotesByDivision, partyName)
+                        _uiState.value = _uiState.value.copy(rebellionStats = stats)
+                    }
+                }
+
+                // 2. Refresh from API in background (upserts per-page, so DB updates progressively)
                 val mp = mpDao.getMp(memberId)
                 val house = mp?.house ?: 1
                 votesRepository.refreshMemberVoting(memberId, house)
-                val votes = votesRepository.getMemberVotingWithDivisions(memberId)
-                _uiState.value = _uiState.value.copy(memberVotes = votes)
 
-                // Compute rebellion stats if we have votes and party info
-                val currentMp = _uiState.value.mp
-                val partyName = currentMp?.party?.name
-                if (votes.isNotEmpty() && partyName != null) {
-                    val memberVotesResult = votesRepository.observeMemberVoting(memberId)
-                        .first()
+                // 3. After refresh, reload from DB and recompute stats
+                val freshVotes = votesRepository.getMemberVotingWithDivisions(memberId)
+                _uiState.value = _uiState.value.copy(memberVotes = freshVotes)
+                val partyName = _uiState.value.mp?.party?.name
+                if (freshVotes.isNotEmpty() && partyName != null) {
+                    val memberVotesResult = votesRepository.observeMemberVoting(memberId).first()
                     val memberVotes = memberVotesResult.data
                     val divisionIds = memberVotes.map { it.divisionId }.distinct()
                     val allVotesByDivision = votesRepository.getAllVotesForDivisions(divisionIds)

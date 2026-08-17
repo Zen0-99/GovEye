@@ -53,6 +53,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import com.goveye.app.data.preference.DirectoryViewMode
+import com.goveye.app.ui.components.FloatingSearchBar
 import com.goveye.app.ui.components.TabTextWithBadge
 import com.goveye.app.ui.screens.divisions.DivisionsTabContent
 import com.goveye.app.ui.theme.padding
@@ -98,7 +99,7 @@ fun DirectoryScreen(
             else -> "Search…"
         }
 
-        FloatingSearchBar(
+        com.goveye.app.ui.components.FloatingSearchBar(
             query = searchQuery,
             onQueryChange = viewModel::updateSearchQuery,
             onFilterClick = { showFilterSheet = true },
@@ -383,105 +384,5 @@ private fun PlaceholderTabContent(label: String) {
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-    }
-}
-
-/**
- * Miko-style floating search bar — rounded pill shape with solid
- * surfaceContainer background (same as nav bar, no shadow).
- *
- * Layout: [search icon] [text field / hint] [clear button] [filter icon] [view toggle]
- */
-@Composable
-private fun FloatingSearchBar(
-    query: String,
-    onQueryChange: (String) -> Unit,
-    onFilterClick: () -> Unit,
-    hasActiveFilters: Boolean,
-    placeholder: String = "Search…",
-    modifier: Modifier = Modifier,
-) {
-    val colorScheme = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(20.dp)
-
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(shape),
-        shape = shape,
-        color = colorScheme.surfaceContainer,
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp)
-                .padding(horizontal = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // Left: search icon
-            Icon(
-                imageVector = Icons.Outlined.Search,
-                contentDescription = null,
-                tint = colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 12.dp).size(22.dp),
-            )
-
-            // Center: text field or hint
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 12.dp),
-                contentAlignment = Alignment.CenterStart,
-            ) {
-                if (query.isEmpty()) {
-                    Text(
-                        text = placeholder,
-                        color = colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1,
-                    )
-                }
-                BasicTextField(
-                    value = query,
-                    onValueChange = onQueryChange,
-                    singleLine = true,
-                    textStyle = MaterialTheme.typography.titleMedium.copy(
-                        color = colorScheme.onSurface,
-                    ),
-                    cursorBrush = SolidColor(colorScheme.primary),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-
-            // Clear button (visible when query is non-empty)
-            if (query.isNotEmpty()) {
-                IconButton(
-                    onClick = { onQueryChange("") },
-                    modifier = Modifier.size(40.dp),
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Close,
-                        contentDescription = "Clear search",
-                        tint = colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-            }
-
-            // Filter icon — changes color when filters are active (D-08)
-            IconButton(
-                onClick = onFilterClick,
-                modifier = Modifier.size(40.dp),
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.FilterList,
-                    contentDescription = "Filter",
-                    tint = if (hasActiveFilters) colorScheme.primary else colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(22.dp),
-                )
-            }
-
-        }
     }
 }

@@ -21,24 +21,19 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -49,7 +44,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -140,8 +134,9 @@ fun DivisionDetailScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     var searchQuery by remember { mutableStateOf("") }
     var voteFilter by remember { mutableStateOf(VoteFilter.ALL) }
-    var searchExpanded by remember { mutableStateOf(false) }
 
+    val ayeCount = state.votes.count { it.vote == VoteType.AYE }
+    val noCount = state.votes.count { it.vote == VoteType.NO }
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
     Scaffold(
@@ -161,15 +156,29 @@ fun DivisionDetailScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
                     }
-                    DetailSearchBar(
+                    com.goveye.app.ui.components.FloatingSearchBar(
                         query = searchQuery,
                         onQueryChange = { searchQuery = it },
-                        expanded = searchExpanded,
-                        onExpandChange = { searchExpanded = it },
-                        voteFilter = voteFilter,
-                        onVoteFilterChange = { voteFilter = it },
-                        ayeCount = state.votes.count { it.vote == VoteType.AYE },
-                        noCount = state.votes.count { it.vote == VoteType.NO },
+                        placeholder = "Search voters / constituency…",
+                        filterChips = listOf(
+                            com.goveye.app.ui.components.SearchFilterChip(
+                                label = "All (${ayeCount + noCount})",
+                                isSelected = voteFilter == VoteFilter.ALL,
+                                onClick = { voteFilter = VoteFilter.ALL },
+                            ),
+                            com.goveye.app.ui.components.SearchFilterChip(
+                                label = "Ayes ($ayeCount)",
+                                isSelected = voteFilter == VoteFilter.AYE,
+                                onClick = { voteFilter = VoteFilter.AYE },
+                                leadingDotColor = AyeColor,
+                            ),
+                            com.goveye.app.ui.components.SearchFilterChip(
+                                label = "Noes ($noCount)",
+                                isSelected = voteFilter == VoteFilter.NO,
+                                onClick = { voteFilter = VoteFilter.NO },
+                                leadingDotColor = NoColor,
+                            ),
+                        ),
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -303,151 +312,6 @@ private fun DivisionDetailContent(
 }
 
 enum class VoteFilter { ALL, AYE, NO }
-
-/**
- * Compact search bar for the division detail top bar.
- * Searches voters by name/constituency. Expand button reveals Aye/No/All filter chips.
- */
-@Composable
-private fun DetailSearchBar(
-    query: String,
-    onQueryChange: (String) -> Unit,
-    expanded: Boolean,
-    onExpandChange: (Boolean) -> Unit,
-    voteFilter: VoteFilter,
-    onVoteFilterChange: (VoteFilter) -> Unit,
-    ayeCount: Int,
-    noCount: Int,
-    modifier: Modifier = Modifier,
-) {
-    val colorScheme = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(20.dp)
-
-    Column(modifier = modifier.fillMaxWidth()) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(shape),
-            shape = shape,
-            color = colorScheme.surfaceContainer,
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp)
-                    .padding(horizontal = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Search,
-                    contentDescription = null,
-                    tint = colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 12.dp).size(22.dp),
-                )
-
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(horizontal = 12.dp),
-                    contentAlignment = Alignment.CenterStart,
-                ) {
-                    if (query.isEmpty()) {
-                        Text(
-                            text = "Search voters / constituency…",
-                            color = colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                            style = MaterialTheme.typography.titleMedium,
-                            maxLines = 1,
-                        )
-                    }
-                    BasicTextField(
-                        value = query,
-                        onValueChange = onQueryChange,
-                        singleLine = true,
-                        textStyle = MaterialTheme.typography.titleMedium.copy(
-                            color = colorScheme.onSurface,
-                        ),
-                        cursorBrush = SolidColor(colorScheme.primary),
-                        keyboardOptions = KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-
-                if (query.isNotEmpty()) {
-                    IconButton(
-                        onClick = { onQueryChange("") },
-                        modifier = Modifier.size(40.dp),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Close,
-                            contentDescription = "Clear search",
-                            tint = colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(20.dp),
-                        )
-                    }
-                }
-
-                // Expand/collapse filter button
-                IconButton(
-                    onClick = { onExpandChange(!expanded) },
-                    modifier = Modifier.size(40.dp),
-                ) {
-                    Icon(
-                        imageVector = if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
-                        contentDescription = if (expanded) "Hide filters" else "Show filters",
-                        tint = if (expanded) colorScheme.primary else colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(22.dp),
-                    )
-                }
-            }
-        }
-
-        // Expandable Aye/No filter chips
-        AnimatedVisibility(
-            visible = expanded,
-            enter = expandVertically(),
-            exit = shrinkVertically(),
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                FilterChip(
-                    selected = voteFilter == VoteFilter.ALL,
-                    onClick = { onVoteFilterChange(VoteFilter.ALL) },
-                    label = { Text("All (${ayeCount + noCount})") },
-                )
-                FilterChip(
-                    selected = voteFilter == VoteFilter.AYE,
-                    onClick = { onVoteFilterChange(VoteFilter.AYE) },
-                    label = { Text("Ayes ($ayeCount)") },
-                    leadingIcon = {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(RoundedCornerShape(2.dp))
-                                .background(AyeColor),
-                        )
-                    },
-                )
-                FilterChip(
-                    selected = voteFilter == VoteFilter.NO,
-                    onClick = { onVoteFilterChange(VoteFilter.NO) },
-                    label = { Text("Noes ($noCount)") },
-                    leadingIcon = {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(RoundedCornerShape(2.dp))
-                                .background(NoColor),
-                        )
-                    },
-                )
-            }
-        }
-    }
-}
 
 @Composable
 private fun DivisionHeaderCard(division: Division) {
