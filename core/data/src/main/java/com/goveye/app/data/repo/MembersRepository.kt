@@ -8,6 +8,7 @@ import androidx.paging.map
 import com.goveye.app.data.api.MembersApi
 import com.goveye.app.data.local.dao.MpDao
 import com.goveye.app.data.local.dao.RemoteKeyDao
+import com.goveye.app.data.local.dao.SearchDao
 import com.goveye.app.data.local.entity.MpEntity
 import com.goveye.app.data.mapper.MemberMapper
 import com.goveye.app.domain.model.BiographyExperience
@@ -17,6 +18,7 @@ import com.goveye.app.domain.model.Mp
 import com.goveye.app.domain.model.RepositoryResult
 import com.goveye.app.domain.model.SyncStatus
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -25,6 +27,7 @@ import javax.inject.Singleton
 @OptIn(ExperimentalPagingApi::class)
 class MembersRepository @Inject constructor(
     private val mpDao: MpDao,
+    private val searchDao: SearchDao,
     private val membersApi: MembersApi,
     private val mapper: MemberMapper,
     private val remoteMediator: MpRemoteMediator,
@@ -54,9 +57,9 @@ class MembersRepository @Inject constructor(
     fun observePagedMps(): Flow<PagingData<Mp>> =
         Pager(
             config = PagingConfig(
-                pageSize = 20,
-                prefetchDistance = 10,
-                initialLoadSize = 40,
+                pageSize = 30,
+                prefetchDistance = 15,
+                initialLoadSize = 60,
                 enablePlaceholders = false,
             ),
             remoteMediator = remoteMediator,
@@ -108,6 +111,43 @@ class MembersRepository @Inject constructor(
             mpDao.searchMpsLocal(query).map { it.toDomain() }
         }
     }
+
+    /**
+     * Local-first FTS search using Room's mps_fts table.
+     * Searches across nameListAs, nameDisplayAs, constituencyName, and partyName.
+     * Returns a reactive Flow that updates when the Room cache changes.
+     *
+     * Query sanitization: strips FTS special chars (*, ", `), then appends *
+     * to each token for prefix matching. Empty/blank queries return an empty Flow.
+     */
+    fun searchMpsFts(query: String): Flow<List<Mp>> {
+        val sanitized = sanitizeFtsQuery(query)
+        return if (sanitized.isBlank()) {
+            flowOf(emptyList())
+        } else {
+            searchDao.searchMpsFts(sanitized).map { entities ->
+                entities.map { it.toDomain() }
+            }
+        }
+    }
+
+    /**
+     * Sanitizes user input for FTS4 MATCH query.
+     * Strategy A (RESEARCH.md §1.5): strip FTS special chars, prefix-match each token.
+     * "Green Party" → "Green* Party*"
+     */
+    private fun sanitizeFtsQuery(input: String): String {
+        return input.trim()
+            .replace(Regex("[*\"`]"), "")  // strip FTS special chars
+            .split(Regex("\\s+"))
+            .filter { it.isNotBlank() }
+            .joinToString(" ") { "$it*" }  // prefix match each token
+    }
+
+    /**
+     * Distinct party names from active MPs — for the filter bottom sheet's Party section.
+     */
+    fun observeDistinctParties(): Flow<List<String>> = mpDao.observeDistinctParties()
 
     // --- In-memory cached profile data (one-shot fetches) ---
 

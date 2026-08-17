@@ -17,7 +17,6 @@ import com.goveye.app.data.mapper.DivisionMapper
 import com.goveye.app.data.mapper.HansardMapper
 import com.goveye.app.data.mapper.InterestMapper
 import com.goveye.app.data.mapper.MemberMapper
-import com.goveye.app.data.repo.AyesNoesRepository
 import com.goveye.app.data.repo.BillsRepository
 import com.goveye.app.data.repo.CommitteesRepository
 import com.goveye.app.data.repo.FollowRepository
@@ -106,11 +105,12 @@ object DatabaseModule {
     @Singleton
     fun provideMembersRepository(
         mpDao: MpDao,
+        searchDao: SearchDao,
         membersApi: com.goveye.app.data.api.MembersApi,
         memberMapper: MemberMapper,
         mpRemoteMediator: MpRemoteMediator,
         remoteKeyDao: RemoteKeyDao,
-    ): MembersRepository = MembersRepository(mpDao, membersApi, memberMapper, mpRemoteMediator, remoteKeyDao)
+    ): MembersRepository = MembersRepository(mpDao, searchDao, membersApi, memberMapper, mpRemoteMediator, remoteKeyDao)
 
     @Provides
     @Singleton
@@ -118,12 +118,6 @@ object DatabaseModule {
         committeeDao: CommitteeDao,
         committeesApi: com.goveye.app.data.api.CommitteesApi,
     ): CommitteesRepository = CommitteesRepository(committeeDao, committeesApi)
-
-    @Provides
-    @Singleton
-    fun provideAyesNoesRepository(
-        ayesNoesApi: com.goveye.app.data.api.AyesNoesApi,
-    ): AyesNoesRepository = AyesNoesRepository(ayesNoesApi)
 
     @Provides
     @Singleton

@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
-import com.goveye.app.data.local.entity.MpEntity
 import com.goveye.app.data.preference.DirectoryPreferences
 import com.goveye.app.data.preference.DirectoryViewMode
 import com.goveye.app.data.repo.MembersRepository
@@ -48,8 +47,9 @@ class DirectoryViewModel @Inject constructor(
             if (query.isBlank()) {
                 flowOf(emptyList())
             } else {
-                membersRepository.searchMpsViaApi(query.trim())
-                    .let { results -> flowOf(results) }
+                // Switched from searchMpsViaApi (one-shot suspend) to searchMpsFts (reactive Flow)
+                // FTS searches local Room cache across name, party, and constituency
+                membersRepository.searchMpsFts(query.trim())
             }
         }
 
@@ -63,22 +63,4 @@ class DirectoryViewModel @Inject constructor(
     fun setViewMode(mode: DirectoryViewMode) {
         viewModelScope.launch { directoryPreferences.setViewMode(mode) }
     }
-
-    private fun MpEntity.toDomainMp(): Mp =
-        Mp(
-            id = id,
-            nameListAs = nameListAs,
-            nameDisplayAs = nameDisplayAs,
-            nameFullTitle = nameFullTitle,
-            gender = gender,
-            party = com.goveye.app.domain.model.Party(
-                partyId, partyName, partyAbbreviation,
-                partyBackgroundColour, partyForegroundColour,
-            ),
-            constituency = com.goveye.app.domain.model.Constituency(constituencyId, constituencyName),
-            house = house,
-            membershipStartDate = membershipStartDate,
-            isActive = isActive,
-            thumbnailUrl = thumbnailUrl,
-        )
 }

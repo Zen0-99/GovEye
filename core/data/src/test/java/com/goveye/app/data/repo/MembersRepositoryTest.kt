@@ -35,7 +35,7 @@ class MembersRepositoryTest {
             RuntimeEnvironment.getApplication(),
             GovEyeDatabase::class.java,
         ).allowMainThreadQueries().build()
-        repository = MembersRepository(database.mpDao(), api, MemberMapper, remoteMediator, database.remoteKeyDao())
+        repository = MembersRepository(database.mpDao(), database.searchDao(), api, MemberMapper, remoteMediator, database.remoteKeyDao())
     }
 
     @After
