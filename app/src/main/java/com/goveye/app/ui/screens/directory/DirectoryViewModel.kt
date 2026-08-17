@@ -45,11 +45,12 @@ class DirectoryViewModel @Inject constructor(
 
     // Filter state — combined from DataStore preferences
     val filterState: StateFlow<DirectoryFilterState> = combine(
-        directoryFilterPreferences.selectedParties,
+        directoryFilterPreferences.includedParties,
+        directoryFilterPreferences.excludedParties,
         directoryFilterPreferences.houseFilter,
         directoryFilterPreferences.currentOnly,
-    ) { parties, house, currentOnly ->
-        DirectoryFilterState(parties, house, currentOnly)
+    ) { included, excluded, house, currentOnly ->
+        DirectoryFilterState(included, excluded, house, currentOnly)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DirectoryFilterState())
 
     // Distinct party names for the filter bottom sheet's Party section
@@ -71,15 +72,27 @@ class DirectoryViewModel @Inject constructor(
         }
         // Apply filters on top of FTS results
         .combine(filterState) { results, filters ->
-            results.filter { mp ->
-                (filters.houseFilter == 0 || mp.house == filters.houseFilter) &&
-                (filters.currentOnly.not() || mp.isActive) &&
-                (filters.selectedParties.isEmpty() || mp.party?.name in filters.selectedParties)
-            }
+            results.filter { mp -> filters.matches(mp) }
         }
 
+    // Paged MP list — used when NO filters are active (efficient lazy loading
+    // via Room paging source + remote mediator). When filters ARE active, the
+    // UI switches to filteredMps (below) because PagingData flows are
+    // single-use and cannot be re-collected when filterState changes
+    // (crash: "Attempt to collect twice from pageEventFlow").
     val pagedMps: Flow<PagingData<Mp>> = membersRepository.observePagedMps()
         .cachedIn(viewModelScope)
+
+    // Filtered MP list — used when filters are active but no search query.
+    // Loads all MPs via observeAllMps() and filters in Kotlin. 650 MPs is
+    // small enough to hold in memory. When no filters are active, this
+    // emits an empty list and the UI falls back to pagedMps.
+    val filteredMps: Flow<List<Mp>> = combine(
+        filterState,
+        membersRepository.observeAllMps(),
+    ) { filters, result ->
+        if (!filters.hasActiveFilters) emptyList() else result.data.filter { filters.matches(it) }
+    }
 
     // Tab counts — show badges during active search OR when filters are active
     val tabCounts: StateFlow<Map<Int, Int>> =
@@ -106,11 +119,26 @@ class DirectoryViewModel @Inject constructor(
     }
 
     // Filter update functions
+    // Party toggle cycles through TriState: DISABLED → INCLUDED → EXCLUDED → DISABLED
     fun togglePartyFilter(party: String) {
         viewModelScope.launch {
-            val current = filterState.value.selectedParties.toMutableSet()
-            if (party in current) current.remove(party) else current.add(party)
-            directoryFilterPreferences.setSelectedParties(current)
+            val state = filterState.value.partyState(party)
+            val included = filterState.value.includedParties.toMutableSet()
+            val excluded = filterState.value.excludedParties.toMutableSet()
+            when (state) {
+                PartyFilterState.DISABLED -> {
+                    included.add(party)
+                }
+                PartyFilterState.INCLUDED -> {
+                    included.remove(party)
+                    excluded.add(party)
+                }
+                PartyFilterState.EXCLUDED -> {
+                    excluded.remove(party)
+                }
+            }
+            directoryFilterPreferences.setIncludedParties(included)
+            directoryFilterPreferences.setExcludedParties(excluded)
         }
     }
 

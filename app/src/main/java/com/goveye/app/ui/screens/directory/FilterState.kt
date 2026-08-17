@@ -1,5 +1,7 @@
 package com.goveye.app.ui.screens.directory
 
+import com.goveye.app.domain.model.Mp
+
 /**
  * A single filter option (e.g., "Labour", "Commons", "Current only").
  * Adapted from Miko's FilterOptionData — simplified (no StringResource).
@@ -21,14 +23,52 @@ data class FilterSectionData(
 )
 
 /**
+ * Tri-state for party filtering, matching Miko's TriState cycle:
+ * DISABLED → INCLUDE → EXCLUDE → DISABLED.
+ */
+enum class PartyFilterState {
+    DISABLED,
+    INCLUDED,
+    EXCLUDED,
+    ;
+
+    fun next(): PartyFilterState = when (this) {
+        DISABLED -> INCLUDED
+        INCLUDED -> EXCLUDED
+        EXCLUDED -> DISABLED
+    }
+}
+
+/**
  * Combined filter state for the directory.
- * Defaults: no party filter, Commons (house=1), current only.
+ * Defaults: no party filter, all houses (0), include former (currentOnly=false).
+ * "No active filters" = the natural browsing state showing everything.
  */
 data class DirectoryFilterState(
-    val selectedParties: Set<String> = emptySet(),
-    val houseFilter: Int = 1,  // 0 = all, 1 = Commons, 2 = Lords
-    val currentOnly: Boolean = true,
+    val includedParties: Set<String> = emptySet(),
+    val excludedParties: Set<String> = emptySet(),
+    val houseFilter: Int = 0,  // 0 = all, 1 = Commons, 2 = Lords
+    val currentOnly: Boolean = false,
 ) {
     val hasActiveFilters: Boolean
-        get() = selectedParties.isNotEmpty() || houseFilter != 1 || !currentOnly
+        get() = includedParties.isNotEmpty() || excludedParties.isNotEmpty() ||
+            houseFilter != 0 || currentOnly
+
+    /**
+     * Returns the [PartyFilterState] for [party] — DISABLED, INCLUDED, or EXCLUDED.
+     */
+    fun partyState(party: String): PartyFilterState = when {
+        party in includedParties -> PartyFilterState.INCLUDED
+        party in excludedParties -> PartyFilterState.EXCLUDED
+        else -> PartyFilterState.DISABLED
+    }
+
+    /**
+     * Returns true if [mp] passes all active filters.
+     */
+    fun matches(mp: Mp): Boolean =
+        (houseFilter == 0 || mp.house == houseFilter) &&
+            (!currentOnly || mp.isActive) &&
+            (includedParties.isEmpty() || mp.party?.name in includedParties) &&
+            (mp.party?.name !in excludedParties)
 }

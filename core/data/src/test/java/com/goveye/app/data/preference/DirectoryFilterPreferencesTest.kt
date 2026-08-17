@@ -7,7 +7,6 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -30,16 +29,24 @@ class DirectoryFilterPreferencesTest {
     @Test
     fun `default values on first read`() = runTest {
         setUp()
-        assertEquals(emptySet<String>(), preferences.selectedParties.first())
-        assertEquals(1, preferences.houseFilter.first())  // Commons
-        assertTrue(preferences.currentOnly.first())
+        assertEquals(emptySet<String>(), preferences.includedParties.first())
+        assertEquals(emptySet<String>(), preferences.excludedParties.first())
+        assertEquals(0, preferences.houseFilter.first())  // all
+        assertEquals(false, preferences.currentOnly.first())  // include former
     }
 
     @Test
-    fun `write and read back party filter`() = runTest {
+    fun `write and read back included parties`() = runTest {
         setUp()
-        preferences.setSelectedParties(setOf("Labour", "Conservative"))
-        assertEquals(setOf("Labour", "Conservative"), preferences.selectedParties.first())
+        preferences.setIncludedParties(setOf("Labour", "Conservative"))
+        assertEquals(setOf("Labour", "Conservative"), preferences.includedParties.first())
+    }
+
+    @Test
+    fun `write and read back excluded parties`() = runTest {
+        setUp()
+        preferences.setExcludedParties(setOf("Green Party"))
+        assertEquals(setOf("Green Party"), preferences.excludedParties.first())
     }
 
     @Test
@@ -59,24 +66,27 @@ class DirectoryFilterPreferencesTest {
     @Test
     fun `clear all resets to defaults`() = runTest {
         setUp()
-        preferences.setSelectedParties(setOf("Labour"))
+        preferences.setIncludedParties(setOf("Labour"))
+        preferences.setExcludedParties(setOf("Conservative"))
         preferences.setHouseFilter(2)
-        preferences.setCurrentOnly(false)
+        preferences.setCurrentOnly(true)
         preferences.clearAll()
-        assertEquals(emptySet<String>(), preferences.selectedParties.first())
-        assertEquals(1, preferences.houseFilter.first())
-        assertTrue(preferences.currentOnly.first())
+        assertEquals(emptySet<String>(), preferences.includedParties.first())
+        assertEquals(emptySet<String>(), preferences.excludedParties.first())
+        assertEquals(0, preferences.houseFilter.first())
+        assertEquals(false, preferences.currentOnly.first())
     }
 
     @Test
     fun `persistence across datastore instances`() = runTest {
         setUp()
-        preferences.setSelectedParties(setOf("Green Party"))
+        preferences.setIncludedParties(setOf("Green Party"))
+        preferences.setExcludedParties(setOf("Labour"))
         preferences.setHouseFilter(0)
 
-        // Create a new instance pointing to the same file
         val newPreferences = DirectoryFilterPreferences(dataStore)
-        assertEquals(setOf("Green Party"), newPreferences.selectedParties.first())
+        assertEquals(setOf("Green Party"), newPreferences.includedParties.first())
+        assertEquals(setOf("Labour"), newPreferences.excludedParties.first())
         assertEquals(0, newPreferences.houseFilter.first())
     }
 }

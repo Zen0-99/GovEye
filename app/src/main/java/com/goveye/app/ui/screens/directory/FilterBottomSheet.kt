@@ -1,38 +1,35 @@
 package com.goveye.app.ui.screens.directory
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FilterBottomSheet(
     distinctParties: List<String>,
@@ -57,147 +54,205 @@ fun FilterBottomSheet(
                 .fillMaxWidth()
                 .heightIn(max = 700.dp),
         ) {
-            // Header
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = "Filter",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                IconButton(onClick = {
-                    scope.launch { sheetState.hide(); onDismiss() }
-                }) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Close",
-                        tint = MaterialTheme.colorScheme.onSurface,
-                    )
-                }
-            }
-
-            // Filter sections
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f, fill = false),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
             ) {
-                // Party section — multi-select FilterChips in FlowRow
+                // Party — horizontally scrollable pills at the top.
+                // Tri-state: tap to include (primary tint), tap again to exclude
+                // (red tint), tap again to clear. No icons/checkmarks.
                 item {
-                    Column {
-                        Text(
-                            text = "Party",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(bottom = 8.dp),
-                        )
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            distinctParties.forEach { party ->
-                                FilterChip(
-                                    selected = party in filterState.selectedParties,
-                                    onClick = { onPartyToggle(party) },
-                                    label = { Text(party) },
-                                )
-                            }
-                        }
-                    }
+                    PartyPillRow(
+                        parties = distinctParties,
+                        filterState = filterState,
+                        onPartyToggle = onPartyToggle,
+                    )
                 }
 
-                // House section — single-select radio
+                // House — combined segmented pill (All / Commons / Lords)
                 item {
-                    Column {
-                        Text(
-                            text = "House",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(bottom = 8.dp),
-                        )
-                        listOf("All" to 0, "Commons" to 1, "Lords" to 2).forEach { (label, value) ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                RadioButton(
-                                    selected = filterState.houseFilter == value,
-                                    onClick = { onHouseChange(value) },
-                                )
-                                Text(
-                                    text = label,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    modifier = Modifier.padding(start = 8.dp),
-                                )
-                            }
-                        }
-                    }
+                    SectionLabel("House")
+                    SegmentedPill(
+                        options = listOf(
+                            "All" to 0,
+                            "Commons" to 1,
+                            "Lords" to 2,
+                        ),
+                        selectedValue = filterState.houseFilter,
+                        onValueChange = onHouseChange,
+                    )
                 }
 
-                // Status section — single-select radio
+                // Status — combined segmented pill (All / Current)
                 item {
-                    Column {
-                        Text(
-                            text = "Status",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(bottom = 8.dp),
-                        )
-                        listOf("Current only" to true, "Include former" to false).forEach { (label, value) ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                RadioButton(
-                                    selected = filterState.currentOnly == value,
-                                    onClick = { onCurrentOnlyChange(value) },
-                                )
-                                Text(
-                                    text = label,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    modifier = Modifier.padding(start = 8.dp),
-                                )
-                            }
-                        }
-                    }
+                    SectionLabel("Status")
+                    SegmentedPill(
+                        options = listOf(
+                            "All" to false,
+                            "Current" to true,
+                        ),
+                        selectedValue = filterState.currentOnly,
+                        onValueChange = onCurrentOnlyChange,
+                    )
                 }
             }
 
-            // Bottom buttons
-            Row(
+            // Clear button only — filters apply live, no Apply button needed.
+            OutlinedButton(
+                onClick = onClearFilters,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                shape = RoundedCornerShape(24.dp),
             ) {
-                OutlinedButton(
-                    onClick = onClearFilters,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(24.dp),
-                ) {
-                    Text(text = "Clear")
-                }
-                Button(
-                    onClick = {
-                        scope.launch { sheetState.hide(); onDismiss() }
-                    },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(24.dp),
-                ) {
-                    Text(text = "Apply")
-                }
+                Text(text = "Clear filters")
             }
+        }
+    }
+}
+
+@Composable
+private fun SectionLabel(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(bottom = 8.dp),
+    )
+}
+
+/**
+ * Combined segmented pill — a single rounded container with N segments.
+ * The selected segment gets a filled pill background (primary at 15% alpha)
+ * and primary-colored bold text; unselected segments are transparent with
+ * onSurfaceVariant text.
+ *
+ * Ported from Miko's BrowseSearchPill (Browse | Extensions toggle),
+ * generalized to N options.
+ */
+@Composable
+private fun <T> SegmentedPill(
+    options: List<Pair<String, T>>,
+    selectedValue: T,
+    onValueChange: (T) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val containerShape = RoundedCornerShape(999.dp)
+    val segmentShape = RoundedCornerShape(999.dp)
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(containerShape)
+            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f))
+            .padding(3.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        options.forEach { (label, value) ->
+            val isSelected = selectedValue == value
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(segmentShape)
+                    .then(
+                        if (isSelected) {
+                            Modifier.background(
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                            )
+                        } else {
+                            Modifier
+                        },
+                    )
+                    .clickable { onValueChange(value) }
+                    .padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (isSelected) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                    maxLines = 1,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Horizontally scrollable row of party filter pills.
+ *
+ * Each party pill cycles through TriState on tap:
+ * - DISABLED: subtle surface background, normal text
+ * - INCLUDED: primary tint background (same style as House/Status selected),
+ *   primary text, bold
+ * - EXCLUDED: red tint background, error-colored text, bold
+ *
+ * No icons or checkmarks — color alone communicates state.
+ */
+@Composable
+private fun PartyPillRow(
+    parties: List<String>,
+    filterState: DirectoryFilterState,
+    onPartyToggle: (String) -> Unit,
+) {
+    if (parties.isEmpty()) {
+        Text(
+            text = "No parties available",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        return
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        parties.forEach { party ->
+            val state = filterState.partyState(party)
+            val shape = RoundedCornerShape(20.dp)
+
+            val containerColor = when (state) {
+                PartyFilterState.INCLUDED ->
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                PartyFilterState.EXCLUDED ->
+                    MaterialTheme.colorScheme.error.copy(alpha = 0.12f)
+                PartyFilterState.DISABLED ->
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)
+            }
+            val contentColor = when (state) {
+                PartyFilterState.INCLUDED -> MaterialTheme.colorScheme.primary
+                PartyFilterState.EXCLUDED -> MaterialTheme.colorScheme.error
+                PartyFilterState.DISABLED -> MaterialTheme.colorScheme.onSurface
+            }
+            val fontWeight = if (state != PartyFilterState.DISABLED) {
+                FontWeight.Bold
+            } else {
+                FontWeight.Normal
+            }
+
+            Text(
+                text = party,
+                style = MaterialTheme.typography.labelMedium,
+                color = contentColor,
+                fontWeight = fontWeight,
+                maxLines = 1,
+                modifier = Modifier
+                    .clip(shape)
+                    .background(containerColor)
+                    .clickable { onPartyToggle(party) }
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+            )
         }
     }
 }

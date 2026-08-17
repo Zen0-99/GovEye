@@ -77,6 +77,7 @@ fun DirectoryScreen(
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val lazyPagingItems = viewModel.pagedMps.collectAsLazyPagingItems()
     val searchResults by viewModel.searchResults.collectAsStateWithLifecycle(emptyList())
+    val filteredMps by viewModel.filteredMps.collectAsStateWithLifecycle(emptyList())
     val tabCounts by viewModel.tabCounts.collectAsStateWithLifecycle(emptyMap())
     val filterState by viewModel.filterState.collectAsStateWithLifecycle(DirectoryFilterState())
     val distinctParties by viewModel.distinctParties.collectAsStateWithLifecycle(emptyList())
@@ -142,6 +143,8 @@ fun DirectoryScreen(
                     viewMode = viewMode,
                     lazyPagingItems = lazyPagingItems,
                     searchResults = searchResults,
+                    filteredMps = filteredMps,
+                    hasActiveFilters = filterState.hasActiveFilters,
                     onNavigateToProfile = onNavigateToProfile,
                 )
                 DirectoryTab.PARTIES -> PlaceholderTabContent("Parties")
@@ -176,8 +179,11 @@ private fun OfficialsTabContent(
     viewMode: DirectoryViewMode,
     lazyPagingItems: androidx.paging.compose.LazyPagingItems<com.goveye.app.domain.model.Mp>,
     searchResults: List<com.goveye.app.domain.model.Mp>,
+    filteredMps: List<com.goveye.app.domain.model.Mp>,
+    hasActiveFilters: Boolean,
     onNavigateToProfile: (Int) -> Unit,
 ) {
+    // Priority: search results > filtered browsing > paged browsing
     if (searchQuery.isNotBlank()) {
         if (searchResults.isEmpty()) {
             Box(
@@ -200,6 +206,55 @@ private fun OfficialsTabContent(
                         mp = mp,
                         onClick = { onNavigateToProfile(mp.id) },
                     )
+                }
+            }
+        }
+    } else if (hasActiveFilters) {
+        // Filtered browsing — no search query, but filters are active.
+        // Uses filteredMps (all MPs loaded + filtered in Kotlin) instead of
+        // the paged flow, which can't be re-collected when filters change.
+        if (filteredMps.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "No MPs match these filters",
+                    style = MaterialTheme.typography.bodyLarge,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        } else {
+            when (viewMode) {
+                DirectoryViewMode.LIST -> {
+                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        items(filteredMps, key = { it.id }) { mp ->
+                            MpListRow(
+                                mp = mp,
+                                onClick = { onNavigateToProfile(mp.id) },
+                            )
+                        }
+                    }
+                }
+                DirectoryViewMode.GRID -> {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(
+                            horizontal = MaterialTheme.padding.medium,
+                            vertical = MaterialTheme.padding.small,
+                        ),
+                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
+                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
+                    ) {
+                        items(filteredMps, key = { it.id }) { mp ->
+                            MpGridCard(
+                                mp = mp,
+                                onClick = { onNavigateToProfile(mp.id) },
+                            )
+                        }
+                    }
                 }
             }
         }

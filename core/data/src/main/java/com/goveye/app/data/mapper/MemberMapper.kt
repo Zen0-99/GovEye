@@ -26,7 +26,14 @@ object MemberMapper {
                     Party(
                         id = it.id,
                         name = it.name,
-                        abbreviation = it.abbreviation,
+                        // The API returns "Lab" for both "Labour" and "Labour (Co-op)"
+                        // since they share party ID 15. Append " Co-op" to distinguish
+                        // the Co-operative variant in the directory list.
+                        abbreviation = if (it.name.contains("(Co-op)", ignoreCase = true)) {
+                            "${it.abbreviation} Co-op"
+                        } else {
+                            it.abbreviation
+                        },
                         backgroundColour = it.backgroundColour,
                         foregroundColour = it.foregroundColour,
                     )

@@ -8,6 +8,8 @@ import com.goveye.app.data.repo.MembersRepository
 import com.goveye.app.domain.model.Constituency
 import com.goveye.app.domain.model.Mp
 import com.goveye.app.domain.model.Party
+import com.goveye.app.domain.model.RepositoryResult
+import com.goveye.app.domain.model.SyncStatus
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
@@ -67,13 +69,15 @@ class DirectoryViewModelFilterTest {
         filterState: DirectoryFilterState = DirectoryFilterState(),
         distinctParties: List<String> = emptyList(),
     ): DirectoryViewModel {
-        // Mock search FTS to return a controlled Flow
         every { membersRepository.searchMpsFts(any()) } returns flowOf(searchResults)
         every { membersRepository.observeDistinctParties() } returns flowOf(distinctParties)
+        every { membersRepository.observeAllMps() } returns flowOf(
+            RepositoryResult(searchResults, SyncStatus.FRESH)
+        )
 
-        // Mock preferences
         every { directoryPreferences.viewMode } returns flowOf(DirectoryViewMode.LIST)
-        every { directoryFilterPreferences.selectedParties } returns MutableStateFlow(filterState.selectedParties)
+        every { directoryFilterPreferences.includedParties } returns MutableStateFlow(filterState.includedParties)
+        every { directoryFilterPreferences.excludedParties } returns MutableStateFlow(filterState.excludedParties)
         every { directoryFilterPreferences.houseFilter } returns MutableStateFlow(filterState.houseFilter)
         every { directoryFilterPreferences.currentOnly } returns MutableStateFlow(filterState.currentOnly)
 
@@ -81,7 +85,7 @@ class DirectoryViewModelFilterTest {
     }
 
     @Test
-    fun `text search only with default filters returns active commons mps`() = runTest(testDispatcher) {
+    fun `text search only with default filters returns all mps`() = runTest(testDispatcher) {
         val mps = listOf(
             makeMp(1, partyName = "Labour", house = 1, isActive = true),
             makeMp(2, partyName = "Labour", house = 2, isActive = true),
@@ -92,9 +96,7 @@ class DirectoryViewModelFilterTest {
 
         vm.searchResults.test {
             val results = awaitItem()
-            // Default filter: house=1 (Commons), currentOnly=true
-            assertEquals(1, results.size)
-            assertEquals(1, results.first().id)
+            assertEquals(3, results.size)
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -158,7 +160,7 @@ class DirectoryViewModelFilterTest {
     }
 
     @Test
-    fun `party filter only returns matching parties`() = runTest(testDispatcher) {
+    fun `party filter included only returns matching parties`() = runTest(testDispatcher) {
         val mps = listOf(
             makeMp(1, partyName = "Labour"),
             makeMp(2, partyName = "Conservative"),
@@ -166,7 +168,7 @@ class DirectoryViewModelFilterTest {
         )
         val vm = setupViewModel(
             searchResults = mps,
-            filterState = DirectoryFilterState(selectedParties = setOf("Labour")),
+            filterState = DirectoryFilterState(includedParties = setOf("Labour")),
         )
         vm.updateSearchQuery("Test")
 
@@ -179,21 +181,40 @@ class DirectoryViewModelFilterTest {
     }
 
     @Test
+    fun `party filter excluded removes matching parties`() = runTest(testDispatcher) {
+        val mps = listOf(
+            makeMp(1, partyName = "Labour"),
+            makeMp(2, partyName = "Conservative"),
+            makeMp(3, partyName = "Labour"),
+        )
+        val vm = setupViewModel(
+            searchResults = mps,
+            filterState = DirectoryFilterState(excludedParties = setOf("Labour")),
+        )
+        vm.updateSearchQuery("Test")
+
+        vm.searchResults.test {
+            val results = awaitItem()
+            assertEquals(1, results.size)
+            assertEquals("Conservative", results.first().party?.name)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `text search plus party filter exclusive returns empty`() = runTest(testDispatcher) {
-        // Mock returns only Green Party MPs for the "Green" search
         val mps = listOf(
             makeMp(1, partyName = "Green Party"),
             makeMp(2, partyName = "Green Party"),
         )
         val vm = setupViewModel(
             searchResults = mps,
-            filterState = DirectoryFilterState(selectedParties = setOf("Labour")),
+            filterState = DirectoryFilterState(includedParties = setOf("Labour")),
         )
         vm.updateSearchQuery("Green")
 
         vm.searchResults.test {
             val results = awaitItem()
-            // Green Party MPs don't match Labour filter
             assertEquals(0, results.size)
             cancelAndIgnoreRemainingEvents()
         }
@@ -210,7 +231,7 @@ class DirectoryViewModelFilterTest {
         val vm = setupViewModel(
             searchResults = mps,
             filterState = DirectoryFilterState(
-                selectedParties = setOf("Labour"),
+                includedParties = setOf("Labour"),
                 houseFilter = 1,
                 currentOnly = true,
             ),
@@ -228,7 +249,6 @@ class DirectoryViewModelFilterTest {
     @Test
     fun `no search no filters returns empty tab counts`() = runTest(testDispatcher) {
         val vm = setupViewModel(searchResults = emptyList())
-        // No search query set — tabCounts should be empty
         vm.tabCounts.test {
             val counts = awaitItem()
             assertTrue(counts.isEmpty())
@@ -242,11 +262,6 @@ class DirectoryViewModelFilterTest {
         val vm = setupViewModel(searchResults = mps)
         vm.updateSearchQuery("Test")
 
-        // tabCounts is a StateFlow with initial value emptyMap().
-        // After search query is set and searchResults emits, tabCounts updates.
-        // With UnconfinedTestDispatcher, the debounce(300) in searchResults may
-        // delay the emission. We verify the searchResults directly (which is
-        // the source of truth for tabCounts) and trust the trivial mapping.
         vm.searchResults.test {
             val results = awaitItem()
             assertEquals(3, results.size)
@@ -259,17 +274,21 @@ class DirectoryViewModelFilterTest {
         val mps = listOf(makeMp(1), makeMp(2))
         val vm = setupViewModel(
             searchResults = mps,
-            filterState = DirectoryFilterState(houseFilter = 0),
+            filterState = DirectoryFilterState(houseFilter = 1),
         )
 
-        // With filters active but no search query, searchResults is empty
-        // (blank query returns flowOf(emptyList())). tabCounts would show
-        // Officials=0 because results are empty. The filter state itself
-        // has hasActiveFilters=true, which triggers badge display.
         vm.filterState.test {
             val state = awaitItem()
             assertTrue(state.hasActiveFilters)
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    @Test
+    fun `party tri-state cycle disabled to included to excluded`() {
+        val state = PartyFilterState.DISABLED
+        assertEquals(PartyFilterState.INCLUDED, state.next())
+        assertEquals(PartyFilterState.EXCLUDED, PartyFilterState.INCLUDED.next())
+        assertEquals(PartyFilterState.DISABLED, PartyFilterState.EXCLUDED.next())
     }
 }
