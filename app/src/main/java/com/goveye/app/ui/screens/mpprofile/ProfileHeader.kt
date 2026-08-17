@@ -4,12 +4,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -46,7 +46,6 @@ fun ProfileHeader(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .windowInsetsPadding(WindowInsets.statusBars)
             .background(
                 brush = Brush.verticalGradient(
                     colors = listOf(
@@ -56,16 +55,18 @@ fun ProfileHeader(
                     ),
                 ),
             )
-            .padding(MaterialTheme.padding.medium),
+            .windowInsetsPadding(WindowInsets.statusBars)
+            .padding(horizontal = MaterialTheme.padding.medium, vertical = MaterialTheme.padding.small),
     ) {
+        // Controls sit above the identity row, matching the profile-page hierarchy.
         Row(
             modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
         ) {
             IconButton(
                 onClick = onBack,
-                modifier = Modifier.size(40.dp),
+                modifier = Modifier.size(48.dp),
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
@@ -73,6 +74,37 @@ fun ProfileHeader(
                     tint = Color.White,
                 )
             }
+            Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small)) {
+                FilledIconButton(
+                    onClick = { /* Phase 6: notification toggle */ },
+                    modifier = Modifier.size(40.dp),
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = Color.White.copy(alpha = 0.2f),
+                        contentColor = Color.White,
+                    ),
+                ) {
+                    Icon(Icons.Outlined.Notifications, contentDescription = "Notifications", modifier = Modifier.size(20.dp))
+                }
+                FilledIconButton(
+                    onClick = { /* Phase 6: follow */ },
+                    modifier = Modifier.size(40.dp),
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = Color.White.copy(alpha = 0.2f),
+                        contentColor = Color.White,
+                    ),
+                ) {
+                    Icon(Icons.Outlined.PersonAdd, contentDescription = "Follow", modifier = Modifier.size(20.dp))
+                }
+            }
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = MaterialTheme.padding.small),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.medium),
+        ) {
             MpAvatar(
                 thumbnailUrl = mp.thumbnailUrl,
                 displayName = mp.nameDisplayAs,
@@ -80,10 +112,7 @@ fun ProfileHeader(
                 size = 60.dp,
                 borderWidth = 2.dp,
             )
-
-            Column(
-                modifier = Modifier.weight(1f),
-            ) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = mp.nameDisplayAs,
                     style = MaterialTheme.typography.titleLarge,
@@ -103,31 +132,6 @@ fun ProfileHeader(
                         color = Color.White,
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                     )
-                }
-            }
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                FilledIconButton(
-                    onClick = { /* Phase 6: notification toggle */ },
-                    modifier = Modifier.size(36.dp),
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = Color.White.copy(alpha = 0.2f),
-                        contentColor = Color.White,
-                    ),
-                ) {
-                    Icon(Icons.Outlined.Notifications, contentDescription = "Notifications", modifier = Modifier.size(18.dp))
-                }
-                FilledIconButton(
-                    onClick = { /* Phase 6: follow */ },
-                    modifier = Modifier.size(36.dp),
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = Color.White.copy(alpha = 0.2f),
-                        contentColor = Color.White,
-                    ),
-                ) {
-                    Icon(Icons.Outlined.PersonAdd, contentDescription = "Follow", modifier = Modifier.size(18.dp))
                 }
             }
         }

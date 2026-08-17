@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -67,7 +68,10 @@ fun ProfileScreen(
     val coroutineScope = rememberCoroutineScope()
     val isCollapsed = scrollBehavior.state.collapsedFraction > 0.5f
 
-    Scaffold(modifier = modifier) { innerPadding ->
+    Scaffold(
+        modifier = modifier,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+    ) { innerPadding ->
         if (uiState.isLoading && uiState.mp == null) {
             Box(
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
