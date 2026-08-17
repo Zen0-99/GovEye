@@ -53,6 +53,7 @@ import kotlinx.coroutines.launch
 import com.goveye.app.domain.model.MemberVoteWithDivision
 import com.goveye.app.domain.model.VoteType
 import com.goveye.app.domain.stats.RebellionStats
+import com.goveye.app.domain.stats.VoteMapCalculator
 import com.goveye.app.domain.stats.VotingStatsCalculator
 import com.goveye.app.ui.components.charts.AttendanceLineChart
 import com.goveye.app.ui.components.charts.RebellionLineChart
@@ -298,6 +299,9 @@ private fun VotesTabContent(
     val rebellionTrend = remember(rebellionStats, memberVotes) {
         rebellionStats?.let { VotingStatsCalculator.computeRebellionTrend(it.rebellionInstances, memberVotes) } ?: emptyList()
     }
+    val voteMapTiles = remember(rebellionStats, memberVotes) {
+        rebellionStats?.let { VoteMapCalculator.compute(memberVotes, it.rebellionInstances) } ?: emptyList()
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -336,6 +340,17 @@ private fun VotesTabContent(
             item {
                 ChartSectionLabel("Rebellion Trend")
                 RebellionLineChart(data = rebellionTrend)
+            }
+        }
+
+        // Vote map
+        if (voteMapTiles.isNotEmpty()) {
+            item {
+                ChartSectionLabel("Vote Map")
+                com.goveye.app.ui.components.stats.VoteMapGrid(
+                    tiles = voteMapTiles,
+                    onTileClick = onNavigateToDivision,
+                )
             }
         }
 
