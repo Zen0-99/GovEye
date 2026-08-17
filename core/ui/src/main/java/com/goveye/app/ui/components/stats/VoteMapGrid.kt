@@ -14,6 +14,11 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,11 +34,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.goveye.app.domain.stats.VoteMapResult
 import com.goveye.app.domain.stats.VoteMapTile
+import kotlin.comparisons.reverseOrder
 
 /**
  * Vote map grid — FotMob shot map style grid of colored tiles.
  * Green = with party, Red = rebel, Gray = no vote recorded.
- * When there are more than 36 tiles, blocks shrink to fit all without scrolling.
+ *
+ * When there are multiple years of data, a year selector with left/right
+ * arrows appears at the bottom. Only the selected year's tiles are shown,
+ * retaining the shrink-to-fit sizing logic.
  */
 @Composable
 fun VoteMapGrid(
@@ -43,28 +52,37 @@ fun VoteMapGrid(
 ) {
     if (tiles.isEmpty()) return
 
+    // Extract year from each tile's division date (assumes YYYY-MM-DD format)
+    val yearToTiles = remember(tiles) {
+        tiles.groupBy { it.divisionDate.take(4) }
+            .toSortedMap(reverseOrder()) // most recent year first
+    }
+    val years = yearToTiles.keys.toList()
+
+    var selectedYearIndex by remember { mutableStateOf(0) }
+    val selectedYear = years.getOrElse(selectedYearIndex) { years.first() }
+    val yearTiles = yearToTiles[selectedYear] ?: emptyList()
+
     // Shrink tile size when there are many tiles so all fit without scrolling.
-    // Base size is 32.dp; for >36 tiles, shrink proportionally down to 8.dp min.
     val tileSize = when {
-        tiles.size <= 36 -> 32.dp
-        tiles.size <= 64 -> 24.dp
-        tiles.size <= 100 -> 18.dp
-        tiles.size <= 200 -> 12.dp
+        yearTiles.size <= 36 -> 32.dp
+        yearTiles.size <= 64 -> 24.dp
+        yearTiles.size <= 100 -> 18.dp
+        yearTiles.size <= 200 -> 12.dp
         else -> 8.dp
     }
     val gridSpacing = if (tileSize <= 18.dp) 2.dp else 3.dp
 
     Column(
-        modifier = modifier
-            .fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        // Summary stats
-        VoteMapSummary(tiles = tiles)
+        // Summary stats for the selected year
+        VoteMapSummary(tiles = yearTiles)
 
         // Grid of tiles — height adapts to tile count so all are visible
-        val columns = (tiles.size + 7) / 8 // estimate rows, 8 per row
-        val gridHeight = if (tiles.size <= 36) 200.dp else (columns * (tileSize.value + gridSpacing.value)).dp
+        val rows = (yearTiles.size + 7) / 8
+        val gridHeight = if (yearTiles.size <= 36) 200.dp else (rows * (tileSize.value + gridSpacing.value)).dp
 
         LazyVerticalGrid(
             columns = GridCells.Adaptive(tileSize),
@@ -74,12 +92,59 @@ fun VoteMapGrid(
             horizontalArrangement = Arrangement.spacedBy(gridSpacing),
             verticalArrangement = Arrangement.spacedBy(gridSpacing),
         ) {
-            items(tiles, key = { it.divisionId }) { tile ->
+            items(yearTiles, key = { it.divisionId }) { tile ->
                 VoteMapTileView(
                     tile = tile,
                     onClick = { onTileClick(tile.divisionId, 1) },
                     size = tileSize,
                 )
+            }
+        }
+
+        // Year selector with left/right arrows
+        if (years.size > 1) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(
+                    onClick = {
+                        if (selectedYearIndex < years.size - 1) selectedYearIndex++
+                    },
+                    enabled = selectedYearIndex < years.size - 1,
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowLeft,
+                        contentDescription = "Previous year",
+                        tint = if (selectedYearIndex < years.size - 1)
+                            MaterialTheme.colorScheme.onSurface
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                    )
+                }
+                Text(
+                    text = selectedYear,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
+                IconButton(
+                    onClick = {
+                        if (selectedYearIndex > 0) selectedYearIndex--
+                    },
+                    enabled = selectedYearIndex > 0,
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                        contentDescription = "Next year",
+                        tint = if (selectedYearIndex > 0)
+                            MaterialTheme.colorScheme.onSurface
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                    )
+                }
             }
         }
     }
@@ -126,7 +191,6 @@ private fun VoteMapTileView(
     onClick: () -> Unit,
     size: androidx.compose.ui.unit.Dp,
 ) {
-    var showTooltip by remember { mutableStateOf(false) }
     val color = when (tile.voteResult) {
         VoteMapResult.WITH_PARTY -> com.goveye.app.ui.components.VoteColors.aye
         VoteMapResult.REBEL -> com.goveye.app.ui.components.VoteColors.no
@@ -140,40 +204,5 @@ private fun VoteMapTileView(
             .background(color)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
-    ) {
-        // Tooltip would be shown on long press — simplified for now
-    }
-}
-
-@Composable
-private fun VoteMapLegend() {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        LegendItem("With party", com.goveye.app.ui.components.VoteColors.aye)
-        LegendItem("Rebel", com.goveye.app.ui.components.VoteColors.no)
-        LegendItem("No vote", MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f))
-    }
-}
-
-@Composable
-private fun LegendItem(label: String, color: Color) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(12.dp)
-                .clip(RoundedCornerShape(2.dp))
-                .background(color),
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
+    ) {}
 }

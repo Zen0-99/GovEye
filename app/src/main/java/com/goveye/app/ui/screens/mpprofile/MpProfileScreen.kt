@@ -367,11 +367,15 @@ private fun VotesTabContent(
                 }
             }
         } else {
-            // Voting history section header
+            // Voting history section header — plain text, no card wrapper
             item {
-                com.goveye.app.ui.components.charts.ChartCard {
-                    com.goveye.app.ui.components.charts.ChartHeader(title = "Voting History")
-                }
+                Text(
+                    text = "Voting History",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+                )
             }
             items(memberVotes, key = { it.divisionId }) { vote ->
                 VoteRecordRow(

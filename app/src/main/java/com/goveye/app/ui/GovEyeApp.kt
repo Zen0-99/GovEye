@@ -1,6 +1,8 @@
 package com.goveye.app.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -15,6 +17,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Home
@@ -228,30 +231,34 @@ private fun GovEyeAppContent(
 
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
+    // Slide animation: the search bar stays composed the entire time.
+    // We animate translationY so it slides up/off-screen as a single unit —
+    // no element-by-element destruction (Miko SharedTopBar pattern).
+    val searchBarOffsetY by animateFloatAsState(
+        targetValue = if (showSearchBar) 0f else 1f,
+        animationSpec = tween(durationMillis = 250),
+        label = "searchBarSlide",
+    )
+
     Scaffold(
         contentWindowInsets = WindowInsets.navigationBars.only(WindowInsetsSides.Horizontal),
         topBar = {
             // Global search bar — rendered at app shell level.
-            // Visibility is route-based for a clean slide transition.
+            // Slides up/off-screen as a single unit via graphicsLayer.
             // Content (query, placeholder, chips) comes from SearchBarState.
-            AnimatedVisibility(
-                visible = showSearchBar,
-                enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
-                exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
-            ) {
-                FloatingSearchBar(
-                    query = searchConfig.query,
-                    onQueryChange = searchConfig.onQueryChange,
-                    onFilterClick = searchConfig.onFilterClick,
-                    hasActiveFilters = searchConfig.hasActiveFilters,
-                    placeholder = searchConfig.placeholder,
-                    filterChips = searchConfig.filterChips,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = statusBarPadding)
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                )
-            }
+            FloatingSearchBar(
+                query = searchConfig.query,
+                onQueryChange = searchConfig.onQueryChange,
+                onFilterClick = searchConfig.onFilterClick,
+                hasActiveFilters = searchConfig.hasActiveFilters,
+                placeholder = searchConfig.placeholder,
+                filterChips = searchConfig.filterChips,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .graphicsLayer { translationY = -size.height * searchBarOffsetY }
+                    .padding(top = statusBarPadding)
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+            )
         },
         bottomBar = {
             AnimatedVisibility(

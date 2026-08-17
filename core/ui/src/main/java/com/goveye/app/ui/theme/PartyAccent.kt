@@ -6,7 +6,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
 
 /**
  * Per-profile party accent color system.
@@ -26,8 +25,9 @@ import androidx.compose.ui.graphics.lerp
  * - tertiary / onTertiary / tertiaryContainer / onTertiaryContainer
  * - surfaceTint
  *
- * Surface containers get a subtle party tint (8% blend) so rounded boxes
- * feel party-themed without overwhelming readability.
+ * Surface containers (surfaceContainer, surfaceContainerHigh, etc.) are
+ * NOT overridden — they stay neutral (same as the nav bar) so rounded
+ * section boxes don't pick up party colors.
  */
 val LocalPartyAccent = compositionLocalOf<Color?> { null }
 
@@ -74,12 +74,8 @@ fun partyAccentColorScheme(
     val accentContainer = if (isDark) softenedAccent.copy(alpha = 0.25f).compositeOver(Color(0xFF1A1A1A)) else softenedAccent.copy(alpha = 0.15f).compositeOver(Color.White)
     val onAccentContainer = if (isDark) softenedAccent.copy(alpha = 0.9f) else softenedAccent.copy(alpha = 0.8f)
 
-    // Subtle party tint on surface containers (5% blend — less than before)
-    val tintedSurfaceContainer = lerp(base.surfaceContainer, softenedAccent, 0.05f)
-    val tintedSurfaceContainerHigh = lerp(base.surfaceContainerHigh, softenedAccent, 0.05f)
-    val tintedSurfaceContainerHighest = lerp(base.surfaceContainerHighest, softenedAccent, 0.05f)
-    val tintedSurfaceContainerLow = lerp(base.surfaceContainerLow, softenedAccent, 0.04f)
-    val tintedSurfaceVariant = lerp(base.surfaceVariant, softenedAccent, 0.04f)
+    // Surface containers are NOT overridden — they stay neutral so rounded
+    // section boxes match the nav bar color regardless of party.
 
     return base.copy(
         primary = softenedAccent,
@@ -95,11 +91,6 @@ fun partyAccentColorScheme(
         tertiaryContainer = accentContainer,
         onTertiaryContainer = onAccentContainer,
         surfaceTint = softenedAccent,
-        surfaceVariant = tintedSurfaceVariant,
-        surfaceContainerLow = tintedSurfaceContainerLow,
-        surfaceContainer = tintedSurfaceContainer,
-        surfaceContainerHigh = tintedSurfaceContainerHigh,
-        surfaceContainerHighest = tintedSurfaceContainerHighest,
     )
 }
 
