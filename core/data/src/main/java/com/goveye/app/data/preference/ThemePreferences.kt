@@ -16,8 +16,9 @@ import kotlinx.coroutines.flow.map
  * DataStore-backed theme preferences (D-05, D-06, D-10).
  *
  * Exposes reactive flows for theme mode (light/dark/system), color scheme
- * (Forest/Sky/Ember/Coral), and the AMOLED toggle. Suspend setters
- * persist changes so the theme updates live without an Activity recreate.
+ * (Sky — grayscale + blue/white background), and the AMOLED toggle.
+ * Suspend setters persist changes so the theme updates live without an
+ * Activity recreate.
  */
 @Singleton
 class ThemePreferences

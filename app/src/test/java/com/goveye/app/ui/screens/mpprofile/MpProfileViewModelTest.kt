@@ -3,7 +3,6 @@ package com.goveye.app.ui.screens.mpprofile
 import app.cash.turbine.test
 import com.goveye.app.data.local.dao.MpDao
 import com.goveye.app.data.local.entity.MpEntity
-import com.goveye.app.data.repo.AyesNoesRepository
 import com.goveye.app.data.repo.CommitteesRepository
 import com.goveye.app.data.repo.MembersRepository
 import com.goveye.app.domain.model.Constituency
@@ -25,7 +24,6 @@ class ProfileViewModelTest {
 
     private val membersRepository = mockk<MembersRepository>(relaxed = true)
     private val committeesRepository = mockk<CommitteesRepository>(relaxed = true)
-    private val ayesNoesRepository = mockk<AyesNoesRepository>(relaxed = true)
     private val mpDao = mockk<MpDao>(relaxed = true)
 
     private fun makeMpEntity(id: Int): MpEntity = MpEntity(
@@ -77,7 +75,7 @@ class ProfileViewModelTest {
         coEvery { membersRepository.getContact(1) } returns emptyList()
         coEvery { membersRepository.getExperience(1) } returns emptyList()
 
-        val viewModel = ProfileViewModel(membersRepository, committeesRepository, ayesNoesRepository, mpDao)
+        val viewModel = ProfileViewModel(membersRepository, committeesRepository, mpDao)
         viewModel.loadProfile(1)
 
         viewModel.uiState.test {
@@ -100,7 +98,7 @@ class ProfileViewModelTest {
         coEvery { membersRepository.getContact(999) } returns emptyList()
         coEvery { membersRepository.getExperience(999) } returns emptyList()
 
-        val viewModel = ProfileViewModel(membersRepository, committeesRepository, ayesNoesRepository, mpDao)
+        val viewModel = ProfileViewModel(membersRepository, committeesRepository, mpDao)
         viewModel.loadProfile(999)
 
         viewModel.uiState.test {

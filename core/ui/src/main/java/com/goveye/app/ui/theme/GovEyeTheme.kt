@@ -14,13 +14,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.platform.LocalContext
 import com.goveye.app.domain.AppTheme
 import com.goveye.app.domain.ThemeMode
 import com.goveye.app.ui.theme.colorscheme.BaseColorScheme
-import com.goveye.app.ui.theme.colorscheme.CoralColorScheme
-import com.goveye.app.ui.theme.colorscheme.EmberColorScheme
-import com.goveye.app.ui.theme.colorscheme.ForestColorScheme
 import com.goveye.app.ui.theme.colorscheme.SkyColorScheme
 
 /**
@@ -64,7 +60,7 @@ fun GovEyeTheme(appTheme: AppTheme, themeMode: ThemeMode, isAmoled: Boolean, con
  */
 @Composable
 fun GovEyeTheme(
-    appTheme: AppTheme = AppTheme.CORAL,
+    appTheme: AppTheme = AppTheme.SKY,
     isAmoled: Boolean = false,
     isDark: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
@@ -173,21 +169,11 @@ private fun lerpScheme(from: ColorScheme, to: ColorScheme, progress: Float): Col
 @Composable
 @ReadOnlyComposable
 private fun getThemeColorScheme(appTheme: AppTheme, isAmoled: Boolean, isDark: Boolean): ColorScheme {
-    val colorScheme: BaseColorScheme =
-        if (appTheme == AppTheme.SKY) {
-            SkyColorScheme(LocalContext.current)
-        } else {
-            colorSchemes.getValue(appTheme)
-        }
+    // SKY is the sole scheme — grayscale accents with blue/white background.
+    // Party colors are applied per-profile via LocalPartyAccent, not here.
+    val colorScheme: BaseColorScheme = SkyColorScheme
     return colorScheme.getColorScheme(
         isDark = isDark,
         isAmoled = isAmoled
     )
 }
-
-private val colorSchemes: Map<AppTheme, BaseColorScheme> =
-    mapOf(
-        AppTheme.FOREST to ForestColorScheme,
-        AppTheme.EMBER to EmberColorScheme,
-        AppTheme.CORAL to CoralColorScheme
-    )

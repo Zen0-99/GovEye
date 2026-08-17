@@ -1,8 +1,11 @@
 package com.goveye.app.ui.screens
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,7 +23,10 @@ import com.goveye.app.ui.theme.padding
 @Composable
 fun FollowingScreen(modifier: Modifier = Modifier) {
     Box(
-        modifier = modifier.fillMaxSize().padding(MaterialTheme.padding.large),
+        modifier = modifier
+            .fillMaxSize()
+            .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+            .padding(MaterialTheme.padding.large),
         contentAlignment = Alignment.Center
     ) {
         Text(

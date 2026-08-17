@@ -3,6 +3,7 @@ package com.goveye.app.ui.screens.mpprofile
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
@@ -27,8 +28,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,11 +40,16 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
+import com.goveye.app.ui.theme.LocalPartyAccent
+import com.goveye.app.ui.theme.partyAccentColorScheme
+import com.goveye.app.ui.theme.padding
+import com.goveye.app.ui.theme.parsePartyColor
 
 private enum class ProfileTab(val title: String) {
     PROFILE("Profile"),
     CAREER("Career"),
     COMMITTEES("Committees"),
+    VOTES("Votes"),
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -83,27 +91,34 @@ fun ProfileScreen(
                 Text("MP not found", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-            ) {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    // Fixed header — does not scroll
-                    ProfileHeader(
-                        mp = uiState.mp!!,
-                        onBack = onBack,
-                    )
+            val mp = uiState.mp!!
+            val partyColor = remember(mp) { parsePartyColor(mp.party?.backgroundColour) }
+            val isDark = isSystemInDarkTheme()
+            val partyScheme = partyAccentColorScheme(partyColor, isDark)
 
-                    // Fixed tabs
-                    TabRow(
-                        selectedTabIndex = pagerState.currentPage,
-                        containerColor = MaterialTheme.colorScheme.surface,
+            CompositionLocalProvider(LocalPartyAccent provides partyColor) {
+                MaterialTheme(colorScheme = partyScheme) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding),
                     ) {
-                        ProfileTab.entries.forEachIndexed { index, tab ->
-                            Tab(
-                                selected = pagerState.currentPage == index,
-                                onClick = {
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            // Fixed header — does not scroll
+                            ProfileHeader(
+                                mp = mp,
+                                onBack = onBack,
+                            )
+
+                            // Fixed tabs — indicator and selected text use party color
+                            TabRow(
+                                selectedTabIndex = pagerState.currentPage,
+                                containerColor = MaterialTheme.colorScheme.surface,
+                            ) {
+                                ProfileTab.entries.forEachIndexed { index, tab ->
+                                    Tab(
+                                        selected = pagerState.currentPage == index,
+                                        onClick = {
                                     coroutineScope.launch { pagerState.animateScrollToPage(index) }
                                 },
                                 text = { Text(tab.title) },
@@ -118,9 +133,7 @@ fun ProfileScreen(
                     ) { page ->
                         when (ProfileTab.entries[page]) {
                             ProfileTab.PROFILE -> ProfileTabContent(
-                                mp = uiState.mp!!,
-                                age = uiState.age,
-                                votesRecorded = uiState.votesRecorded,
+                                mp = mp,
                                 synopsis = uiState.synopsis,
                                 contacts = uiState.contacts,
                                 samePartyMps = uiState.samePartyMps,
@@ -133,6 +146,7 @@ fun ProfileScreen(
                             ProfileTab.COMMITTEES -> CommitteesTabContent(
                                 committees = uiState.committees,
                             )
+                            ProfileTab.VOTES -> VotesTabContent()
                         }
                     }
                 }
@@ -150,7 +164,7 @@ fun ProfileScreen(
                         shadowElevation = 3.dp,
                     ) {
                         TopAppBar(
-                            title = { Text(uiState.mp?.nameDisplayAs ?: "") },
+                            title = { Text(mp.nameDisplayAs) },
                             navigationIcon = {
                                 IconButton(onClick = onBack) {
                                     Icon(
@@ -167,14 +181,14 @@ fun ProfileScreen(
                 }
             }
         }
+        }
+    }
     }
 }
 
 @Composable
 private fun ProfileTabContent(
     mp: com.goveye.app.domain.model.Mp,
-    age: Int?,
-    votesRecorded: Int?,
     synopsis: String?,
     contacts: List<com.goveye.app.domain.model.Contact>,
     samePartyMps: List<com.goveye.app.domain.model.Mp>,
@@ -183,12 +197,11 @@ private fun ProfileTabContent(
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 20.dp),
     ) {
         item {
             ProfileStatsCard(
                 mp = mp,
-                age = age,
-                votesRecorded = votesRecorded,
             )
         }
         item { BioSection(synopsis = synopsis) }
@@ -209,6 +222,7 @@ private fun CareerTabContent(
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 20.dp),
     ) {
         item { CareerTimelineSection(experiences = experiences) }
     }
@@ -220,7 +234,28 @@ private fun CommitteesTabContent(
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 20.dp),
     ) {
         item { CommitteeChipsSection(committees = committees) }
+    }
+}
+
+@Composable
+private fun VotesTabContent() {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 20.dp),
+    ) {
+        item {
+            Box(
+                modifier = Modifier.fillMaxWidth().padding(32.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    "Voting data will be available in a future update.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
     }
 }

@@ -1,17 +1,16 @@
 package com.goveye.app.domain
 
 /**
- * Selectable color schemes (D-06).
+ * App color scheme (D-06).
  *
- * Names are neutral — no political references (OPEN-03).
- * CORAL is the default (D-07).
+ * SKY is the sole scheme: grayscale accents with a blue background (dark
+ * mode) / white background (light mode). Party colors are applied
+ * per-profile via a CompositionLocal override, not via the app theme.
  *
- * SKY is the dynamic color scheme (wallpaper-based on API 31+,
- * Coral fallback on older APIs).
+ * The enum is retained (single value) so the DataStore preference key
+ * and [com.goveye.app.data.preference.ThemePreferences] remain stable
+ * for future re-enabling of additional schemes.
  */
 enum class AppTheme {
-    FOREST,
-    SKY,
-    EMBER,
-    CORAL
+    SKY
 }

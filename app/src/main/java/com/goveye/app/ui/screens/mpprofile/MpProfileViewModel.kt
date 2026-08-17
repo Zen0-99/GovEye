@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.goveye.app.data.local.dao.MpDao
 import com.goveye.app.data.local.entity.MpEntity
-import com.goveye.app.data.repo.AyesNoesRepository
 import com.goveye.app.data.repo.CommitteesRepository
 import com.goveye.app.data.repo.MembersRepository
 import com.goveye.app.domain.model.BiographyExperience
@@ -18,8 +17,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.time.LocalDate
-import java.time.Period
 
 data class ProfileUiState(
     val mp: Mp? = null,
@@ -29,8 +26,6 @@ data class ProfileUiState(
     val experiences: List<BiographyExperience> = emptyList(),
     val samePartyMps: List<Mp> = emptyList(),
     val committeePeerMps: List<Mp> = emptyList(),
-    val age: Int? = null,
-    val votesRecorded: Int? = null,
     val syncStatus: SyncStatus = SyncStatus.EMPTY,
     val isLoading: Boolean = true,
 )
@@ -39,7 +34,6 @@ data class ProfileUiState(
 class ProfileViewModel @Inject constructor(
     private val membersRepository: MembersRepository,
     private val committeesRepository: CommitteesRepository,
-    private val ayesNoesRepository: AyesNoesRepository,
     private val mpDao: MpDao,
 ) : ViewModel() {
 
@@ -58,15 +52,6 @@ class ProfileViewModel @Inject constructor(
                     loadSamePartyMps(memberId, mp.party?.id)
                 }
             }
-        }
-
-        viewModelScope.launch {
-            val stats = ayesNoesRepository.getMp(memberId)
-            val age = stats?.dateOfBirth?.let(::calculateAge)
-            _uiState.value = _uiState.value.copy(
-                age = age,
-                votesRecorded = stats?.voting?.recordedVotes,
-            )
         }
 
         viewModelScope.launch {
@@ -119,13 +104,6 @@ class ProfileViewModel @Inject constructor(
             committeesRepository.refresh(memberId)
         }
     }
-
-    private fun calculateAge(dateOfBirth: String): Int? =
-        try {
-            Period.between(LocalDate.parse(dateOfBirth.take(10)), LocalDate.now()).years
-        } catch (e: Exception) {
-            null
-        }
 
     private fun MpEntity.toDomainMp(): Mp =
         Mp(
