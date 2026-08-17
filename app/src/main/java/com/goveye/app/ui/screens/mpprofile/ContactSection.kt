@@ -45,11 +45,26 @@ fun ContactSection(
             modifier = Modifier.padding(MaterialTheme.padding.medium),
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.medium),
         ) {
-            Text(
-                text = "Contact",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "Contact",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                contacts.firstNotNullOfOrNull { it.openingHours?.takeIf(String::isNotBlank) }?.let { hours ->
+                    Text(
+                        text = hours,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
             contacts.forEach { contact ->
                 ContactRow(contact)
             }

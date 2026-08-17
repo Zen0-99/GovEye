@@ -58,26 +58,26 @@ fun ProfileHeader(
             )
             .padding(MaterialTheme.padding.medium),
     ) {
-        IconButton(
-            onClick = onBack,
-            modifier = Modifier.size(48.dp),
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                contentDescription = "Back",
-                tint = Color.White,
-            )
-        }
         Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.Top,
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.medium),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
         ) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier.size(40.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                    contentDescription = "Back",
+                    tint = Color.White,
+                )
+            }
             MpAvatar(
                 thumbnailUrl = mp.thumbnailUrl,
                 displayName = mp.nameDisplayAs,
                 partyColorHex = mp.party?.backgroundColour,
-                size = 72.dp,
+                size = 60.dp,
                 borderWidth = 2.dp,
             )
 

@@ -5,6 +5,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.PersonAdd
@@ -181,8 +182,9 @@ private fun GovEyeAppContent(
         bottomBar = {
             AnimatedVisibility(
                 visible = showBottomBar,
-                enter = fadeIn() + androidx.compose.animation.slideInVertically { it / 2 },
-                exit = fadeOut() + androidx.compose.animation.slideOutVertically { it / 2 },
+                enter = fadeIn(),
+                exit = fadeOut(),
+                modifier = Modifier.clipToBounds(),
             ) {
                 NavigationBar {
                     NavigationBarItem(

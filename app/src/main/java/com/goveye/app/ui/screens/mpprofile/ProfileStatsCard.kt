@@ -22,6 +22,8 @@ import java.time.Period
 @Composable
 fun ProfileStatsCard(
     mp: Mp,
+    age: Int? = null,
+    votesRecorded: Int? = null,
     modifier: Modifier = Modifier,
 ) {
     val yearsInParliament = mp.membershipStartDate?.let { startDate ->
@@ -34,8 +36,10 @@ fun ProfileStatsCard(
     }
 
     val stats = buildList {
+        age?.let { add("Age" to "$it") }
         yearsInParliament?.let { add("Years in\nParliament" to "$it") }
         mp.constituency?.name?.let { add("Constituency" to it) }
+        votesRecorded?.let { add("Votes" to "$it") }
     }
 
     if (stats.isEmpty()) return
@@ -78,7 +82,7 @@ private fun StatItem(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
+            maxLines = 2,
             textAlign = TextAlign.Center,
         )
         Text(

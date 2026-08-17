@@ -81,6 +81,7 @@ object MemberMapper {
             phone = dto.phone,
             email = dto.email,
             website = dto.website,
+            openingHours = dto.openingHours,
         )
 
     fun toEntity(mp: Mp, timestamp: Long): MpEntity =

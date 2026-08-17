@@ -124,7 +124,11 @@ fun ProfileScreen(
                             when (ProfileTab.entries[page]) {
                                 ProfileTab.PROFILE -> {
                                     Column {
-                                        ProfileStatsCard(mp = uiState.mp!!)
+                                        ProfileStatsCard(
+                                            mp = uiState.mp!!,
+                                            age = uiState.age,
+                                            votesRecorded = uiState.votesRecorded,
+                                        )
                                         BioSection(synopsis = uiState.synopsis)
                                         ContactSection(contacts = uiState.contacts)
                                         RelatedMpsSection(

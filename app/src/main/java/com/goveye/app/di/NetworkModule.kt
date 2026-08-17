@@ -24,6 +24,7 @@ object NetworkModule {
     private const val HANSARD_BASE_URL = "https://hansard-api.parliament.uk/"
     private const val INTERESTS_BASE_URL = "https://interests-api.parliament.uk/api/v1/"
     private const val COMMITTEES_BASE_URL = "https://committees-api.parliament.uk/api/"
+    private const val AYES_NOES_BASE_URL = "https://ayesandnoes.co.uk/api/v1/"
     private const val TIMEOUT_SECONDS = 30L
     private const val HANSARD_TIMEOUT_SECONDS = 15L
     private const val USER_AGENT = "GovEye/0.1.0 (open-source; https://github.com/GovEye)"
@@ -117,6 +118,14 @@ object NetworkModule {
         okHttpClient: OkHttpClient,
         json: Json,
     ): Retrofit = buildRetrofit(COMMITTEES_BASE_URL, okHttpClient, json)
+
+    @Provides
+    @Singleton
+    @Named("ayesNoesApi")
+    fun provideAyesNoesRetrofit(
+        okHttpClient: OkHttpClient,
+        json: Json,
+    ): Retrofit = buildRetrofit(AYES_NOES_BASE_URL, okHttpClient, json)
 
     private fun buildRetrofit(
         baseUrl: String,

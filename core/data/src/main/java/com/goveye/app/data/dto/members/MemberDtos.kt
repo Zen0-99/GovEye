@@ -92,6 +92,7 @@ data class ContactDto(
     val phone: String? = null,
     val email: String? = null,
     val website: String? = null,
+    val openingHours: String? = null,
 )
 
 @Serializable
