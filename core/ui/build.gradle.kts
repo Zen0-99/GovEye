@@ -21,4 +21,8 @@ dependencies {
     // Coil 3 (image loading)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
+
+    // Vico charts
+    implementation(libs.vico.compose)
+    implementation(libs.vico.compose.m3)
 }

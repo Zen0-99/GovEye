@@ -67,6 +67,10 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
 
+    // Vico charts
+    implementation(libs.vico.compose)
+    implementation(libs.vico.compose.m3)
+
     // Testing
     testImplementation(libs.junit)
     testImplementation(libs.turbine)

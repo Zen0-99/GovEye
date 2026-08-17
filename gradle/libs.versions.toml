@@ -31,8 +31,13 @@ mockk = "1.14.11"
 robolectric = "4.16.1"
 mockwebserver = "5.4.0"
 androidTools = "31.3.0"
+vico = "3.3.0"
 
 [libraries]
+# Vico charts
+vico-compose = { group = "com.patrykandpatrick.vico", name = "compose", version.ref = "vico" }
+vico-compose-m3 = { group = "com.patrykandpatrick.vico", name = "compose-m3", version.ref = "vico" }
+
 # Build-logic compileOnly dependencies
 android-gradlePlugin = { group = "com.android.tools.build", name = "gradle-api", version.ref = "agp" }
 android-tools-common = { group = "com.android.tools", name = "common", version.ref = "androidTools" }

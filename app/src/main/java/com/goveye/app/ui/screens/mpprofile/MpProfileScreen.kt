@@ -53,6 +53,10 @@ import kotlinx.coroutines.launch
 import com.goveye.app.domain.model.MemberVoteWithDivision
 import com.goveye.app.domain.model.VoteType
 import com.goveye.app.domain.stats.RebellionStats
+import com.goveye.app.domain.stats.VotingStatsCalculator
+import com.goveye.app.ui.components.charts.AttendanceLineChart
+import com.goveye.app.ui.components.charts.RebellionLineChart
+import com.goveye.app.ui.components.charts.VotingBarChart
 import com.goveye.app.ui.theme.LocalPartyAccent
 import com.goveye.app.ui.theme.partyAccentColorScheme
 import com.goveye.app.ui.theme.padding
@@ -266,6 +270,13 @@ private fun VotesTabContent(
     rebellionStats: RebellionStats?,
     onNavigateToDivision: (Int, Int) -> Unit,
 ) {
+    // Compute chart data
+    val monthlyVoting = remember(memberVotes) { VotingStatsCalculator.computeMonthlyVoting(memberVotes) }
+    val attendanceTrend = remember(memberVotes) { VotingStatsCalculator.computeAttendanceTrend(memberVotes) }
+    val rebellionTrend = remember(rebellionStats, memberVotes) {
+        rebellionStats?.let { VotingStatsCalculator.computeRebellionTrend(it.rebellionInstances, memberVotes) } ?: emptyList()
+    }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(
@@ -281,6 +292,28 @@ private fun VotesTabContent(
                     totalVotes = memberVotes.size,
                     rebellionStats = rebellionStats,
                 )
+            }
+        }
+
+        // Charts section
+        if (monthlyVoting.isNotEmpty()) {
+            item {
+                ChartSectionLabel("Voting Pattern")
+                VotingBarChart(data = monthlyVoting)
+            }
+        }
+
+        if (attendanceTrend.isNotEmpty()) {
+            item {
+                ChartSectionLabel("Attendance Rate")
+                AttendanceLineChart(data = attendanceTrend)
+            }
+        }
+
+        if (rebellionTrend.isNotEmpty()) {
+            item {
+                ChartSectionLabel("Rebellion Trend")
+                RebellionLineChart(data = rebellionTrend)
             }
         }
 
@@ -433,6 +466,16 @@ private fun VoteRecordRow(
             )
         }
     }
+}
+
+@Composable
+private fun ChartSectionLabel(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+    )
 }
 
 private fun formatDivisionDate(dateString: String): String {
