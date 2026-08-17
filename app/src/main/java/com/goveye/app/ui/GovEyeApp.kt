@@ -6,10 +6,12 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.PersonAdd
@@ -21,6 +23,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -39,6 +42,9 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.goveye.app.domain.AppTheme
 import com.goveye.app.domain.ThemeMode
+import com.goveye.app.ui.components.FloatingSearchBar
+import com.goveye.app.ui.components.LocalSearchBarState
+import com.goveye.app.ui.components.SearchBarStateHolder
 import com.goveye.app.ui.navigation.DeepLinkNavigator
 import com.goveye.app.ui.navigation.DirectoryRoute
 import com.goveye.app.ui.navigation.FeedRoute
@@ -77,7 +83,10 @@ fun GovEyeApp(deepLinkNavigator: DeepLinkNavigator) {
         themeMode = themeMode,
         isAmoled = isAmoled
     ) {
-        GovEyeAppContent(themeViewModel, deepLinkNavigator)
+        val searchStateHolder = remember { SearchBarStateHolder() }
+        CompositionLocalProvider(LocalSearchBarState provides searchStateHolder) {
+            GovEyeAppContent(themeViewModel, deepLinkNavigator, searchStateHolder)
+        }
     }
 }
 
@@ -85,7 +94,9 @@ fun GovEyeApp(deepLinkNavigator: DeepLinkNavigator) {
 private fun GovEyeAppContent(
     themeViewModel: ThemeViewModel,
     deepLinkNavigator: DeepLinkNavigator,
+    searchStateHolder: SearchBarStateHolder,
 ) {
+    val searchConfig by searchStateHolder.config
     // Per-tab back stacks (D-20)
     val feedBackStack = rememberNavBackStack(FeedRoute)
     val directoryBackStack = rememberNavBackStack(DirectoryRoute)
@@ -207,6 +218,27 @@ private fun GovEyeAppContent(
 
     Scaffold(
         contentWindowInsets = WindowInsets.navigationBars.only(WindowInsetsSides.Horizontal),
+        topBar = {
+            // Global search bar — rendered at app shell level.
+            // Screens configure it via ConfigureSearchBar() / LocalSearchBarState.
+            AnimatedVisibility(
+                visible = searchConfig.isVisible,
+                enter = fadeIn(),
+                exit = fadeOut(),
+            ) {
+                FloatingSearchBar(
+                    query = searchConfig.query,
+                    onQueryChange = searchConfig.onQueryChange,
+                    onFilterClick = searchConfig.onFilterClick,
+                    hasActiveFilters = searchConfig.hasActiveFilters,
+                    placeholder = searchConfig.placeholder,
+                    filterChips = searchConfig.filterChips,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                )
+            }
+        },
         bottomBar = {
             AnimatedVisibility(
                 visible = showBottomBar,

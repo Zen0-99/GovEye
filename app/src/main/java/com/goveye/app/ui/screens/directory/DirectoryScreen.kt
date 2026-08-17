@@ -84,33 +84,30 @@ fun DirectoryScreen(
     val distinctParties by viewModel.distinctParties.collectAsStateWithLifecycle(emptyList())
     var showFilterSheet by remember { mutableStateOf(false) }
 
-    val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val pagerState = rememberPagerState(pageCount = { DirectoryTab.entries.size })
     val coroutineScope = rememberCoroutineScope()
 
-    Column(modifier = modifier.fillMaxSize()) {
-        // Miko-style floating search bar — rounded, solid surfaceContainer
-        // (same fill as the nav bar), no shadow.
-        // Context-aware placeholder based on current tab
-        val currentTab = DirectoryTab.entries[pagerState.currentPage]
-        val searchPlaceholder = when (currentTab) {
-            DirectoryTab.DIVISIONS -> "Search divisions…"
-            DirectoryTab.OFFICIALS -> "Search MPs, parties, constituencies…"
-            else -> "Search…"
-        }
+    // Context-aware placeholder based on current tab
+    val currentTab = DirectoryTab.entries[pagerState.currentPage]
+    val searchPlaceholder = when (currentTab) {
+        DirectoryTab.DIVISIONS -> "Search divisions…"
+        DirectoryTab.OFFICIALS -> "Search MPs, parties, constituencies…"
+        else -> "Search…"
+    }
 
-        com.goveye.app.ui.components.FloatingSearchBar(
+    // Configure the global search bar — rendered at the app shell level
+    com.goveye.app.ui.components.ConfigureSearchBar(
+        config = com.goveye.app.ui.components.SearchBarConfig(
+            isVisible = true,
             query = searchQuery,
+            placeholder = searchPlaceholder,
             onQueryChange = viewModel::updateSearchQuery,
             onFilterClick = { showFilterSheet = true },
             hasActiveFilters = filterState.hasActiveFilters,
-            placeholder = searchPlaceholder,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = statusBarPadding + 6.dp)
-                .padding(horizontal = 12.dp, vertical = 6.dp),
-        )
+        ),
+    )
 
+    Column(modifier = modifier.fillMaxSize()) {
         // Tab row — Miko Updates-style scrollable sub-tabs under the search bar.
         // ScrollableTabRow allows variable-width tabs so longer names like
         // "Divisions" fit without truncation.
