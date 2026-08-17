@@ -42,6 +42,7 @@ private val NoColor = androidx.compose.ui.graphics.Color(0xFFE65100) // orange 9
 fun DivisionsTabContent(
     onNavigateToDivision: (Int, Int) -> Unit,
     houseFilter: Int = 0,
+    searchQuery: String = "",
     modifier: Modifier = Modifier,
     viewModel: DivisionBrowseViewModel = hiltViewModel(),
 ) {
@@ -50,6 +51,11 @@ fun DivisionsTabContent(
     // Apply external house filter from the filter bottom sheet
     androidx.compose.runtime.LaunchedEffect(houseFilter) {
         viewModel.setHouseFilter(houseFilter)
+    }
+
+    // Apply search query from the global search bar
+    androidx.compose.runtime.LaunchedEffect(searchQuery) {
+        viewModel.setSearchQuery(searchQuery)
     }
 
     Column(modifier = modifier.fillMaxSize()) {

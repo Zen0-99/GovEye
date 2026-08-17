@@ -17,6 +17,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -135,24 +138,42 @@ fun DivisionDetailScreen(
     }
 
     val state by viewModel.state.collectAsStateWithLifecycle()
+    var searchQuery by remember { mutableStateOf("") }
+    var voteFilter by remember { mutableStateOf(VoteFilter.ALL) }
+    var searchExpanded by remember { mutableStateOf(false) }
+
+    val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Division",
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                },
-                navigationIcon = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = statusBarPadding),
+            ) {
+                // Top row: back button + search bar
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
                     }
-                },
-            )
+                    DetailSearchBar(
+                        query = searchQuery,
+                        onQueryChange = { searchQuery = it },
+                        expanded = searchExpanded,
+                        onExpandChange = { searchExpanded = it },
+                        voteFilter = voteFilter,
+                        onVoteFilterChange = { voteFilter = it },
+                        ayeCount = state.votes.count { it.vote == VoteType.AYE },
+                        noCount = state.votes.count { it.vote == VoteType.NO },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
         },
         modifier = modifier,
     ) { innerPadding ->
@@ -181,6 +202,8 @@ fun DivisionDetailScreen(
                     division = division,
                     state = state,
                     onNavigateToProfile = onNavigateToProfile,
+                    searchQuery = searchQuery,
+                    voteFilter = voteFilter,
                     modifier = Modifier.fillMaxSize().padding(innerPadding),
                 )
             }
@@ -193,11 +216,10 @@ private fun DivisionDetailContent(
     division: Division,
     state: DivisionDetailState,
     onNavigateToProfile: (Int) -> Unit,
+    searchQuery: String,
+    voteFilter: VoteFilter,
     modifier: Modifier = Modifier,
 ) {
-    var voteFilter by remember { mutableStateOf(VoteFilter.ALL) } // ALL, AYE, NO
-    var searchQuery by remember { mutableStateOf("") }
-    var searchExpanded by remember { mutableStateOf(false) }
     var breakdownExpanded by remember { mutableStateOf(true) }
 
     val ayes = state.votes.filter { it.vote == VoteType.AYE }
@@ -230,21 +252,8 @@ private fun DivisionDetailContent(
             }
         }
 
-        // Voter search bar — FloatingSearchBar style, expands to show Aye/No filter
+        // Voter list — filtered by search query and vote filter from the top bar
         if (ayes.isNotEmpty() || noes.isNotEmpty()) {
-            item {
-                VoterSearchBar(
-                    query = searchQuery,
-                    onQueryChange = { searchQuery = it },
-                    expanded = searchExpanded,
-                    onExpandChange = { searchExpanded = it },
-                    voteFilter = voteFilter,
-                    onVoteFilterChange = { voteFilter = it },
-                    ayeCount = ayes.size,
-                    noCount = noes.size,
-                )
-            }
-
             // Filtered voter list
             val voters = when (voteFilter) {
                 VoteFilter.ALL -> ayes + noes
@@ -296,11 +305,11 @@ private fun DivisionDetailContent(
 enum class VoteFilter { ALL, AYE, NO }
 
 /**
- * FloatingSearchBar-style search for voters, matching the main nav search bar.
- * Expands to show Aye/No/All filter chips when tapped.
+ * Compact search bar for the division detail top bar.
+ * Searches voters by name/constituency. Expand button reveals Aye/No/All filter chips.
  */
 @Composable
-private fun VoterSearchBar(
+private fun DetailSearchBar(
     query: String,
     onQueryChange: (String) -> Unit,
     expanded: Boolean,

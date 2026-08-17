@@ -99,13 +99,16 @@ class ProfileViewModel @Inject constructor(
         // Load voting record + rebellion stats (lazy — loaded with profile)
         viewModelScope.launch {
             try {
-                votesRepository.refreshMemberVoting(memberId, 1)
+                // Get the MP's house from the DB first (needed for correct API)
+                val mp = mpDao.getMp(memberId)
+                val house = mp?.house ?: 1
+                votesRepository.refreshMemberVoting(memberId, house)
                 val votes = votesRepository.getMemberVotingWithDivisions(memberId)
                 _uiState.value = _uiState.value.copy(memberVotes = votes)
 
                 // Compute rebellion stats if we have votes and party info
-                val mp = _uiState.value.mp
-                val partyName = mp?.party?.name
+                val currentMp = _uiState.value.mp
+                val partyName = currentMp?.party?.name
                 if (votes.isNotEmpty() && partyName != null) {
                     val memberVotesResult = votesRepository.observeMemberVoting(memberId)
                         .first()

@@ -63,6 +63,10 @@ class DivisionBrowseViewModel @Inject constructor(
         _searchQuery.value = query
     }
 
+    fun setSearchQuery(query: String) {
+        _searchQuery.value = query
+    }
+
     fun setHouseFilter(house: Int) {
         _houseFilter.value = house
     }

@@ -90,11 +90,20 @@ fun DirectoryScreen(
     Column(modifier = modifier.fillMaxSize()) {
         // Miko-style floating search bar — rounded, solid surfaceContainer
         // (same fill as the nav bar), no shadow.
+        // Context-aware placeholder based on current tab
+        val currentTab = DirectoryTab.entries[pagerState.currentPage]
+        val searchPlaceholder = when (currentTab) {
+            DirectoryTab.DIVISIONS -> "Search divisions…"
+            DirectoryTab.OFFICIALS -> "Search MPs, parties, constituencies…"
+            else -> "Search…"
+        }
+
         FloatingSearchBar(
             query = searchQuery,
             onQueryChange = viewModel::updateSearchQuery,
             onFilterClick = { showFilterSheet = true },
             hasActiveFilters = filterState.hasActiveFilters,
+            placeholder = searchPlaceholder,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = statusBarPadding + 6.dp)
@@ -148,6 +157,7 @@ fun DirectoryScreen(
                 DirectoryTab.DIVISIONS -> DivisionsTabContent(
                     onNavigateToDivision = onNavigateToDivision,
                     houseFilter = filterState.houseFilter,
+                    searchQuery = searchQuery,
                 )
                 DirectoryTab.DEBATES -> PlaceholderTabContent("Debates")
             }
@@ -388,6 +398,7 @@ private fun FloatingSearchBar(
     onQueryChange: (String) -> Unit,
     onFilterClick: () -> Unit,
     hasActiveFilters: Boolean,
+    placeholder: String = "Search…",
     modifier: Modifier = Modifier,
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -424,7 +435,7 @@ private fun FloatingSearchBar(
             ) {
                 if (query.isEmpty()) {
                     Text(
-                        text = "Search…",
+                        text = placeholder,
                         color = colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                         style = MaterialTheme.typography.titleMedium,
                         maxLines = 1,

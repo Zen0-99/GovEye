@@ -91,7 +91,7 @@ class VotesRepository @Inject constructor(
 
     suspend fun refresh() {
         try {
-            val pageSize = 100
+            val pageSize = 25
             var skip = 0
             val allEntities = mutableListOf<DivisionEntity>()
 
@@ -124,7 +124,7 @@ class VotesRepository @Inject constructor(
 
     suspend fun refreshLords() {
         try {
-            val pageSize = 100
+            val pageSize = 25
             var skip = 0
             val allEntities = mutableListOf<DivisionEntity>()
 
@@ -194,7 +194,7 @@ class VotesRepository @Inject constructor(
      */
     suspend fun refreshMemberVoting(memberId: Int, house: Int) {
         try {
-            val pageSize = 100
+            val pageSize = 25
             var skip = 0
             val allVotes = mutableListOf<DivisionVoteEntity>()
             val allDivisions = mutableListOf<DivisionEntity>()
