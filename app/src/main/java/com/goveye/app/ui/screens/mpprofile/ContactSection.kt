@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.LocationOn
@@ -12,11 +13,13 @@ import androidx.compose.material.icons.outlined.Phone
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import com.goveye.app.domain.model.Contact
 import com.goveye.app.ui.theme.padding
 
@@ -27,19 +30,25 @@ fun ContactSection(
 ) {
     if (contacts.isEmpty()) return
 
-    Column(
+    Surface(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = MaterialTheme.padding.large, vertical = MaterialTheme.padding.medium),
-        verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.medium),
+            .padding(horizontal = MaterialTheme.padding.large, vertical = MaterialTheme.padding.small),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
-        Text(
-            text = "Contact",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        contacts.forEach { contact ->
-            ContactRow(contact)
+        Column(
+            modifier = Modifier.padding(MaterialTheme.padding.medium),
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.medium),
+        ) {
+            Text(
+                text = "Contact",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            contacts.forEach { contact ->
+                ContactRow(contact)
+            }
         }
     }
 }

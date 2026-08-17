@@ -104,7 +104,7 @@ class MembersRepository @Inject constructor(
         }
         return try {
             val response = membersApi.getMemberSynopsis(memberId)
-            val synopsis = response.value ?: ""
+            val synopsis = stripHtml(response.value ?: "")
             synopsisCache[memberId] = synopsis to System.currentTimeMillis()
             synopsis
         } catch (e: Exception) {
@@ -171,4 +171,15 @@ class MembersRepository @Inject constructor(
             isActive = isActive,
             thumbnailUrl = thumbnailUrl,
         )
+
+    private fun stripHtml(html: String): String =
+        html
+            .replace(Regex("<[^>]*>"), "")
+            .replace("&amp;", "&")
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("&quot;", "\"")
+            .replace("&#39;", "'")
+            .replace("&nbsp;", " ")
+            .trim()
 }

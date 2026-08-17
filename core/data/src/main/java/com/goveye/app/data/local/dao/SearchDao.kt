@@ -9,9 +9,12 @@ import kotlinx.coroutines.flow.Flow
 interface SearchDao {
     @Query(
         """
-        SELECT mps.* FROM mps
-        JOIN mps_fts ON mps.id = mps_fts.rowid
-        WHERE mps_fts MATCH :query
+        SELECT * FROM mps
+        WHERE nameListAs LIKE '%' || :query || '%'
+           OR nameDisplayAs LIKE '%' || :query || '%'
+           OR constituencyName LIKE '%' || :query || '%'
+        ORDER BY nameListAs
+        LIMIT 50
         """,
     )
     fun searchMps(query: String): Flow<List<MpEntity>>

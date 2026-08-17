@@ -1,6 +1,7 @@
 package com.goveye.app.ui.screens.mpprofile
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -12,21 +13,30 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.goveye.app.ui.components.SyncStatusBanner
-import com.goveye.app.ui.theme.padding
+
+private enum class ProfileTab(val title: String) {
+    PROFILE("Profile"),
+    CAREER("Career"),
+    COMMITTEES("Committees"),
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,21 +53,42 @@ fun MpProfileScreen(
         viewModel.loadProfile(memberId)
     }
 
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    var selectedTab by remember { mutableIntStateOf(0) }
+
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(uiState.mp?.nameDisplayAs ?: "MP Profile") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
+            Column {
+                TopAppBar(
+                    title = { Text(uiState.mp?.nameDisplayAs ?: "") },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        scrolledContainerColor = MaterialTheme.colorScheme.surface,
+                        titleContentColor = Color.White,
+                        navigationIconContentColor = Color.White,
+                    ),
+                    scrollBehavior = scrollBehavior,
+                )
+                TabRow(
+                    selectedTabIndex = selectedTab,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                ) {
+                    ProfileTab.entries.forEachIndexed { index, tab ->
+                        Tab(
+                            selected = selectedTab == index,
+                            onClick = { selectedTab = index },
+                            text = { Text(tab.title) },
+                        )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                ),
-            )
+                }
+            }
         },
-        modifier = modifier,
+        modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
     ) { innerPadding ->
         if (uiState.isLoading && uiState.mp == null) {
             Box(
@@ -79,33 +110,28 @@ fun MpProfileScreen(
                 contentPadding = innerPadding,
             ) {
                 item { ProfileHeader(mp = uiState.mp!!) }
-                item { SyncStatusBanner(status = uiState.syncStatus) }
-                item { FollowButtonPlaceholder() }
-                item { BioSection(synopsis = uiState.synopsis) }
-                item { ContactSection(contacts = uiState.contacts) }
-                item { CommitteeChipsSection(committees = uiState.committees) }
-                item { CareerTimelineSection(experiences = uiState.experiences) }
-                item {
-                    RelatedMpsSection(
-                        samePartyMps = uiState.samePartyMps,
-                        committeePeerMps = uiState.committeePeerMps,
-                        onNavigateToProfile = onNavigateToProfile,
-                    )
+
+                when (ProfileTab.entries[selectedTab]) {
+                    ProfileTab.PROFILE -> {
+                        item { ProfileStatsCard(mp = uiState.mp!!) }
+                        item { BioSection(synopsis = uiState.synopsis) }
+                        item { ContactSection(contacts = uiState.contacts) }
+                        item {
+                            RelatedMpsSection(
+                                samePartyMps = uiState.samePartyMps,
+                                committeePeerMps = uiState.committeePeerMps,
+                                onNavigateToProfile = onNavigateToProfile,
+                            )
+                        }
+                    }
+                    ProfileTab.CAREER -> {
+                        item { CareerTimelineSection(experiences = uiState.experiences) }
+                    }
+                    ProfileTab.COMMITTEES -> {
+                        item { CommitteeChipsSection(committees = uiState.committees) }
+                    }
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun FollowButtonPlaceholder() {
-    OutlinedButton(
-        onClick = { /* Phase 6 */ },
-        enabled = false,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = MaterialTheme.padding.large, vertical = MaterialTheme.padding.small),
-    ) {
-        Text("Follow (coming soon)")
     }
 }

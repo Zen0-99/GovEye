@@ -35,7 +35,8 @@ fun MpListRow(
             thumbnailUrl = mp.thumbnailUrl,
             displayName = mp.nameDisplayAs,
             partyColorHex = mp.party?.backgroundColour,
-            size = 40.dp,
+            size = 48.dp,
+            borderWidth = 2.dp,
         )
         Column(modifier = Modifier.weight(1f)) {
             Text(

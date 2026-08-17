@@ -44,8 +44,7 @@ class DirectoryViewModel @Inject constructor(
             if (query.isBlank()) {
                 flowOf(emptyList())
             } else {
-                val ftsQuery = "${query.trim()}*"
-                searchDao.searchMps(ftsQuery)
+                searchDao.searchMps(query.trim())
                     .map { entities -> entities.map { it.toDomainMp() } }
             }
         }

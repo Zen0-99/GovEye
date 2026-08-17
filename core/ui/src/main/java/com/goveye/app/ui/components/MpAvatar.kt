@@ -1,6 +1,7 @@
 package com.goveye.app.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -17,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.SubcomposeAsyncImage
 import com.goveye.app.ui.theme.deriveInitials
 import com.goveye.app.ui.theme.parseMutedPartyColor
+import com.goveye.app.ui.theme.parsePartyColor
 
 @Composable
 fun MpAvatar(
@@ -25,15 +27,25 @@ fun MpAvatar(
     partyColorHex: String?,
     modifier: Modifier = Modifier,
     size: Dp = 40.dp,
+    borderWidth: Dp = 0.dp,
 ) {
     val partyColor = parseMutedPartyColor(partyColorHex)
     val initials = deriveInitials(displayName)
+    val borderModifier = if (borderWidth > 0.dp) {
+        val borderColor = parsePartyColor(partyColorHex)
+        Modifier.border(borderWidth, borderColor, CircleShape)
+    } else {
+        Modifier
+    }
 
     if (thumbnailUrl != null) {
         SubcomposeAsyncImage(
             model = thumbnailUrl,
             contentDescription = displayName,
-            modifier = modifier.size(size).clip(CircleShape),
+            modifier = modifier
+                .then(borderModifier)
+                .size(size)
+                .clip(CircleShape),
             loading = {
                 InitialsAvatar(initials, partyColor, Modifier.size(size))
             },
@@ -42,7 +54,9 @@ fun MpAvatar(
             },
         )
     } else {
-        InitialsAvatar(initials, partyColor, modifier.size(size))
+        Box(modifier = modifier.then(borderModifier).size(size).clip(CircleShape)) {
+            InitialsAvatar(initials, partyColor, Modifier.size(size))
+        }
     }
 }
 

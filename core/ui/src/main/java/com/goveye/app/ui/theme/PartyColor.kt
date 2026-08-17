@@ -22,6 +22,19 @@ fun parseMutedPartyColor(hex: String?): Color {
     }
 }
 
+/**
+ * Parses a hex color string (e.g. "d50000") and returns the raw color.
+ * Used for borders and subtle backgrounds where muting is not desired.
+ */
+fun parsePartyColor(hex: String?): Color {
+    if (hex.isNullOrBlank()) return Color(0xFF757575)
+    return try {
+        Color(android.graphics.Color.parseColor("#$hex"))
+    } catch (e: Exception) {
+        Color(0xFF757575)
+    }
+}
+
 /** Derives initials from a display name (max 2 chars). E.g. "Diane Abbott" -> "DA". */
 fun deriveInitials(name: String): String {
     val parts = name.trim().split(" ").filter { it.isNotEmpty() }
