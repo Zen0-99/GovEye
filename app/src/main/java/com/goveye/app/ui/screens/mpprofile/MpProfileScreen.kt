@@ -55,6 +55,7 @@ import com.goveye.app.domain.model.VoteType
 import com.goveye.app.domain.stats.RebellionStats
 import com.goveye.app.domain.stats.VoteMapCalculator
 import com.goveye.app.domain.stats.VotingStatsCalculator
+
 import com.goveye.app.ui.components.charts.AttendanceLineChart
 import com.goveye.app.ui.components.charts.RebellionLineChart
 import com.goveye.app.ui.components.charts.VotingBarChart
@@ -129,10 +130,12 @@ fun ProfileScreen(
                                 onBack = onBack,
                             )
 
-                            // Fixed tabs — indicator and selected text use party color
+                            // Fixed tabs — selected text uses onSurface (theme-adaptive),
+                            // unselected uses onSurfaceVariant. No accent color influence.
                             TabRow(
                                 selectedTabIndex = pagerState.currentPage,
                                 containerColor = MaterialTheme.colorScheme.surface,
+                                contentColor = MaterialTheme.colorScheme.onSurface,
                             ) {
                                 ProfileTab.entries.forEachIndexed { index, tab ->
                                     Tab(
@@ -140,7 +143,17 @@ fun ProfileScreen(
                                         onClick = {
                                     coroutineScope.launch { pagerState.animateScrollToPage(index) }
                                 },
-                                text = { Text(tab.title) },
+                                text = {
+                                    Text(
+                                        text = tab.title,
+                                        color = if (pagerState.currentPage == index)
+                                            MaterialTheme.colorScheme.onSurface
+                                        else
+                                            MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                },
+                                selectedContentColor = MaterialTheme.colorScheme.onSurface,
+                                unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     }
@@ -157,8 +170,6 @@ fun ProfileScreen(
                                 contacts = uiState.contacts,
                                 samePartyMps = uiState.samePartyMps,
                                 committeePeerMps = uiState.committeePeerMps,
-                                activityScore = uiState.activityScore,
-                                traitBars = uiState.traitBars,
                                 onNavigateToProfile = onNavigateToProfile,
                             )
                             ProfileTab.CAREER -> CareerTabContent(
@@ -220,8 +231,6 @@ private fun ProfileTabContent(
     contacts: List<com.goveye.app.domain.model.Contact>,
     samePartyMps: List<com.goveye.app.domain.model.Mp>,
     committeePeerMps: List<com.goveye.app.domain.model.Mp>,
-    activityScore: com.goveye.app.domain.stats.ActivityScore?,
-    traitBars: List<com.goveye.app.domain.stats.TraitBar>,
     onNavigateToProfile: (Int) -> Unit,
 ) {
     LazyColumn(
@@ -234,23 +243,6 @@ private fun ProfileTabContent(
             )
         }
         // Activity score strip
-        if (activityScore != null) {
-            item {
-                com.goveye.app.ui.components.stats.ActivityScoreStrip(
-                    score = activityScore,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
-            }
-        }
-        // Trait bars
-        if (traitBars.isNotEmpty()) {
-            item {
-                com.goveye.app.ui.components.stats.TraitBarsSection(
-                    traitBars = traitBars,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
-            }
-        }
         item { BioSection(synopsis = synopsis) }
         item { ContactSection(contacts = contacts) }
         item {

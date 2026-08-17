@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -101,15 +102,17 @@ private fun DivisionCard(
     division: Division,
     onClick: () -> Unit,
 ) {
-    Column(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
     ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
         Text(
             text = division.title,
             style = MaterialTheme.typography.bodyLarge,
@@ -166,6 +169,7 @@ private fun DivisionCard(
         }
         // Result bar
         DivisionResultBar(ayeCount = division.ayeCount, noCount = division.noCount)
+        }
     }
 }
 
@@ -174,6 +178,7 @@ fun DivisionResultBar(ayeCount: Int, noCount: Int) {
     val total = ayeCount + noCount
     if (total == 0) return
     val ayeFraction = ayeCount.toFloat() / total
+    val noFraction = 1f - ayeFraction
     val shape = RoundedCornerShape(4.dp)
     Row(
         modifier = Modifier
@@ -182,18 +187,22 @@ fun DivisionResultBar(ayeCount: Int, noCount: Int) {
             .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f))
             .height(6.dp),
     ) {
-        Box(
-            modifier = Modifier
-                .weight(ayeFraction)
-                .background(AyeColor)
-                .fillMaxSize(),
-        )
-        Box(
-            modifier = Modifier
-                .weight(1f - ayeFraction)
-                .background(NoColor)
-                .fillMaxSize(),
-        )
+        if (ayeFraction > 0f) {
+            Box(
+                modifier = Modifier
+                    .weight(ayeFraction)
+                    .background(AyeColor)
+                    .fillMaxSize(),
+            )
+        }
+        if (noFraction > 0f) {
+            Box(
+                modifier = Modifier
+                    .weight(noFraction)
+                    .background(NoColor)
+                    .fillMaxSize(),
+            )
+        }
     }
 }
 

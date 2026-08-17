@@ -11,7 +11,16 @@ data class MonthlyVotingData(
     val ayeCount: Int,
     val noCount: Int,
     val noVoteCount: Int,
-)
+) {
+    /** Short label for chart X-axis, e.g. "Jul" */
+    val monthLabel: String
+        get() = try {
+            val parts = month.split("-")
+            val monthNum = parts[1].toIntOrNull() ?: 1
+            listOf("Jan","Feb","Mar","Apr","May","Jun",
+                "Jul","Aug","Sep","Oct","Nov","Dec").getOrElse(monthNum - 1) { month }
+        } catch (e: Exception) { month }
+}
 
 /**
  * Monthly attendance rate for line chart.
@@ -19,7 +28,15 @@ data class MonthlyVotingData(
 data class AttendanceTrend(
     val month: String,
     val attendanceRate: Float, // 0-1
-)
+) {
+    val monthLabel: String
+        get() = try {
+            val parts = month.split("-")
+            val monthNum = parts[1].toIntOrNull() ?: 1
+            listOf("Jan","Feb","Mar","Apr","May","Jun",
+                "Jul","Aug","Sep","Oct","Nov","Dec").getOrElse(monthNum - 1) { month }
+        } catch (e: Exception) { month }
+}
 
 /**
  * Monthly rebellion rate for line chart.
@@ -27,7 +44,15 @@ data class AttendanceTrend(
 data class RebellionTrend(
     val month: String,
     val rebellionRate: Float, // 0-1
-)
+) {
+    val monthLabel: String
+        get() = try {
+            val parts = month.split("-")
+            val monthNum = parts[1].toIntOrNull() ?: 1
+            listOf("Jan","Feb","Mar","Apr","May","Jun",
+                "Jul","Aug","Sep","Oct","Nov","Dec").getOrElse(monthNum - 1) { month }
+        } catch (e: Exception) { month }
+}
 
 /**
  * Computes chart data from voting records.

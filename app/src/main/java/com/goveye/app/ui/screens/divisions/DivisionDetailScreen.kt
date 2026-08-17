@@ -257,37 +257,43 @@ private fun DivisionHeader(division: Division) {
         // Result bar — consistent Aye (teal) / No (orange) colors
         val total = division.ayeCount + division.noCount
         if (total > 0) {
+            val ayeFraction = division.ayeCount.toFloat() / total
+            val noFraction = division.noCount.toFloat() / total
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth().height(24.dp).clip(RoundedCornerShape(6.dp)),
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .weight(division.ayeCount.toFloat() / total)
-                            .background(AyeColor)
-                            .fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = division.ayeCount.toString(),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = androidx.compose.ui.graphics.Color.White,
-                            fontWeight = FontWeight.Bold,
-                        )
+                    if (ayeFraction > 0f) {
+                        Box(
+                            modifier = Modifier
+                                .weight(ayeFraction)
+                                .background(AyeColor)
+                                .fillMaxSize(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = division.ayeCount.toString(),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = androidx.compose.ui.graphics.Color.White,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
                     }
-                    Box(
-                        modifier = Modifier
-                            .weight(division.noCount.toFloat() / total)
-                            .background(NoColor)
-                            .fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = division.noCount.toString(),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = androidx.compose.ui.graphics.Color.White,
-                            fontWeight = FontWeight.Bold,
-                        )
+                    if (noFraction > 0f) {
+                        Box(
+                            modifier = Modifier
+                                .weight(noFraction)
+                                .background(NoColor)
+                                .fillMaxSize(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = division.noCount.toString(),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = androidx.compose.ui.graphics.Color.White,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
                     }
                 }
             }
@@ -324,18 +330,23 @@ private fun PartyBreakdownRow(party: PartyBreakdown) {
                 .clip(RoundedCornerShape(4.dp))
                 .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)),
         ) {
-            Row(
-                modifier = Modifier
-                    .weight(ayeFraction)
-                    .background(partyColor)
-                    .fillMaxSize(),
-            ) {}
-            Row(
-                modifier = Modifier
-                    .weight(1f - ayeFraction)
-                    .background(partyColor.copy(alpha = 0.4f))
-                    .fillMaxSize(),
-            ) {}
+            if (ayeFraction > 0f) {
+                Box(
+                    modifier = Modifier
+                        .weight(ayeFraction)
+                        .background(AyeColor)
+                        .fillMaxSize(),
+                )
+            }
+            val noFraction = 1f - ayeFraction
+            if (noFraction > 0f) {
+                Box(
+                    modifier = Modifier
+                        .weight(noFraction)
+                        .background(NoColor)
+                        .fillMaxSize(),
+                )
+            }
         }
         Text(
             text = "${party.ayeCount}-${party.noCount}",

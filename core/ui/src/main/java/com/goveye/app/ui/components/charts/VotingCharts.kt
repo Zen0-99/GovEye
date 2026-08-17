@@ -19,7 +19,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.goveye.app.domain.stats.AttendanceTrend
 import com.goveye.app.domain.stats.MonthlyVotingData
@@ -28,20 +27,27 @@ import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.compose.cartesian.axis.VerticalAxis
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
+import com.patrykandpatrick.vico.compose.cartesian.data.CartesianValueFormatter
 import com.patrykandpatrick.vico.compose.cartesian.data.columnSeries
 import com.patrykandpatrick.vico.compose.cartesian.data.lineSeries
+import com.patrykandpatrick.vico.compose.cartesian.layer.ColumnCartesianLayer
+import com.patrykandpatrick.vico.compose.cartesian.layer.LineCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberColumnCartesianLayer
+import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLine
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
+import com.patrykandpatrick.vico.compose.common.Fill
+import com.patrykandpatrick.vico.compose.common.component.rememberLineComponent
 
 // Consistent colors — Aye = teal, No = orange, No-vote = gray
 private val AyeColor = Color(0xFF00796B)
 private val NoColor = Color(0xFFE65100)
 private val NoVoteColor = Color(0xFF9E9E9E)
+private val LineColor = Color(0xFF1976D2)
 
 /**
  * Stacked bar chart showing monthly voting pattern (Aye/No/NoVote).
- * Includes a color legend below the chart.
+ * Uses consistent teal/orange/gray colors with a legend.
  */
 @Composable
 fun VotingBarChart(
@@ -62,12 +68,30 @@ fun VotingBarChart(
         }
     }
 
+    val monthLabels = remember(data) {
+        data.map { it.monthLabel }
+    }
+
+    val bottomAxisFormatter = remember(monthLabels) {
+        CartesianValueFormatter { _, value, _ ->
+            monthLabels.getOrElse(value.toInt()) { "" }
+        }
+    }
+
     Column(modifier = modifier) {
         CartesianChartHost(
             chart = rememberCartesianChart(
-                rememberColumnCartesianLayer(),
+                rememberColumnCartesianLayer(
+                    columnProvider = ColumnCartesianLayer.ColumnProvider.series(
+                        rememberLineComponent(fill = Fill(AyeColor), thickness = 12.dp),
+                        rememberLineComponent(fill = Fill(NoColor), thickness = 12.dp),
+                        rememberLineComponent(fill = Fill(NoVoteColor), thickness = 12.dp),
+                    ),
+                ),
                 startAxis = VerticalAxis.rememberStart(),
-                bottomAxis = HorizontalAxis.rememberBottom(),
+                bottomAxis = HorizontalAxis.rememberBottom(
+                    valueFormatter = bottomAxisFormatter,
+                ),
             ),
             modelProducer = modelProducer,
             modifier = Modifier
@@ -88,7 +112,7 @@ fun VotingBarChart(
 
 /**
  * Line chart showing monthly attendance rate.
- * Y-axis label: "Attendance %", X-axis: months.
+ * Y-axis shows percentage values, X-axis shows month labels.
  */
 @Composable
 fun AttendanceLineChart(
@@ -107,26 +131,45 @@ fun AttendanceLineChart(
         }
     }
 
-    Column(modifier = modifier) {
-        AxisLabel("Attendance % (Y) · Months (X)")
-        CartesianChartHost(
-            chart = rememberCartesianChart(
-                rememberLineCartesianLayer(),
-                startAxis = VerticalAxis.rememberStart(),
-                bottomAxis = HorizontalAxis.rememberBottom(),
-            ),
-            modelProducer = modelProducer,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(160.dp)
-                .padding(8.dp),
-        )
+    val monthLabels = remember(data) {
+        data.map { it.monthLabel }
     }
+
+    val bottomAxisFormatter = remember(monthLabels) {
+        CartesianValueFormatter { _, value, _ ->
+            monthLabels.getOrElse(value.toInt()) { "" }
+        }
+    }
+
+    val startAxisFormatter = remember {
+        CartesianValueFormatter { _, value, _ -> "${value.toInt()}%" }
+    }
+
+    CartesianChartHost(
+        chart = rememberCartesianChart(
+            rememberLineCartesianLayer(
+                lineProvider = LineCartesianLayer.LineProvider.series(
+                    LineCartesianLayer.rememberLine(
+                        fill = LineCartesianLayer.LineFill.single(Fill(LineColor)),
+                    ),
+                ),
+            ),
+            startAxis = VerticalAxis.rememberStart(valueFormatter = startAxisFormatter),
+            bottomAxis = HorizontalAxis.rememberBottom(
+                valueFormatter = bottomAxisFormatter,
+            ),
+        ),
+        modelProducer = modelProducer,
+        modifier = modifier
+            .fillMaxWidth()
+            .height(160.dp)
+            .padding(8.dp),
+    )
 }
 
 /**
  * Line chart showing monthly rebellion rate.
- * Y-axis label: "Rebellion %", X-axis: months.
+ * Y-axis shows percentage values, X-axis shows month labels.
  */
 @Composable
 fun RebellionLineChart(
@@ -145,30 +188,39 @@ fun RebellionLineChart(
         }
     }
 
-    Column(modifier = modifier) {
-        AxisLabel("Rebellion % (Y) · Months (X)")
-        CartesianChartHost(
-            chart = rememberCartesianChart(
-                rememberLineCartesianLayer(),
-                startAxis = VerticalAxis.rememberStart(),
-                bottomAxis = HorizontalAxis.rememberBottom(),
-            ),
-            modelProducer = modelProducer,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(160.dp)
-                .padding(8.dp),
-        )
+    val monthLabels = remember(data) {
+        data.map { it.monthLabel }
     }
-}
 
-@Composable
-private fun AxisLabel(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(start = 12.dp, bottom = 2.dp),
+    val bottomAxisFormatter = remember(monthLabels) {
+        CartesianValueFormatter { _, value, _ ->
+            monthLabels.getOrElse(value.toInt()) { "" }
+        }
+    }
+
+    val startAxisFormatter = remember {
+        CartesianValueFormatter { _, value, _ -> "${value.toInt()}%" }
+    }
+
+    CartesianChartHost(
+        chart = rememberCartesianChart(
+            rememberLineCartesianLayer(
+                lineProvider = LineCartesianLayer.LineProvider.series(
+                    LineCartesianLayer.rememberLine(
+                        fill = LineCartesianLayer.LineFill.single(Fill(NoColor)),
+                    ),
+                ),
+            ),
+            startAxis = VerticalAxis.rememberStart(valueFormatter = startAxisFormatter),
+            bottomAxis = HorizontalAxis.rememberBottom(
+                valueFormatter = bottomAxisFormatter,
+            ),
+        ),
+        modelProducer = modelProducer,
+        modifier = modifier
+            .fillMaxWidth()
+            .height(160.dp)
+            .padding(8.dp),
     )
 }
 

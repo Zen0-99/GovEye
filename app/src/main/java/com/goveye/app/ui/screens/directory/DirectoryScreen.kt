@@ -107,6 +107,7 @@ fun DirectoryScreen(
         ScrollableTabRow(
             selectedTabIndex = pagerState.currentPage,
             containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface,
             edgePadding = 16.dp,
         ) {
             DirectoryTab.entries.forEachIndexed { index, tab ->
@@ -115,6 +116,8 @@ fun DirectoryScreen(
                     onClick = {
                         coroutineScope.launch { pagerState.animateScrollToPage(index) }
                     },
+                    selectedContentColor = MaterialTheme.colorScheme.onSurface,
+                    unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     text = {
                         TabTextWithBadge(
                             text = tab.title,
