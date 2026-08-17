@@ -4,21 +4,16 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.PersonAdd
-import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -55,10 +50,10 @@ fun ProfileHeader(
                     ),
                 ),
             )
-            .windowInsetsPadding(WindowInsets.statusBars)
-            .padding(horizontal = MaterialTheme.padding.medium, vertical = MaterialTheme.padding.small),
+            .padding(top = 8.dp, bottom = MaterialTheme.padding.small)
+            .padding(horizontal = MaterialTheme.padding.medium),
     ) {
-        // Controls sit above the identity row, matching the profile-page hierarchy.
+        // Controls row — back arrow left, follow/notification right
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -74,30 +69,23 @@ fun ProfileHeader(
                     tint = Color.White,
                 )
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small)) {
-                FilledIconButton(
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                IconButton(
                     onClick = { /* Phase 6: notification toggle */ },
-                    modifier = Modifier.size(40.dp),
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = Color.White.copy(alpha = 0.2f),
-                        contentColor = Color.White,
-                    ),
+                    modifier = Modifier.size(48.dp),
                 ) {
-                    Icon(Icons.Outlined.Notifications, contentDescription = "Notifications", modifier = Modifier.size(20.dp))
+                    Icon(Icons.Outlined.Notifications, contentDescription = "Notifications", tint = Color.White, modifier = Modifier.size(22.dp))
                 }
-                FilledIconButton(
+                IconButton(
                     onClick = { /* Phase 6: follow */ },
-                    modifier = Modifier.size(40.dp),
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = Color.White.copy(alpha = 0.2f),
-                        contentColor = Color.White,
-                    ),
+                    modifier = Modifier.size(48.dp),
                 ) {
-                    Icon(Icons.Outlined.PersonAdd, contentDescription = "Follow", modifier = Modifier.size(20.dp))
+                    Icon(Icons.Outlined.PersonAdd, contentDescription = "Follow", tint = Color.White, modifier = Modifier.size(22.dp))
                 }
             }
         }
 
+        // Identity row — avatar, name, party pill
         Row(
             modifier = Modifier
                 .fillMaxWidth()

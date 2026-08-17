@@ -5,15 +5,15 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -33,14 +33,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.goveye.app.ui.theme.padding
 import kotlinx.coroutines.launch
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 
 private enum class ProfileTab(val title: String) {
     PROFILE("Profile"),
@@ -92,63 +88,56 @@ fun ProfileScreen(
                     .fillMaxSize()
                     .padding(innerPadding),
             ) {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .nestedScroll(scrollBehavior.nestedScrollConnection),
-                ) {
-                    item {
-                        ProfileHeader(
-                            mp = uiState.mp!!,
-                            onBack = onBack,
-                        )
-                    }
-                    item {
-                        TabRow(
-                            selectedTabIndex = pagerState.currentPage,
-                            containerColor = MaterialTheme.colorScheme.surface,
-                        ) {
-                            ProfileTab.entries.forEachIndexed { index, tab ->
-                                Tab(
-                                    selected = pagerState.currentPage == index,
-                                    onClick = {
-                                        coroutineScope.launch { pagerState.animateScrollToPage(index) }
-                                    },
-                                    text = { Text(tab.title) },
-                                )
-                            }
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // Fixed header — does not scroll
+                    ProfileHeader(
+                        mp = uiState.mp!!,
+                        onBack = onBack,
+                    )
+
+                    // Fixed tabs
+                    TabRow(
+                        selectedTabIndex = pagerState.currentPage,
+                        containerColor = MaterialTheme.colorScheme.surface,
+                    ) {
+                        ProfileTab.entries.forEachIndexed { index, tab ->
+                            Tab(
+                                selected = pagerState.currentPage == index,
+                                onClick = {
+                                    coroutineScope.launch { pagerState.animateScrollToPage(index) }
+                                },
+                                text = { Text(tab.title) },
+                            )
                         }
                     }
-                    item {
-                        Spacer(modifier = Modifier.height(24.dp))
-                        HorizontalPager(
-                            state = pagerState,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) { page ->
-                            when (ProfileTab.entries[page]) {
-                                ProfileTab.PROFILE -> {
-                                    Column {
-                                        ProfileStatsCard(
-                                            mp = uiState.mp!!,
-                                            age = uiState.age,
-                                            votesRecorded = uiState.votesRecorded,
-                                        )
-                                        BioSection(synopsis = uiState.synopsis)
-                                        ContactSection(contacts = uiState.contacts)
-                                        RelatedMpsSection(
-                                            samePartyMps = uiState.samePartyMps,
-                                            committeePeerMps = uiState.committeePeerMps,
-                                            onNavigateToProfile = onNavigateToProfile,
-                                        )
-                                    }
-                                }
-                                ProfileTab.CAREER -> CareerTimelineSection(uiState.experiences)
-                                ProfileTab.COMMITTEES -> CommitteeChipsSection(uiState.committees)
-                            }
+
+                    // Pager — each page has its own scrollable LazyColumn
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                    ) { page ->
+                        when (ProfileTab.entries[page]) {
+                            ProfileTab.PROFILE -> ProfileTabContent(
+                                mp = uiState.mp!!,
+                                age = uiState.age,
+                                votesRecorded = uiState.votesRecorded,
+                                synopsis = uiState.synopsis,
+                                contacts = uiState.contacts,
+                                samePartyMps = uiState.samePartyMps,
+                                committeePeerMps = uiState.committeePeerMps,
+                                onNavigateToProfile = onNavigateToProfile,
+                            )
+                            ProfileTab.CAREER -> CareerTabContent(
+                                experiences = uiState.experiences,
+                            )
+                            ProfileTab.COMMITTEES -> CommitteesTabContent(
+                                committees = uiState.committees,
+                            )
                         }
                     }
                 }
 
+                // Animated collapsed header — fades in when scrolled
                 AnimatedVisibility(
                     visible = isCollapsed,
                     enter = fadeIn(),
@@ -178,5 +167,60 @@ fun ProfileScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ProfileTabContent(
+    mp: com.goveye.app.domain.model.Mp,
+    age: Int?,
+    votesRecorded: Int?,
+    synopsis: String?,
+    contacts: List<com.goveye.app.domain.model.Contact>,
+    samePartyMps: List<com.goveye.app.domain.model.Mp>,
+    committeePeerMps: List<com.goveye.app.domain.model.Mp>,
+    onNavigateToProfile: (Int) -> Unit,
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        item {
+            ProfileStatsCard(
+                mp = mp,
+                age = age,
+                votesRecorded = votesRecorded,
+            )
+        }
+        item { BioSection(synopsis = synopsis) }
+        item { ContactSection(contacts = contacts) }
+        item {
+            RelatedMpsSection(
+                samePartyMps = samePartyMps,
+                committeePeerMps = committeePeerMps,
+                onNavigateToProfile = onNavigateToProfile,
+            )
+        }
+    }
+}
+
+@Composable
+private fun CareerTabContent(
+    experiences: List<com.goveye.app.domain.model.BiographyExperience>,
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        item { CareerTimelineSection(experiences = experiences) }
+    }
+}
+
+@Composable
+private fun CommitteesTabContent(
+    committees: List<com.goveye.app.domain.model.Committee>,
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        item { CommitteeChipsSection(committees = committees) }
     }
 }

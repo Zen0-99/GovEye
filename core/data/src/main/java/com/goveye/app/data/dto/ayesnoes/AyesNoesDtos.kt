@@ -12,8 +12,14 @@ data class AyesMpResponse(
 data class AyesMpDetail(
     @SerialName("parliament_member_id") val parliamentMemberId: Int? = null,
     @SerialName("date_of_birth") val dateOfBirth: String? = null,
-    @SerialName("votes_recorded") val votesRecorded: Int? = null,
+    val voting: AyesVotingSummary? = null,
+)
+
+@Serializable
+data class AyesVotingSummary(
+    @SerialName("recorded_votes") val recordedVotes: Int? = null,
     val ayes: Int? = null,
     val noes: Int? = null,
     val rebellions: Int? = null,
+    val tellerships: Int? = null,
 )

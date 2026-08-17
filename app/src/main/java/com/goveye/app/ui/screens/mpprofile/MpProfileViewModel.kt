@@ -65,7 +65,7 @@ class ProfileViewModel @Inject constructor(
             val age = stats?.dateOfBirth?.let(::calculateAge)
             _uiState.value = _uiState.value.copy(
                 age = age,
-                votesRecorded = stats?.votesRecorded,
+                votesRecorded = stats?.voting?.recordedVotes,
             )
         }
 
