@@ -26,7 +26,7 @@ class VotesRepository @Inject constructor(
     private val lordsVotesApi: LordsVotesApi,
     private val mapper: DivisionMapper,
 ) {
-    fun observeDivisions(limit: Int = 50): Flow<RepositoryResult<List<Division>>> =
+    fun observeDivisions(limit: Int = 200): Flow<RepositoryResult<List<Division>>> =
         divisionDao.observeDivisions(limit).map { entities ->
             if (entities.isEmpty()) {
                 RepositoryResult(emptyList(), SyncStatus.EMPTY)
@@ -37,7 +37,7 @@ class VotesRepository @Inject constructor(
             }
         }
 
-    fun observeDivisionsByHouse(house: Int, limit: Int = 50): Flow<RepositoryResult<List<Division>>> =
+    fun observeDivisionsByHouse(house: Int, limit: Int = 200): Flow<RepositoryResult<List<Division>>> =
         if (house == 0) {
             observeDivisions(limit)
         } else {
@@ -91,22 +91,32 @@ class VotesRepository @Inject constructor(
 
     suspend fun refresh() {
         try {
-            val divisions = votesApi.searchDivisions(itemsPerPage = 50)
-            val entities = divisions.map { dto ->
-                DivisionEntity(
-                    id = dto.divisionId,
-                    title = dto.title,
-                    date = dto.date,
-                    publicationUpdated = dto.publicationUpdated,
-                    number = dto.number,
-                    isDeferred = dto.isDeferred,
-                    ayeCount = dto.ayeCount,
-                    noCount = dto.noCount,
-                    house = 1,
-                    lastUpdated = System.currentTimeMillis(),
-                )
+            val pageSize = 100
+            var skip = 0
+            val allEntities = mutableListOf<DivisionEntity>()
+
+            while (true) {
+                val divisions = votesApi.searchDivisions(itemsPerPage = pageSize, skip = skip)
+                if (divisions.isEmpty()) break
+                allEntities.addAll(divisions.map { dto ->
+                    DivisionEntity(
+                        id = dto.divisionId,
+                        title = dto.title,
+                        date = dto.date,
+                        publicationUpdated = dto.publicationUpdated,
+                        number = dto.number,
+                        isDeferred = dto.isDeferred,
+                        ayeCount = dto.ayeCount,
+                        noCount = dto.noCount,
+                        house = 1,
+                        lastUpdated = System.currentTimeMillis(),
+                    )
+                })
+                if (divisions.size < pageSize) break
+                skip += pageSize
             }
-            divisionDao.upsertAll(entities)
+
+            if (allEntities.isNotEmpty()) divisionDao.upsertAll(allEntities)
         } catch (e: Exception) {
             // Cache is still served
         }
@@ -114,22 +124,32 @@ class VotesRepository @Inject constructor(
 
     suspend fun refreshLords() {
         try {
-            val divisions = lordsVotesApi.searchDivisions(itemsPerPage = 50)
-            val entities = divisions.map { dto ->
-                DivisionEntity(
-                    id = dto.divisionId,
-                    title = dto.title,
-                    date = dto.date,
-                    publicationUpdated = null,
-                    number = dto.number,
-                    isDeferred = false,
-                    ayeCount = dto.memberContentCount,
-                    noCount = dto.memberNotContentCount,
-                    house = 2,
-                    lastUpdated = System.currentTimeMillis(),
-                )
+            val pageSize = 100
+            var skip = 0
+            val allEntities = mutableListOf<DivisionEntity>()
+
+            while (true) {
+                val divisions = lordsVotesApi.searchDivisions(itemsPerPage = pageSize, skip = skip)
+                if (divisions.isEmpty()) break
+                allEntities.addAll(divisions.map { dto ->
+                    DivisionEntity(
+                        id = dto.divisionId,
+                        title = dto.title,
+                        date = dto.date,
+                        publicationUpdated = null,
+                        number = dto.number,
+                        isDeferred = false,
+                        ayeCount = dto.memberContentCount,
+                        noCount = dto.memberNotContentCount,
+                        house = 2,
+                        lastUpdated = System.currentTimeMillis(),
+                    )
+                })
+                if (divisions.size < pageSize) break
+                skip += pageSize
             }
-            divisionDao.upsertAll(entities)
+
+            if (allEntities.isNotEmpty()) divisionDao.upsertAll(allEntities)
         } catch (e: Exception) {
             // Cache is still served
         }
@@ -168,19 +188,77 @@ class VotesRepository @Inject constructor(
     }
 
     /**
-     * Fetch a member's voting record from the API and cache it.
+     * Fetch a member's full voting record from the API and cache it.
+     * Paginates through all available votes (API returns newest first).
+     * Also stores division metadata so charts can join votes to dates.
      */
     suspend fun refreshMemberVoting(memberId: Int, house: Int) {
         try {
+            val pageSize = 100
+            var skip = 0
+            val allVotes = mutableListOf<DivisionVoteEntity>()
+            val allDivisions = mutableListOf<DivisionEntity>()
+
             if (house == 2) {
-                val dtos = lordsVotesApi.getMemberVoting(memberId, itemsPerPage = 100)
-                val votes = dtos.mapNotNull { mapper.toDomain(it) }.map { it.toEntity() }
-                if (votes.isNotEmpty()) divisionDao.upsertVotes(votes)
+                // Lords API
+                while (true) {
+                    val dtos = lordsVotesApi.getMemberVoting(memberId, itemsPerPage = pageSize, skip = skip)
+                    if (dtos.isEmpty()) break
+                    dtos.forEach { dto ->
+                        val vote = mapper.toDomain(dto) ?: return@forEach
+                        allVotes.add(vote.toEntity())
+                        // Store division metadata from the embedded PublishedDivision
+                        val pub = dto.publishedDivision ?: return@forEach
+                        allDivisions.add(
+                            DivisionEntity(
+                                id = pub.divisionId,
+                                title = pub.title,
+                                date = pub.date,
+                                publicationUpdated = null,
+                                number = null,
+                                isDeferred = false,
+                                ayeCount = pub.memberContentCount,
+                                noCount = pub.memberNotContentCount,
+                                house = 2,
+                                lastUpdated = System.currentTimeMillis(),
+                            ),
+                        )
+                    }
+                    if (dtos.size < pageSize) break
+                    skip += pageSize
+                }
             } else {
-                val dtos = votesApi.getMemberVoting(memberId, itemsPerPage = 100)
-                val votes = dtos.mapNotNull { mapper.toDomain(it) }.map { it.toEntity() }
-                if (votes.isNotEmpty()) divisionDao.upsertVotes(votes)
+                // Commons API
+                while (true) {
+                    val dtos = votesApi.getMemberVoting(memberId, itemsPerPage = pageSize, skip = skip)
+                    if (dtos.isEmpty()) break
+                    dtos.forEach { dto ->
+                        val vote = mapper.toDomain(dto) ?: return@forEach
+                        allVotes.add(vote.toEntity())
+                        // Store division metadata from the embedded PublishedDivision
+                        val pub = dto.publishedDivision ?: return@forEach
+                        allDivisions.add(
+                            DivisionEntity(
+                                id = pub.divisionId,
+                                title = pub.title,
+                                date = pub.date,
+                                publicationUpdated = null,
+                                number = null,
+                                isDeferred = false,
+                                ayeCount = pub.ayeCount,
+                                noCount = pub.noCount,
+                                house = 1,
+                                lastUpdated = System.currentTimeMillis(),
+                            ),
+                        )
+                    }
+                    if (dtos.size < pageSize) break
+                    skip += pageSize
+                }
             }
+
+            if (allDivisions.isNotEmpty()) divisionDao.upsertAll(allDivisions)
+            if (allVotes.isNotEmpty()) divisionDao.upsertVotes(allVotes)
         } catch (e: Exception) {
             // Cache is still served
         }

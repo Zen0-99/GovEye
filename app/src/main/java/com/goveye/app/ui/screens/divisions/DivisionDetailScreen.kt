@@ -18,21 +18,22 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -45,6 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -193,9 +195,13 @@ private fun DivisionDetailContent(
     onNavigateToProfile: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var voterTab by remember { mutableStateOf(0) } // 0 = Ayes, 1 = Noes
+    var voteFilter by remember { mutableStateOf(VoteFilter.ALL) } // ALL, AYE, NO
     var searchQuery by remember { mutableStateOf("") }
+    var searchExpanded by remember { mutableStateOf(false) }
     var breakdownExpanded by remember { mutableStateOf(true) }
+
+    val ayes = state.votes.filter { it.vote == VoteType.AYE }
+    val noes = state.votes.filter { it.vote == VoteType.NO }
 
     LazyColumn(
         modifier = modifier,
@@ -224,66 +230,48 @@ private fun DivisionDetailContent(
             }
         }
 
-        // Voter lists — tabbed Ayes/Noes with search
-        val ayes = state.votes.filter { it.vote == VoteType.AYE }
-        val noes = state.votes.filter { it.vote == VoteType.NO }
-
+        // Voter search bar — FloatingSearchBar style, expands to show Aye/No filter
         if (ayes.isNotEmpty() || noes.isNotEmpty()) {
             item {
-                TabRow(
-                    selectedTabIndex = voterTab,
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                ) {
-                    Tab(
-                        selected = voterTab == 0,
-                        onClick = { voterTab = 0 },
-                        text = { Text("Ayes (${ayes.size})") },
-                        selectedContentColor = AyeColor,
-                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Tab(
-                        selected = voterTab == 1,
-                        onClick = { voterTab = 1 },
-                        text = { Text("Noes (${noes.size})") },
-                        selectedContentColor = NoColor,
-                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-
-            // Search field
-            item {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    placeholder = { Text("Search voters...") },
-                    leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
+                VoterSearchBar(
+                    query = searchQuery,
+                    onQueryChange = { searchQuery = it },
+                    expanded = searchExpanded,
+                    onExpandChange = { searchExpanded = it },
+                    voteFilter = voteFilter,
+                    onVoteFilterChange = { voteFilter = it },
+                    ayeCount = ayes.size,
+                    noCount = noes.size,
                 )
             }
 
             // Filtered voter list
-            val voters = if (voterTab == 0) ayes else noes
+            val voters = when (voteFilter) {
+                VoteFilter.ALL -> ayes + noes
+                VoteFilter.AYE -> ayes
+                VoteFilter.NO -> noes
+            }
             val filtered = if (searchQuery.isBlank()) {
                 voters
             } else {
-                voters.filter { it.memberName.contains(searchQuery, ignoreCase = true) }
+                voters.filter {
+                    it.memberName.contains(searchQuery, ignoreCase = true) ||
+                    it.constituencyName?.contains(searchQuery, ignoreCase = true) == true
+                }
             }
 
             // Group by party
             val groupedByParty = filtered.groupBy { it.partyName ?: "Unknown" }
 
             groupedByParty.forEach { (partyName, partyVoters) ->
-                item(key = "header-$partyName-${voterTab}") {
+                item(key = "header-$partyName-${voteFilter}") {
                     PartyGroupHeader(
                         partyName = partyName,
                         count = partyVoters.size,
                         partyColour = partyVoters.firstOrNull()?.partyColour,
                     )
                 }
-                items(partyVoters, key = { "${voterTab}-${it.memberId}" }) { vote ->
+                items(partyVoters, key = { "${voteFilter}-${it.memberId}" }) { vote ->
                     VoterRow(vote = vote, onClick = { onNavigateToProfile(vote.memberId) })
                 }
             }
@@ -291,12 +279,162 @@ private fun DivisionDetailContent(
             if (filtered.isEmpty()) {
                 item {
                     Text(
-                        text = "No voters match \"$searchQuery\"",
+                        text = if (searchQuery.isNotBlank())
+                            "No voters match \"$searchQuery\""
+                        else
+                            "No voters in this category",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(16.dp),
                     )
                 }
+            }
+        }
+    }
+}
+
+enum class VoteFilter { ALL, AYE, NO }
+
+/**
+ * FloatingSearchBar-style search for voters, matching the main nav search bar.
+ * Expands to show Aye/No/All filter chips when tapped.
+ */
+@Composable
+private fun VoterSearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    expanded: Boolean,
+    onExpandChange: (Boolean) -> Unit,
+    voteFilter: VoteFilter,
+    onVoteFilterChange: (VoteFilter) -> Unit,
+    ayeCount: Int,
+    noCount: Int,
+    modifier: Modifier = Modifier,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val shape = RoundedCornerShape(20.dp)
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(shape),
+            shape = shape,
+            color = colorScheme.surfaceContainer,
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .padding(horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Search,
+                    contentDescription = null,
+                    tint = colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 12.dp).size(22.dp),
+                )
+
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 12.dp),
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    if (query.isEmpty()) {
+                        Text(
+                            text = "Search voters / constituency…",
+                            color = colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 1,
+                        )
+                    }
+                    BasicTextField(
+                        value = query,
+                        onValueChange = onQueryChange,
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.titleMedium.copy(
+                            color = colorScheme.onSurface,
+                        ),
+                        cursorBrush = SolidColor(colorScheme.primary),
+                        keyboardOptions = KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+
+                if (query.isNotEmpty()) {
+                    IconButton(
+                        onClick = { onQueryChange("") },
+                        modifier = Modifier.size(40.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Close,
+                            contentDescription = "Clear search",
+                            tint = colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                }
+
+                // Expand/collapse filter button
+                IconButton(
+                    onClick = { onExpandChange(!expanded) },
+                    modifier = Modifier.size(40.dp),
+                ) {
+                    Icon(
+                        imageVector = if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+                        contentDescription = if (expanded) "Hide filters" else "Show filters",
+                        tint = if (expanded) colorScheme.primary else colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+            }
+        }
+
+        // Expandable Aye/No filter chips
+        AnimatedVisibility(
+            visible = expanded,
+            enter = expandVertically(),
+            exit = shrinkVertically(),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                FilterChip(
+                    selected = voteFilter == VoteFilter.ALL,
+                    onClick = { onVoteFilterChange(VoteFilter.ALL) },
+                    label = { Text("All (${ayeCount + noCount})") },
+                )
+                FilterChip(
+                    selected = voteFilter == VoteFilter.AYE,
+                    onClick = { onVoteFilterChange(VoteFilter.AYE) },
+                    label = { Text("Ayes ($ayeCount)") },
+                    leadingIcon = {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(AyeColor),
+                        )
+                    },
+                )
+                FilterChip(
+                    selected = voteFilter == VoteFilter.NO,
+                    onClick = { onVoteFilterChange(VoteFilter.NO) },
+                    label = { Text("Noes ($noCount)") },
+                    leadingIcon = {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(NoColor),
+                        )
+                    },
+                )
             }
         }
     }

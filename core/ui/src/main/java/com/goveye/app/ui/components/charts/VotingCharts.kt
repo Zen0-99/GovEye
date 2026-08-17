@@ -38,6 +38,8 @@ import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLa
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
 import com.patrykandpatrick.vico.compose.common.Fill
 import com.patrykandpatrick.vico.compose.common.component.rememberLineComponent
+import com.patrykandpatrick.vico.compose.m3.common.rememberM3VicoTheme
+import com.patrykandpatrick.vico.compose.common.ProvideVicoTheme
 
 // Consistent colors — Aye = teal, No = orange, No-vote = gray
 private val AyeColor = Color(0xFF00796B)
@@ -79,26 +81,28 @@ fun VotingBarChart(
     }
 
     Column(modifier = modifier) {
-        CartesianChartHost(
-            chart = rememberCartesianChart(
-                rememberColumnCartesianLayer(
-                    columnProvider = ColumnCartesianLayer.ColumnProvider.series(
-                        rememberLineComponent(fill = Fill(AyeColor), thickness = 12.dp),
-                        rememberLineComponent(fill = Fill(NoColor), thickness = 12.dp),
-                        rememberLineComponent(fill = Fill(NoVoteColor), thickness = 12.dp),
+        ProvideVicoTheme(theme = rememberM3VicoTheme()) {
+            CartesianChartHost(
+                chart = rememberCartesianChart(
+                    rememberColumnCartesianLayer(
+                        columnProvider = ColumnCartesianLayer.ColumnProvider.series(
+                            rememberLineComponent(fill = Fill(AyeColor), thickness = 12.dp),
+                            rememberLineComponent(fill = Fill(NoColor), thickness = 12.dp),
+                            rememberLineComponent(fill = Fill(NoVoteColor), thickness = 12.dp),
+                        ),
+                    ),
+                    startAxis = VerticalAxis.rememberStart(),
+                    bottomAxis = HorizontalAxis.rememberBottom(
+                        valueFormatter = bottomAxisFormatter,
                     ),
                 ),
-                startAxis = VerticalAxis.rememberStart(),
-                bottomAxis = HorizontalAxis.rememberBottom(
-                    valueFormatter = bottomAxisFormatter,
-                ),
-            ),
-            modelProducer = modelProducer,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp)
-                .padding(8.dp),
-        )
+                modelProducer = modelProducer,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+                    .padding(8.dp),
+            )
+        }
         // Legend
         ChartLegend(
             items = listOf(
@@ -145,26 +149,28 @@ fun AttendanceLineChart(
         CartesianValueFormatter { _, value, _ -> "${value.toInt()}%" }
     }
 
-    CartesianChartHost(
-        chart = rememberCartesianChart(
-            rememberLineCartesianLayer(
-                lineProvider = LineCartesianLayer.LineProvider.series(
-                    LineCartesianLayer.rememberLine(
-                        fill = LineCartesianLayer.LineFill.single(Fill(LineColor)),
+    ProvideVicoTheme(theme = rememberM3VicoTheme()) {
+        CartesianChartHost(
+            chart = rememberCartesianChart(
+                rememberLineCartesianLayer(
+                    lineProvider = LineCartesianLayer.LineProvider.series(
+                        LineCartesianLayer.rememberLine(
+                            fill = LineCartesianLayer.LineFill.single(Fill(LineColor)),
+                        ),
                     ),
                 ),
+                startAxis = VerticalAxis.rememberStart(valueFormatter = startAxisFormatter),
+                bottomAxis = HorizontalAxis.rememberBottom(
+                    valueFormatter = bottomAxisFormatter,
+                ),
             ),
-            startAxis = VerticalAxis.rememberStart(valueFormatter = startAxisFormatter),
-            bottomAxis = HorizontalAxis.rememberBottom(
-                valueFormatter = bottomAxisFormatter,
-            ),
-        ),
-        modelProducer = modelProducer,
-        modifier = modifier
-            .fillMaxWidth()
-            .height(160.dp)
-            .padding(8.dp),
-    )
+            modelProducer = modelProducer,
+            modifier = modifier
+                .fillMaxWidth()
+                .height(160.dp)
+                .padding(8.dp),
+        )
+    }
 }
 
 /**
@@ -202,26 +208,28 @@ fun RebellionLineChart(
         CartesianValueFormatter { _, value, _ -> "${value.toInt()}%" }
     }
 
-    CartesianChartHost(
-        chart = rememberCartesianChart(
-            rememberLineCartesianLayer(
-                lineProvider = LineCartesianLayer.LineProvider.series(
-                    LineCartesianLayer.rememberLine(
-                        fill = LineCartesianLayer.LineFill.single(Fill(NoColor)),
+    ProvideVicoTheme(theme = rememberM3VicoTheme()) {
+        CartesianChartHost(
+            chart = rememberCartesianChart(
+                rememberLineCartesianLayer(
+                    lineProvider = LineCartesianLayer.LineProvider.series(
+                        LineCartesianLayer.rememberLine(
+                            fill = LineCartesianLayer.LineFill.single(Fill(NoColor)),
+                        ),
                     ),
                 ),
+                startAxis = VerticalAxis.rememberStart(valueFormatter = startAxisFormatter),
+                bottomAxis = HorizontalAxis.rememberBottom(
+                    valueFormatter = bottomAxisFormatter,
+                ),
             ),
-            startAxis = VerticalAxis.rememberStart(valueFormatter = startAxisFormatter),
-            bottomAxis = HorizontalAxis.rememberBottom(
-                valueFormatter = bottomAxisFormatter,
-            ),
-        ),
-        modelProducer = modelProducer,
-        modifier = modifier
-            .fillMaxWidth()
-            .height(160.dp)
-            .padding(8.dp),
-    )
+            modelProducer = modelProducer,
+            modifier = modifier
+                .fillMaxWidth()
+                .height(160.dp)
+                .padding(8.dp),
+        )
+    }
 }
 
 @Composable
