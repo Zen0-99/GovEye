@@ -17,9 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -137,14 +134,12 @@ fun DivisionDetailScreen(
 
     val ayeCount = state.votes.count { it.vote == VoteType.AYE }
     val noCount = state.votes.count { it.vote == VoteType.NO }
-    val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
     Scaffold(
         topBar = {
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = statusBarPadding),
+                    .fillMaxWidth(),
             ) {
                 // Top row: back button + search bar
                 Row(
