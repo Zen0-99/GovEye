@@ -18,7 +18,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-data class MpProfileUiState(
+data class ProfileUiState(
     val mp: Mp? = null,
     val synopsis: String? = null,
     val contacts: List<Contact> = emptyList(),
@@ -31,14 +31,14 @@ data class MpProfileUiState(
 )
 
 @HiltViewModel
-class MpProfileViewModel @Inject constructor(
+class ProfileViewModel @Inject constructor(
     private val membersRepository: MembersRepository,
     private val committeesRepository: CommitteesRepository,
     private val mpDao: MpDao,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(MpProfileUiState())
-    val uiState: StateFlow<MpProfileUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(ProfileUiState())
+    val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
 
     fun loadProfile(memberId: Int) {
         viewModelScope.launch {

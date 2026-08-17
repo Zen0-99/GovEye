@@ -7,12 +7,17 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -33,6 +38,7 @@ import com.goveye.app.ui.theme.parsePartyColor
 @Composable
 fun ProfileHeader(
     mp: Mp,
+    onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val partyColor = parsePartyColor(mp.party?.backgroundColour)
@@ -40,6 +46,7 @@ fun ProfileHeader(
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .windowInsetsPadding(WindowInsets.statusBars)
             .background(
                 brush = Brush.verticalGradient(
                     colors = listOf(
@@ -51,6 +58,16 @@ fun ProfileHeader(
             )
             .padding(MaterialTheme.padding.medium),
     ) {
+        IconButton(
+            onClick = onBack,
+            modifier = Modifier.size(48.dp),
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                contentDescription = "Back",
+                tint = Color.White,
+            )
+        }
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.Top,

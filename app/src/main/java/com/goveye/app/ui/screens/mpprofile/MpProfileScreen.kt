@@ -1,22 +1,25 @@
 package com.goveye.app.ui.screens.mpprofile
 
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -25,18 +28,18 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.goveye.app.ui.theme.padding
 import kotlinx.coroutines.launch
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 
 private enum class ProfileTab(val title: String) {
     PROFILE("Profile"),
@@ -46,12 +49,12 @@ private enum class ProfileTab(val title: String) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MpProfileScreen(
+fun ProfileScreen(
     memberId: Int,
     onBack: () -> Unit,
     onNavigateToProfile: (Int) -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: MpProfileViewModel = hiltViewModel(),
+    viewModel: ProfileViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -62,35 +65,9 @@ fun MpProfileScreen(
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val pagerState = rememberPagerState(pageCount = { ProfileTab.entries.size })
     val coroutineScope = rememberCoroutineScope()
+    val isCollapsed = scrollBehavior.state.collapsedFraction > 0.5f
 
-    val scrolledFraction = scrollBehavior.state.collapsedFraction
-    val headerAlpha by animateFloatAsState(targetValue = scrolledFraction, label = "headerAlpha")
-    val contentColor = lerp(Color.White, MaterialTheme.colorScheme.onSurface, headerAlpha)
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    if (headerAlpha > 0.5f) {
-                        Text(uiState.mp?.nameDisplayAs ?: "")
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back", tint = contentColor)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = lerp(Color.Transparent, MaterialTheme.colorScheme.surface, headerAlpha),
-                    scrolledContainerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface,
-                    navigationIconContentColor = contentColor,
-                ),
-                scrollBehavior = scrollBehavior,
-            )
-        },
-        modifier = modifier,
-    ) { innerPadding ->
+    Scaffold(modifier = modifier) { innerPadding ->
         if (uiState.isLoading && uiState.mp == null) {
             Box(
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
@@ -106,18 +83,22 @@ fun MpProfileScreen(
                 Text("MP not found", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
-            Column(
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding),
             ) {
                 LazyColumn(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .nestedScroll(scrollBehavior.nestedScrollConnection),
                 ) {
-                    // Profile header — scrolls away, TopAppBar fades in
-                    item { ProfileHeader(mp = uiState.mp!!) }
-
-                    // Tabs — pinned below header
+                    item {
+                        ProfileHeader(
+                            mp = uiState.mp!!,
+                            onBack = onBack,
+                        )
+                    }
                     item {
                         TabRow(
                             selectedTabIndex = pagerState.currentPage,
@@ -127,18 +108,15 @@ fun MpProfileScreen(
                                 Tab(
                                     selected = pagerState.currentPage == index,
                                     onClick = {
-                                        coroutineScope.launch {
-                                            pagerState.animateScrollToPage(index)
-                                        }
+                                        coroutineScope.launch { pagerState.animateScrollToPage(index) }
                                     },
                                     text = { Text(tab.title) },
                                 )
                             }
                         }
                     }
-
-                    // Tab content via HorizontalPager
                     item {
+                        Spacer(modifier = Modifier.height(24.dp))
                         HorizontalPager(
                             state = pagerState,
                             modifier = Modifier.fillMaxWidth(),
@@ -156,14 +134,38 @@ fun MpProfileScreen(
                                         )
                                     }
                                 }
-                                ProfileTab.CAREER -> {
-                                    CareerTimelineSection(experiences = uiState.experiences)
-                                }
-                                ProfileTab.COMMITTEES -> {
-                                    CommitteeChipsSection(committees = uiState.committees)
-                                }
+                                ProfileTab.CAREER -> CareerTimelineSection(uiState.experiences)
+                                ProfileTab.COMMITTEES -> CommitteeChipsSection(uiState.committees)
                             }
                         }
+                    }
+                }
+
+                AnimatedVisibility(
+                    visible = isCollapsed,
+                    enter = fadeIn(),
+                    exit = fadeOut(),
+                    modifier = Modifier.align(Alignment.TopCenter),
+                ) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.surface,
+                        shadowElevation = 3.dp,
+                    ) {
+                        TopAppBar(
+                            title = { Text(uiState.mp?.nameDisplayAs ?: "") },
+                            navigationIcon = {
+                                IconButton(onClick = onBack) {
+                                    Icon(
+                                        Icons.AutoMirrored.Outlined.ArrowBack,
+                                        contentDescription = "Back",
+                                    )
+                                }
+                            },
+                            colors = TopAppBarDefaults.topAppBarColors(
+                                containerColor = Color.Transparent,
+                            ),
+                        )
                     }
                 }
             }

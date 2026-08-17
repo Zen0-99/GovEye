@@ -20,7 +20,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Test
 
-class MpProfileViewModelTest {
+class ProfileViewModelTest {
 
     private val membersRepository = mockk<MembersRepository>(relaxed = true)
     private val committeesRepository = mockk<CommitteesRepository>(relaxed = true)
@@ -75,7 +75,7 @@ class MpProfileViewModelTest {
         coEvery { membersRepository.getContact(1) } returns emptyList()
         coEvery { membersRepository.getExperience(1) } returns emptyList()
 
-        val viewModel = MpProfileViewModel(membersRepository, committeesRepository, mpDao)
+        val viewModel = ProfileViewModel(membersRepository, committeesRepository, mpDao)
         viewModel.loadProfile(1)
 
         viewModel.uiState.test {
@@ -98,7 +98,7 @@ class MpProfileViewModelTest {
         coEvery { membersRepository.getContact(999) } returns emptyList()
         coEvery { membersRepository.getExperience(999) } returns emptyList()
 
-        val viewModel = MpProfileViewModel(membersRepository, committeesRepository, mpDao)
+        val viewModel = ProfileViewModel(membersRepository, committeesRepository, mpDao)
         viewModel.loadProfile(999)
 
         viewModel.uiState.test {

@@ -21,8 +21,8 @@ class DeepLinkHandlerTest {
     fun `parses mp deep link with memberId`() {
         val intent = makeIntent("goveye://mp/172")
         val route = DeepLinkHandler.parseDeepLink(intent)
-        assertTrue(route is MpProfileRoute)
-        assertEquals(172, (route as MpProfileRoute).memberId)
+        assertTrue(route is ProfileRoute)
+        assertEquals(172, (route as ProfileRoute).memberId)
     }
 
     @Test

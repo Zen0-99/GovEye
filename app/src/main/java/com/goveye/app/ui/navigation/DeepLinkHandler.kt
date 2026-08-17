@@ -29,7 +29,7 @@ object DeepLinkHandler {
                     if (pathSegments.isNotEmpty()) {
                         val memberId = pathSegments.firstOrNull()?.toIntOrNull()
                         if (memberId != null) {
-                            MpProfileRoute(memberId)
+                            ProfileRoute(memberId)
                         } else {
                             DirectoryRoute
                         }

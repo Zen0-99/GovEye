@@ -1,5 +1,8 @@
 package com.goveye.app.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -35,13 +38,13 @@ import com.goveye.app.ui.navigation.DeepLinkNavigator
 import com.goveye.app.ui.navigation.DirectoryRoute
 import com.goveye.app.ui.navigation.FeedRoute
 import com.goveye.app.ui.navigation.FollowingRoute
-import com.goveye.app.ui.navigation.MpProfileRoute
+import com.goveye.app.ui.navigation.ProfileRoute
 import com.goveye.app.ui.navigation.SettingsRoute
 import com.goveye.app.ui.screens.FeedScreen
 import com.goveye.app.ui.screens.FollowingScreen
 import com.goveye.app.ui.screens.SettingsScreen
 import com.goveye.app.ui.screens.directory.DirectoryScreen
-import com.goveye.app.ui.screens.mpprofile.MpProfileScreen
+import com.goveye.app.ui.screens.mpprofile.ProfileScreen
 import com.goveye.app.ui.theme.GovEyeTheme
 import com.goveye.app.ui.theme.ThemeViewModel
 
@@ -107,7 +110,7 @@ private fun GovEyeAppContent(
     LaunchedEffect(Unit) {
         deepLinkNavigator.deepLinkEvents.collect { route ->
             when (route) {
-                is MpProfileRoute -> {
+                is ProfileRoute -> {
                     currentTabIndex = 1
                     directoryBackStack.add(route)
                 }
@@ -137,19 +140,19 @@ private fun GovEyeAppContent(
                     NavEntry(key) {
                         DirectoryScreen(
                             onNavigateToProfile = { memberId ->
-                                currentBackStack.add(MpProfileRoute(memberId))
+                                currentBackStack.add(ProfileRoute(memberId))
                             },
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
 
-                is MpProfileRoute ->
+                is ProfileRoute ->
                     NavEntry(key) {
-                        MpProfileScreen(
+                        ProfileScreen(
                             memberId = key.memberId,
                             onBack = { currentBackStack.removeLastOrNull() },
                             onNavigateToProfile = { targetId ->
-                                currentBackStack.add(MpProfileRoute(targetId))
+                                currentBackStack.add(ProfileRoute(targetId))
                             },
                             modifier = Modifier.fillMaxSize(),
                         )
@@ -172,11 +175,15 @@ private fun GovEyeAppContent(
             }
         }
 
-    val showBottomBar = currentBackStack.lastOrNull()?.let { it !is MpProfileRoute } ?: true
+    val showBottomBar = currentBackStack.lastOrNull()?.let { it !is ProfileRoute } ?: true
 
     Scaffold(
         bottomBar = {
-            if (showBottomBar) {
+            AnimatedVisibility(
+                visible = showBottomBar,
+                enter = fadeIn() + androidx.compose.animation.slideInVertically { it / 2 },
+                exit = fadeOut() + androidx.compose.animation.slideOutVertically { it / 2 },
+            ) {
                 NavigationBar {
                     NavigationBarItem(
                         selected = currentTabIndex == 0,

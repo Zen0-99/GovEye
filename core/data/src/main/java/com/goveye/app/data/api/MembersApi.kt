@@ -21,9 +21,10 @@ interface MembersApi {
 
     @GET("Members/Search")
     suspend fun searchMembersByName(
-        @Query("name") name: String,
+        @Query("Name") name: String,
         @Query("House") house: Int = 1,
         @Query("IsCurrentMember") isCurrentMember: Boolean = true,
+        @Query("take") take: Int = 50,
     ): MemberSearchResponse
 
     @GET("Members/{id}")
