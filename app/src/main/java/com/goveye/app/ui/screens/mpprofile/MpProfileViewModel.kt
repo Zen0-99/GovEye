@@ -6,16 +6,21 @@ import com.goveye.app.data.local.dao.MpDao
 import com.goveye.app.data.local.entity.MpEntity
 import com.goveye.app.data.repo.CommitteesRepository
 import com.goveye.app.data.repo.MembersRepository
+import com.goveye.app.data.repo.VotesRepository
 import com.goveye.app.domain.model.BiographyExperience
 import com.goveye.app.domain.model.Committee
 import com.goveye.app.domain.model.Contact
+import com.goveye.app.domain.model.MemberVoteWithDivision
 import com.goveye.app.domain.model.Mp
 import com.goveye.app.domain.model.SyncStatus
+import com.goveye.app.domain.stats.RebellionCalculator
+import com.goveye.app.domain.stats.RebellionStats
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 data class ProfileUiState(
@@ -26,6 +31,8 @@ data class ProfileUiState(
     val experiences: List<BiographyExperience> = emptyList(),
     val samePartyMps: List<Mp> = emptyList(),
     val committeePeerMps: List<Mp> = emptyList(),
+    val memberVotes: List<MemberVoteWithDivision> = emptyList(),
+    val rebellionStats: RebellionStats? = null,
     val syncStatus: SyncStatus = SyncStatus.EMPTY,
     val isLoading: Boolean = true,
 )
@@ -34,6 +41,7 @@ data class ProfileUiState(
 class ProfileViewModel @Inject constructor(
     private val membersRepository: MembersRepository,
     private val committeesRepository: CommitteesRepository,
+    private val votesRepository: VotesRepository,
     private val mpDao: MpDao,
 ) : ViewModel() {
 
@@ -86,6 +94,29 @@ class ProfileViewModel @Inject constructor(
 
         viewModelScope.launch {
             committeesRepository.refresh(memberId)
+        }
+
+        // Load voting record + rebellion stats (lazy — loaded with profile)
+        viewModelScope.launch {
+            try {
+                votesRepository.refreshMemberVoting(memberId, 1)
+                val votes = votesRepository.getMemberVotingWithDivisions(memberId)
+                _uiState.value = _uiState.value.copy(memberVotes = votes)
+
+                // Compute rebellion stats if we have votes and party info
+                val mp = _uiState.value.mp
+                val partyName = mp?.party?.name
+                if (votes.isNotEmpty() && partyName != null) {
+                    val memberVotesResult = votesRepository.observeMemberVoting(memberId)
+                        .first()
+                    val memberVotes = memberVotesResult.data
+                    val divisionIds = memberVotes.map { it.divisionId }.distinct()
+                    val allVotesByDivision = votesRepository.getAllVotesForDivisions(divisionIds)
+                    val stats = RebellionCalculator.compute(memberVotes, allVotesByDivision, partyName)
+                    _uiState.value = _uiState.value.copy(rebellionStats = stats)
+                }
+            } catch (e: Exception) {
+            }
         }
     }
 

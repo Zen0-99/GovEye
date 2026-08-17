@@ -164,6 +164,9 @@ private fun GovEyeAppContent(
                             onNavigateToProfile = { targetId ->
                                 currentBackStack.add(ProfileRoute(targetId))
                             },
+                            onNavigateToDivision = { divisionId, house ->
+                                currentBackStack.add(DivisionDetailRoute(divisionId, house))
+                            },
                             modifier = Modifier.fillMaxSize(),
                         )
                     }

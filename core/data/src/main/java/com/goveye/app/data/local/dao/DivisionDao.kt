@@ -39,6 +39,9 @@ interface DivisionDao {
     @Query("SELECT * FROM division_votes WHERE memberId = :memberId")
     suspend fun getVotesForMember(memberId: Int): List<DivisionVoteEntity>
 
+    @Query("SELECT * FROM division_votes WHERE divisionId = :divisionId")
+    suspend fun getVotesForDivision(divisionId: Int): List<DivisionVoteEntity>
+
     @Upsert
     suspend fun upsertVotes(votes: List<DivisionVoteEntity>)
 

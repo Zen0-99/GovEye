@@ -5,3 +5,8 @@ plugins {
 android {
     namespace = "com.goveye.app.domain"
 }
+
+dependencies {
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
+}

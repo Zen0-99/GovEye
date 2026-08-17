@@ -8,6 +8,7 @@ import com.goveye.app.data.local.entity.DivisionVoteEntity
 import com.goveye.app.data.mapper.DivisionMapper
 import com.goveye.app.domain.model.Division
 import com.goveye.app.domain.model.DivisionVote
+import com.goveye.app.domain.model.MemberVoteWithDivision
 import com.goveye.app.domain.model.PartyBreakdown
 import com.goveye.app.domain.model.RepositoryResult
 import com.goveye.app.domain.model.SyncStatus
@@ -201,6 +202,45 @@ class VotesRepository @Inject constructor(
             )
         }.sortedByDescending { it.totalMembers }
     }
+
+    /**
+     * Get a member's voting record with division context.
+     * Returns a list of [MemberVoteWithDivision] sorted by date descending.
+     */
+    suspend fun getMemberVotingWithDivisions(memberId: Int): List<MemberVoteWithDivision> {
+        val votes = divisionDao.getVotesForMember(memberId)
+        val divisionIds = votes.map { it.divisionId }.distinct()
+        val divisions = divisionIds.associateWith { divisionDao.getDivision(it) }
+        return votes.mapNotNull { voteEntity ->
+            val division = divisions[voteEntity.divisionId] ?: return@mapNotNull null
+            MemberVoteWithDivision(
+                divisionId = division.id,
+                divisionTitle = division.title,
+                divisionDate = division.date,
+                house = division.house,
+                ayeCount = division.ayeCount,
+                noCount = division.noCount,
+                vote = VoteType.valueOf(voteEntity.vote),
+                isTeller = voteEntity.isTeller,
+            )
+        }.sortedByDescending { it.divisionDate }
+    }
+
+    /**
+     * Get all votes for a set of divisions (used for rebellion computation).
+     * Returns a map of divisionId → list of all votes in that division.
+     */
+    suspend fun getAllVotesForDivisions(divisionIds: List<Int>): Map<Int, List<DivisionVote>> {
+        return divisionIds.associateWith { id ->
+            divisionDao.getVotesForDivision(id).map { it.toDomain() }
+        }
+    }
+
+    /**
+     * Get all votes for a single division (suspend, one-shot).
+     */
+    suspend fun getVotesForDivision(divisionId: Int): List<DivisionVote> =
+        divisionDao.getVotesForDivision(divisionId).map { it.toDomain() }
 
     private suspend fun getVotesForDivisionSync(divisionId: Int): List<DivisionVoteEntity> =
         divisionDao.observeVotesForDivision(divisionId).first()
