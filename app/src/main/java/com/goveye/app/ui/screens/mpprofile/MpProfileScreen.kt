@@ -156,6 +156,8 @@ fun ProfileScreen(
                                 contacts = uiState.contacts,
                                 samePartyMps = uiState.samePartyMps,
                                 committeePeerMps = uiState.committeePeerMps,
+                                activityScore = uiState.activityScore,
+                                traitBars = uiState.traitBars,
                                 onNavigateToProfile = onNavigateToProfile,
                             )
                             ProfileTab.CAREER -> CareerTabContent(
@@ -217,6 +219,8 @@ private fun ProfileTabContent(
     contacts: List<com.goveye.app.domain.model.Contact>,
     samePartyMps: List<com.goveye.app.domain.model.Mp>,
     committeePeerMps: List<com.goveye.app.domain.model.Mp>,
+    activityScore: com.goveye.app.domain.stats.ActivityScore?,
+    traitBars: List<com.goveye.app.domain.stats.TraitBar>,
     onNavigateToProfile: (Int) -> Unit,
 ) {
     LazyColumn(
@@ -227,6 +231,24 @@ private fun ProfileTabContent(
             ProfileStatsCard(
                 mp = mp,
             )
+        }
+        // Activity score strip
+        if (activityScore != null) {
+            item {
+                com.goveye.app.ui.components.stats.ActivityScoreStrip(
+                    score = activityScore,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+            }
+        }
+        // Trait bars
+        if (traitBars.isNotEmpty()) {
+            item {
+                com.goveye.app.ui.components.stats.TraitBarsSection(
+                    traitBars = traitBars,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+            }
         }
         item { BioSection(synopsis = synopsis) }
         item { ContactSection(contacts = contacts) }

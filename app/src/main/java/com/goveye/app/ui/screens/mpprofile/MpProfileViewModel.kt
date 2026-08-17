@@ -13,8 +13,13 @@ import com.goveye.app.domain.model.Contact
 import com.goveye.app.domain.model.MemberVoteWithDivision
 import com.goveye.app.domain.model.Mp
 import com.goveye.app.domain.model.SyncStatus
+import com.goveye.app.domain.stats.ActivityScore
+import com.goveye.app.domain.stats.ActivityScoreCalculator
+import com.goveye.app.domain.stats.PeerAverages
 import com.goveye.app.domain.stats.RebellionCalculator
 import com.goveye.app.domain.stats.RebellionStats
+import com.goveye.app.domain.stats.TraitBar
+import com.goveye.app.domain.stats.TraitBarCalculator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,6 +38,8 @@ data class ProfileUiState(
     val committeePeerMps: List<Mp> = emptyList(),
     val memberVotes: List<MemberVoteWithDivision> = emptyList(),
     val rebellionStats: RebellionStats? = null,
+    val activityScore: ActivityScore? = null,
+    val traitBars: List<TraitBar> = emptyList(),
     val syncStatus: SyncStatus = SyncStatus.EMPTY,
     val isLoading: Boolean = true,
 )
@@ -114,6 +121,40 @@ class ProfileViewModel @Inject constructor(
                     val allVotesByDivision = votesRepository.getAllVotesForDivisions(divisionIds)
                     val stats = RebellionCalculator.compute(memberVotes, allVotesByDivision, partyName)
                     _uiState.value = _uiState.value.copy(rebellionStats = stats)
+
+                    // Compute activity score (using placeholder peer averages for now)
+                    val participationRate = if (votes.isNotEmpty()) {
+                        votes.count { it.vote != com.goveye.app.domain.model.VoteType.NO_VOTE_RECORDED }.toFloat() / votes.size
+                    } else 0f
+                    val peerAverages = PeerAverages(
+                        averageQuestions = 50f,
+                        averageSpeeches = 100f,
+                        averageCommittees = 2f,
+                    )
+                    val score = ActivityScoreCalculator.compute(
+                        voteParticipationRate = participationRate,
+                        questionCount = 0, // TODO: from Hansard
+                        speechCount = 0, // TODO: from Hansard
+                        committeeCount = _uiState.value.committees.size,
+                        peerAverages = peerAverages,
+                    )
+                    _uiState.value = _uiState.value.copy(activityScore = score)
+
+                    // Compute trait bars (using placeholder peer data for now)
+                    val traits = TraitBarCalculator.compute(
+                        rebellionRate = stats.rebellionRate,
+                        participationRate = participationRate,
+                        questionCount = 0,
+                        speechCount = 0,
+                        committeeCount = _uiState.value.committees.size,
+                        peerRebellionRates = listOf(stats.rebellionRate),
+                        peerParticipationRates = listOf(participationRate),
+                        peerQuestionCounts = listOf(0),
+                        peerSpeechCounts = listOf(0),
+                        peerCommitteeCounts = listOf(_uiState.value.committees.size),
+                        peerAverages = peerAverages,
+                    )
+                    _uiState.value = _uiState.value.copy(traitBars = traits)
                 }
             } catch (e: Exception) {
             }
