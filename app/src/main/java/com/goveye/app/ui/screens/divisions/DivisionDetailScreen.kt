@@ -1,5 +1,8 @@
 package com.goveye.app.ui.screens.divisions
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -11,17 +14,25 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -33,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -53,8 +65,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 // Consistent colors for Aye / No — matches DivisionBrowseScreen
-private val AyeColor = androidx.compose.ui.graphics.Color(0xFF00796B) // teal 700
-private val NoColor = androidx.compose.ui.graphics.Color(0xFFE65100) // orange 900
+private val AyeColor = Color(0xFF00796B) // teal 700
+private val NoColor = Color(0xFFE65100) // orange 900
 
 data class DivisionDetailState(
     val division: Division? = null,
@@ -77,17 +89,14 @@ class DivisionDetailViewModel @Inject constructor(
         if (loadedDivisionId == divisionId) return
         loadedDivisionId = divisionId
 
-        // Launch a coroutine to fetch division detail from API if not cached
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true)
             try {
                 votesRepository.refreshDivisionDetail(divisionId, house)
             } catch (e: Exception) {
-                // Ignore — cache will still be shown
             }
         }
 
-        // Observe division + votes combined
         viewModelScope.launch {
             votesRepository.observeDivision(divisionId).collect { divisionResult ->
                 val division = divisionResult.data
@@ -122,6 +131,7 @@ fun DivisionDetailScreen(
     LaunchedEffect(divisionId) {
         viewModel.load(divisionId, house)
     }
+
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     Scaffold(
@@ -165,170 +175,298 @@ fun DivisionDetailScreen(
                     )
                 }
             } else {
-                LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                // Header
-                item {
-                    DivisionHeader(division = division)
-                }
-
-                // Party breakdown
-                if (state.partyBreakdown.isNotEmpty()) {
-                    item {
-                        Text(
-                            text = "Party Breakdown",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
-                    items(state.partyBreakdown, key = { it.partyName }) { party ->
-                        PartyBreakdownRow(party = party)
-                    }
-                }
-
-                // Ayes list
-                if (state.votes.any { it.vote == VoteType.AYE }) {
-                    item {
-                        Text(
-                            text = "Ayes (${state.votes.count { it.vote == VoteType.AYE }})",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = AyeColor,
-                        )
-                    }
-                    items(
-                        state.votes.filter { it.vote == VoteType.AYE },
-                        key = { "aye-${it.memberId}" },
-                    ) { vote ->
-                        VoterRow(vote = vote, onClick = { onNavigateToProfile(vote.memberId) })
-                    }
-                }
-
-                // Noes list
-                if (state.votes.any { it.vote == VoteType.NO }) {
-                    item {
-                        Text(
-                            text = "Noes (${state.votes.count { it.vote == VoteType.NO }})",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = NoColor,
-                        )
-                    }
-                    items(
-                        state.votes.filter { it.vote == VoteType.NO },
-                        key = { "no-${it.memberId}" },
-                    ) { vote ->
-                        VoterRow(vote = vote, onClick = { onNavigateToProfile(vote.memberId) })
-                    }
-                }
+                DivisionDetailContent(
+                    division = division,
+                    state = state,
+                    onNavigateToProfile = onNavigateToProfile,
+                    modifier = Modifier.fillMaxSize().padding(innerPadding),
+                )
             }
-            } // end if (division != null)
         }
     }
 }
 
 @Composable
-private fun DivisionHeader(division: Division) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+private fun DivisionDetailContent(
+    division: Division,
+    state: DivisionDetailState,
+    onNavigateToProfile: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var voterTab by remember { mutableStateOf(0) } // 0 = Ayes, 1 = Noes
+    var searchQuery by remember { mutableStateOf("") }
+    var breakdownExpanded by remember { mutableStateOf(true) }
+
+    LazyColumn(
+        modifier = modifier,
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        // Header card
+        item { DivisionHeaderCard(division = division) }
+
+        // Party breakdown — collapsible
+        if (state.partyBreakdown.isNotEmpty()) {
+            item {
+                SectionHeader(
+                    title = "Party Breakdown",
+                    expanded = breakdownExpanded,
+                    onToggle = { breakdownExpanded = !breakdownExpanded },
+                )
+            }
+            if (breakdownExpanded) {
+                items(
+                    state.partyBreakdown.sortedByDescending { it.ayeCount + it.noCount },
+                    key = { it.partyName },
+                ) { party ->
+                    PartyBreakdownBar(party = party)
+                }
+            }
+        }
+
+        // Voter lists — tabbed Ayes/Noes with search
+        val ayes = state.votes.filter { it.vote == VoteType.AYE }
+        val noes = state.votes.filter { it.vote == VoteType.NO }
+
+        if (ayes.isNotEmpty() || noes.isNotEmpty()) {
+            item {
+                TabRow(
+                    selectedTabIndex = voterTab,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                ) {
+                    Tab(
+                        selected = voterTab == 0,
+                        onClick = { voterTab = 0 },
+                        text = { Text("Ayes (${ayes.size})") },
+                        selectedContentColor = AyeColor,
+                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Tab(
+                        selected = voterTab == 1,
+                        onClick = { voterTab = 1 },
+                        text = { Text("Noes (${noes.size})") },
+                        selectedContentColor = NoColor,
+                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            // Search field
+            item {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text("Search voters...") },
+                    leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                )
+            }
+
+            // Filtered voter list
+            val voters = if (voterTab == 0) ayes else noes
+            val filtered = if (searchQuery.isBlank()) {
+                voters
+            } else {
+                voters.filter { it.memberName.contains(searchQuery, ignoreCase = true) }
+            }
+
+            // Group by party
+            val groupedByParty = filtered.groupBy { it.partyName ?: "Unknown" }
+
+            groupedByParty.forEach { (partyName, partyVoters) ->
+                item(key = "header-$partyName-${voterTab}") {
+                    PartyGroupHeader(
+                        partyName = partyName,
+                        count = partyVoters.size,
+                        partyColour = partyVoters.firstOrNull()?.partyColour,
+                    )
+                }
+                items(partyVoters, key = { "${voterTab}-${it.memberId}" }) { vote ->
+                    VoterRow(vote = vote, onClick = { onNavigateToProfile(vote.memberId) })
+                }
+            }
+
+            if (filtered.isEmpty()) {
+                item {
+                    Text(
+                        text = "No voters match \"$searchQuery\"",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(16.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DivisionHeaderCard(division: Division) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = division.title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    text = formatDivisionDate(division.date),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = if (division.house == 2) "Lords" else "Commons",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            // Result bar with numbers inside
+            val total = division.ayeCount + division.noCount
+            if (total > 0) {
+                ResultBarWithNumbers(
+                    ayeCount = division.ayeCount,
+                    noCount = division.noCount,
+                    barHeight = 32.dp,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ResultBarWithNumbers(
+    ayeCount: Int,
+    noCount: Int,
+    barHeight: androidx.compose.ui.unit.Dp,
+) {
+    val total = ayeCount + noCount
+    if (total == 0) return
+    val ayeFraction = ayeCount.toFloat() / total
+    val noFraction = noCount.toFloat() / total
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(barHeight)
+            .clip(RoundedCornerShape(8.dp)),
+    ) {
+        if (ayeFraction > 0f) {
+            Box(
+                modifier = Modifier
+                    .weight(ayeFraction)
+                    .background(AyeColor)
+                    .fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = ayeCount.toString(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
+        if (noFraction > 0f) {
+            Box(
+                modifier = Modifier
+                    .weight(noFraction)
+                    .background(NoColor)
+                    .fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = noCount.toString(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SectionHeader(
+    title: String,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onToggle)
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Text(
-            text = division.title,
-            style = MaterialTheme.typography.headlineSmall,
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
         )
+        Icon(
+            imageVector = if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+            contentDescription = if (expanded) "Collapse" else "Expand",
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/**
+ * Compact party breakdown bar — single row with party name, inline bar
+ * with Aye/No numbers inside each segment, and total on the right.
+ */
+@Composable
+private fun PartyBreakdownBar(party: PartyBreakdown) {
+    val total = party.ayeCount + party.noCount
+    if (total == 0) return
+    val ayeFraction = party.ayeCount.toFloat() / total
+    val noFraction = party.noCount.toFloat() / total
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        // Party name + total
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(
-                text = formatDivisionDate(division.date),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                text = party.partyName,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
             )
             Text(
-                text = if (division.house == 2) "Lords" else "Commons",
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
+                text = "$total",
+                style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        // Result bar — consistent Aye (teal) / No (orange) colors
-        val total = division.ayeCount + division.noCount
-        if (total > 0) {
-            val ayeFraction = division.ayeCount.toFloat() / total
-            val noFraction = division.noCount.toFloat() / total
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().height(24.dp).clip(RoundedCornerShape(6.dp)),
-                ) {
-                    if (ayeFraction > 0f) {
-                        Box(
-                            modifier = Modifier
-                                .weight(ayeFraction)
-                                .background(AyeColor)
-                                .fillMaxSize(),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                text = division.ayeCount.toString(),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = androidx.compose.ui.graphics.Color.White,
-                                fontWeight = FontWeight.Bold,
-                            )
-                        }
-                    }
-                    if (noFraction > 0f) {
-                        Box(
-                            modifier = Modifier
-                                .weight(noFraction)
-                                .background(NoColor)
-                                .fillMaxSize(),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                text = division.noCount.toString(),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = androidx.compose.ui.graphics.Color.White,
-                                fontWeight = FontWeight.Bold,
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun PartyBreakdownRow(party: PartyBreakdown) {
-    val total = party.ayeCount + party.noCount
-    if (total == 0) return
-    val ayeFraction = party.ayeCount.toFloat() / total
-    val fallbackColor = MaterialTheme.colorScheme.primary
-    val partyColor = remember(party.partyColour) {
-        try { androidx.compose.ui.graphics.Color(android.graphics.Color.parseColor("#${party.partyColour}")) }
-        catch (e: Exception) { fallbackColor }
-    }
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = party.partyName,
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.weight(0.3f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        // Bar with numbers inside
         Row(
             modifier = Modifier
-                .weight(0.6f)
-                .height(16.dp)
-                .clip(RoundedCornerShape(4.dp))
-                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)),
+                .fillMaxWidth()
+                .height(20.dp)
+                .clip(RoundedCornerShape(4.dp)),
         ) {
             if (ayeFraction > 0f) {
                 Box(
@@ -336,22 +474,72 @@ private fun PartyBreakdownRow(party: PartyBreakdown) {
                         .weight(ayeFraction)
                         .background(AyeColor)
                         .fillMaxSize(),
-                )
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (ayeFraction > 0.15f) {
+                        Text(
+                            text = party.ayeCount.toString(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
             }
-            val noFraction = 1f - ayeFraction
             if (noFraction > 0f) {
                 Box(
                     modifier = Modifier
                         .weight(noFraction)
                         .background(NoColor)
                         .fillMaxSize(),
-                )
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (noFraction > 0.15f) {
+                        Text(
+                            text = party.noCount.toString(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun PartyGroupHeader(
+    partyName: String,
+    count: Int,
+    partyColour: String?,
+) {
+    val fallback = MaterialTheme.colorScheme.onSurfaceVariant
+    val color = remember(partyColour) {
+        try {
+            partyColour?.let { Color(android.graphics.Color.parseColor("#$it")) } ?: fallback
+        } catch (e: Exception) {
+            fallback
+        }
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp, bottom = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(color),
+        )
         Text(
-            text = "${party.ayeCount}-${party.noCount}",
-            style = MaterialTheme.typography.labelSmall,
-            modifier = Modifier.weight(0.1f),
+            text = "$partyName ($count)",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
         )
     }
 }
@@ -362,7 +550,7 @@ private fun VoterRow(vote: DivisionVote, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(vertical = 8.dp),
+            .padding(vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -373,12 +561,14 @@ private fun VoterRow(vote: DivisionVote, onClick: () -> Unit) {
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        val partyName = vote.partyName
-        if (!partyName.isNullOrBlank()) {
+        val constituency = vote.constituencyName
+        if (!constituency.isNullOrBlank()) {
             Text(
-                text = partyName,
+                text = constituency,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
