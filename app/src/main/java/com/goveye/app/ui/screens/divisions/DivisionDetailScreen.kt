@@ -135,47 +135,47 @@ fun DivisionDetailScreen(
     val ayeCount = state.votes.count { it.vote == VoteType.AYE }
     val noCount = state.votes.count { it.vote == VoteType.NO }
 
+    // Configure the global search bar for division detail:
+    // no filter icon, inline filter chips (All / Ayes / Noes)
+    com.goveye.app.ui.components.ConfigureSearchBar(
+        config = com.goveye.app.ui.components.SearchBarConfig(
+            isVisible = true,
+            query = searchQuery,
+            placeholder = "Search voters / constituency…",
+            onQueryChange = { searchQuery = it },
+            filterChips = listOf(
+                com.goveye.app.ui.components.SearchFilterChip(
+                    label = "All (${ayeCount + noCount})",
+                    isSelected = voteFilter == VoteFilter.ALL,
+                    onClick = { voteFilter = VoteFilter.ALL },
+                ),
+                com.goveye.app.ui.components.SearchFilterChip(
+                    label = "Ayes ($ayeCount)",
+                    isSelected = voteFilter == VoteFilter.AYE,
+                    onClick = { voteFilter = VoteFilter.AYE },
+                    leadingDotColor = AyeColor,
+                ),
+                com.goveye.app.ui.components.SearchFilterChip(
+                    label = "Noes ($noCount)",
+                    isSelected = voteFilter == VoteFilter.NO,
+                    onClick = { voteFilter = VoteFilter.NO },
+                    leadingDotColor = NoColor,
+                ),
+            ),
+        ),
+    )
+
     Scaffold(
         topBar = {
-            Column(
+            // Back button only — search bar is global (rendered by GovEyeApp)
+            Row(
                 modifier = Modifier
-                    .fillMaxWidth(),
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                // Top row: back button + search bar
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 4.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
-                    }
-                    com.goveye.app.ui.components.FloatingSearchBar(
-                        query = searchQuery,
-                        onQueryChange = { searchQuery = it },
-                        placeholder = "Search voters / constituency…",
-                        filterChips = listOf(
-                            com.goveye.app.ui.components.SearchFilterChip(
-                                label = "All (${ayeCount + noCount})",
-                                isSelected = voteFilter == VoteFilter.ALL,
-                                onClick = { voteFilter = VoteFilter.ALL },
-                            ),
-                            com.goveye.app.ui.components.SearchFilterChip(
-                                label = "Ayes ($ayeCount)",
-                                isSelected = voteFilter == VoteFilter.AYE,
-                                onClick = { voteFilter = VoteFilter.AYE },
-                                leadingDotColor = AyeColor,
-                            ),
-                            com.goveye.app.ui.components.SearchFilterChip(
-                                label = "Noes ($noCount)",
-                                isSelected = voteFilter == VoteFilter.NO,
-                                onClick = { voteFilter = VoteFilter.NO },
-                                leadingDotColor = NoColor,
-                            ),
-                        ),
-                        modifier = Modifier.weight(1f),
-                    )
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
                 }
             }
         },

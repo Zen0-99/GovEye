@@ -218,26 +218,36 @@ private fun GovEyeAppContent(
         it !is ProfileRoute && it !is DivisionDetailRoute
     } ?: true
 
+    // Search bar is hidden on profile screens (they have their own header).
+    // On division detail, the global search bar is configured by the screen
+    // with back button + filter chips (no filter icon).
+    val showSearchBar = currentBackStack.lastOrNull()?.let {
+        it !is ProfileRoute
+    } ?: true
+
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
     Scaffold(
         contentWindowInsets = WindowInsets.navigationBars.only(WindowInsetsSides.Horizontal),
         topBar = {
-            // Global search bar — always visible across all screens.
-            // On detail screens (profile, division) it's non-functional but
-            // keeps the layout stable (no gap, no janky transition).
-            FloatingSearchBar(
-                query = searchConfig.query,
-                onQueryChange = searchConfig.onQueryChange,
-                onFilterClick = searchConfig.onFilterClick,
-                hasActiveFilters = searchConfig.hasActiveFilters,
-                placeholder = searchConfig.placeholder,
-                filterChips = searchConfig.filterChips,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = statusBarPadding)
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-            )
+            AnimatedVisibility(
+                visible = showSearchBar,
+                enter = fadeIn(),
+                exit = fadeOut(),
+            ) {
+                FloatingSearchBar(
+                    query = searchConfig.query,
+                    onQueryChange = searchConfig.onQueryChange,
+                    onFilterClick = searchConfig.onFilterClick,
+                    hasActiveFilters = searchConfig.hasActiveFilters,
+                    placeholder = searchConfig.placeholder,
+                    filterChips = searchConfig.filterChips,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = statusBarPadding)
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                )
+            }
         },
         bottomBar = {
             AnimatedVisibility(
