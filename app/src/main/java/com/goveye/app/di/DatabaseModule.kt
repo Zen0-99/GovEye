@@ -124,8 +124,9 @@ object DatabaseModule {
     fun provideVotesRepository(
         divisionDao: DivisionDao,
         votesApi: com.goveye.app.data.api.VotesApi,
+        lordsVotesApi: com.goveye.app.data.api.LordsVotesApi,
         divisionMapper: DivisionMapper,
-    ): VotesRepository = VotesRepository(divisionDao, votesApi, divisionMapper)
+    ): VotesRepository = VotesRepository(divisionDao, votesApi, lordsVotesApi, divisionMapper)
 
     @Provides
     @Singleton

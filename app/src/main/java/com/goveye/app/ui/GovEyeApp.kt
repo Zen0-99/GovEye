@@ -45,10 +45,12 @@ import com.goveye.app.ui.navigation.FeedRoute
 import com.goveye.app.ui.navigation.FollowingRoute
 import com.goveye.app.ui.navigation.ProfileRoute
 import com.goveye.app.ui.navigation.SettingsRoute
+import com.goveye.app.ui.navigation.DivisionDetailRoute
 import com.goveye.app.ui.screens.FeedScreen
 import com.goveye.app.ui.screens.FollowingScreen
 import com.goveye.app.ui.screens.SettingsScreen
 import com.goveye.app.ui.screens.directory.DirectoryScreen
+import com.goveye.app.ui.screens.divisions.DivisionDetailScreen
 import com.goveye.app.ui.screens.mpprofile.ProfileScreen
 import com.goveye.app.ui.theme.GovEyeTheme
 import com.goveye.app.ui.theme.ThemeViewModel
@@ -147,6 +149,9 @@ private fun GovEyeAppContent(
                             onNavigateToProfile = { memberId ->
                                 currentBackStack.add(ProfileRoute(memberId))
                             },
+                            onNavigateToDivision = { divisionId, house ->
+                                currentBackStack.add(DivisionDetailRoute(divisionId, house))
+                            },
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
@@ -155,6 +160,19 @@ private fun GovEyeAppContent(
                     NavEntry(key) {
                         ProfileScreen(
                             memberId = key.memberId,
+                            onBack = { currentBackStack.removeLastOrNull() },
+                            onNavigateToProfile = { targetId ->
+                                currentBackStack.add(ProfileRoute(targetId))
+                            },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+
+                is DivisionDetailRoute ->
+                    NavEntry(key) {
+                        DivisionDetailScreen(
+                            divisionId = key.divisionId,
+                            house = key.house,
                             onBack = { currentBackStack.removeLastOrNull() },
                             onNavigateToProfile = { targetId ->
                                 currentBackStack.add(ProfileRoute(targetId))
@@ -180,7 +198,9 @@ private fun GovEyeAppContent(
             }
         }
 
-    val showBottomBar = currentBackStack.lastOrNull()?.let { it !is ProfileRoute } ?: true
+    val showBottomBar = currentBackStack.lastOrNull()?.let {
+        it !is ProfileRoute && it !is DivisionDetailRoute
+    } ?: true
 
     Scaffold(
         contentWindowInsets = WindowInsets.navigationBars.only(WindowInsetsSides.Horizontal),

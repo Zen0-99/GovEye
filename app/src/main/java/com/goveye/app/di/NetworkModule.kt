@@ -20,6 +20,7 @@ import retrofit2.converter.kotlinx.serialization.asConverterFactory
 object NetworkModule {
     private const val MEMBERS_BASE_URL = "https://members-api.parliament.uk/api/"
     private const val VOTES_BASE_URL = "https://commonsvotes-api.parliament.uk/data/"
+    private const val LORDS_VOTES_BASE_URL = "https://lordsvotes-api.parliament.uk/data/"
     private const val BILLS_BASE_URL = "https://bills-api.parliament.uk/api/v1/"
     private const val HANSARD_BASE_URL = "https://hansard-api.parliament.uk/"
     private const val INTERESTS_BASE_URL = "https://interests-api.parliament.uk/api/v1/"
@@ -85,6 +86,14 @@ object NetworkModule {
         okHttpClient: OkHttpClient,
         json: Json,
     ): Retrofit = buildRetrofit(VOTES_BASE_URL, okHttpClient, json)
+
+    @Provides
+    @Singleton
+    @Named("lordsVotesApi")
+    fun provideLordsVotesRetrofit(
+        okHttpClient: OkHttpClient,
+        json: Json,
+    ): Retrofit = buildRetrofit(LORDS_VOTES_BASE_URL, okHttpClient, json)
 
     @Provides
     @Singleton

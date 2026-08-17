@@ -22,4 +22,7 @@ interface VotesApi {
         @Query("itemsPerPage") itemsPerPage: Int = 20,
         @Query("skip") skip: Int = 0,
     ): List<MemberVoteDto>
+
+    @GET("divisions.json/searchTotalResults")
+    suspend fun searchTotalResults(): Int
 }

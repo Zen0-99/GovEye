@@ -1,6 +1,7 @@
 package com.goveye.app.data.repo
 
 import app.cash.turbine.test
+import com.goveye.app.data.api.LordsVotesApi
 import com.goveye.app.data.api.VotesApi
 import com.goveye.app.data.local.GovEyeDatabase
 import com.goveye.app.data.local.entity.DivisionEntity
@@ -24,6 +25,7 @@ class VotesRepositoryTest {
     private lateinit var database: GovEyeDatabase
     private lateinit var repository: VotesRepository
     private val api: VotesApi = mockk(relaxed = true)
+    private val lordsApi: LordsVotesApi = mockk(relaxed = true)
 
     @Before
     fun setUp() {
@@ -31,7 +33,7 @@ class VotesRepositoryTest {
             RuntimeEnvironment.getApplication(),
             GovEyeDatabase::class.java,
         ).allowMainThreadQueries().build()
-        repository = VotesRepository(database.divisionDao(), api, DivisionMapper)
+        repository = VotesRepository(database.divisionDao(), api, lordsApi, DivisionMapper)
     }
 
     @After

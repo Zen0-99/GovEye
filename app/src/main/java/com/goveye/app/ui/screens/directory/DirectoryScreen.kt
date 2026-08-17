@@ -56,6 +56,7 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import com.goveye.app.data.preference.DirectoryViewMode
 import com.goveye.app.ui.components.TabTextWithBadge
+import com.goveye.app.ui.screens.divisions.DivisionsTabContent
 import com.goveye.app.ui.theme.padding
 import kotlinx.coroutines.launch
 
@@ -70,6 +71,7 @@ private enum class DirectoryTab(val title: String) {
 @Composable
 fun DirectoryScreen(
     onNavigateToProfile: (Int) -> Unit,
+    onNavigateToDivision: (Int, Int) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
     viewModel: DirectoryViewModel = hiltViewModel(),
 ) {
@@ -149,7 +151,9 @@ fun DirectoryScreen(
                 )
                 DirectoryTab.PARTIES -> PlaceholderTabContent("Parties")
                 DirectoryTab.BILLS -> PlaceholderTabContent("Bills")
-                DirectoryTab.DIVISIONS -> PlaceholderTabContent("Divisions")
+                DirectoryTab.DIVISIONS -> DivisionsTabContent(
+                    onNavigateToDivision = onNavigateToDivision,
+                )
                 DirectoryTab.DEBATES -> PlaceholderTabContent("Debates")
             }
         }
