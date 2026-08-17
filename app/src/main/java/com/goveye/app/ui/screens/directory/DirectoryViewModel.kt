@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -55,6 +56,23 @@ class DirectoryViewModel @Inject constructor(
 
     val pagedMps: Flow<PagingData<Mp>> = membersRepository.observePagedMps()
         .cachedIn(viewModelScope)
+
+    // Tab counts — show badges during active search.
+    // Only Officials (index 0) has real data; other tabs are 0.
+    val tabCounts: StateFlow<Map<Int, Int>> =
+        combine(_searchQuery, searchResults) { query, results ->
+            if (query.isBlank()) {
+                emptyMap()  // no badges when no search
+            } else {
+                mapOf(
+                    0 to results.size,  // OFFICIALS
+                    1 to 0,             // PARTIES
+                    2 to 0,             // BILLS
+                    3 to 0,             // DIVISIONS
+                    4 to 0,             // DEBATES
+                )
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     fun updateSearchQuery(query: String) {
         _searchQuery.value = query
