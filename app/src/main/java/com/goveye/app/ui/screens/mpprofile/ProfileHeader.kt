@@ -5,9 +5,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -44,6 +47,7 @@ fun ProfileHeader(
     // only reflects the system setting, causing black text/icons when the user
     // picks DARK while the system is in light mode (or vice versa).
     val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
     // The gradient's top color is partyColor at 85% alpha over the background.
     // In dark mode that's a dark navy → party color stays relatively dark → white text.
@@ -86,6 +90,7 @@ fun ProfileHeader(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .padding(top = statusBarPadding)
                 .padding(horizontal = MaterialTheme.padding.medium)
                 .padding(top = 4.dp, bottom = MaterialTheme.padding.small),
         ) {

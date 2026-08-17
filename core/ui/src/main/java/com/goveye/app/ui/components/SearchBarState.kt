@@ -8,6 +8,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.staticCompositionLocalOf
 
 /**
+ * A segment in a [SearchBarConfig.segments] segmented control (Miko-style
+ * double pill). The selected segment gets a filled pill background.
+ */
+data class SearchSegment(
+    val label: String,
+    val isSelected: Boolean,
+    val onClick: () -> Unit,
+)
+
+/**
  * Global search bar state. Screens configure this via [LocalSearchBarState]
  * to show/hide the global search bar and wire up search behavior.
  *
@@ -22,6 +32,10 @@ data class SearchBarConfig(
     val onFilterClick: (() -> Unit)? = null,
     val hasActiveFilters: Boolean = false,
     val filterChips: List<SearchFilterChip> = emptyList(),
+    /** Optional back button shown to the left of the search bar. */
+    val onBack: (() -> Unit)? = null,
+    /** Optional segmented control (double pill) shown below the search bar. */
+    val segments: List<SearchSegment> = emptyList(),
 )
 
 /**

@@ -19,14 +19,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
-import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -136,49 +133,35 @@ fun DivisionDetailScreen(
     val noCount = state.votes.count { it.vote == VoteType.NO }
 
     // Configure the global search bar for division detail:
-    // no filter icon, inline filter chips (All / Ayes / Noes)
+    // back button on the left, segmented pill (All / Ayes / Noes) below
     com.goveye.app.ui.components.ConfigureSearchBar(
         config = com.goveye.app.ui.components.SearchBarConfig(
             isVisible = true,
             query = searchQuery,
             placeholder = "Search voters / constituency…",
             onQueryChange = { searchQuery = it },
-            filterChips = listOf(
-                com.goveye.app.ui.components.SearchFilterChip(
+            onBack = onBack,
+            segments = listOf(
+                com.goveye.app.ui.components.SearchSegment(
                     label = "All (${ayeCount + noCount})",
                     isSelected = voteFilter == VoteFilter.ALL,
                     onClick = { voteFilter = VoteFilter.ALL },
                 ),
-                com.goveye.app.ui.components.SearchFilterChip(
+                com.goveye.app.ui.components.SearchSegment(
                     label = "Ayes ($ayeCount)",
                     isSelected = voteFilter == VoteFilter.AYE,
                     onClick = { voteFilter = VoteFilter.AYE },
-                    leadingDotColor = AyeColor,
                 ),
-                com.goveye.app.ui.components.SearchFilterChip(
+                com.goveye.app.ui.components.SearchSegment(
                     label = "Noes ($noCount)",
                     isSelected = voteFilter == VoteFilter.NO,
                     onClick = { voteFilter = VoteFilter.NO },
-                    leadingDotColor = NoColor,
                 ),
             ),
         ),
     )
 
     Scaffold(
-        topBar = {
-            // Back button only — search bar is global (rendered by GovEyeApp)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 4.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
-                }
-            }
-        },
         modifier = modifier,
     ) { innerPadding ->
         if (state.isLoading) {

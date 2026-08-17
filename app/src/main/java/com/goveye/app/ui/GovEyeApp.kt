@@ -242,6 +242,8 @@ private fun GovEyeAppContent(
                     hasActiveFilters = searchConfig.hasActiveFilters,
                     placeholder = searchConfig.placeholder,
                     filterChips = searchConfig.filterChips,
+                    onBack = searchConfig.onBack,
+                    segments = searchConfig.segments,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = statusBarPadding)
