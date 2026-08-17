@@ -85,8 +85,8 @@ private fun VoteMapSummary(tiles: List<VoteMapTile>) {
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         SummaryStat("Total", total, MaterialTheme.colorScheme.onSurface)
-        SummaryStat("With party", withParty, MaterialTheme.colorScheme.primary)
-        SummaryStat("Rebels", rebels, MaterialTheme.colorScheme.error)
+        SummaryStat("With party", withParty, androidx.compose.ui.graphics.Color(0xFF00796B))
+        SummaryStat("Rebels", rebels, androidx.compose.ui.graphics.Color(0xFFE65100))
         SummaryStat("No vote", noVote, MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
@@ -115,8 +115,8 @@ private fun VoteMapTileView(
 ) {
     var showTooltip by remember { mutableStateOf(false) }
     val color = when (tile.voteResult) {
-        VoteMapResult.WITH_PARTY -> MaterialTheme.colorScheme.primary
-        VoteMapResult.REBEL -> MaterialTheme.colorScheme.error
+        VoteMapResult.WITH_PARTY -> androidx.compose.ui.graphics.Color(0xFF00796B) // teal
+        VoteMapResult.REBEL -> androidx.compose.ui.graphics.Color(0xFFE65100) // orange
         VoteMapResult.NO_VOTE -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
     }
 
@@ -139,8 +139,8 @@ private fun VoteMapLegend() {
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        LegendItem("With party", MaterialTheme.colorScheme.primary)
-        LegendItem("Rebel", MaterialTheme.colorScheme.error)
+        LegendItem("With party", androidx.compose.ui.graphics.Color(0xFF00796B))
+        LegendItem("Rebel", androidx.compose.ui.graphics.Color(0xFFE65100))
         LegendItem("No vote", MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f))
     }
 }

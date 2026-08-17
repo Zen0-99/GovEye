@@ -463,21 +463,22 @@ private fun VoteRecordRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // Vote badge
+        // Vote badge — consistent Aye (teal) / No (orange) colors
+        val ayeColor = androidx.compose.ui.graphics.Color(0xFF00796B)
+        val noColor = androidx.compose.ui.graphics.Color(0xFFE65100)
         Box(
             modifier = Modifier
                 .size(32.dp)
                 .clip(RoundedCornerShape(6.dp))
                 .background(
-                    if (vote.vote == VoteType.AYE) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.error
+                    if (vote.vote == VoteType.AYE) ayeColor else noColor
                 ),
             contentAlignment = Alignment.Center,
         ) {
             Text(
                 text = if (vote.vote == VoteType.AYE) "Aye" else "No",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onPrimary,
+                color = androidx.compose.ui.graphics.Color.White,
                 fontWeight = FontWeight.Bold,
             )
         }

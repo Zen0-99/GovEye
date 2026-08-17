@@ -2,8 +2,8 @@ package com.goveye.app.ui.screens.divisions
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -33,21 +32,26 @@ import com.goveye.app.domain.model.SyncStatus
 import com.goveye.app.ui.components.SyncStatusBanner
 import com.goveye.app.ui.theme.padding
 
+// Consistent colors for Aye / No — distinct from party colors.
+// Teal for Aye, amber/orange for No — neither competes with Labour red.
+private val AyeColor = androidx.compose.ui.graphics.Color(0xFF00796B) // teal 700
+private val NoColor = androidx.compose.ui.graphics.Color(0xFFE65100) // orange 900
+
 @Composable
 fun DivisionsTabContent(
     onNavigateToDivision: (Int, Int) -> Unit,
+    houseFilter: Int = 0,
     modifier: Modifier = Modifier,
     viewModel: DivisionBrowseViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    Column(modifier = modifier.fillMaxSize()) {
-        // House filter — segmented pills (All / Commons / Lords)
-        HouseFilterRow(
-            selectedHouse = state.houseFilter,
-            onHouseChange = viewModel::setHouseFilter,
-        )
+    // Apply external house filter from the filter bottom sheet
+    androidx.compose.runtime.LaunchedEffect(houseFilter) {
+        viewModel.setHouseFilter(houseFilter)
+    }
 
+    Column(modifier = modifier.fillMaxSize()) {
         if (state.syncStatus != SyncStatus.FRESH && state.divisions.isNotEmpty()) {
             SyncStatusBanner(status = state.syncStatus)
         }
@@ -75,8 +79,11 @@ fun DivisionsTabContent(
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(vertical = MaterialTheme.padding.small),
-                verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
+                contentPadding = PaddingValues(
+                    horizontal = 12.dp,
+                    vertical = MaterialTheme.padding.small,
+                ),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(state.divisions, key = { it.id }) { division ->
                     DivisionCard(
@@ -84,62 +91,6 @@ fun DivisionsTabContent(
                         onClick = { onNavigateToDivision(division.id, division.house) },
                     )
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun HouseFilterRow(
-    selectedHouse: Int,
-    onHouseChange: (Int) -> Unit,
-) {
-    val options = listOf(
-        "All" to 0,
-        "Commons" to 1,
-        "Lords" to 2,
-    )
-    val shape = RoundedCornerShape(999.dp)
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .clip(shape)
-            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f))
-            .padding(3.dp),
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        options.forEach { (label, value) ->
-            val isSelected = selectedHouse == value
-            Row(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(999.dp))
-                    .then(
-                        if (isSelected) {
-                            Modifier.background(
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                            )
-                        } else {
-                            Modifier
-                        },
-                    )
-                    .clickable { onHouseChange(value) }
-                    .padding(vertical = 8.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = if (isSelected) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                    maxLines = 1,
-                )
             }
         }
     }
@@ -166,26 +117,55 @@ private fun DivisionCard(
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
+        // Date + house badge inline, then result bar
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = formatDivisionDate(division.date),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            // Aye vs No result bar
-            DivisionResultBar(ayeCount = division.ayeCount, noCount = division.noCount)
+            // Date + house on the left
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = formatDivisionDate(division.date),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = if (division.house == 2) "Lords" else "Commons",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            // Aye vs No counts
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "${division.ayeCount}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = AyeColor,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = "·",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = "${division.noCount}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = NoColor,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
         }
-        // House badge
-        Text(
-            text = if (division.house == 2) "Lords" else "Commons",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontWeight = FontWeight.Bold,
-        )
+        // Result bar
+        DivisionResultBar(ayeCount = division.ayeCount, noCount = division.noCount)
     }
 }
 
@@ -197,23 +177,23 @@ fun DivisionResultBar(ayeCount: Int, noCount: Int) {
     val shape = RoundedCornerShape(4.dp)
     Row(
         modifier = Modifier
-            .fillMaxWidth(0.5f)
+            .fillMaxWidth()
             .clip(shape)
             .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f))
-            .height(20.dp),
+            .height(6.dp),
     ) {
-        Row(
+        Box(
             modifier = Modifier
                 .weight(ayeFraction)
-                .background(MaterialTheme.colorScheme.primary)
+                .background(AyeColor)
                 .fillMaxSize(),
-        ) {}
-        Row(
+        )
+        Box(
             modifier = Modifier
                 .weight(1f - ayeFraction)
-                .background(MaterialTheme.colorScheme.error)
+                .background(NoColor)
                 .fillMaxSize(),
-        ) {}
+        )
     }
 }
 

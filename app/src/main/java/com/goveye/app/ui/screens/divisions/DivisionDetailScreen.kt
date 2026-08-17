@@ -3,6 +3,7 @@ package com.goveye.app.ui.screens.divisions
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -51,6 +52,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+// Consistent colors for Aye / No — matches DivisionBrowseScreen
+private val AyeColor = androidx.compose.ui.graphics.Color(0xFF00796B) // teal 700
+private val NoColor = androidx.compose.ui.graphics.Color(0xFFE65100) // orange 900
+
 data class DivisionDetailState(
     val division: Division? = null,
     val votes: List<DivisionVote> = emptyList(),
@@ -66,30 +71,39 @@ class DivisionDetailViewModel @Inject constructor(
     private val _state = MutableStateFlow(DivisionDetailState(isLoading = true))
     val state: StateFlow<DivisionDetailState> = _state.asStateFlow()
 
+    private var loadedDivisionId: Int? = null
+
     fun load(divisionId: Int, house: Int) {
+        if (loadedDivisionId == divisionId) return
+        loadedDivisionId = divisionId
+
+        // Launch a coroutine to fetch division detail from API if not cached
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true)
-            // Observe division
-            votesRepository.observeDivision(divisionId).collect { result ->
-                val division = result.data
-                if (division != null) {
-                    // Fetch votes if not cached
-                    val voteResult = votesRepository.observeVotesForDivision(divisionId)
-                    voteResult.collect { voteRes ->
-                        if (voteRes.data.isEmpty()) {
-                            // Fetch full division detail with voter lists
-                            votesRepository.refreshDivisionDetail(divisionId, house)
-                        }
-                        val breakdown = votesRepository.getPartyBreakdown(divisionId)
-                        _state.value = DivisionDetailState(
-                            division = division,
-                            votes = voteRes.data,
-                            partyBreakdown = breakdown,
-                            isLoading = false,
-                        )
-                    }
+            try {
+                votesRepository.refreshDivisionDetail(divisionId, house)
+            } catch (e: Exception) {
+                // Ignore — cache will still be shown
+            }
+        }
+
+        // Observe division + votes combined
+        viewModelScope.launch {
+            votesRepository.observeDivision(divisionId).collect { divisionResult ->
+                val division = divisionResult.data
+                if (division == null) {
+                    _state.value = _state.value.copy(isLoading = false)
                     return@collect
                 }
+
+                val votes = votesRepository.getVotesForDivision(divisionId)
+                val breakdown = votesRepository.getPartyBreakdown(divisionId)
+                _state.value = DivisionDetailState(
+                    division = division,
+                    votes = votes,
+                    partyBreakdown = breakdown,
+                    isLoading = false,
+                )
             }
         }
     }
@@ -139,8 +153,19 @@ fun DivisionDetailScreen(
                 CircularProgressIndicator()
             }
         } else {
-            val division = state.division ?: return@Scaffold
-            LazyColumn(
+            val division = state.division
+            if (division == null) {
+                Box(
+                    modifier = Modifier.fillMaxSize().padding(innerPadding),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        "Division not found",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            } else {
+                LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -171,7 +196,7 @@ fun DivisionDetailScreen(
                             text = "Ayes (${state.votes.count { it.vote == VoteType.AYE }})",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
+                            color = AyeColor,
                         )
                     }
                     items(
@@ -189,7 +214,7 @@ fun DivisionDetailScreen(
                             text = "Noes (${state.votes.count { it.vote == VoteType.NO }})",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.error,
+                            color = NoColor,
                         )
                     }
                     items(
@@ -200,6 +225,7 @@ fun DivisionDetailScreen(
                     }
                 }
             }
+            } // end if (division != null)
         }
     }
 }
@@ -228,40 +254,38 @@ private fun DivisionHeader(division: Division) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        // Result bar
+        // Result bar — consistent Aye (teal) / No (orange) colors
         val total = division.ayeCount + division.noCount
         if (total > 0) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth().height(24.dp).clip(RoundedCornerShape(6.dp)),
                 ) {
-                    Row(
+                    Box(
                         modifier = Modifier
                             .weight(division.ayeCount.toFloat() / total)
-                            .background(MaterialTheme.colorScheme.primary)
+                            .background(AyeColor)
                             .fillMaxSize(),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically,
+                        contentAlignment = Alignment.Center,
                     ) {
                         Text(
                             text = division.ayeCount.toString(),
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onPrimary,
+                            color = androidx.compose.ui.graphics.Color.White,
                             fontWeight = FontWeight.Bold,
                         )
                     }
-                    Row(
+                    Box(
                         modifier = Modifier
                             .weight(division.noCount.toFloat() / total)
-                            .background(MaterialTheme.colorScheme.error)
+                            .background(NoColor)
                             .fillMaxSize(),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically,
+                        contentAlignment = Alignment.Center,
                     ) {
                         Text(
                             text = division.noCount.toString(),
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onError,
+                            color = androidx.compose.ui.graphics.Color.White,
                             fontWeight = FontWeight.Bold,
                         )
                     }

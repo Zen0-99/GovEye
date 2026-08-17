@@ -26,9 +26,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.FilterList
-import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.ViewAgenda
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -95,13 +93,6 @@ fun DirectoryScreen(
         FloatingSearchBar(
             query = searchQuery,
             onQueryChange = viewModel::updateSearchQuery,
-            viewMode = viewMode,
-            onViewModeToggle = {
-                viewModel.setViewMode(
-                    if (viewMode == DirectoryViewMode.LIST) DirectoryViewMode.GRID
-                    else DirectoryViewMode.LIST
-                )
-            },
             onFilterClick = { showFilterSheet = true },
             hasActiveFilters = filterState.hasActiveFilters,
             modifier = Modifier
@@ -153,20 +144,29 @@ fun DirectoryScreen(
                 DirectoryTab.BILLS -> PlaceholderTabContent("Bills")
                 DirectoryTab.DIVISIONS -> DivisionsTabContent(
                     onNavigateToDivision = onNavigateToDivision,
+                    houseFilter = filterState.houseFilter,
                 )
                 DirectoryTab.DEBATES -> PlaceholderTabContent("Debates")
             }
         }
     }
 
-    // Filter bottom sheet
+    // Filter bottom sheet — tab-aware
     if (showFilterSheet) {
+        val currentTabType = when (DirectoryTab.entries[pagerState.currentPage]) {
+            DirectoryTab.OFFICIALS -> FilterTabType.OFFICIALS
+            DirectoryTab.DIVISIONS -> FilterTabType.DIVISIONS
+            else -> FilterTabType.OTHER
+        }
         FilterBottomSheet(
             distinctParties = distinctParties,
             filterState = filterState,
+            tabType = currentTabType,
+            viewMode = viewMode,
             onPartyToggle = viewModel::togglePartyFilter,
             onHouseChange = viewModel::setHouseFilter,
             onCurrentOnlyChange = viewModel::setCurrentOnly,
+            onViewModeChange = viewModel::setViewMode,
             onClearFilters = viewModel::clearFilters,
             onDismiss = { showFilterSheet = false },
         )
@@ -383,8 +383,6 @@ private fun PlaceholderTabContent(label: String) {
 private fun FloatingSearchBar(
     query: String,
     onQueryChange: (String) -> Unit,
-    viewMode: DirectoryViewMode,
-    onViewModeToggle: () -> Unit,
     onFilterClick: () -> Unit,
     hasActiveFilters: Boolean,
     modifier: Modifier = Modifier,
@@ -470,20 +468,6 @@ private fun FloatingSearchBar(
                 )
             }
 
-            // View toggle
-            IconButton(
-                onClick = onViewModeToggle,
-                modifier = Modifier.size(40.dp),
-            ) {
-                Icon(
-                    imageVector = if (viewMode == DirectoryViewMode.LIST) Icons.Outlined.GridView
-                    else Icons.Outlined.ViewAgenda,
-                    contentDescription = if (viewMode == DirectoryViewMode.LIST) "Grid view"
-                    else "List view",
-                    tint = colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(22.dp),
-                )
-            }
         }
     }
 }

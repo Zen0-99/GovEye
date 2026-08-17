@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -21,27 +20,37 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
+import com.goveye.app.data.preference.DirectoryViewMode
+
+/**
+ * Which tab is active — determines which filter sections to show.
+ */
+enum class FilterTabType {
+    OFFICIALS,
+    DIVISIONS,
+    OTHER,
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FilterBottomSheet(
     distinctParties: List<String>,
     filterState: DirectoryFilterState,
+    tabType: FilterTabType,
+    viewMode: DirectoryViewMode,
     onPartyToggle: (String) -> Unit,
     onHouseChange: (Int) -> Unit,
     onCurrentOnlyChange: (Boolean) -> Unit,
+    onViewModeChange: (DirectoryViewMode) -> Unit,
     onClearFilters: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val scope = rememberCoroutineScope()
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -61,42 +70,83 @@ fun FilterBottomSheet(
                 verticalArrangement = Arrangement.spacedBy(20.dp),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
             ) {
-                // Party — horizontally scrollable pills at the top.
-                // Tri-state: tap to include (primary tint), tap again to exclude
-                // (red tint), tap again to clear. No icons/checkmarks.
-                item {
-                    PartyPillRow(
-                        parties = distinctParties,
-                        filterState = filterState,
-                        onPartyToggle = onPartyToggle,
-                    )
-                }
+                when (tabType) {
+                    FilterTabType.OFFICIALS -> {
+                        // Party — horizontally scrollable pills
+                        item {
+                            PartyPillRow(
+                                parties = distinctParties,
+                                filterState = filterState,
+                                onPartyToggle = onPartyToggle,
+                            )
+                        }
 
-                // House — combined segmented pill (All / Commons / Lords)
-                item {
-                    SectionLabel("House")
-                    SegmentedPill(
-                        options = listOf(
-                            "All" to 0,
-                            "Commons" to 1,
-                            "Lords" to 2,
-                        ),
-                        selectedValue = filterState.houseFilter,
-                        onValueChange = onHouseChange,
-                    )
-                }
+                        // House
+                        item {
+                            SectionLabel("House")
+                            SegmentedPill(
+                                options = listOf(
+                                    "All" to 0,
+                                    "Commons" to 1,
+                                    "Lords" to 2,
+                                ),
+                                selectedValue = filterState.houseFilter,
+                                onValueChange = onHouseChange,
+                            )
+                        }
 
-                // Status — combined segmented pill (All / Current)
-                item {
-                    SectionLabel("Status")
-                    SegmentedPill(
-                        options = listOf(
-                            "All" to false,
-                            "Current" to true,
-                        ),
-                        selectedValue = filterState.currentOnly,
-                        onValueChange = onCurrentOnlyChange,
-                    )
+                        // Status
+                        item {
+                            SectionLabel("Status")
+                            SegmentedPill(
+                                options = listOf(
+                                    "All" to false,
+                                    "Current" to true,
+                                ),
+                                selectedValue = filterState.currentOnly,
+                                onValueChange = onCurrentOnlyChange,
+                            )
+                        }
+
+                        // View mode — List / Grid (Officials only)
+                        item {
+                            SectionLabel("View")
+                            SegmentedPill(
+                                options = listOf(
+                                    "List" to DirectoryViewMode.LIST,
+                                    "Grid" to DirectoryViewMode.GRID,
+                                ),
+                                selectedValue = viewMode,
+                                onValueChange = onViewModeChange,
+                            )
+                        }
+                    }
+
+                    FilterTabType.DIVISIONS -> {
+                        // House — All / Commons / Lords
+                        item {
+                            SectionLabel("House")
+                            SegmentedPill(
+                                options = listOf(
+                                    "All" to 0,
+                                    "Commons" to 1,
+                                    "Lords" to 2,
+                                ),
+                                selectedValue = filterState.houseFilter,
+                                onValueChange = onHouseChange,
+                            )
+                        }
+                    }
+
+                    FilterTabType.OTHER -> {
+                        item {
+                            Text(
+                                text = "No filters available for this tab",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
                 }
             }
 
@@ -127,12 +177,6 @@ private fun SectionLabel(text: String) {
 
 /**
  * Combined segmented pill — a single rounded container with N segments.
- * The selected segment gets a filled pill background (primary at 15% alpha)
- * and primary-colored bold text; unselected segments are transparent with
- * onSurfaceVariant text.
- *
- * Ported from Miko's BrowseSearchPill (Browse | Extensions toggle),
- * generalized to N options.
  */
 @Composable
 private fun <T> SegmentedPill(
@@ -189,14 +233,6 @@ private fun <T> SegmentedPill(
 
 /**
  * Horizontally scrollable row of party filter pills.
- *
- * Each party pill cycles through TriState on tap:
- * - DISABLED: subtle surface background, normal text
- * - INCLUDED: primary tint background (same style as House/Status selected),
- *   primary text, bold
- * - EXCLUDED: red tint background, error-colored text, bold
- *
- * No icons or checkmarks — color alone communicates state.
  */
 @Composable
 private fun PartyPillRow(
