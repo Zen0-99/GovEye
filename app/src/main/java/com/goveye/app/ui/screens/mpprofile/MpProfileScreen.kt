@@ -455,9 +455,9 @@ private fun VoteRecordRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // Vote badge — consistent Aye (teal) / No (orange) colors
-        val ayeColor = androidx.compose.ui.graphics.Color(0xFF00796B)
-        val noColor = androidx.compose.ui.graphics.Color(0xFFE65100)
+        // Vote badge — theme-aware Aye (teal) / No (orange) colors
+        val ayeColor = com.goveye.app.ui.components.VoteColors.aye
+        val noColor = com.goveye.app.ui.components.VoteColors.no
         Box(
             modifier = Modifier
                 .size(32.dp)

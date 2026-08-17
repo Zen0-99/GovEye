@@ -33,10 +33,9 @@ import com.goveye.app.domain.model.SyncStatus
 import com.goveye.app.ui.components.SyncStatusBanner
 import com.goveye.app.ui.theme.padding
 
-// Consistent colors for Aye / No — distinct from party colors.
-// Teal for Aye, amber/orange for No — neither competes with Labour red.
-private val AyeColor = androidx.compose.ui.graphics.Color(0xFF00796B) // teal 700
-private val NoColor = androidx.compose.ui.graphics.Color(0xFFE65100) // orange 900
+// Theme-aware vote colors — teal for Aye, orange for No
+private val AyeColor @Composable get() = com.goveye.app.ui.components.VoteColors.aye
+private val NoColor @Composable get() = com.goveye.app.ui.components.VoteColors.no
 
 @Composable
 fun DivisionsTabContent(

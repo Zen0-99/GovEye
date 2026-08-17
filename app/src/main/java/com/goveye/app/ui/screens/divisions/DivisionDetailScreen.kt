@@ -63,9 +63,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-// Consistent colors for Aye / No — matches DivisionBrowseScreen
-private val AyeColor = Color(0xFF00796B) // teal 700
-private val NoColor = Color(0xFFE65100) // orange 900
+// Theme-aware vote colors
+private val AyeColor @Composable get() = com.goveye.app.ui.components.VoteColors.aye
+private val NoColor @Composable get() = com.goveye.app.ui.components.VoteColors.no
 
 data class DivisionDetailState(
     val division: Division? = null,

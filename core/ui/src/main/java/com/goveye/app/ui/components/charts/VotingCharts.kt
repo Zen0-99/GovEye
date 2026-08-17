@@ -40,11 +40,12 @@ import com.patrykandpatrick.vico.compose.common.Fill
 import com.patrykandpatrick.vico.compose.common.component.rememberLineComponent
 import com.patrykandpatrick.vico.compose.m3.common.rememberM3VicoTheme
 import com.patrykandpatrick.vico.compose.common.ProvideVicoTheme
+import com.goveye.app.ui.components.VoteColors
 
-// Consistent colors — Aye = teal, No = orange, No-vote = gray
-private val AyeColor = Color(0xFF00796B)
-private val NoColor = Color(0xFFE65100)
-private val NoVoteColor = Color(0xFF9E9E9E)
+// Theme-aware vote colors — Aye = teal, No = orange, No-vote = gray
+private val AyeColor @Composable get() = VoteColors.aye
+private val NoColor @Composable get() = VoteColors.no
+private val NoVoteColor @Composable get() = VoteColors.noVote
 private val LineColor = Color(0xFF1976D2)
 
 /**
