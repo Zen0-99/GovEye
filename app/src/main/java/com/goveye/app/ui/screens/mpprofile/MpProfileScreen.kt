@@ -3,7 +3,6 @@ package com.goveye.app.ui.screens.mpprofile
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
@@ -36,6 +35,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -93,7 +93,7 @@ fun ProfileScreen(
         } else {
             val mp = uiState.mp!!
             val partyColor = remember(mp) { parsePartyColor(mp.party?.backgroundColour) }
-            val isDark = isSystemInDarkTheme()
+            val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
             val partyScheme = partyAccentColorScheme(partyColor, isDark)
 
             CompositionLocalProvider(LocalPartyAccent provides partyColor) {
