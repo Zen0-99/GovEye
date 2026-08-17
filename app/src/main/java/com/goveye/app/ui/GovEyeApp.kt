@@ -1,12 +1,8 @@
 package com.goveye.app.ui
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
@@ -17,7 +13,6 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Home
@@ -223,29 +218,14 @@ private fun GovEyeAppContent(
         it !is ProfileRoute && it !is DivisionDetailRoute
     } ?: true
 
-    // Search bar is visible on tab-level screens, hidden on detail screens.
-    // Route-based (not config-based) to ensure clean single-slide transition.
-    val showSearchBar = currentBackStack.lastOrNull()?.let {
-        it !is ProfileRoute && it !is DivisionDetailRoute
-    } ?: true
-
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-
-    // Slide animation: the search bar stays composed the entire time.
-    // We animate translationY so it slides up/off-screen as a single unit —
-    // no element-by-element destruction (Miko SharedTopBar pattern).
-    val searchBarOffsetY by animateFloatAsState(
-        targetValue = if (showSearchBar) 0f else 1f,
-        animationSpec = tween(durationMillis = 250),
-        label = "searchBarSlide",
-    )
 
     Scaffold(
         contentWindowInsets = WindowInsets.navigationBars.only(WindowInsetsSides.Horizontal),
         topBar = {
-            // Global search bar — rendered at app shell level.
-            // Slides up/off-screen as a single unit via graphicsLayer.
-            // Content (query, placeholder, chips) comes from SearchBarState.
+            // Global search bar — always visible across all screens.
+            // On detail screens (profile, division) it's non-functional but
+            // keeps the layout stable (no gap, no janky transition).
             FloatingSearchBar(
                 query = searchConfig.query,
                 onQueryChange = searchConfig.onQueryChange,
@@ -255,7 +235,6 @@ private fun GovEyeAppContent(
                 filterChips = searchConfig.filterChips,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .graphicsLayer { translationY = -size.height * searchBarOffsetY }
                     .padding(top = statusBarPadding)
                     .padding(horizontal = 12.dp, vertical = 6.dp),
             )

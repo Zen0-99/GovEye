@@ -7,12 +7,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
@@ -30,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.goveye.app.domain.stats.VoteMapResult
@@ -63,7 +60,7 @@ fun VoteMapGrid(
     val selectedYear = years.getOrElse(selectedYearIndex) { years.first() }
     val yearTiles = yearToTiles[selectedYear] ?: emptyList()
 
-    // Shrink tile size when there are many tiles so all fit without scrolling.
+    // Calculate tile size based on count — shrink to fit all without scrolling
     val tileSize = when {
         yearTiles.size <= 36 -> 32.dp
         yearTiles.size <= 64 -> 24.dp
@@ -73,6 +70,10 @@ fun VoteMapGrid(
     }
     val gridSpacing = if (tileSize <= 18.dp) 2.dp else 3.dp
 
+    // Calculate how many columns fit on screen
+    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
+    val columns = ((screenWidth - 24.dp) / (tileSize + gridSpacing)).toInt().coerceAtLeast(1)
+
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -80,24 +81,27 @@ fun VoteMapGrid(
         // Summary stats for the selected year
         VoteMapSummary(tiles = yearTiles)
 
-        // Grid of tiles — height adapts to tile count so all are visible
-        val rows = (yearTiles.size + 7) / 8
-        val gridHeight = if (yearTiles.size <= 36) 200.dp else (rows * (tileSize.value + gridSpacing.value)).dp
-
-        LazyVerticalGrid(
-            columns = GridCells.Adaptive(tileSize),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(gridHeight),
-            horizontalArrangement = Arrangement.spacedBy(gridSpacing),
-            verticalArrangement = Arrangement.spacedBy(gridSpacing),
-        ) {
-            items(yearTiles, key = { it.divisionId }) { tile ->
-                VoteMapTileView(
-                    tile = tile,
-                    onClick = { onTileClick(tile.divisionId, 1) },
-                    size = tileSize,
-                )
+        // Grid of tiles — built as Rows in a Column for accurate height.
+        // No fixed height needed; the grid is exactly as tall as its content.
+        val rows = (yearTiles.size + columns - 1) / columns
+        Column(verticalArrangement = Arrangement.spacedBy(gridSpacing)) {
+            for (rowIndex in 0 until rows) {
+                Row(horizontalArrangement = Arrangement.spacedBy(gridSpacing)) {
+                    for (colIndex in 0 until columns) {
+                        val index = rowIndex * columns + colIndex
+                        if (index < yearTiles.size) {
+                            val tile = yearTiles[index]
+                            VoteMapTileView(
+                                tile = tile,
+                                onClick = { onTileClick(tile.divisionId, 1) },
+                                size = tileSize,
+                            )
+                        } else {
+                            // Empty spacer to keep row alignment
+                            Box(modifier = Modifier.size(tileSize))
+                        }
+                    }
+                }
             }
         }
 
