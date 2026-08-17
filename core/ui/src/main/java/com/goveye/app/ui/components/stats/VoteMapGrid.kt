@@ -33,6 +33,7 @@ import com.goveye.app.domain.stats.VoteMapTile
 /**
  * Vote map grid — FotMob shot map style grid of colored tiles.
  * Green = with party, Red = rebel, Gray = no vote recorded.
+ * When there are more than 36 tiles, blocks shrink to fit all without scrolling.
  */
 @Composable
 fun VoteMapGrid(
@@ -42,34 +43,45 @@ fun VoteMapGrid(
 ) {
     if (tiles.isEmpty()) return
 
+    // Shrink tile size when there are many tiles so all fit without scrolling.
+    // Base size is 32.dp; for >36 tiles, shrink proportionally down to 8.dp min.
+    val tileSize = when {
+        tiles.size <= 36 -> 32.dp
+        tiles.size <= 64 -> 24.dp
+        tiles.size <= 100 -> 18.dp
+        tiles.size <= 200 -> 12.dp
+        else -> 8.dp
+    }
+    val gridSpacing = if (tileSize <= 18.dp) 2.dp else 3.dp
+
     Column(
         modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         // Summary stats
         VoteMapSummary(tiles = tiles)
 
-        // Grid of tiles
+        // Grid of tiles — height adapts to tile count so all are visible
+        val columns = (tiles.size + 7) / 8 // estimate rows, 8 per row
+        val gridHeight = if (tiles.size <= 36) 200.dp else (columns * (tileSize.value + gridSpacing.value)).dp
+
         LazyVerticalGrid(
-            columns = GridCells.Adaptive(36.dp),
+            columns = GridCells.Adaptive(tileSize),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(200.dp),
-            horizontalArrangement = Arrangement.spacedBy(3.dp),
-            verticalArrangement = Arrangement.spacedBy(3.dp),
+                .height(gridHeight),
+            horizontalArrangement = Arrangement.spacedBy(gridSpacing),
+            verticalArrangement = Arrangement.spacedBy(gridSpacing),
         ) {
             items(tiles, key = { it.divisionId }) { tile ->
                 VoteMapTileView(
                     tile = tile,
                     onClick = { onTileClick(tile.divisionId, 1) },
+                    size = tileSize,
                 )
             }
         }
-
-        // Legend
-        VoteMapLegend()
     }
 }
 
@@ -112,6 +124,7 @@ private fun SummaryStat(label: String, count: Int, color: Color) {
 private fun VoteMapTileView(
     tile: VoteMapTile,
     onClick: () -> Unit,
+    size: androidx.compose.ui.unit.Dp,
 ) {
     var showTooltip by remember { mutableStateOf(false) }
     val color = when (tile.voteResult) {
@@ -122,8 +135,8 @@ private fun VoteMapTileView(
 
     Box(
         modifier = Modifier
-            .size(32.dp)
-            .clip(RoundedCornerShape(4.dp))
+            .size(size)
+            .clip(RoundedCornerShape(if (size <= 18.dp) 2.dp else 4.dp))
             .background(color)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,

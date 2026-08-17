@@ -22,10 +22,15 @@ import com.goveye.app.ui.theme.padding
  */
 @Composable
 fun FollowingScreen(modifier: Modifier = Modifier) {
+    com.goveye.app.ui.components.ConfigureSearchBar(
+        config = com.goveye.app.ui.components.SearchBarConfig(
+            isVisible = true,
+            placeholder = "Search followed MPs…",
+        ),
+    )
     Box(
         modifier = modifier
             .fillMaxSize()
-            .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
             .padding(MaterialTheme.padding.large),
         contentAlignment = Alignment.Center
     ) {

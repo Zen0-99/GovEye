@@ -46,7 +46,9 @@ val LocalSearchBarState = staticCompositionLocalOf<SearchBarStateHolder> {
 
 /**
  * Configures the global search bar for a screen.
- * Automatically clears the configuration when the screen leaves composition.
+ * Does NOT clear on dispose — the last config persists so the search bar
+ * retains its query/placeholder when returning to a tab screen.
+ * Visibility is controlled route-level in GovEyeApp, not via config.isVisible.
  */
 @Composable
 fun ConfigureSearchBar(
@@ -56,7 +58,8 @@ fun ConfigureSearchBar(
     DisposableEffect(config) {
         holder.update(config)
         onDispose {
-            holder.clear()
+            // Keep the last config — don't clear. This prevents janky
+            // element-by-element destruction when navigating to detail screens.
         }
     }
 }

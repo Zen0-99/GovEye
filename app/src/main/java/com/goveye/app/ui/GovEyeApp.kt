@@ -3,6 +3,8 @@ package com.goveye.app.ui
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
@@ -218,17 +220,24 @@ private fun GovEyeAppContent(
         it !is ProfileRoute && it !is DivisionDetailRoute
     } ?: true
 
+    // Search bar is visible on tab-level screens, hidden on detail screens.
+    // Route-based (not config-based) to ensure clean single-slide transition.
+    val showSearchBar = currentBackStack.lastOrNull()?.let {
+        it !is ProfileRoute && it !is DivisionDetailRoute
+    } ?: true
+
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
     Scaffold(
         contentWindowInsets = WindowInsets.navigationBars.only(WindowInsetsSides.Horizontal),
         topBar = {
             // Global search bar — rendered at app shell level.
-            // Screens configure it via ConfigureSearchBar() / LocalSearchBarState.
+            // Visibility is route-based for a clean slide transition.
+            // Content (query, placeholder, chips) comes from SearchBarState.
             AnimatedVisibility(
-                visible = searchConfig.isVisible,
-                enter = fadeIn(),
-                exit = fadeOut(),
+                visible = showSearchBar,
+                enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
             ) {
                 FloatingSearchBar(
                     query = searchConfig.query,

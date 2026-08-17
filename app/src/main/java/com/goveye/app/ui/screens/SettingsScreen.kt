@@ -35,6 +35,12 @@ import com.goveye.app.ui.theme.padding
  */
 @Composable
 fun SettingsScreen(themeViewModel: ThemeViewModel, modifier: Modifier = Modifier) {
+    com.goveye.app.ui.components.ConfigureSearchBar(
+        config = com.goveye.app.ui.components.SearchBarConfig(
+            isVisible = true,
+            placeholder = "Search settings…",
+        ),
+    )
     val themeMode by themeViewModel.themeMode.collectAsStateWithLifecycle()
     val isAmoled by themeViewModel.isAmoled.collectAsStateWithLifecycle()
 
@@ -52,7 +58,6 @@ fun SettingsScreen(themeViewModel: ThemeViewModel, modifier: Modifier = Modifier
             modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
                 .padding(MaterialTheme.padding.large),
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.medium)
     ) {

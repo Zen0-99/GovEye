@@ -83,6 +83,13 @@ fun VotingBarChart(
         }
     }
 
+    // Y-axis: only show whole numbers (vote counts are integers)
+    val startAxisFormatter = remember {
+        CartesianValueFormatter { _, value, _ ->
+            value.toInt().toString()
+        }
+    }
+
     ChartCard(modifier = modifier) {
         // Title + legend on same row
         ChartHeaderWithLegend(
@@ -103,7 +110,7 @@ fun VotingBarChart(
                             rememberLineComponent(fill = Fill(NoVoteColor), thickness = 12.dp),
                         ),
                     ),
-                    startAxis = VerticalAxis.rememberStart(),
+                    startAxis = VerticalAxis.rememberStart(valueFormatter = startAxisFormatter),
                     bottomAxis = HorizontalAxis.rememberBottom(
                         valueFormatter = bottomAxisFormatter,
                     ),

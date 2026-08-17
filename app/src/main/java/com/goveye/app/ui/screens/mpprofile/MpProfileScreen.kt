@@ -336,7 +336,14 @@ private fun VotesTabContent(
         if (voteMapTiles.isNotEmpty()) {
             item {
                 com.goveye.app.ui.components.charts.ChartCard {
-                    com.goveye.app.ui.components.charts.ChartHeader(title = "Vote Map")
+                    com.goveye.app.ui.components.charts.ChartHeaderWithLegend(
+                        title = "Vote Map",
+                        legendItems = listOf(
+                            "With party" to com.goveye.app.ui.components.VoteColors.aye,
+                            "Rebel" to com.goveye.app.ui.components.VoteColors.no,
+                            "No vote" to MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                        ),
+                    )
                     com.goveye.app.ui.components.stats.VoteMapGrid(
                         tiles = voteMapTiles,
                         onTileClick = onNavigateToDivision,
@@ -347,17 +354,25 @@ private fun VotesTabContent(
 
         if (memberVotes.isEmpty()) {
             item {
-                Box(
-                    modifier = Modifier.fillMaxWidth().padding(32.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        "No voting data available yet.",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                com.goveye.app.ui.components.charts.ChartCard {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(32.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            "No voting data available yet.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         } else {
+            // Voting history section header
+            item {
+                com.goveye.app.ui.components.charts.ChartCard {
+                    com.goveye.app.ui.components.charts.ChartHeader(title = "Voting History")
+                }
+            }
             items(memberVotes, key = { it.divisionId }) { vote ->
                 VoteRecordRow(
                     vote = vote,
@@ -377,8 +392,8 @@ private fun VotesSummaryCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surface)
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -447,8 +462,8 @@ private fun VoteRecordRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.surface)
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
