@@ -10,6 +10,7 @@ import com.goveye.app.data.local.dao.HansardDao
 import com.goveye.app.data.local.dao.InterestDao
 import com.goveye.app.data.local.dao.CommitteeDao
 import com.goveye.app.data.local.dao.MpDao
+import com.goveye.app.data.local.dao.RecessDateDao
 import com.goveye.app.data.local.dao.RemoteKeyDao
 import com.goveye.app.data.local.dao.SearchDao
 import com.goveye.app.data.local.entity.BillEntity
@@ -23,6 +24,8 @@ import com.goveye.app.data.local.entity.InterestEntity
 import com.goveye.app.data.local.entity.MpCommitteeCrossRef
 import com.goveye.app.data.local.entity.MpEntity
 import com.goveye.app.data.local.entity.MpFtsEntity
+import com.goveye.app.data.local.entity.RecessDateEntity
+import com.goveye.app.data.local.entity.RecessDatesMetaEntity
 import com.goveye.app.data.local.entity.RemoteKeyEntity
 
 @Database(
@@ -39,8 +42,10 @@ import com.goveye.app.data.local.entity.RemoteKeyEntity
         HansardContributionEntity::class,
         InterestEntity::class,
         FollowEntity::class,
+        RecessDateEntity::class,
+        RecessDatesMetaEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -54,6 +59,7 @@ abstract class GovEyeDatabase : RoomDatabase() {
     abstract fun hansardDao(): HansardDao
     abstract fun interestDao(): InterestDao
     abstract fun followDao(): FollowDao
+    abstract fun recessDateDao(): RecessDateDao
 
     companion object {
         const val DATABASE_NAME = "goveye.db"

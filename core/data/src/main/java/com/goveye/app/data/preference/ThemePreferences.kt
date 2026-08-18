@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import com.goveye.app.domain.AppTheme
 import com.goveye.app.domain.ThemeMode
 import javax.inject.Inject
+import javax.inject.Named
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -23,7 +24,7 @@ import kotlinx.coroutines.flow.map
 @Singleton
 class ThemePreferences
 @Inject
-constructor(private val dataStore: DataStore<Preferences>) {
+constructor(@Named("theme") private val dataStore: DataStore<Preferences>) {
     val themeMode: Flow<ThemeMode> =
         dataStore.data.map { preferences ->
             preferences[THEME_MODE_KEY]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() }

@@ -51,6 +51,11 @@ dependencies {
     // Hilt + Nav3 integration
     implementation(libs.androidx.hilt.navigation.compose)
 
+    // WorkManager + Hilt-Work (Phase 6 — vote polling notifications)
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
+
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)
 

@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import javax.inject.Inject
+import javax.inject.Named
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -13,7 +14,7 @@ enum class DirectoryViewMode { LIST, GRID }
 
 @Singleton
 class DirectoryPreferences @Inject constructor(
-    private val dataStore: DataStore<Preferences>,
+    @Named("theme") private val dataStore: DataStore<Preferences>,
 ) {
     val viewMode: Flow<DirectoryViewMode> =
         dataStore.data.map { preferences ->

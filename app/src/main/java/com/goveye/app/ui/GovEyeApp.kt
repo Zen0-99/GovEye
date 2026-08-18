@@ -134,6 +134,12 @@ private fun GovEyeAppContent(
                     currentTabIndex = 1
                     directoryBackStack.add(route)
                 }
+                is DivisionDetailRoute -> {
+                    // Notification deep link — push onto directory back stack
+                    // (the most natural entry point for division detail)
+                    currentTabIndex = 1
+                    directoryBackStack.add(route)
+                }
                 is DirectoryRoute -> {
                     currentTabIndex = 1
                 }

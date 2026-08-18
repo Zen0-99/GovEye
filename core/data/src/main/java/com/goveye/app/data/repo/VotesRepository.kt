@@ -9,6 +9,7 @@ import com.goveye.app.data.mapper.DivisionMapper
 import com.goveye.app.domain.model.Division
 import com.goveye.app.domain.model.DivisionVote
 import com.goveye.app.domain.model.MemberVoteWithDivision
+import com.goveye.app.domain.model.NewVote
 import com.goveye.app.domain.model.PartyBreakdown
 import com.goveye.app.domain.model.RepositoryResult
 import com.goveye.app.domain.model.SyncStatus
@@ -346,6 +347,82 @@ class VotesRepository @Inject constructor(
      */
     suspend fun getAllDivisionDates(house: Int): List<String> =
         divisionDao.getAllDivisionsByHouse(house).map { it.date }
+
+    /**
+     * Detect new votes for a member since the last poll.
+     *
+     * Compares the set of division IDs the member has voted in (before vs
+     * after refreshing from the API). Returns a [NewVote] for each new
+     * division, with enough context to build a notification.
+     *
+     * Used by the VotePollingWorker (Phase 6, D-02).
+     *
+     * @param memberId The followed MP's ID
+     * @param house The MP's house (1=Commons, 2=Lords)
+     * @param memberName The MP's display name (for notification title)
+     * @param thumbnailUrl The MP's thumbnail URL (for notification large icon)
+     * @param partyName The MP's party name (for rebellion detection)
+     * @return List of new votes, or empty list if none
+     */
+    suspend fun detectNewVotesForMember(
+        memberId: Int,
+        house: Int,
+        memberName: String,
+        thumbnailUrl: String?,
+        partyName: String,
+    ): List<NewVote> {
+        // 1. Get existing division IDs before refresh
+        val existingIds = divisionDao.getDivisionIdsForMember(memberId).toSet()
+
+        // 2. Refresh from API (upserts new votes into DB)
+        refreshMemberVoting(memberId, house)
+
+        // 3. Get current division IDs after refresh
+        val currentIds = divisionDao.getDivisionIdsForMember(memberId).toSet()
+
+        // 4. New IDs = current - existing
+        val newIds = currentIds - existingIds
+        if (newIds.isEmpty()) return emptyList()
+
+        // 5. For each new vote, build a NewVote with division context
+        return newIds.mapNotNull { divisionId ->
+            val division = divisionDao.getDivision(divisionId) ?: return@mapNotNull null
+            val voteEntity = divisionDao.getVotesForMember(memberId)
+                .firstOrNull { it.divisionId == divisionId } ?: return@mapNotNull null
+            val voteType = runCatching { VoteType.valueOf(voteEntity.vote) }.getOrNull()
+                ?: return@mapNotNull null
+
+            // Check if rebel: compare MP's vote against party majority
+            val isRebel = checkIfRebel(divisionId, partyName, voteType)
+
+            NewVote(
+                memberId = memberId,
+                memberName = memberName,
+                thumbnailUrl = thumbnailUrl,
+                partyName = partyName,
+                divisionId = divisionId,
+                house = division.house,
+                divisionTitle = division.title,
+                voteType = voteType,
+                isRebel = isRebel,
+            )
+        }
+    }
+
+    /**
+     * Check if the MP's vote is a rebellion (against party majority).
+     */
+    private suspend fun checkIfRebel(divisionId: Int, partyName: String, mpVote: VoteType): Boolean {
+        if (mpVote == VoteType.NO_VOTE_RECORDED) return false
+        val votes = divisionDao.getVotesForDivision(divisionId)
+        val partyVotes = votes.filter { it.partyName.equals(partyName, ignoreCase = true) }
+        if (partyVotes.isEmpty()) return false
+        val ayes = partyVotes.count { it.vote == "AYE" }
+        val noes = partyVotes.count { it.vote == "NO" }
+        if (ayes == noes) return false // tie — no rebellion
+        val partyMajority = if (ayes > noes) VoteType.AYE else VoteType.NO
+        return mpVote != partyMajority
+    }
 
     /**
      * Get all votes for a single division (suspend, one-shot).

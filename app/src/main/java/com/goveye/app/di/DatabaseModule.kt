@@ -10,6 +10,7 @@ import com.goveye.app.data.local.dao.HansardDao
 import com.goveye.app.data.local.dao.InterestDao
 import com.goveye.app.data.local.dao.CommitteeDao
 import com.goveye.app.data.local.dao.MpDao
+import com.goveye.app.data.local.dao.RecessDateDao
 import com.goveye.app.data.local.dao.RemoteKeyDao
 import com.goveye.app.data.local.dao.SearchDao
 import com.goveye.app.data.mapper.BillMapper
@@ -71,6 +72,9 @@ object DatabaseModule {
 
     @Provides
     fun provideFollowDao(database: GovEyeDatabase): FollowDao = database.followDao()
+
+    @Provides
+    fun provideRecessDateDao(database: GovEyeDatabase): RecessDateDao = database.recessDateDao()
 
     @Provides
     @Singleton

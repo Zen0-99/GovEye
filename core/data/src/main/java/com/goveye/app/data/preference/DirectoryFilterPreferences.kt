@@ -7,13 +7,14 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import javax.inject.Inject
+import javax.inject.Named
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 @Singleton
 class DirectoryFilterPreferences @Inject constructor(
-    private val dataStore: DataStore<Preferences>,
+    @Named("theme") private val dataStore: DataStore<Preferences>,
 ) {
     // Party filter — tri-state per party (included / excluded / disabled)
     // Stored as two sets: included parties and excluded parties.
