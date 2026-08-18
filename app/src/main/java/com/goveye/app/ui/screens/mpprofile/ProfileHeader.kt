@@ -14,8 +14,11 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.NotificationsOff
 import androidx.compose.material.icons.outlined.PersonAdd
+import androidx.compose.material.icons.outlined.PersonRemove
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -39,6 +42,10 @@ import com.goveye.app.ui.theme.parsePartyColor
 fun ProfileHeader(
     mp: Mp,
     onBack: () -> Unit,
+    isFollowing: Boolean = false,
+    isMuted: Boolean = false,
+    onFollowClick: () -> Unit = {},
+    onMuteClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val partyColor = parsePartyColor(mp.party?.backgroundColour)
@@ -111,17 +118,29 @@ fun ProfileHeader(
                     )
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    IconButton(
-                        onClick = { /* Phase 6: notification toggle */ },
-                        modifier = Modifier.size(48.dp),
-                    ) {
-                        Icon(Icons.Outlined.Notifications, contentDescription = "Notifications", tint = headerIconTint, modifier = Modifier.size(22.dp))
+                    if (isFollowing) {
+                        IconButton(
+                            onClick = onMuteClick,
+                            modifier = Modifier.size(48.dp),
+                        ) {
+                            Icon(
+                                imageVector = if (isMuted) Icons.Outlined.NotificationsOff else Icons.Outlined.Notifications,
+                                contentDescription = if (isMuted) "Unmute notifications" else "Mute notifications",
+                                tint = headerIconTint,
+                                modifier = Modifier.size(22.dp),
+                            )
+                        }
                     }
                     IconButton(
-                        onClick = { /* Phase 6: follow */ },
+                        onClick = onFollowClick,
                         modifier = Modifier.size(48.dp),
                     ) {
-                        Icon(Icons.Outlined.PersonAdd, contentDescription = "Follow", tint = headerIconTint, modifier = Modifier.size(22.dp))
+                        Icon(
+                            imageVector = if (isFollowing) Icons.Outlined.PersonRemove else Icons.Outlined.PersonAdd,
+                            contentDescription = if (isFollowing) "Unfollow" else "Follow",
+                            tint = headerIconTint,
+                            modifier = Modifier.size(22.dp),
+                        )
                     }
                 }
             }

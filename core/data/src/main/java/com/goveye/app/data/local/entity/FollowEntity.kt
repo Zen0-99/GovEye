@@ -7,4 +7,5 @@ import androidx.room.PrimaryKey
 data class FollowEntity(
     @PrimaryKey val memberId: Int,
     val followedAt: Long,
+    val isMuted: Boolean = false,
 )

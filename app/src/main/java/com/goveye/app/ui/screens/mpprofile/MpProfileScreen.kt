@@ -44,9 +44,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
@@ -82,6 +89,16 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
+    // POST_NOTIFICATIONS permission launcher (Android 13+) — requested at follow time per D-04
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+    ) { _ ->
+        // Whether granted or denied, proceed with the follow.
+        // If denied, notifications are silently disabled (D-04).
+        viewModel.toggleFollow(memberId)
+    }
 
     LaunchedEffect(memberId) {
         viewModel.loadProfile(memberId)
@@ -128,6 +145,24 @@ fun ProfileScreen(
                             ProfileHeader(
                                 mp = mp,
                                 onBack = onBack,
+                                isFollowing = uiState.isFollowing,
+                                isMuted = uiState.isMuted,
+                                onFollowClick = {
+                                    // If following → just unfollow.
+                                    // If not following → request POST_NOTIFICATIONS first (Android 13+), then follow.
+                                    if (uiState.isFollowing) {
+                                        viewModel.toggleFollow(memberId)
+                                    } else {
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                                            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                                        ) {
+                                            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                        } else {
+                                            viewModel.toggleFollow(memberId)
+                                        }
+                                    }
+                                },
+                                onMuteClick = { viewModel.toggleMute(memberId) },
                             )
 
                             // Fixed tabs — selected text uses onSurface (theme-adaptive),

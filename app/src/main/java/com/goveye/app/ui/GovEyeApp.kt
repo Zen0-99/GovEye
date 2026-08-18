@@ -199,7 +199,12 @@ private fun GovEyeAppContent(
 
                 is FollowingRoute ->
                     NavEntry(key) {
-                        FollowingScreen(modifier = Modifier.fillMaxSize())
+                        FollowingScreen(
+                            onNavigateToProfile = { memberId ->
+                                currentBackStack.add(ProfileRoute(memberId))
+                            },
+                            modifier = Modifier.fillMaxSize(),
+                        )
                     }
 
                 is SettingsRoute ->

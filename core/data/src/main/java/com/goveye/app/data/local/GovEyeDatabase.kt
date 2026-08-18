@@ -40,7 +40,7 @@ import com.goveye.app.data.local.entity.RemoteKeyEntity
         InterestEntity::class,
         FollowEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)

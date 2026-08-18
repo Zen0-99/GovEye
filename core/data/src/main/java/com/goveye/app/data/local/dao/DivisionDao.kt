@@ -5,6 +5,7 @@ import androidx.room.Query
 import androidx.room.Upsert
 import com.goveye.app.data.local.entity.DivisionEntity
 import com.goveye.app.data.local.entity.DivisionVoteEntity
+import com.goveye.app.data.local.entity.MemberRecentVote
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -53,4 +54,43 @@ interface DivisionDao {
 
     @Query("SELECT MIN(lastUpdated) FROM divisions")
     suspend fun getOldestDivisionTimestamp(): Long?
+
+    @Query("SELECT divisionId FROM division_votes WHERE memberId = :memberId")
+    suspend fun getDivisionIdsForMember(memberId: Int): List<Int>
+
+    @Query(
+        """
+        SELECT
+            v.memberId AS memberId,
+            v.divisionId AS divisionId,
+            d.house AS house,
+            d.title AS title,
+            d.date AS date,
+            v.vote AS vote
+        FROM division_votes v
+        INNER JOIN divisions d ON v.divisionId = d.id
+        WHERE v.memberId = :memberId
+        ORDER BY d.date DESC
+        LIMIT 1
+        """,
+    )
+    suspend fun getRecentVoteForMember(memberId: Int): MemberRecentVote?
+
+    @Query(
+        """
+        SELECT
+            v.memberId AS memberId,
+            v.divisionId AS divisionId,
+            d.house AS house,
+            d.title AS title,
+            d.date AS date,
+            v.vote AS vote
+        FROM division_votes v
+        INNER JOIN divisions d ON v.divisionId = d.id
+        WHERE v.memberId = :memberId
+        ORDER BY d.date DESC
+        LIMIT 1
+        """,
+    )
+    fun observeRecentVoteForMember(memberId: Int): Flow<MemberRecentVote?>
 }

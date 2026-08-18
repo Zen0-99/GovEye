@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.goveye.app.data.local.dao.MpDao
 import com.goveye.app.data.local.entity.MpEntity
 import com.goveye.app.data.repo.CommitteesRepository
+import com.goveye.app.data.repo.FollowRepository
 import com.goveye.app.data.repo.MembersRepository
 import com.goveye.app.data.repo.VotesRepository
 import com.goveye.app.domain.model.BiographyExperience
@@ -21,6 +22,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 data class ProfileUiState(
@@ -34,6 +36,8 @@ data class ProfileUiState(
     val memberVotes: List<MemberVoteWithDivision> = emptyList(),
     val rebellionStats: RebellionStats? = null,
     val allDivisionDates: List<String> = emptyList(),
+    val isFollowing: Boolean = false,
+    val isMuted: Boolean = false,
     val syncStatus: SyncStatus = SyncStatus.EMPTY,
     val isLoading: Boolean = true,
 )
@@ -43,6 +47,7 @@ class ProfileViewModel @Inject constructor(
     private val membersRepository: MembersRepository,
     private val committeesRepository: CommitteesRepository,
     private val votesRepository: VotesRepository,
+    private val followRepository: FollowRepository,
     private val mpDao: MpDao,
 ) : ViewModel() {
 
@@ -60,6 +65,18 @@ class ProfileViewModel @Inject constructor(
                 result.data?.let { mp ->
                     loadSamePartyMps(memberId, mp.party?.id)
                 }
+            }
+        }
+
+        // Observe follow + mute state
+        viewModelScope.launch {
+            combine(
+                followRepository.observeIsFollowing(memberId),
+                followRepository.observeIsMuted(memberId),
+            ) { isFollowing, isMuted ->
+                isFollowing to (isMuted ?: false)
+            }.collect { (isFollowing, isMuted) ->
+                _uiState.value = _uiState.value.copy(isFollowing = isFollowing, isMuted = isMuted)
             }
         }
 
@@ -161,6 +178,23 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             membersRepository.refreshMp(memberId)
             committeesRepository.refresh(memberId)
+        }
+    }
+
+    fun toggleFollow(memberId: Int) {
+        viewModelScope.launch {
+            if (_uiState.value.isFollowing) {
+                followRepository.unfollow(memberId)
+            } else {
+                followRepository.follow(memberId)
+            }
+        }
+    }
+
+    fun toggleMute(memberId: Int) {
+        viewModelScope.launch {
+            val newMuted = !_uiState.value.isMuted
+            followRepository.setMuted(memberId, newMuted)
         }
     }
 
