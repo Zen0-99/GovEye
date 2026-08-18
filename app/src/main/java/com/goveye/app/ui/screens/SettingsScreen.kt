@@ -21,20 +21,28 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.goveye.app.domain.ThemeMode
+import com.goveye.app.ui.screens.settings.NotificationSettingsViewModel
 import com.goveye.app.ui.theme.ThemeViewModel
 import com.goveye.app.ui.theme.padding
 
 /**
- * Settings tab — appearance controls (D-18).
+ * Settings tab — appearance controls (D-18) + notification settings (D-04).
  *
  * Light/dark/system mode toggle and AMOLED switch. The color scheme is
  * fixed to Sky (grayscale + blue/white background) and not user-selectable.
  * Party colors are applied per-profile via a CompositionLocal override.
+ *
+ * Notification toggles: votes (default on) and speeches (default off, deferred).
  */
 @Composable
-fun SettingsScreen(themeViewModel: ThemeViewModel, modifier: Modifier = Modifier) {
+fun SettingsScreen(
+    themeViewModel: ThemeViewModel,
+    modifier: Modifier = Modifier,
+    notificationSettingsViewModel: NotificationSettingsViewModel = hiltViewModel(),
+) {
     com.goveye.app.ui.components.ConfigureSearchBar(
         config = com.goveye.app.ui.components.SearchBarConfig(
             isVisible = true,
@@ -43,6 +51,7 @@ fun SettingsScreen(themeViewModel: ThemeViewModel, modifier: Modifier = Modifier
     )
     val themeMode by themeViewModel.themeMode.collectAsStateWithLifecycle()
     val isAmoled by themeViewModel.isAmoled.collectAsStateWithLifecycle()
+    val notificationState by notificationSettingsViewModel.uiState.collectAsStateWithLifecycle()
 
     // AMOLED toggle only makes sense when the app is actually rendering dark.
     // In SYSTEM mode, that depends on the system dark setting.
@@ -102,6 +111,62 @@ fun SettingsScreen(themeViewModel: ThemeViewModel, modifier: Modifier = Modifier
                     onCheckedChange = { themeViewModel.setAmoled(it) }
                 )
             }
+        }
+
+        // --- Notifications section (D-04) ---
+        Text(
+            text = "Notifications",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(top = MaterialTheme.padding.large),
+        )
+
+        // Vote notifications toggle
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Vote notifications",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = "Get notified when followed MPs vote",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Switch(
+                checked = notificationState.votesEnabled,
+                onCheckedChange = { notificationSettingsViewModel.setVotesEnabled(it) },
+            )
+        }
+
+        // Speech notifications toggle (disabled in v1 — deferred to Phase 8)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Speech notifications",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = "Get notified when followed MPs speak (coming soon)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Switch(
+                checked = notificationState.speechesEnabled,
+                onCheckedChange = { notificationSettingsViewModel.setSpeechesEnabled(it) },
+            )
         }
     }
 }
