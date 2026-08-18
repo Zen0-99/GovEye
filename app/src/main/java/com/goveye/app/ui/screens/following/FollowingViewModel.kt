@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.goveye.app.data.local.dao.DivisionDao
 import com.goveye.app.data.local.entity.FollowedMpWithDetail
 import com.goveye.app.data.local.entity.MemberRecentVote
+import com.goveye.app.data.preference.DirectoryPreferences
+import com.goveye.app.data.preference.DirectoryViewMode
 import com.goveye.app.data.repo.FollowRepository
 import com.goveye.app.ui.screens.directory.DirectoryFilterState
 import com.goveye.app.ui.screens.directory.PartyFilterState
@@ -46,6 +48,7 @@ data class FollowingUiState(
     val searchQuery: String = "",
     val filterState: DirectoryFilterState = DirectoryFilterState(),
     val distinctParties: List<String> = emptyList(),
+    val viewMode: DirectoryViewMode = DirectoryViewMode.LIST,
     val isLoading: Boolean = true,
 )
 
@@ -54,6 +57,7 @@ data class FollowingUiState(
 class FollowingViewModel @Inject constructor(
     private val followRepository: FollowRepository,
     private val divisionDao: DivisionDao,
+    private val directoryPreferences: DirectoryPreferences,
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
@@ -63,6 +67,8 @@ class FollowingViewModel @Inject constructor(
     val filterState: StateFlow<DirectoryFilterState> = _filterState.asStateFlow()
 
     private val _isLoading = MutableStateFlow(true)
+
+    private val viewModeFlow = directoryPreferences.viewMode
 
     private val followedWithVotes = followRepository.observeFollowedMpsWithDetails()
         .mapLatest { followed ->
@@ -77,8 +83,9 @@ class FollowingViewModel @Inject constructor(
             followedWithVotes,
             _searchQuery,
             _filterState,
+            viewModeFlow,
             _isLoading,
-        ) { followed, query, filter, loading ->
+        ) { followed, query, filter, viewMode, loading ->
             // Extract distinct parties from the full list (before filtering)
             val distinctParties = followed
                 .map { it.partyName }
@@ -109,6 +116,7 @@ class FollowingViewModel @Inject constructor(
                 searchQuery = query,
                 filterState = filter,
                 distinctParties = distinctParties,
+                viewMode = viewMode,
                 isLoading = loading && followed.isEmpty(),
             )
         }.stateIn(
@@ -152,6 +160,10 @@ class FollowingViewModel @Inject constructor(
 
     fun setCurrentOnly(currentOnly: Boolean) {
         _filterState.value = _filterState.value.copy(currentOnly = currentOnly)
+    }
+
+    fun setViewMode(mode: DirectoryViewMode) {
+        viewModelScope.launch { directoryPreferences.setViewMode(mode) }
     }
 
     fun clearFilters() {

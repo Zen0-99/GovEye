@@ -12,6 +12,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
@@ -115,21 +118,45 @@ fun FollowingScreen(
         }
 
         else -> {
-            LazyColumn(
-                modifier = modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                items(
-                    items = uiState.followedMps,
-                    key = { it.memberId },
-                ) { followedMp ->
-                    FollowedMpCard(
-                        followedMp = followedMp,
-                        onClick = { onNavigateToProfile(followedMp.memberId) },
-                        onUnfollow = { viewModel.unfollow(followedMp.memberId) },
-                        onToggleMute = { viewModel.toggleMute(followedMp.memberId, followedMp.isMuted) },
-                    )
+            when (uiState.viewMode) {
+                com.goveye.app.data.preference.DirectoryViewMode.LIST -> {
+                    LazyColumn(
+                        modifier = modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        items(
+                            items = uiState.followedMps,
+                            key = { it.memberId },
+                        ) { followedMp ->
+                            FollowedMpCard(
+                                followedMp = followedMp,
+                                onClick = { onNavigateToProfile(followedMp.memberId) },
+                                onUnfollow = { viewModel.unfollow(followedMp.memberId) },
+                                onToggleMute = { viewModel.toggleMute(followedMp.memberId, followedMp.isMuted) },
+                            )
+                        }
+                    }
+                }
+
+                com.goveye.app.data.preference.DirectoryViewMode.GRID -> {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        modifier = modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        gridItems(
+                            items = uiState.followedMps,
+                            key = { it.memberId },
+                        ) { followedMp ->
+                            FollowedMpGridCard(
+                                followedMp = followedMp,
+                                onClick = { onNavigateToProfile(followedMp.memberId) },
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -141,11 +168,11 @@ fun FollowingScreen(
             distinctParties = uiState.distinctParties,
             filterState = uiState.filterState,
             tabType = FilterTabType.OFFICIALS,
-            viewMode = com.goveye.app.data.preference.DirectoryViewMode.LIST,
+            viewMode = uiState.viewMode,
             onPartyToggle = viewModel::togglePartyFilter,
             onHouseChange = viewModel::setHouseFilter,
             onCurrentOnlyChange = viewModel::setCurrentOnly,
-            onViewModeChange = { },
+            onViewModeChange = viewModel::setViewMode,
             onClearFilters = viewModel::clearFilters,
             onDismiss = { showFilterSheet = false },
         )
@@ -278,5 +305,77 @@ private fun VoteBadge(voteType: String) {
             color = Color.White,
             fontWeight = FontWeight.Bold,
         )
+    }
+}
+
+/**
+ * Grid card for followed MPs — compact version without overflow menu.
+ */
+@Composable
+private fun FollowedMpGridCard(
+    followedMp: FollowedMpUi,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val partyColor = com.goveye.app.ui.theme.parsePartyColor(followedMp.partyBackgroundColour)
+
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        color = partyColor.copy(alpha = 0.08f),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                MpAvatar(
+                    thumbnailUrl = followedMp.thumbnailUrl,
+                    displayName = followedMp.displayName,
+                    partyColorHex = followedMp.partyBackgroundColour,
+                    size = 40.dp,
+                    borderWidth = 1.dp,
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = followedMp.displayName,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = "${followedMp.partyAbbreviation} · ${followedMp.constituencyName}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            // Recent vote
+            if (followedMp.recentVoteType != null && followedMp.recentDivisionTitle != null) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    VoteBadge(voteType = followedMp.recentVoteType)
+                    Text(
+                        text = followedMp.recentDivisionTitle,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
     }
 }

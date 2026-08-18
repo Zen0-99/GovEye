@@ -197,6 +197,8 @@ class ProfileViewModel @Inject constructor(
                 followRepository.unfollow(memberId)
             } else {
                 followRepository.follow(memberId)
+                // Auto-enable vote notifications when following (FotMob behavior)
+                notificationPrefRepository.setVotesEnabled(memberId, true)
             }
         }
     }

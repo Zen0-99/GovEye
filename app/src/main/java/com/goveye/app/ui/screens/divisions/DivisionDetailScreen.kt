@@ -94,6 +94,9 @@ class DivisionDetailViewModel @Inject constructor(
             }
         }
 
+        // Observe division + votes together — votes are upserted after
+        // refreshDivisionDetail completes, so observing both ensures the UI
+        // updates when votes arrive (not just when the division entity changes).
         viewModelScope.launch {
             votesRepository.observeDivision(divisionId).collect { divisionResult ->
                 val division = divisionResult.data
@@ -102,6 +105,9 @@ class DivisionDetailViewModel @Inject constructor(
                     return@collect
                 }
 
+                // Re-fetch votes + breakdown each time the division emits.
+                // The division entity may not change when votes are upserted,
+                // but we also observe votes below to catch that case.
                 val votes = votesRepository.getVotesForDivision(divisionId)
                 val breakdown = votesRepository.getPartyBreakdown(divisionId)
                 _state.value = DivisionDetailState(
@@ -110,6 +116,23 @@ class DivisionDetailViewModel @Inject constructor(
                     partyBreakdown = breakdown,
                     isLoading = false,
                 )
+            }
+        }
+
+        // Separately observe votes as a flow — this re-emits when votes are
+        // upserted (even if the division entity itself doesn't change).
+        viewModelScope.launch {
+            votesRepository.observeVotesForDivision(divisionId).collect {
+                // Only update if we already have a division loaded
+                val current = _state.value
+                if (current.division != null && !current.isLoading) {
+                    val votes = votesRepository.getVotesForDivision(divisionId)
+                    val breakdown = votesRepository.getPartyBreakdown(divisionId)
+                    _state.value = current.copy(
+                        votes = votes,
+                        partyBreakdown = breakdown,
+                    )
+                }
             }
         }
     }
@@ -133,6 +156,7 @@ fun DivisionDetailScreen(
     var searchQuery by remember { mutableStateOf("") }
     var isSearchActive by remember { mutableStateOf(false) }
     var voteFilter by remember { mutableStateOf(VoteFilter.ALL) }
+    var microviewMemberId by remember { mutableStateOf<Int?>(null) }
 
     val ayeCount = state.votes.count { it.vote == VoteType.AYE }
     val noCount = state.votes.count { it.vote == VoteType.NO }
@@ -203,13 +227,25 @@ fun DivisionDetailScreen(
                 DivisionDetailContent(
                     division = division,
                     state = state,
-                    onNavigateToProfile = onNavigateToProfile,
+                    onNavigateToProfile = { memberId -> microviewMemberId = memberId },
                     searchQuery = searchQuery,
                     voteFilter = voteFilter,
                     modifier = Modifier.fillMaxSize().padding(innerPadding),
                 )
             }
         }
+    }
+
+    // MP microview dialog — shown when clicking an MP in the voter list
+    microviewMemberId?.let { memberId ->
+        MpMicroviewDialog(
+            memberId = memberId,
+            onNavigateToFullProfile = { id ->
+                microviewMemberId = null
+                onNavigateToProfile(id)
+            },
+            onDismiss = { microviewMemberId = null },
+        )
     }
 }
 

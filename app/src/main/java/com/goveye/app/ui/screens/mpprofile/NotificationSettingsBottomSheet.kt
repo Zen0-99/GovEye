@@ -3,6 +3,7 @@ package com.goveye.app.ui.screens.mpprofile
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -10,17 +11,20 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.HowToVote
 import androidx.compose.material.icons.outlined.RecordVoiceOver
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -30,6 +34,8 @@ import androidx.compose.ui.unit.dp
  *
  * - Master toggle: "Notifications enabled" — derived from the checkboxes
  * - Below: checkboxes for each notification type (Votes, Speeches) with icons
+ *
+ * Toggle and checkboxes are colored with the MP's party color.
  *
  * Logic:
  * - Master ON + some checkboxes ON → receive those notification types
@@ -43,6 +49,7 @@ fun NotificationSettingsBottomSheet(
     notificationsEnabled: Boolean,
     votesEnabled: Boolean,
     speechesEnabled: Boolean,
+    partyColor: Color,
     onMasterToggle: (Boolean) -> Unit,
     onVotesToggle: (Boolean) -> Unit,
     onSpeechesToggle: (Boolean) -> Unit,
@@ -61,15 +68,6 @@ fun NotificationSettingsBottomSheet(
                 .padding(horizontal = 24.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            // Title
-            Text(
-                text = "Notifications",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(bottom = 8.dp),
-            )
-
             // Master toggle
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -85,6 +83,11 @@ fun NotificationSettingsBottomSheet(
                 Switch(
                     checked = notificationsEnabled,
                     onCheckedChange = onMasterToggle,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = partyColor,
+                        checkedTrackColor = partyColor.copy(alpha = 0.5f),
+                        checkedBorderColor = partyColor,
+                    ),
                 )
             }
 
@@ -95,6 +98,7 @@ fun NotificationSettingsBottomSheet(
                 icon = Icons.Outlined.HowToVote,
                 label = "Votes",
                 checked = votesEnabled,
+                partyColor = partyColor,
                 onCheckedChange = onVotesToggle,
             )
 
@@ -102,13 +106,11 @@ fun NotificationSettingsBottomSheet(
                 icon = Icons.Outlined.RecordVoiceOver,
                 label = "Speeches",
                 checked = speechesEnabled,
+                partyColor = partyColor,
                 onCheckedChange = onSpeechesToggle,
             )
 
-            // Bottom spacing
-            androidx.compose.foundation.layout.Spacer(
-                modifier = Modifier.padding(bottom = 16.dp),
-            )
+            Spacer(modifier = Modifier.padding(bottom = 16.dp))
         }
     }
 }
@@ -118,6 +120,7 @@ private fun NotificationTypeRow(
     icon: ImageVector,
     label: String,
     checked: Boolean,
+    partyColor: Color,
     onCheckedChange: (Boolean) -> Unit,
 ) {
     Row(
@@ -132,7 +135,7 @@ private fun NotificationTypeRow(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = if (checked) partyColor else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(24.dp),
             )
             Text(
@@ -144,6 +147,10 @@ private fun NotificationTypeRow(
         Checkbox(
             checked = checked,
             onCheckedChange = onCheckedChange,
+            colors = CheckboxDefaults.colors(
+                checkedColor = partyColor,
+                uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            ),
         )
     }
 }
