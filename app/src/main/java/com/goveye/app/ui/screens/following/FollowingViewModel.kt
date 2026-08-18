@@ -35,7 +35,6 @@ data class FollowedMpUi(
     val constituencyName: String,
     val house: Int,
     val isActive: Boolean,
-    val isMuted: Boolean,
     val recentVoteType: String?,
     val recentDivisionTitle: String?,
     val recentDivisionId: Int?,
@@ -176,10 +175,6 @@ class FollowingViewModel @Inject constructor(
         viewModelScope.launch { followRepository.unfollow(memberId) }
     }
 
-    fun toggleMute(memberId: Int, currentlyMuted: Boolean) {
-        viewModelScope.launch { followRepository.setMuted(memberId, !currentlyMuted) }
-    }
-
     private fun FollowedMpWithDetail.toUi(recentVote: MemberRecentVote?): FollowedMpUi =
         FollowedMpUi(
             memberId = memberId,
@@ -191,7 +186,6 @@ class FollowingViewModel @Inject constructor(
             constituencyName = constituencyName,
             house = house,
             isActive = true, // Followed MPs are always active (we only follow active MPs)
-            isMuted = isMuted,
             recentVoteType = recentVote?.vote,
             recentDivisionTitle = recentVote?.title,
             recentDivisionId = recentVote?.divisionId,

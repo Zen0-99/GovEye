@@ -133,7 +133,6 @@ fun FollowingScreen(
                                 followedMp = followedMp,
                                 onClick = { onNavigateToProfile(followedMp.memberId) },
                                 onUnfollow = { viewModel.unfollow(followedMp.memberId) },
-                                onToggleMute = { viewModel.toggleMute(followedMp.memberId, followedMp.isMuted) },
                             )
                         }
                     }
@@ -184,7 +183,6 @@ private fun FollowedMpCard(
     followedMp: FollowedMpUi,
     onClick: () -> Unit,
     onUnfollow: () -> Unit,
-    onToggleMute: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showMenu by remember { mutableStateOf(false) }
@@ -261,13 +259,6 @@ private fun FollowedMpCard(
                     expanded = showMenu,
                     onDismissRequest = { showMenu = false },
                 ) {
-                    DropdownMenuItem(
-                        text = { Text(if (followedMp.isMuted) "Unmute notifications" else "Mute notifications") },
-                        onClick = {
-                            showMenu = false
-                            onToggleMute()
-                        },
-                    )
                     DropdownMenuItem(
                         text = { Text("Unfollow") },
                         onClick = {
