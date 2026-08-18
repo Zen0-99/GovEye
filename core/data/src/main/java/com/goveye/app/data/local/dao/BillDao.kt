@@ -18,6 +18,9 @@ interface BillDao {
     @Query("SELECT * FROM bills WHERE id = :id")
     suspend fun getBill(id: Int): BillEntity?
 
+    @Query("SELECT * FROM bills WHERE shortTitle LIKE '%' || :query || '%' OR longTitle LIKE '%' || :query || '%' ORDER BY lastUpdate DESC LIMIT :limit")
+    suspend fun searchBills(query: String, limit: Int = 50): List<BillEntity>
+
     @Upsert
     suspend fun upsertAll(bills: List<BillEntity>)
 

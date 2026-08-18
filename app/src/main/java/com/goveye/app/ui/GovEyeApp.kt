@@ -53,11 +53,13 @@ import com.goveye.app.ui.navigation.FeedRoute
 import com.goveye.app.ui.navigation.FollowingRoute
 import com.goveye.app.ui.navigation.ProfileRoute
 import com.goveye.app.ui.navigation.SettingsRoute
+import com.goveye.app.ui.navigation.BillDetailRoute
 import com.goveye.app.ui.navigation.DivisionDetailRoute
 import com.goveye.app.ui.screens.FeedScreen
 import com.goveye.app.ui.screens.FollowingScreen
 import com.goveye.app.ui.screens.SettingsScreen
 import com.goveye.app.ui.screens.directory.DirectoryScreen
+import com.goveye.app.ui.screens.bills.BillDetailScreen
 import com.goveye.app.ui.screens.divisions.DivisionDetailScreen
 import com.goveye.app.ui.screens.mpprofile.ProfileScreen
 import com.goveye.app.ui.theme.GovEyeTheme
@@ -171,6 +173,9 @@ private fun GovEyeAppContent(
                             onNavigateToDivision = { divisionId, house ->
                                 currentBackStack.add(DivisionDetailRoute(divisionId, house))
                             },
+                            onNavigateToBill = { billId ->
+                                currentBackStack.add(BillDetailRoute(billId))
+                            },
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
@@ -203,6 +208,15 @@ private fun GovEyeAppContent(
                         )
                     }
 
+                is BillDetailRoute ->
+                    NavEntry(key) {
+                        BillDetailScreen(
+                            billId = key.billId,
+                            onBack = { currentBackStack.removeLastOrNull() },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+
                 is FollowingRoute ->
                     NavEntry(key) {
                         FollowingScreen(
@@ -226,12 +240,12 @@ private fun GovEyeAppContent(
         }
 
     val showBottomBar = currentBackStack.lastOrNull()?.let {
-        it !is ProfileRoute && it !is DivisionDetailRoute
+        it !is ProfileRoute && it !is DivisionDetailRoute && it !is BillDetailRoute
     } ?: true
 
     // Search bar is hidden on profile screens (they have their own header).
-    // On division detail, the global search bar is configured by the screen
-    // with back button + filter chips (no filter icon).
+    // On division/bill detail, the global search bar is configured by the screen
+    // with back button (no filter icon).
     val showSearchBar = currentBackStack.lastOrNull()?.let {
         it !is ProfileRoute
     } ?: true

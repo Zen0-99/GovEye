@@ -6,6 +6,7 @@ import com.goveye.app.data.local.entity.BillEntity
 import com.goveye.app.data.local.entity.BillStageEntity
 import com.goveye.app.data.mapper.BillMapper
 import com.goveye.app.domain.model.Bill
+import com.goveye.app.domain.model.BillStage
 import com.goveye.app.domain.model.RepositoryResult
 import com.goveye.app.domain.model.SyncStatus
 import kotlinx.coroutines.flow.Flow
@@ -40,6 +41,14 @@ class BillsRepository @Inject constructor(
             }
         }
 
+    fun observeBillStages(billId: Int): Flow<List<BillStage>> =
+        billDao.observeBillStages(billId).map { entities ->
+            entities.map { it.toDomain() }
+        }
+
+    suspend fun searchBills(query: String, limit: Int = 50): List<Bill> =
+        billDao.searchBills(query, limit).map { it.toDomain() }
+
     suspend fun refresh() {
         try {
             val response = billsApi.getBills(itemsPerPage = 50)
@@ -67,6 +76,53 @@ class BillsRepository @Inject constructor(
         }
     }
 
+    suspend fun refreshBillDetail(billId: Int) {
+        try {
+            val dto = billsApi.getBill(billId)
+            val entity = BillEntity(
+                id = dto.billId,
+                shortTitle = dto.shortTitle,
+                longTitle = dto.longTitle,
+                summary = dto.summary,
+                currentHouse = dto.currentHouse,
+                originatingHouse = dto.originatingHouse,
+                lastUpdate = dto.lastUpdate,
+                billWithdrawn = dto.billWithdrawn,
+                isDefeated = dto.isDefeated,
+                isAct = dto.isAct,
+                billTypeId = dto.billTypeId,
+                currentStageDescription = dto.currentStage?.description,
+                currentStageAbbreviation = dto.currentStage?.abbreviation,
+                lastUpdated = System.currentTimeMillis(),
+            )
+            billDao.upsertAll(listOf(entity))
+        } catch (e: Exception) {
+            // Cache is still served
+        }
+    }
+
+    suspend fun refreshBillStages(billId: Int) {
+        try {
+            val response = billsApi.getBillStages(billId)
+            val entities = response.items.map { dto ->
+                BillStageEntity(
+                    billId = billId,
+                    stageId = dto.stageId,
+                    description = dto.description,
+                    abbreviation = dto.abbreviation ?: "",
+                    house = dto.house,
+                    sortOrder = dto.sortOrder,
+                    sessionId = dto.sessionId,
+                    sittingDates = dto.stageSittings.mapNotNull { it.date },
+                    lastUpdated = System.currentTimeMillis(),
+                )
+            }
+            if (entities.isNotEmpty()) billDao.upsertStages(entities)
+        } catch (e: Exception) {
+            // Cache is still served
+        }
+    }
+
     private fun BillEntity.toDomain(): Bill =
         Bill(
             id = id,
@@ -77,5 +133,15 @@ class BillsRepository @Inject constructor(
             originatingHouse = originatingHouse,
             isAct = isAct,
             currentStage = null,
+        )
+
+    private fun BillStageEntity.toDomain(): BillStage =
+        BillStage(
+            stageId = stageId,
+            description = description,
+            abbreviation = abbreviation,
+            house = house,
+            sortOrder = sortOrder,
+            sittingDates = sittingDates,
         )
 }

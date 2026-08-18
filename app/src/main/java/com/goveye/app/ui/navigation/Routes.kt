@@ -26,3 +26,6 @@ data class ProfileRoute(val memberId: Int) : NavKey
 
 @Serializable
 data class DivisionDetailRoute(val divisionId: Int, val house: Int = 1) : NavKey
+
+@Serializable
+data class BillDetailRoute(val billId: Int) : NavKey

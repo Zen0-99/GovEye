@@ -58,6 +58,7 @@ import com.goveye.app.data.preference.DirectoryViewMode
 import com.goveye.app.ui.components.FloatingSearchBar
 import com.goveye.app.ui.components.TabTextWithBadge
 import com.goveye.app.ui.screens.divisions.DivisionsTabContent
+import com.goveye.app.ui.screens.bills.BillsTabContent
 import com.goveye.app.ui.theme.padding
 import kotlinx.coroutines.launch
 
@@ -73,6 +74,7 @@ private enum class DirectoryTab(val title: String) {
 fun DirectoryScreen(
     onNavigateToProfile: (Int) -> Unit,
     onNavigateToDivision: (Int, Int) -> Unit = { _, _ -> },
+    onNavigateToBill: (Int) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: DirectoryViewModel = hiltViewModel(),
 ) {
@@ -163,7 +165,10 @@ fun DirectoryScreen(
                     onNavigateToProfile = onNavigateToProfile,
                 )
                 DirectoryTab.PARTIES -> PlaceholderTabContent("Parties")
-                DirectoryTab.BILLS -> PlaceholderTabContent("Bills")
+                DirectoryTab.BILLS -> BillsTabContent(
+                    onNavigateToBill = onNavigateToBill,
+                    searchQuery = searchQuery,
+                )
                 DirectoryTab.DIVISIONS -> DivisionsTabContent(
                     onNavigateToDivision = onNavigateToDivision,
                     houseFilter = filterState.houseFilter,
