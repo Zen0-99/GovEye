@@ -18,6 +18,7 @@ import java.util.concurrent.TimeUnit
  */
 object WorkScheduler {
     const val VOTE_POLLING_WORK_NAME = "vote-polling"
+    const val BILL_POLLING_WORK_NAME = "bill-polling"
 
     /**
      * Schedule the vote polling worker if not already scheduled.
@@ -49,5 +50,37 @@ object WorkScheduler {
      */
     fun cancelVotePolling(context: Context) {
         WorkManager.getInstance(context).cancelUniqueWork(VOTE_POLLING_WORK_NAME)
+    }
+
+    /**
+     * Schedule the bill polling worker if not already scheduled.
+     * Runs every 4 hours (bills change less frequently than votes).
+     */
+    fun scheduleBillPolling(context: Context) {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        val request = PeriodicWorkRequestBuilder<BillPollingWorker>(
+            4,
+            TimeUnit.HOURS,
+        )
+            .setInitialDelay(5, TimeUnit.MINUTES)
+            .setConstraints(constraints)
+            .addTag(BILL_POLLING_WORK_NAME)
+            .build()
+
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+            BILL_POLLING_WORK_NAME,
+            ExistingPeriodicWorkPolicy.UPDATE,
+            request,
+        )
+    }
+
+    /**
+     * Cancel the bill polling worker (e.g., when user unfollows their last bill).
+     */
+    fun cancelBillPolling(context: Context) {
+        WorkManager.getInstance(context).cancelUniqueWork(BILL_POLLING_WORK_NAME)
     }
 }

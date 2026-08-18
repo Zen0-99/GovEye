@@ -142,6 +142,11 @@ private fun GovEyeAppContent(
                     currentTabIndex = 1
                     directoryBackStack.add(route)
                 }
+                is BillDetailRoute -> {
+                    // Notification deep link — push onto directory back stack
+                    currentTabIndex = 1
+                    directoryBackStack.add(route)
+                }
                 is DirectoryRoute -> {
                     currentTabIndex = 1
                 }

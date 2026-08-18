@@ -22,5 +22,6 @@ class GovEyeApplication : Application(), Configuration.Provider {
         super.onCreate()
         notificationHelper.createChannels()
         com.goveye.app.work.WorkScheduler.scheduleVotePolling(this)
+        com.goveye.app.work.WorkScheduler.scheduleBillPolling(this)
     }
 }

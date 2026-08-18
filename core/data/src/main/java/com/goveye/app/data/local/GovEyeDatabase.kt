@@ -4,6 +4,7 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.goveye.app.data.local.dao.BillDao
+import com.goveye.app.data.local.dao.BillFollowDao
 import com.goveye.app.data.local.dao.DivisionDao
 import com.goveye.app.data.local.dao.FollowDao
 import com.goveye.app.data.local.dao.HansardDao
@@ -15,6 +16,7 @@ import com.goveye.app.data.local.dao.RecessDateDao
 import com.goveye.app.data.local.dao.RemoteKeyDao
 import com.goveye.app.data.local.dao.SearchDao
 import com.goveye.app.data.local.entity.BillEntity
+import com.goveye.app.data.local.entity.BillFollowEntity
 import com.goveye.app.data.local.entity.BillStageEntity
 import com.goveye.app.data.local.entity.CommitteeEntity
 import com.goveye.app.data.local.entity.DivisionEntity
@@ -41,6 +43,7 @@ import com.goveye.app.data.local.entity.RemoteKeyEntity
         DivisionVoteEntity::class,
         BillEntity::class,
         BillStageEntity::class,
+        BillFollowEntity::class,
         HansardContributionEntity::class,
         InterestEntity::class,
         FollowEntity::class,
@@ -48,7 +51,7 @@ import com.goveye.app.data.local.entity.RemoteKeyEntity
         RecessDatesMetaEntity::class,
         MpNotificationPreferenceEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -59,6 +62,7 @@ abstract class GovEyeDatabase : RoomDatabase() {
     abstract fun committeeDao(): CommitteeDao
     abstract fun divisionDao(): DivisionDao
     abstract fun billDao(): BillDao
+    abstract fun billFollowDao(): BillFollowDao
     abstract fun hansardDao(): HansardDao
     abstract fun interestDao(): InterestDao
     abstract fun followDao(): FollowDao

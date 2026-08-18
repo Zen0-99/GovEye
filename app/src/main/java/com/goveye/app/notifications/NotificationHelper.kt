@@ -32,14 +32,18 @@ class NotificationHelper @Inject constructor(
     companion object {
         const val VOTES_CHANNEL_ID = "votes"
         const val SPEECHES_CHANNEL_ID = "speeches"
+        const val BILLS_CHANNEL_ID = "bills"
         const val VOTES_CHANNEL_NAME = "Vote Notifications"
         const val SPEECHES_CHANNEL_NAME = "Speech Notifications"
+        const val BILLS_CHANNEL_NAME = "Bill Notifications"
         const val VOTES_CHANNEL_DESC = "Notifications when followed MPs vote"
         const val SPEECHES_CHANNEL_DESC = "Notifications when followed MPs speak (coming soon)"
+        const val BILLS_CHANNEL_DESC = "Notifications when followed bills change stage"
 
         const val EXTRA_DIVISION_ID = "division_id"
         const val EXTRA_DIVISION_HOUSE = "division_house"
         const val EXTRA_MP_NAME = "mp_name"
+        const val EXTRA_BILL_ID = "bill_id"
 
         private var nextNotificationId = 1000
     }
@@ -65,9 +69,18 @@ class NotificationHelper @Inject constructor(
                 description = SPEECHES_CHANNEL_DESC
                 setShowBadge(false)
             }
+            val billsChannel = NotificationChannel(
+                BILLS_CHANNEL_ID,
+                BILLS_CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_DEFAULT,
+            ).apply {
+                description = BILLS_CHANNEL_DESC
+                enableVibration(true)
+            }
             val nm = context.getSystemService(NotificationManager::class.java)
             nm.createNotificationChannel(votesChannel)
             nm.createNotificationChannel(speechesChannel)
+            nm.createNotificationChannel(billsChannel)
         }
     }
 
@@ -173,6 +186,67 @@ class NotificationHelper @Inject constructor(
         return PendingIntent.getActivity(
             context,
             requestCode,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+    }
+
+    data class BillNotificationData(
+        val billId: Int,
+        val billTitle: String,
+        val newStage: String,
+    )
+
+    fun showBillStageNotification(data: BillNotificationData) {
+        val body = "Moved to ${data.newStage}"
+        val pendingIntent = buildBillPendingIntent(data.billId)
+
+        val notification = NotificationCompat.Builder(context, BILLS_CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle(data.billTitle)
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .build()
+
+        try {
+            notificationManager.notify(nextNotificationId++, notification)
+        } catch (e: SecurityException) {
+            // POST_NOTIFICATIONS not granted — silently skip
+        }
+    }
+
+    fun showBillSummaryNotification(count: Int) {
+        val body = "$count followed bills changed stage"
+        val pendingIntent = buildBillPendingIntent(0)
+
+        val notification = NotificationCompat.Builder(context, BILLS_CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle("GovEye")
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .build()
+
+        try {
+            notificationManager.notify(nextNotificationId++, notification)
+        } catch (e: SecurityException) {
+            // POST_NOTIFICATIONS not granted — silently skip
+        }
+    }
+
+    private fun buildBillPendingIntent(billId: Int): PendingIntent {
+        val intent = Intent(context, NotificationDeepLinkActivity::class.java).apply {
+            putExtra(EXTRA_BILL_ID, billId)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        return PendingIntent.getActivity(
+            context,
+            billId,
             intent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )

@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import com.goveye.app.ui.navigation.DeepLinkNavigator
+import com.goveye.app.ui.navigation.BillDetailRoute
 import com.goveye.app.ui.navigation.DivisionDetailRoute
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -34,8 +35,13 @@ class NotificationDeepLinkActivity : ComponentActivity() {
 
         val divisionId = intent.getIntExtra(NotificationHelper.EXTRA_DIVISION_ID, -1)
         val house = intent.getIntExtra(NotificationHelper.EXTRA_DIVISION_HOUSE, 1)
+        val billId = intent.getIntExtra(NotificationHelper.EXTRA_BILL_ID, -1)
 
-        if (divisionId > 0) {
+        if (billId > 0) {
+            scope.launch {
+                deepLinkNavigator.emit(BillDetailRoute(billId))
+            }
+        } else if (divisionId > 0) {
             scope.launch {
                 deepLinkNavigator.emit(DivisionDetailRoute(divisionId, house))
             }

@@ -19,6 +19,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.MenuBook
+import androidx.compose.material.icons.outlined.PersonAdd
+import androidx.compose.material.icons.outlined.PersonRemove
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -93,7 +95,11 @@ fun BillDetailScreen(
         ) {
             // Title section
             item {
-                BillHeader(bill = bill)
+                BillHeader(
+                    bill = bill,
+                    isFollowing = state.isFollowing,
+                    onToggleFollow = { viewModel.toggleFollow(bill.id) },
+                )
             }
 
             // Summary
@@ -132,17 +138,35 @@ fun BillDetailScreen(
 }
 
 @Composable
-private fun BillHeader(bill: Bill) {
+private fun BillHeader(
+    bill: Bill,
+    isFollowing: Boolean,
+    onToggleFollow: () -> Unit,
+) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(
-            text = bill.shortTitle,
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top,
+        ) {
+            Text(
+                text = bill.shortTitle,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
+            )
+            IconButton(onClick = onToggleFollow) {
+                Icon(
+                    imageVector = if (isFollowing) Icons.Outlined.PersonRemove else Icons.Outlined.PersonAdd,
+                    contentDescription = if (isFollowing) "Unfollow bill" else "Follow bill",
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
         if (!bill.longTitle.isNullOrBlank()) {
             Text(
                 text = bill.longTitle!!,

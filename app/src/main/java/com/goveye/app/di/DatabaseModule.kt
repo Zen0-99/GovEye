@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.goveye.app.data.local.GovEyeDatabase
 import com.goveye.app.data.local.dao.BillDao
+import com.goveye.app.data.local.dao.BillFollowDao
 import com.goveye.app.data.local.dao.DivisionDao
 import com.goveye.app.data.local.dao.FollowDao
 import com.goveye.app.data.local.dao.HansardDao
@@ -20,6 +21,7 @@ import com.goveye.app.data.mapper.HansardMapper
 import com.goveye.app.data.mapper.InterestMapper
 import com.goveye.app.data.mapper.MemberMapper
 import com.goveye.app.data.repo.BillsRepository
+import com.goveye.app.data.repo.BillFollowRepository
 import com.goveye.app.data.repo.CommitteesRepository
 import com.goveye.app.data.repo.FollowRepository
 import com.goveye.app.data.repo.HansardRepository
@@ -64,6 +66,9 @@ object DatabaseModule {
 
     @Provides
     fun provideBillDao(database: GovEyeDatabase): BillDao = database.billDao()
+
+    @Provides
+    fun provideBillFollowDao(database: GovEyeDatabase): BillFollowDao = database.billFollowDao()
 
     @Provides
     fun provideHansardDao(database: GovEyeDatabase): HansardDao = database.hansardDao()
@@ -164,4 +169,8 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideFollowRepository(followDao: FollowDao): FollowRepository = FollowRepository(followDao)
+
+    @Provides
+    @Singleton
+    fun provideBillFollowRepository(billFollowDao: BillFollowDao): BillFollowRepository = BillFollowRepository(billFollowDao)
 }
