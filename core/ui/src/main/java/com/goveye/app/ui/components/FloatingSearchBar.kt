@@ -1,5 +1,11 @@
 package com.goveye.app.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -99,117 +105,133 @@ fun FloatingSearchBar(
                 shape = shape,
                 color = colorScheme.surfaceContainer,
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                        .padding(horizontal = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    // Left: search icon
-                    Icon(
-                        imageVector = Icons.Outlined.Search,
-                        contentDescription = null,
-                        tint = colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 12.dp).size(22.dp),
-                    )
-
-                    // Center: text field or hint
-                    Box(
+                Column {
+                    Row(
                         modifier = Modifier
-                            .weight(1f)
-                            .padding(horizontal = 12.dp),
-                        contentAlignment = Alignment.CenterStart,
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .padding(horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        if (query.isEmpty()) {
-                            Text(
-                                text = placeholder,
-                                color = colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                style = MaterialTheme.typography.titleMedium,
-                                maxLines = 1,
+                        // Left: search icon
+                        Icon(
+                            imageVector = Icons.Outlined.Search,
+                            contentDescription = null,
+                            tint = colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(start = 12.dp).size(22.dp),
+                        )
+
+                        // Center: text field or hint
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(horizontal = 12.dp),
+                            contentAlignment = Alignment.CenterStart,
+                        ) {
+                            if (query.isEmpty()) {
+                                Text(
+                                    text = placeholder,
+                                    color = colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    maxLines = 1,
+                                )
+                            }
+                            BasicTextField(
+                                value = query,
+                                onValueChange = onQueryChange,
+                                singleLine = true,
+                                textStyle = MaterialTheme.typography.titleMedium.copy(
+                                    color = colorScheme.onSurface,
+                                ),
+                                cursorBrush = SolidColor(colorScheme.primary),
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                                modifier = Modifier.fillMaxWidth(),
                             )
                         }
-                        BasicTextField(
-                            value = query,
-                            onValueChange = onQueryChange,
-                            singleLine = true,
-                            textStyle = MaterialTheme.typography.titleMedium.copy(
-                                color = colorScheme.onSurface,
+
+                        // Clear button (visible when query is non-empty)
+                        if (query.isNotEmpty()) {
+                            IconButton(
+                                onClick = { onQueryChange("") },
+                                modifier = Modifier.size(40.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Close,
+                                    contentDescription = "Clear search",
+                                    tint = colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            }
+                        }
+
+                        // Filter icon — changes color when filters are active
+                        if (onFilterClick != null) {
+                            IconButton(
+                                onClick = onFilterClick,
+                                modifier = Modifier.size(40.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.FilterList,
+                                    contentDescription = "Filter",
+                                    tint = if (hasActiveFilters) colorScheme.primary else colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(22.dp),
+                                )
+                            }
+                        }
+                    }
+
+                    // Segmented control (Miko BrowseSearchPill style) — nested
+                    // inside the search bar surface. Expands when the user types
+                    // (query non-empty) and collapses when they clear/exit.
+                    if (segments.isNotEmpty()) {
+                        AnimatedVisibility(
+                            visible = query.isNotEmpty(),
+                            enter = fadeIn(animationSpec = tween(300)) + expandVertically(
+                                animationSpec = tween(300),
+                                expandFrom = Alignment.Top,
                             ),
-                            cursorBrush = SolidColor(colorScheme.primary),
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-
-                    // Clear button (visible when query is non-empty)
-                    if (query.isNotEmpty()) {
-                        IconButton(
-                            onClick = { onQueryChange("") },
-                            modifier = Modifier.size(40.dp),
+                            exit = fadeOut(animationSpec = tween(220)) + shrinkVertically(
+                                animationSpec = tween(220),
+                                shrinkTowards = Alignment.Top,
+                            ),
                         ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Close,
-                                contentDescription = "Clear search",
-                                tint = colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(20.dp),
-                            )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 6.dp, vertical = 4.dp)
+                                    .clip(RoundedCornerShape(999.dp))
+                                    .background(colorScheme.onSurface.copy(alpha = 0.06f))
+                                    .padding(3.dp),
+                                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                            ) {
+                                segments.forEach { segment ->
+                                    val isSelected = segment.isSelected
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clip(RoundedCornerShape(999.dp))
+                                            .then(
+                                                if (isSelected) {
+                                                    Modifier.background(colorScheme.primary.copy(alpha = 0.15f))
+                                                } else {
+                                                    Modifier
+                                                },
+                                            )
+                                            .clickable { segment.onClick() }
+                                            .padding(vertical = 7.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Text(
+                                            text = segment.label,
+                                            style = MaterialTheme.typography.labelLarge,
+                                            color = if (isSelected) colorScheme.primary else colorScheme.onSurfaceVariant,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                            maxLines = 1,
+                                        )
+                                    }
+                                }
+                            }
                         }
-                    }
-
-                    // Filter icon — changes color when filters are active
-                    if (onFilterClick != null) {
-                        IconButton(
-                            onClick = onFilterClick,
-                            modifier = Modifier.size(40.dp),
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.FilterList,
-                                contentDescription = "Filter",
-                                tint = if (hasActiveFilters) colorScheme.primary else colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(22.dp),
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        // Segmented control (Miko BrowseSearchPill style) — double pill
-        if (segments.isNotEmpty()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp)
-                    .clip(RoundedCornerShape(999.dp))
-                    .background(colorScheme.onSurface.copy(alpha = 0.06f))
-                    .padding(3.dp),
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                segments.forEach { segment ->
-                    val isSelected = segment.isSelected
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(999.dp))
-                            .then(
-                                if (isSelected) {
-                                    Modifier.background(colorScheme.primary.copy(alpha = 0.15f))
-                                } else {
-                                    Modifier
-                                },
-                            )
-                            .clickable { segment.onClick() }
-                            .padding(vertical = 7.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = segment.label,
-                            style = MaterialTheme.typography.labelLarge,
-                            color = if (isSelected) colorScheme.primary else colorScheme.onSurfaceVariant,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            maxLines = 1,
-                        )
                     }
                 }
             }
