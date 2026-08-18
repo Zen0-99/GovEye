@@ -25,6 +25,10 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.only
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -173,6 +177,7 @@ fun DivisionDetailScreen(
 
     Scaffold(
         modifier = modifier,
+        contentWindowInsets = WindowInsets.navigationBars.only(WindowInsetsSides.Horizontal),
     ) { innerPadding ->
         if (state.isLoading) {
             Row(
@@ -581,7 +586,8 @@ private fun VoterRow(vote: DivisionVote, onClick: () -> Unit) {
 /**
  * Rounded-square vote badge. Shows "Aye" on a green background or "No" on a
  * red background so the user can see at a glance how a member voted. Sits to
- * the left of the member name in [VoterRow].
+ * the left of the member name in [VoterRow]. Matches the rounded-square tile
+ * style used in the VoteMapGrid (official votes view).
  */
 @Composable
 private fun VoteBadge(vote: VoteType) {
@@ -592,8 +598,8 @@ private fun VoteBadge(vote: VoteType) {
     }
     Box(
         modifier = Modifier
-            .size(width = 36.dp, height = 22.dp)
-            .clip(RoundedCornerShape(6.dp))
+            .size(28.dp)
+            .clip(RoundedCornerShape(4.dp))
             .background(color),
         contentAlignment = Alignment.Center,
     ) {
