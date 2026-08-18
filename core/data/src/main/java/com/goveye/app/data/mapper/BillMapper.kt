@@ -15,6 +15,8 @@ object BillMapper {
             currentHouse = dto.currentHouse,
             originatingHouse = dto.originatingHouse,
             isAct = dto.isAct,
+            isDefeated = dto.isDefeated,
+            billWithdrawn = dto.billWithdrawn,
             currentStage = dto.currentStage?.let { toDomain(it) },
         )
 

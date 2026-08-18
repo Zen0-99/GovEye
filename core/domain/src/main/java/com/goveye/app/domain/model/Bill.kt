@@ -8,6 +8,8 @@ data class Bill(
     val currentHouse: String,
     val originatingHouse: String,
     val isAct: Boolean,
+    val isDefeated: Boolean = false,
+    val billWithdrawn: String? = null,
     val currentStage: BillStage?,
 )
 

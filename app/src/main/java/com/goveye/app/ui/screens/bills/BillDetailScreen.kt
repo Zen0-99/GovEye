@@ -1,6 +1,9 @@
 package com.goveye.app.ui.screens.bills
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -29,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -98,6 +103,11 @@ fun BillDetailScreen(
                 }
             }
 
+            // Commons Library briefing link (BILLS-03)
+            item {
+                CommonsLibraryLink(billShortTitle = bill.shortTitle)
+            }
+
             // Stage timeline
             if (state.stages.isNotEmpty()) {
                 item {
@@ -109,8 +119,12 @@ fun BillDetailScreen(
                         modifier = Modifier.padding(top = 8.dp),
                     )
                 }
+                val currentStageId = bill.currentStage?.stageId
                 items(state.stages, key = { it.stageId }) { stage ->
-                    StageTimelineItem(stage = stage)
+                    StageTimelineItem(
+                        stage = stage,
+                        isCurrent = stage.stageId == currentStageId,
+                    )
                 }
             }
         }
@@ -141,6 +155,15 @@ private fun BillHeader(bill: Bill) {
         ) {
             if (bill.isAct) {
                 StatusChip(text = "Act of Parliament", color = VoteColors.aye)
+            }
+            if (bill.isDefeated) {
+                StatusChip(text = "Defeated", color = VoteColors.no)
+            }
+            if (bill.billWithdrawn != null) {
+                StatusChip(
+                    text = "Withdrawn",
+                    color = MaterialTheme.colorScheme.outline,
+                )
             }
             StatusChip(
                 text = "Origin: ${bill.originatingHouse}",
@@ -201,7 +224,50 @@ private fun SummaryCard(summary: String) {
 }
 
 @Composable
-private fun StageTimelineItem(stage: BillStage) {
+private fun CommonsLibraryLink(billShortTitle: String) {
+    val context = LocalContext.current
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                val url = "https://commonslibrary.parliament.uk/?s=" + Uri.encode(billShortTitle)
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                context.startActivity(intent)
+            },
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.MenuBook,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Commons Library Briefing",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = "Plain-English analysis from the House of Commons Library",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StageTimelineItem(stage: BillStage, isCurrent: Boolean = false) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -214,7 +280,7 @@ private fun StageTimelineItem(stage: BillStage) {
                 modifier = Modifier
                     .size(12.dp)
                     .clip(RoundedCornerShape(50))
-                    .background(MaterialTheme.colorScheme.primary),
+                    .background(if (isCurrent) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.primary),
             )
             // Vertical line
             Box(
@@ -233,8 +299,8 @@ private fun StageTimelineItem(stage: BillStage) {
             Text(
                 text = stage.description,
                 style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.SemiBold,
+                color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )

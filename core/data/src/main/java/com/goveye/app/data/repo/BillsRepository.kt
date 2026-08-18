@@ -132,6 +132,8 @@ class BillsRepository @Inject constructor(
             currentHouse = currentHouse,
             originatingHouse = originatingHouse,
             isAct = isAct,
+            isDefeated = isDefeated,
+            billWithdrawn = billWithdrawn,
             currentStage = null,
         )
 
