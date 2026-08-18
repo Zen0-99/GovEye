@@ -14,9 +14,8 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material.icons.outlined.NotificationsOff
+import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material.icons.outlined.PersonRemove
 import androidx.compose.material3.Icon
@@ -43,9 +42,9 @@ fun ProfileHeader(
     mp: Mp,
     onBack: () -> Unit,
     isFollowing: Boolean = false,
-    isMuted: Boolean = false,
+    notificationsEnabled: Boolean = false,
     onFollowClick: () -> Unit = {},
-    onMuteClick: () -> Unit = {},
+    onNotificationClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val partyColor = parsePartyColor(mp.party?.backgroundColour)
@@ -118,18 +117,16 @@ fun ProfileHeader(
                     )
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    if (isFollowing) {
-                        IconButton(
-                            onClick = onMuteClick,
-                            modifier = Modifier.size(48.dp),
-                        ) {
-                            Icon(
-                                imageVector = if (isMuted) Icons.Outlined.NotificationsOff else Icons.Outlined.Notifications,
-                                contentDescription = if (isMuted) "Unmute notifications" else "Mute notifications",
-                                tint = headerIconTint,
-                                modifier = Modifier.size(22.dp),
-                            )
-                        }
+                    IconButton(
+                        onClick = onNotificationClick,
+                        modifier = Modifier.size(48.dp),
+                    ) {
+                        Icon(
+                            imageVector = if (notificationsEnabled) Icons.Outlined.NotificationsActive else Icons.Outlined.Notifications,
+                            contentDescription = "Notification settings",
+                            tint = headerIconTint,
+                            modifier = Modifier.size(22.dp),
+                        )
                     }
                     IconButton(
                         onClick = onFollowClick,

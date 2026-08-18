@@ -37,8 +37,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -90,14 +92,15 @@ fun ProfileScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    var showNotificationSheet by remember { mutableStateOf(false) }
 
-    // POST_NOTIFICATIONS permission launcher (Android 13+) — requested at follow time per D-04
+    // POST_NOTIFICATIONS permission launcher (Android 13+) — requested when
+    // user enables any notification type
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
-    ) { _ ->
-        // Whether granted or denied, proceed with the follow.
-        // If denied, notifications are silently disabled (D-04).
-        viewModel.toggleFollow(memberId)
+    ) { granted ->
+        // If permission denied, the prefs are still saved but notifications
+        // won't show. The NotificationHelper silently skips on SecurityException.
     }
 
     LaunchedEffect(memberId) {
@@ -146,23 +149,9 @@ fun ProfileScreen(
                                 mp = mp,
                                 onBack = onBack,
                                 isFollowing = uiState.isFollowing,
-                                isMuted = uiState.isMuted,
-                                onFollowClick = {
-                                    // If following → just unfollow.
-                                    // If not following → request POST_NOTIFICATIONS first (Android 13+), then follow.
-                                    if (uiState.isFollowing) {
-                                        viewModel.toggleFollow(memberId)
-                                    } else {
-                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                                            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-                                        ) {
-                                            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                        } else {
-                                            viewModel.toggleFollow(memberId)
-                                        }
-                                    }
-                                },
-                                onMuteClick = { viewModel.toggleMute(memberId) },
+                                notificationsEnabled = uiState.notificationsEnabled,
+                                onFollowClick = { viewModel.toggleFollow(memberId) },
+                                onNotificationClick = { showNotificationSheet = true },
                             )
 
                             // Fixed tabs — selected text uses onSurface (theme-adaptive),
@@ -256,6 +245,36 @@ fun ProfileScreen(
             }
         }
         }
+    }
+
+    // Notification settings bottom sheet (FotMob-style)
+    if (showNotificationSheet) {
+        NotificationSettingsBottomSheet(
+            notificationsEnabled = uiState.notificationsEnabled,
+            votesEnabled = uiState.votesNotificationsEnabled,
+            speechesEnabled = uiState.speechesNotificationsEnabled,
+            onMasterToggle = { enabled ->
+                // Request POST_NOTIFICATIONS when turning on (Android 13+)
+                if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+                viewModel.setNotificationsEnabled(memberId, enabled)
+            },
+            onVotesToggle = { enabled ->
+                if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+                viewModel.setVotesNotificationsEnabled(memberId, enabled)
+            },
+            onSpeechesToggle = { enabled ->
+                viewModel.setSpeechesNotificationsEnabled(memberId, enabled)
+            },
+            onDismiss = { showNotificationSheet = false },
+        )
     }
     }
 }

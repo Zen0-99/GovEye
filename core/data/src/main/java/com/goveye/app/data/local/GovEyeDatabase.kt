@@ -10,6 +10,7 @@ import com.goveye.app.data.local.dao.HansardDao
 import com.goveye.app.data.local.dao.InterestDao
 import com.goveye.app.data.local.dao.CommitteeDao
 import com.goveye.app.data.local.dao.MpDao
+import com.goveye.app.data.local.dao.MpNotificationPreferenceDao
 import com.goveye.app.data.local.dao.RecessDateDao
 import com.goveye.app.data.local.dao.RemoteKeyDao
 import com.goveye.app.data.local.dao.SearchDao
@@ -24,6 +25,7 @@ import com.goveye.app.data.local.entity.InterestEntity
 import com.goveye.app.data.local.entity.MpCommitteeCrossRef
 import com.goveye.app.data.local.entity.MpEntity
 import com.goveye.app.data.local.entity.MpFtsEntity
+import com.goveye.app.data.local.entity.MpNotificationPreferenceEntity
 import com.goveye.app.data.local.entity.RecessDateEntity
 import com.goveye.app.data.local.entity.RecessDatesMetaEntity
 import com.goveye.app.data.local.entity.RemoteKeyEntity
@@ -44,8 +46,9 @@ import com.goveye.app.data.local.entity.RemoteKeyEntity
         FollowEntity::class,
         RecessDateEntity::class,
         RecessDatesMetaEntity::class,
+        MpNotificationPreferenceEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -60,6 +63,7 @@ abstract class GovEyeDatabase : RoomDatabase() {
     abstract fun interestDao(): InterestDao
     abstract fun followDao(): FollowDao
     abstract fun recessDateDao(): RecessDateDao
+    abstract fun mpNotificationPreferenceDao(): MpNotificationPreferenceDao
 
     companion object {
         const val DATABASE_NAME = "goveye.db"

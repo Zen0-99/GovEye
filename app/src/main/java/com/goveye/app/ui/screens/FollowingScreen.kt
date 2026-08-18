@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,8 +14,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.NotificationsOff
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -38,17 +37,22 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.goveye.app.ui.components.MpAvatar
+import com.goveye.app.ui.components.VoteColors
+import com.goveye.app.ui.screens.directory.FilterBottomSheet
+import com.goveye.app.ui.screens.directory.FilterTabType
 import com.goveye.app.ui.screens.following.FollowedMpUi
 import com.goveye.app.ui.screens.following.FollowingUiState
 import com.goveye.app.ui.screens.following.FollowingViewModel
 import com.goveye.app.ui.theme.padding
-import com.goveye.app.ui.theme.parsePartyColor
 
 /**
  * Following tab — FotMob roster style (D-03).
  *
  * Shows a list of followed MPs with their most recent vote. Tapping a card
- * opens the MP's profile. Long-press or overflow menu allows unfollow/mute.
+ * opens the MP's profile. Overflow menu allows unfollow/mute.
+ *
+ * Filter icon opens the same FilterBottomSheet as the directory (Party,
+ * House, Status).
  */
 @Composable
 fun FollowingScreen(
@@ -57,6 +61,7 @@ fun FollowingScreen(
     viewModel: FollowingViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    var showFilterSheet by remember { mutableStateOf(false) }
 
     // Configure the global search bar for filtering followed MPs
     com.goveye.app.ui.components.ConfigureSearchBar(
@@ -65,6 +70,8 @@ fun FollowingScreen(
             query = uiState.searchQuery,
             placeholder = "Search followed MPs…",
             onQueryChange = viewModel::updateSearchQuery,
+            onFilterClick = { showFilterSheet = true },
+            hasActiveFilters = uiState.filterState.hasActiveFilters,
         ),
     )
 
@@ -78,7 +85,7 @@ fun FollowingScreen(
             }
         }
 
-        uiState.followedMps.isEmpty() && uiState.searchQuery.isBlank() -> {
+        uiState.followedMps.isEmpty() && uiState.searchQuery.isBlank() && !uiState.filterState.hasActiveFilters -> {
             // Empty state — no followed MPs yet
             Box(
                 modifier = modifier.fillMaxSize().padding(MaterialTheme.padding.large),
@@ -94,13 +101,13 @@ fun FollowingScreen(
         }
 
         uiState.followedMps.isEmpty() -> {
-            // No search results
+            // No results (from search or filters)
             Box(
                 modifier = modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = "No followed MPs match \"${uiState.searchQuery}\"",
+                    text = "No followed MPs match your filters",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -110,10 +117,7 @@ fun FollowingScreen(
         else -> {
             LazyColumn(
                 modifier = modifier.fillMaxSize(),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                    horizontal = 16.dp,
-                    vertical = 8.dp,
-                ),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(
@@ -130,6 +134,22 @@ fun FollowingScreen(
             }
         }
     }
+
+    // Filter bottom sheet — same as directory
+    if (showFilterSheet) {
+        FilterBottomSheet(
+            distinctParties = uiState.distinctParties,
+            filterState = uiState.filterState,
+            tabType = FilterTabType.OFFICIALS,
+            viewMode = com.goveye.app.data.preference.DirectoryViewMode.LIST,
+            onPartyToggle = viewModel::togglePartyFilter,
+            onHouseChange = viewModel::setHouseFilter,
+            onCurrentOnlyChange = viewModel::setCurrentOnly,
+            onViewModeChange = { },
+            onClearFilters = viewModel::clearFilters,
+            onDismiss = { showFilterSheet = false },
+        )
+    }
 }
 
 @Composable
@@ -140,7 +160,6 @@ private fun FollowedMpCard(
     onToggleMute: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val partyColor = parsePartyColor(followedMp.partyBackgroundColour)
     var showMenu by remember { mutableStateOf(false) }
 
     Surface(
@@ -168,49 +187,25 @@ private fun FollowedMpCard(
             Column(
                 modifier = Modifier.weight(1f),
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Text(
-                        text = followedMp.displayName,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    if (followedMp.isMuted) {
-                        Icon(
-                            imageVector = Icons.Outlined.NotificationsOff,
-                            contentDescription = "Muted",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(14.dp),
-                        )
-                    }
-                }
-                // Party dot + name
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(RoundedCornerShape(50))
-                            .background(partyColor),
-                    )
-                    Text(
-                        text = followedMp.partyName,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
+                Text(
+                    text = followedMp.displayName,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                // Party abbreviation · Constituency (directory style)
+                Text(
+                    text = "${followedMp.partyAbbreviation} · ${followedMp.constituencyName}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 // Recent vote info
                 if (followedMp.recentVoteType != null && followedMp.recentDivisionTitle != null) {
                     Row(
-                        modifier = Modifier.padding(top = 2.dp),
+                        modifier = Modifier.padding(top = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
@@ -260,30 +255,28 @@ private fun FollowedMpCard(
 }
 
 /**
- * Rounded square vote badge (36×22dp) — same style as DivisionDetailScreen.
- * Green = Aye, Red = No.
+ * Rounded-square vote badge — same style as DivisionDetailScreen.
+ * Green (Aye) / Red (No) using VoteColors for theme-awareness.
  */
 @Composable
 private fun VoteBadge(voteType: String) {
-    val (color, label) = when (voteType.uppercase()) {
-        "AYE", "AYEVOTE" -> MaterialTheme.colorScheme.primary to "Aye"
-        "NO", "NOVOTE" -> MaterialTheme.colorScheme.error to "No"
-        else -> MaterialTheme.colorScheme.outline to "—"
+    val (label, color) = when (voteType.uppercase()) {
+        "AYE", "AYEVOTE" -> "Aye" to VoteColors.aye
+        "NO", "NOVOTE" -> "No" to VoteColors.no
+        else -> "—" to MaterialTheme.colorScheme.onSurfaceVariant
     }
-    Surface(
-        color = color,
-        shape = RoundedCornerShape(6.dp),
-        modifier = Modifier.size(width = 36.dp, height = 22.dp),
+    Box(
+        modifier = Modifier
+            .size(28.dp)
+            .clip(RoundedCornerShape(4.dp))
+            .background(color),
+        contentAlignment = Alignment.Center,
     ) {
-        Box(
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-            )
-        }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+        )
     }
 }

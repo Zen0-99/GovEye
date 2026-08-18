@@ -6,6 +6,8 @@ import com.goveye.app.data.local.dao.DivisionDao
 import com.goveye.app.data.local.entity.FollowedMpWithDetail
 import com.goveye.app.data.local.entity.MemberRecentVote
 import com.goveye.app.data.repo.FollowRepository
+import com.goveye.app.ui.screens.directory.DirectoryFilterState
+import com.goveye.app.ui.screens.directory.PartyFilterState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -29,6 +31,8 @@ data class FollowedMpUi(
     val partyAbbreviation: String,
     val partyBackgroundColour: String,
     val constituencyName: String,
+    val house: Int,
+    val isActive: Boolean,
     val isMuted: Boolean,
     val recentVoteType: String?,
     val recentDivisionTitle: String?,
@@ -40,6 +44,8 @@ data class FollowedMpUi(
 data class FollowingUiState(
     val followedMps: List<FollowedMpUi> = emptyList(),
     val searchQuery: String = "",
+    val filterState: DirectoryFilterState = DirectoryFilterState(),
+    val distinctParties: List<String> = emptyList(),
     val isLoading: Boolean = true,
 )
 
@@ -52,6 +58,9 @@ class FollowingViewModel @Inject constructor(
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    private val _filterState = MutableStateFlow(DirectoryFilterState())
+    val filterState: StateFlow<DirectoryFilterState> = _filterState.asStateFlow()
 
     private val _isLoading = MutableStateFlow(true)
 
@@ -67,9 +76,17 @@ class FollowingViewModel @Inject constructor(
         combine(
             followedWithVotes,
             _searchQuery,
+            _filterState,
             _isLoading,
-        ) { followed, query, loading ->
-            val filtered = if (query.isBlank()) {
+        ) { followed, query, filter, loading ->
+            // Extract distinct parties from the full list (before filtering)
+            val distinctParties = followed
+                .map { it.partyName }
+                .distinct()
+                .sorted()
+
+            // Apply search filter
+            val searchFiltered = if (query.isBlank()) {
                 followed
             } else {
                 followed.filter {
@@ -78,9 +95,20 @@ class FollowingViewModel @Inject constructor(
                         it.partyName.contains(query, ignoreCase = true)
                 }
             }
+
+            // Apply directory-style filters (party, house, status)
+            val filterFiltered = searchFiltered.filter { mp ->
+                (filter.houseFilter == 0 || mp.house == filter.houseFilter) &&
+                    (!filter.currentOnly || mp.isActive) &&
+                    (filter.includedParties.isEmpty() || mp.partyName in filter.includedParties) &&
+                    (mp.partyName !in filter.excludedParties)
+            }
+
             FollowingUiState(
-                followedMps = filtered,
+                followedMps = filterFiltered,
                 searchQuery = query,
+                filterState = filter,
+                distinctParties = distinctParties,
                 isLoading = loading && followed.isEmpty(),
             )
         }.stateIn(
@@ -96,6 +124,41 @@ class FollowingViewModel @Inject constructor(
     fun updateSearchQuery(query: String) {
         _searchQuery.value = query
     }
+
+    // --- Filter operations ---
+
+    fun togglePartyFilter(party: String) {
+        val current = _filterState.value
+        val state = current.partyState(party)
+        val newIncluded = current.includedParties.toMutableSet()
+        val newExcluded = current.excludedParties.toMutableSet()
+        when (state) {
+            PartyFilterState.DISABLED -> newIncluded.add(party)
+            PartyFilterState.INCLUDED -> {
+                newIncluded.remove(party)
+                newExcluded.add(party)
+            }
+            PartyFilterState.EXCLUDED -> newExcluded.remove(party)
+        }
+        _filterState.value = current.copy(
+            includedParties = newIncluded,
+            excludedParties = newExcluded,
+        )
+    }
+
+    fun setHouseFilter(house: Int) {
+        _filterState.value = _filterState.value.copy(houseFilter = house)
+    }
+
+    fun setCurrentOnly(currentOnly: Boolean) {
+        _filterState.value = _filterState.value.copy(currentOnly = currentOnly)
+    }
+
+    fun clearFilters() {
+        _filterState.value = DirectoryFilterState()
+    }
+
+    // --- Follow operations ---
 
     fun unfollow(memberId: Int) {
         viewModelScope.launch { followRepository.unfollow(memberId) }
@@ -114,6 +177,8 @@ class FollowingViewModel @Inject constructor(
             partyAbbreviation = partyAbbreviation,
             partyBackgroundColour = partyBackgroundColour,
             constituencyName = constituencyName,
+            house = house,
+            isActive = true, // Followed MPs are always active (we only follow active MPs)
             isMuted = isMuted,
             recentVoteType = recentVote?.vote,
             recentDivisionTitle = recentVote?.title,

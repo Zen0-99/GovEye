@@ -7,6 +7,7 @@ import com.goveye.app.data.local.entity.MpEntity
 import com.goveye.app.data.repo.CommitteesRepository
 import com.goveye.app.data.repo.FollowRepository
 import com.goveye.app.data.repo.MembersRepository
+import com.goveye.app.data.repo.NotificationPreferenceRepository
 import com.goveye.app.data.repo.VotesRepository
 import com.goveye.app.domain.model.BiographyExperience
 import com.goveye.app.domain.model.Committee
@@ -37,7 +38,9 @@ data class ProfileUiState(
     val rebellionStats: RebellionStats? = null,
     val allDivisionDates: List<String> = emptyList(),
     val isFollowing: Boolean = false,
-    val isMuted: Boolean = false,
+    val notificationsEnabled: Boolean = false,
+    val votesNotificationsEnabled: Boolean = false,
+    val speechesNotificationsEnabled: Boolean = false,
     val syncStatus: SyncStatus = SyncStatus.EMPTY,
     val isLoading: Boolean = true,
 )
@@ -48,6 +51,7 @@ class ProfileViewModel @Inject constructor(
     private val committeesRepository: CommitteesRepository,
     private val votesRepository: VotesRepository,
     private val followRepository: FollowRepository,
+    private val notificationPrefRepository: NotificationPreferenceRepository,
     private val mpDao: MpDao,
 ) : ViewModel() {
 
@@ -68,15 +72,21 @@ class ProfileViewModel @Inject constructor(
             }
         }
 
-        // Observe follow + mute state
+        // Observe follow state
         viewModelScope.launch {
-            combine(
-                followRepository.observeIsFollowing(memberId),
-                followRepository.observeIsMuted(memberId),
-            ) { isFollowing, isMuted ->
-                isFollowing to (isMuted ?: false)
-            }.collect { (isFollowing, isMuted) ->
-                _uiState.value = _uiState.value.copy(isFollowing = isFollowing, isMuted = isMuted)
+            followRepository.observeIsFollowing(memberId).collect { isFollowing ->
+                _uiState.value = _uiState.value.copy(isFollowing = isFollowing)
+            }
+        }
+
+        // Observe per-MP notification preferences
+        viewModelScope.launch {
+            notificationPrefRepository.observe(memberId).collect { pref ->
+                _uiState.value = _uiState.value.copy(
+                    notificationsEnabled = pref.notificationsEnabled,
+                    votesNotificationsEnabled = pref.votesEnabled,
+                    speechesNotificationsEnabled = pref.speechesEnabled,
+                )
             }
         }
 
@@ -191,10 +201,23 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
-    fun toggleMute(memberId: Int) {
+    // --- Notification preferences ---
+
+    fun setNotificationsEnabled(memberId: Int, enabled: Boolean) {
         viewModelScope.launch {
-            val newMuted = !_uiState.value.isMuted
-            followRepository.setMuted(memberId, newMuted)
+            notificationPrefRepository.setNotificationsEnabled(memberId, enabled)
+        }
+    }
+
+    fun setVotesNotificationsEnabled(memberId: Int, enabled: Boolean) {
+        viewModelScope.launch {
+            notificationPrefRepository.setVotesEnabled(memberId, enabled)
+        }
+    }
+
+    fun setSpeechesNotificationsEnabled(memberId: Int, enabled: Boolean) {
+        viewModelScope.launch {
+            notificationPrefRepository.setSpeechesEnabled(memberId, enabled)
         }
     }
 

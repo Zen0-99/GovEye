@@ -5,8 +5,7 @@ import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.goveye.app.data.local.dao.MpDao
-import com.goveye.app.data.preference.NotificationPreferences
-import com.goveye.app.data.repo.FollowRepository
+import com.goveye.app.data.repo.NotificationPreferenceRepository
 import com.goveye.app.data.repo.SittingDayResolver
 import com.goveye.app.data.repo.VotesRepository
 import com.goveye.app.notifications.NotificationHelper
@@ -15,8 +14,11 @@ import dagger.assisted.AssistedInject
 import java.time.LocalDate
 
 /**
- * Periodic worker that polls for new votes by followed MPs and dispatches
- * notifications (D-01, D-02, FOLLOW-02, FOLLOW-04).
+ * Periodic worker that polls for new votes by MPs with vote notifications
+ * enabled and dispatches notifications (D-01, D-02, FOLLOW-02, FOLLOW-04).
+ *
+ * Notifications are per-MP (decoupled from follows) — the worker queries
+ * all MPs with votesEnabled = true in mp_notification_prefs.
  *
  * Adaptive scheduling (D-01):
  * - Sitting day → 30 min interval
@@ -24,20 +26,18 @@ import java.time.LocalDate
  *
  * The worker:
  * 1. Refreshes recess dates cache if stale (weekly)
- * 2. Checks if notifications are enabled
- * 3. Gets unmuted followed MP IDs
- * 4. For each MP, detects new votes (diff against cache)
- * 5. Dispatches notifications (max 5 per cycle, then summary)
+ * 2. Gets MP IDs with vote notifications enabled
+ * 3. For each MP, detects new votes (diff against cache)
+ * 4. Dispatches notifications (max 5 per cycle, then summary)
  */
 @HiltWorker
 class VotePollingWorker @AssistedInject constructor(
     @Assisted appContext: Context,
     @Assisted params: WorkerParameters,
-    private val followRepository: FollowRepository,
     private val votesRepository: VotesRepository,
     private val mpDao: MpDao,
     private val notificationHelper: NotificationHelper,
-    private val notificationPreferences: NotificationPreferences,
+    private val notificationPrefRepository: NotificationPreferenceRepository,
     private val sittingDayResolver: SittingDayResolver,
 ) : CoroutineWorker(appContext, params) {
 
@@ -52,20 +52,15 @@ class VotePollingWorker @AssistedInject constructor(
             // 1. Refresh recess dates cache if needed (weekly)
             sittingDayResolver.refreshRecessDatesIfNeeded()
 
-            // 2. Check if vote notifications are enabled
-            if (!notificationPreferences.getVotesEnabled()) {
+            // 2. Get MP IDs with vote notifications enabled (per-MP, decoupled from follows)
+            val memberIds = notificationPrefRepository.getMemberIdsWithVotesEnabled()
+            if (memberIds.isEmpty()) {
                 return Result.success()
             }
 
-            // 3. Get unmuted followed MP IDs
-            val followedIds = followRepository.getUnmutedMemberIds()
-            if (followedIds.isEmpty()) {
-                return Result.success()
-            }
-
-            // 4. Detect new votes for each followed MP
+            // 3. Detect new votes for each MP
             val allNewVotes = mutableListOf<com.goveye.app.domain.model.NewVote>()
-            for (memberId in followedIds) {
+            for (memberId in memberIds) {
                 try {
                     val mp = mpDao.getMp(memberId) ?: continue
                     val newVotes = votesRepository.detectNewVotesForMember(
