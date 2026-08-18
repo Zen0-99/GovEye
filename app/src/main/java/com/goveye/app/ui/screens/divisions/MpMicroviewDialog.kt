@@ -95,7 +95,8 @@ fun MpMicroviewDialog(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.92f),
+                .fillMaxHeight(0.85f)
+                .padding(horizontal = 24.dp),
             shape = RoundedCornerShape(20.dp),
             color = MaterialTheme.colorScheme.surface,
         ) {
