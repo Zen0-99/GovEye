@@ -217,11 +217,13 @@ private fun DivisionDetailContent(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        // Header card
+        // Header card (always visible — contains the main result bar)
         item { DivisionHeaderCard(division = division) }
 
-        // Party breakdown — collapsible
-        if (state.partyBreakdown.isNotEmpty()) {
+        // Party breakdown — collapsible. Hidden while searching so the user
+        // only sees the people matching their query (the main result bar in
+        // the header card remains visible).
+        if (state.partyBreakdown.isNotEmpty() && searchQuery.isBlank()) {
             item {
                 SectionHeader(
                     title = "Party Breakdown",
@@ -543,6 +545,9 @@ private fun VoterRow(vote: DivisionVote, onClick: () -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // Vote indicator — rounded square showing Aye/No
+        VoteBadge(vote = vote.vote)
+
         Text(
             text = vote.memberName,
             style = MaterialTheme.typography.bodyMedium,
@@ -560,6 +565,35 @@ private fun VoterRow(vote: DivisionVote, onClick: () -> Unit) {
                 overflow = TextOverflow.Ellipsis,
             )
         }
+    }
+}
+
+/**
+ * Rounded-square vote badge. Shows "Aye" on a green background or "No" on a
+ * red background so the user can see at a glance how a member voted. Sits to
+ * the left of the member name in [VoterRow].
+ */
+@Composable
+private fun VoteBadge(vote: VoteType) {
+    val (label, color) = when (vote) {
+        VoteType.AYE -> "Aye" to AyeColor
+        VoteType.NO -> "No" to NoColor
+        VoteType.NO_VOTE_RECORDED -> "—" to MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Box(
+        modifier = Modifier
+            .size(width = 36.dp, height = 22.dp)
+            .clip(RoundedCornerShape(6.dp))
+            .background(color),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+        )
     }
 }
 
