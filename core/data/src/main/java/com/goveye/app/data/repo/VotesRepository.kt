@@ -317,6 +317,37 @@ class VotesRepository @Inject constructor(
     }
 
     /**
+     * Batch-fetch full division details (all votes) for a list of division IDs.
+     * Skips divisions that already have votes cached. Used to populate the
+     * full voter lists needed for rebellion computation.
+     *
+     * @param divisionIds Divisions to fetch details for
+     * @param house House (1=Commons, 2=Lords) — determines which API to call
+     * @param limit Maximum number of divisions to fetch (most recent first)
+     */
+    suspend fun batchFetchDivisionDetails(divisionIds: List<Int>, house: Int, limit: Int = 100) {
+        val toFetch = divisionIds
+            .distinct()
+            .take(limit)
+            .filter { id -> divisionDao.countVotesForDivision(id) == 0 }
+        for (id in toFetch) {
+            try {
+                refreshDivisionDetail(id, house)
+            } catch (e: Exception) {
+                // Continue fetching other divisions even if one fails
+            }
+        }
+    }
+
+    /**
+     * Get all divisions for a given house (used for attendance calculation).
+     * Returns all division dates so we can compute how many divisions
+     * occurred in each period vs how many the MP voted in.
+     */
+    suspend fun getAllDivisionDates(house: Int): List<String> =
+        divisionDao.getAllDivisionsByHouse(house).map { it.date }
+
+    /**
      * Get all votes for a single division (suspend, one-shot).
      */
     suspend fun getVotesForDivision(divisionId: Int): List<DivisionVote> =

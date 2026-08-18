@@ -15,6 +15,9 @@ interface DivisionDao {
     @Query("SELECT * FROM divisions WHERE house = :house ORDER BY date DESC LIMIT :limit")
     fun observeDivisionsByHouse(house: Int, limit: Int = 50): Flow<List<DivisionEntity>>
 
+    @Query("SELECT * FROM divisions WHERE house = :house ORDER BY date DESC")
+    suspend fun getAllDivisionsByHouse(house: Int): List<DivisionEntity>
+
     @Query("SELECT * FROM divisions WHERE title LIKE '%' || :query || '%' ORDER BY date DESC LIMIT :limit")
     fun searchDivisions(query: String, limit: Int = 50): Flow<List<DivisionEntity>>
 

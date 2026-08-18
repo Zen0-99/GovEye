@@ -127,20 +127,60 @@ object VotingStatsCalculator {
 
     /**
      * Compute attendance rate per period.
-     * Attendance = (Ayes + Noes) / total votes in period.
+     *
+     * Attendance = (divisions MP voted in) / (total divisions in period).
+     *
+     * @param votes The MP's voting record
+     * @param allDivisionDates Dates of ALL divisions in the house (not just the
+     *   MP's). When provided, attendance is computed against the total number
+     *   of divisions per period. When empty, falls back to the MP's own votes
+     *   (which always yields 100% since the API only returns divisions where
+     *   the MP voted).
      */
-    fun computeAttendanceTrend(votes: List<MemberVoteWithDivision>): List<AttendanceTrend> {
-        val totalMonths = countUniqueMonths(votes)
-        return votes
+    fun computeAttendanceTrend(
+        votes: List<MemberVoteWithDivision>,
+        allDivisionDates: List<String> = emptyList(),
+    ): List<AttendanceTrend> {
+        if (allDivisionDates.isEmpty()) {
+            // Fallback: old behavior (always 100% since API only returns voted divisions)
+            val totalMonths = countUniqueMonths(votes)
+            return votes
+                .groupBy { periodKey(it.divisionDate, totalMonths) }
+                .map { (period, periodVotes) ->
+                    val attended = periodVotes.count { it.vote != VoteType.NO_VOTE_RECORDED }
+                    AttendanceTrend(
+                        month = period,
+                        attendanceRate = attended.toFloat() / periodVotes.size,
+                    )
+                }
+                .sortedBy { it.month }
+        }
+
+        // Real attendance: MP's voted divisions / total divisions per period.
+        // Use the union of all division dates and MP's vote dates to determine
+        // the period key consistently.
+        val allDates = (allDivisionDates + votes.map { it.divisionDate })
+            .filter { it.isNotBlank() }
+        val totalMonths = allDates.map { it.take(7) }.distinct().size
+
+        val totalByPeriod = allDivisionDates
+            .filter { it.isNotBlank() }
+            .groupBy { periodKey(it, totalMonths) }
+            .mapValues { it.value.size }
+
+        val attendedByPeriod = votes
+            .filter { it.vote != VoteType.NO_VOTE_RECORDED }
             .groupBy { periodKey(it.divisionDate, totalMonths) }
-            .map { (period, periodVotes) ->
-                val attended = periodVotes.count { it.vote != VoteType.NO_VOTE_RECORDED }
-                AttendanceTrend(
-                    month = period,
-                    attendanceRate = attended.toFloat() / periodVotes.size,
-                )
-            }
-            .sortedBy { it.month }
+            .mapValues { it.value.size }
+
+        return totalByPeriod.keys.sorted().map { period ->
+            val total = totalByPeriod[period] ?: 0
+            val attended = attendedByPeriod[period] ?: 0
+            AttendanceTrend(
+                month = period,
+                attendanceRate = if (total > 0) attended.toFloat() / total else 0f,
+            )
+        }
     }
 
     /**

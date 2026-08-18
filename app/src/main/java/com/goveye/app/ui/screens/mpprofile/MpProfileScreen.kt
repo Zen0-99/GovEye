@@ -181,6 +181,7 @@ fun ProfileScreen(
                             ProfileTab.VOTES -> VotesTabContent(
                                 memberVotes = uiState.memberVotes,
                                 rebellionStats = uiState.rebellionStats,
+                                allDivisionDates = uiState.allDivisionDates,
                                 onNavigateToDivision = { divisionId, house ->
                                     onNavigateToDivision(divisionId, house)
                                 },
@@ -283,11 +284,14 @@ private fun CommitteesTabContent(
 private fun VotesTabContent(
     memberVotes: List<MemberVoteWithDivision>,
     rebellionStats: RebellionStats?,
+    allDivisionDates: List<String>,
     onNavigateToDivision: (Int, Int) -> Unit,
 ) {
     // Compute chart data
     val monthlyVoting = remember(memberVotes) { VotingStatsCalculator.computeMonthlyVoting(memberVotes) }
-    val attendanceTrend = remember(memberVotes) { VotingStatsCalculator.computeAttendanceTrend(memberVotes) }
+    val attendanceTrend = remember(memberVotes, allDivisionDates) {
+        VotingStatsCalculator.computeAttendanceTrend(memberVotes, allDivisionDates)
+    }
     val rebellionTrend = remember(rebellionStats, memberVotes) {
         rebellionStats?.let { VotingStatsCalculator.computeRebellionTrend(it.rebellionInstances, memberVotes) } ?: emptyList()
     }

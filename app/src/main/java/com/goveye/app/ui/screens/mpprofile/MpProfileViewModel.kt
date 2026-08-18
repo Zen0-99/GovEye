@@ -33,6 +33,7 @@ data class ProfileUiState(
     val committeePeerMps: List<Mp> = emptyList(),
     val memberVotes: List<MemberVoteWithDivision> = emptyList(),
     val rebellionStats: RebellionStats? = null,
+    val allDivisionDates: List<String> = emptyList(),
     val syncStatus: SyncStatus = SyncStatus.EMPTY,
     val isLoading: Boolean = true,
 )
@@ -99,6 +100,12 @@ class ProfileViewModel @Inject constructor(
         // Load voting record — show cached data first, then refresh in background
         viewModelScope.launch {
             try {
+                // 0. Load all division dates for the house (for attendance calc)
+                val mp = mpDao.getMp(memberId)
+                val house = mp?.house ?: 1
+                val allDates = votesRepository.getAllDivisionDates(house)
+                _uiState.value = _uiState.value.copy(allDivisionDates = allDates)
+
                 // 1. Show cached votes immediately (from previous fetches)
                 val cachedVotes = votesRepository.getMemberVotingWithDivisions(memberId)
                 if (cachedVotes.isNotEmpty()) {
@@ -116,11 +123,12 @@ class ProfileViewModel @Inject constructor(
                 }
 
                 // 2. Refresh from API in background (upserts per-page, so DB updates progressively)
-                val mp = mpDao.getMp(memberId)
-                val house = mp?.house ?: 1
                 votesRepository.refreshMemberVoting(memberId, house)
 
-                // 3. After refresh, reload from DB and recompute stats
+                // 3. Batch-fetch full division details (all votes) for the
+                // MP's divisions so rebellion can be computed against actual
+                // party majorities. Without this, only the MP's own vote is
+                // stored per division, making rebellion always 0%.
                 val freshVotes = votesRepository.getMemberVotingWithDivisions(memberId)
                 _uiState.value = _uiState.value.copy(memberVotes = freshVotes)
                 val partyName = _uiState.value.mp?.party?.name
@@ -128,6 +136,9 @@ class ProfileViewModel @Inject constructor(
                     val memberVotesResult = votesRepository.observeMemberVoting(memberId).first()
                     val memberVotes = memberVotesResult.data
                     val divisionIds = memberVotes.map { it.divisionId }.distinct()
+                    // Fetch full voter lists for up to 100 most recent divisions
+                    votesRepository.batchFetchDivisionDetails(divisionIds, house, limit = 100)
+                    // Recompute with the now-populated voter lists
                     val allVotesByDivision = votesRepository.getAllVotesForDivisions(divisionIds)
                     val stats = RebellionCalculator.compute(memberVotes, allVotesByDivision, partyName)
                     _uiState.value = _uiState.value.copy(rebellionStats = stats)
