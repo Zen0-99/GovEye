@@ -30,6 +30,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -39,18 +40,27 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.goveye.app.domain.model.MemberVoteWithDivision
 import com.goveye.app.domain.model.VoteType
+import com.goveye.app.domain.stats.VoteMapCalculator
+import com.goveye.app.domain.stats.VotingStatsCalculator
 import com.goveye.app.ui.components.MpAvatar
 import com.goveye.app.ui.components.VoteColors
+import com.goveye.app.ui.components.charts.AttendanceLineChart
+import com.goveye.app.ui.components.charts.ChartCard
+import com.goveye.app.ui.components.charts.ChartHeaderWithLegend
+import com.goveye.app.ui.components.charts.RebellionLineChart
+import com.goveye.app.ui.components.charts.VotingBarChart
+import com.goveye.app.ui.components.stats.VoteMapGrid
 import com.goveye.app.ui.theme.parsePartyColor
 
 /**
  * MP microview dialog — shown when clicking an MP in the division detail
  * voter list. Shows a compact profile with gradient header, avatar, name,
- * party, follow button, and the votes tab content (no tab selector).
+ * party, follow button, and the votes tab content (charts + vote list).
  *
  * A "fullscreen" button navigates to the full profile screen.
  *
@@ -76,11 +86,16 @@ fun MpMicroviewDialog(
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    Dialog(onDismissRequest = onDismiss) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+        ),
+    ) {
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.9f),
+                .fillMaxHeight(0.92f),
             shape = RoundedCornerShape(20.dp),
             color = MaterialTheme.colorScheme.surface,
         ) {
@@ -207,7 +222,7 @@ fun MpMicroviewDialog(
                     }
                 }
 
-                // Votes content
+                // Votes content — charts + vote list
                 if (uiState.isLoading && uiState.mp == null) {
                     Box(
                         modifier = Modifier
@@ -220,6 +235,8 @@ fun MpMicroviewDialog(
                 } else {
                     VotesContent(
                         memberVotes = uiState.memberVotes,
+                        rebellionStats = uiState.rebellionStats,
+                        allDivisionDates = uiState.allDivisionDates,
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f),
@@ -231,11 +248,15 @@ fun MpMicroviewDialog(
 }
 
 /**
- * Compact votes content for the microview — shows recent votes with badges.
+ * Votes content for the microview — charts (voting bar, attendance, rebellion,
+ * vote map) followed by the recent votes list. Reuses the same chart components
+ * as the full profile's Votes tab.
  */
 @Composable
 private fun VotesContent(
     memberVotes: List<MemberVoteWithDivision>,
+    rebellionStats: com.goveye.app.domain.stats.RebellionStats?,
+    allDivisionDates: List<String>,
     modifier: Modifier = Modifier,
 ) {
     if (memberVotes.isEmpty()) {
@@ -252,14 +273,59 @@ private fun VotesContent(
         return
     }
 
+    // Compute chart data (same as VotesTabContent in MpProfileScreen)
+    val monthlyVoting = remember(memberVotes) { VotingStatsCalculator.computeMonthlyVoting(memberVotes) }
+    val attendanceTrend = remember(memberVotes, allDivisionDates) {
+        VotingStatsCalculator.computeAttendanceTrend(memberVotes, allDivisionDates)
+    }
+    val rebellionTrend = remember(rebellionStats, memberVotes) {
+        rebellionStats?.let { VotingStatsCalculator.computeRebellionTrend(it.rebellionInstances, memberVotes) } ?: emptyList()
+    }
+    val voteMapTiles = remember(rebellionStats, memberVotes) {
+        rebellionStats?.let { VoteMapCalculator.compute(memberVotes, it.rebellionInstances) } ?: emptyList()
+    }
+
     LazyColumn(
         modifier = modifier,
         contentPadding = androidx.compose.foundation.layout.PaddingValues(
             horizontal = 16.dp,
-            vertical = 8.dp,
+            vertical = 12.dp,
         ),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        // Charts section — same order as full profile Votes tab
+        if (monthlyVoting.isNotEmpty()) {
+            item { VotingBarChart(data = monthlyVoting) }
+        }
+
+        if (attendanceTrend.isNotEmpty()) {
+            item { AttendanceLineChart(data = attendanceTrend) }
+        }
+
+        if (rebellionTrend.isNotEmpty()) {
+            item { RebellionLineChart(data = rebellionTrend) }
+        }
+
+        if (voteMapTiles.isNotEmpty()) {
+            item {
+                ChartCard {
+                    ChartHeaderWithLegend(
+                        title = "Vote Map",
+                        legendItems = listOf(
+                            "With party" to VoteColors.aye,
+                            "Rebel" to VoteColors.no,
+                            "No vote" to MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                        ),
+                    )
+                    VoteMapGrid(
+                        tiles = voteMapTiles,
+                        onTileClick = { _, _ -> },
+                    )
+                }
+            }
+        }
+
+        // Recent votes list
         items(memberVotes.take(20)) { voteRecord ->
             Row(
                 modifier = Modifier.fillMaxWidth(),

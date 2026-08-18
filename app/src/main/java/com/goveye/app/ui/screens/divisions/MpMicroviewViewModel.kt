@@ -8,17 +8,21 @@ import com.goveye.app.data.repo.MembersRepository
 import com.goveye.app.data.repo.VotesRepository
 import com.goveye.app.domain.model.MemberVoteWithDivision
 import com.goveye.app.domain.model.Mp
-import com.goveye.app.domain.model.SyncStatus
+import com.goveye.app.domain.stats.RebellionCalculator
+import com.goveye.app.domain.stats.RebellionStats
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 data class MpMicroviewUiState(
     val mp: Mp? = null,
     val memberVotes: List<MemberVoteWithDivision> = emptyList(),
+    val rebellionStats: RebellionStats? = null,
+    val allDivisionDates: List<String> = emptyList(),
     val isFollowing: Boolean = false,
     val isLoading: Boolean = true,
 )
@@ -66,7 +70,7 @@ class MpMicroviewViewModel @Inject constructor(
                     thumbnailUrl = mpEntity.thumbnailUrl,
                 )
                 _uiState.value = _uiState.value.copy(mp = mp, isLoading = false)
-                loadVotesAndFollow(memberId, mpEntity.house)
+                loadVotesAndFollow(memberId, mpEntity.house, mpEntity.partyName)
             } else {
                 // 2. MP not in DB — show fallback data immediately, fetch from API
                 val fallbackMp = Mp(
@@ -110,19 +114,19 @@ class MpMicroviewViewModel @Inject constructor(
                             thumbnailUrl = refreshed.thumbnailUrl,
                         )
                         _uiState.value = _uiState.value.copy(mp = mp)
-                        loadVotesAndFollow(memberId, refreshed.house)
+                        loadVotesAndFollow(memberId, refreshed.house, refreshed.partyName)
                         return@launch
                     }
                 } catch (e: Exception) {
                     // Keep fallback data
                 }
-                // Still load votes with fallback house
-                loadVotesAndFollow(memberId, 1)
+                // Still load votes with fallback house + party
+                loadVotesAndFollow(memberId, 1, fallbackPartyName)
             }
         }
     }
 
-    private fun loadVotesAndFollow(memberId: Int, house: Int) {
+    private fun loadVotesAndFollow(memberId: Int, house: Int, partyName: String?) {
         viewModelScope.launch {
             // Check follow state
             val isFollowing = followRepository.isFollowing(memberId)
@@ -131,15 +135,46 @@ class MpMicroviewViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                // Load cached votes first
+                // Load all division dates for the house (for attendance calc)
+                val allDates = votesRepository.getAllDivisionDates(house)
+
+                // 1. Show cached votes immediately
                 val cachedVotes = votesRepository.getMemberVotingWithDivisions(memberId)
                 if (cachedVotes.isNotEmpty()) {
-                    _uiState.value = _uiState.value.copy(memberVotes = cachedVotes)
+                    _uiState.value = _uiState.value.copy(
+                        memberVotes = cachedVotes,
+                        allDivisionDates = allDates,
+                    )
+                    // Compute rebellion stats from cached data
+                    if (partyName != null) {
+                        val memberVotesResult = votesRepository.observeMemberVoting(memberId).first()
+                        val memberVotes = memberVotesResult.data
+                        val divisionIds = memberVotes.map { it.divisionId }.distinct()
+                        val allVotesByDivision = votesRepository.getAllVotesForDivisions(divisionIds)
+                        val stats = RebellionCalculator.compute(memberVotes, allVotesByDivision, partyName)
+                        _uiState.value = _uiState.value.copy(rebellionStats = stats)
+                    }
                 }
-                // Refresh from API in background
+
+                // 2. Refresh from API in background
                 votesRepository.refreshMemberVoting(memberId, house)
+
+                // 3. Batch-fetch full division details for rebellion calc
                 val freshVotes = votesRepository.getMemberVotingWithDivisions(memberId)
-                _uiState.value = _uiState.value.copy(memberVotes = freshVotes)
+                val freshDates = votesRepository.getAllDivisionDates(house)
+                _uiState.value = _uiState.value.copy(
+                    memberVotes = freshVotes,
+                    allDivisionDates = freshDates,
+                )
+                if (freshVotes.isNotEmpty() && partyName != null) {
+                    val memberVotesResult = votesRepository.observeMemberVoting(memberId).first()
+                    val memberVotes = memberVotesResult.data
+                    val divisionIds = memberVotes.map { it.divisionId }.distinct()
+                    votesRepository.batchFetchDivisionDetails(divisionIds, house, limit = 100)
+                    val allVotesByDivision = votesRepository.getAllVotesForDivisions(divisionIds)
+                    val stats = RebellionCalculator.compute(memberVotes, allVotesByDivision, partyName)
+                    _uiState.value = _uiState.value.copy(rebellionStats = stats)
+                }
             } catch (e: Exception) {
                 // Keep cached data
             }
