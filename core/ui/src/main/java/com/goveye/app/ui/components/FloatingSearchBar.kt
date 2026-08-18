@@ -35,7 +35,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -73,10 +75,13 @@ fun FloatingSearchBar(
     filterChips: List<SearchFilterChip> = emptyList(),
     onBack: (() -> Unit)? = null,
     segments: List<SearchSegment> = emptyList(),
+    isSearchActive: Boolean = false,
+    onSearchActiveChange: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val shape = RoundedCornerShape(20.dp)
+    val focusManager = LocalFocusManager.current
 
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
@@ -145,14 +150,23 @@ fun FloatingSearchBar(
                                 ),
                                 cursorBrush = SolidColor(colorScheme.primary),
                                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .onFocusChanged { state ->
+                                        onSearchActiveChange(state.isFocused)
+                                    },
                             )
                         }
 
-                        // Clear button (visible when query is non-empty)
-                        if (query.isNotEmpty()) {
+                        // Clear button — clears the query AND dismisses the
+                        // search (collapses pills, hides keyboard, shows all
+                        // bars again).
+                        if (query.isNotEmpty() || isSearchActive) {
                             IconButton(
-                                onClick = { onQueryChange("") },
+                                onClick = {
+                                    onQueryChange("")
+                                    focusManager.clearFocus()
+                                },
                                 modifier = Modifier.size(40.dp),
                             ) {
                                 Icon(
@@ -181,11 +195,12 @@ fun FloatingSearchBar(
                     }
 
                     // Segmented control (Miko BrowseSearchPill style) — nested
-                    // inside the search bar surface. Expands when the user types
-                    // (query non-empty) and collapses when they clear/exit.
+                    // inside the search bar surface. Expands when the search bar
+                    // is focused (user taps it) and collapses when focus is lost
+                    // (user presses X or navigates away).
                     if (segments.isNotEmpty()) {
                         AnimatedVisibility(
-                            visible = query.isNotEmpty(),
+                            visible = isSearchActive,
                             enter = fadeIn(animationSpec = tween(300)) + expandVertically(
                                 animationSpec = tween(300),
                                 expandFrom = Alignment.Top,

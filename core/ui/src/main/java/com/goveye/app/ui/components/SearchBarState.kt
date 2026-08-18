@@ -36,6 +36,10 @@ data class SearchBarConfig(
     val onBack: (() -> Unit)? = null,
     /** Optional segmented control (double pill) shown below the search bar. */
     val segments: List<SearchSegment> = emptyList(),
+    /** Whether the search bar is actively focused (pills expanded). */
+    val isSearchActive: Boolean = false,
+    /** Called when the search bar gains/loses focus. */
+    val onSearchActiveChange: (Boolean) -> Unit = {},
 )
 
 /**

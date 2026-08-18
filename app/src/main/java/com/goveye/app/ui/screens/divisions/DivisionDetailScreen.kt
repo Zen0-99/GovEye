@@ -127,6 +127,7 @@ fun DivisionDetailScreen(
 
     val state by viewModel.state.collectAsStateWithLifecycle()
     var searchQuery by remember { mutableStateOf("") }
+    var isSearchActive by remember { mutableStateOf(false) }
     var voteFilter by remember { mutableStateOf(VoteFilter.ALL) }
 
     val ayeCount = state.votes.count { it.vote == VoteType.AYE }
@@ -140,7 +141,16 @@ fun DivisionDetailScreen(
             query = searchQuery,
             placeholder = "Search voters / constituency…",
             onQueryChange = { searchQuery = it },
-            onBack = onBack,
+            onBack = {
+                isSearchActive = false
+                searchQuery = ""
+                onBack()
+            },
+            isSearchActive = isSearchActive,
+            onSearchActiveChange = { active ->
+                isSearchActive = active
+                if (!active) searchQuery = ""
+            },
             segments = listOf(
                 com.goveye.app.ui.components.SearchSegment(
                     label = "All (${ayeCount + noCount})",
@@ -214,7 +224,7 @@ private fun DivisionDetailContent(
 
     LazyColumn(
         modifier = modifier,
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         // Header card (always visible — contains the main result bar)
