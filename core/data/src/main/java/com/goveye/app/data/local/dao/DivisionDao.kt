@@ -1,6 +1,8 @@
 package com.goveye.app.data.local.dao
 
 import androidx.room.Dao
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Upsert
 import com.goveye.app.data.local.entity.DivisionEntity
@@ -48,6 +50,14 @@ interface DivisionDao {
 
     @Upsert
     suspend fun upsertVotes(votes: List<DivisionVoteEntity>)
+
+    /**
+     * Insert votes only if the (divisionId, memberId) row doesn't already exist.
+     * Used by member voting refresh — avoids overwriting member info (name,
+     * party, constituency) that was populated by the division detail fetch.
+     */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertVotesIfAbsent(votes: List<DivisionVoteEntity>)
 
     @Query("SELECT COUNT(*) FROM division_votes WHERE divisionId = :divisionId")
     suspend fun countVotesForDivision(divisionId: Int): Int

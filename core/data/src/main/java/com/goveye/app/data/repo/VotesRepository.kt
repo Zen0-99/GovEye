@@ -226,7 +226,7 @@ class VotesRepository @Inject constructor(
                         )
                     }
                     if (pageDivisions.isNotEmpty()) divisionDao.upsertAll(pageDivisions)
-                    if (pageVotes.isNotEmpty()) divisionDao.upsertVotes(pageVotes)
+                    if (pageVotes.isNotEmpty()) divisionDao.insertVotesIfAbsent(pageVotes)
                     if (dtos.size < pageSize) break
                     skip += pageSize
                 }
@@ -257,7 +257,7 @@ class VotesRepository @Inject constructor(
                         )
                     }
                     if (pageDivisions.isNotEmpty()) divisionDao.upsertAll(pageDivisions)
-                    if (pageVotes.isNotEmpty()) divisionDao.upsertVotes(pageVotes)
+                    if (pageVotes.isNotEmpty()) divisionDao.insertVotesIfAbsent(pageVotes)
                     if (dtos.size < pageSize) break
                     skip += pageSize
                 }
