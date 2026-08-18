@@ -249,14 +249,10 @@ fun ProfileScreen(
 
     // Notification settings bottom sheet (FotMob-style)
     if (showNotificationSheet) {
-        val sheetPartyColor = remember(uiState.mp) {
-            parsePartyColor(uiState.mp?.party?.backgroundColour)
-        }
         NotificationSettingsBottomSheet(
             notificationsEnabled = uiState.notificationsEnabled,
             votesEnabled = uiState.votesNotificationsEnabled,
             speechesEnabled = uiState.speechesNotificationsEnabled,
-            partyColor = sheetPartyColor,
             onMasterToggle = { enabled ->
                 // Request POST_NOTIFICATIONS when turning on (Android 13+)
                 if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&

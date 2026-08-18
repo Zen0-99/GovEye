@@ -157,6 +157,9 @@ fun DivisionDetailScreen(
     var isSearchActive by remember { mutableStateOf(false) }
     var voteFilter by remember { mutableStateOf(VoteFilter.ALL) }
     var microviewMemberId by remember { mutableStateOf<Int?>(null) }
+    var microviewFallback by remember {
+        mutableStateOf<MicroviewFallback?>(null)
+    }
 
     val ayeCount = state.votes.count { it.vote == VoteType.AYE }
     val noCount = state.votes.count { it.vote == VoteType.NO }
@@ -227,7 +230,15 @@ fun DivisionDetailScreen(
                 DivisionDetailContent(
                     division = division,
                     state = state,
-                    onNavigateToProfile = { memberId -> microviewMemberId = memberId },
+                    onNavigateToProfile = { vote ->
+                        microviewMemberId = vote.memberId
+                        microviewFallback = MicroviewFallback(
+                            name = vote.memberName,
+                            partyName = vote.partyName,
+                            partyColour = vote.partyColour,
+                            constituency = vote.constituencyName,
+                        )
+                    },
                     searchQuery = searchQuery,
                     voteFilter = voteFilter,
                     modifier = Modifier.fillMaxSize().padding(innerPadding),
@@ -238,22 +249,39 @@ fun DivisionDetailScreen(
 
     // MP microview dialog — shown when clicking an MP in the voter list
     microviewMemberId?.let { memberId ->
+        val fb = microviewFallback
         MpMicroviewDialog(
             memberId = memberId,
+            fallbackName = fb?.name ?: "",
+            fallbackPartyName = fb?.partyName,
+            fallbackPartyColour = fb?.partyColour,
+            fallbackConstituency = fb?.constituency,
             onNavigateToFullProfile = { id ->
                 microviewMemberId = null
+                microviewFallback = null
                 onNavigateToProfile(id)
             },
-            onDismiss = { microviewMemberId = null },
+            onDismiss = {
+                microviewMemberId = null
+                microviewFallback = null
+            },
         )
     }
 }
+
+/** Fallback data for the microview dialog (from DivisionVote). */
+private data class MicroviewFallback(
+    val name: String,
+    val partyName: String?,
+    val partyColour: String?,
+    val constituency: String?,
+)
 
 @Composable
 private fun DivisionDetailContent(
     division: Division,
     state: DivisionDetailState,
-    onNavigateToProfile: (Int) -> Unit,
+    onNavigateToProfile: (DivisionVote) -> Unit,
     searchQuery: String,
     voteFilter: VoteFilter,
     modifier: Modifier = Modifier,
@@ -321,7 +349,7 @@ private fun DivisionDetailContent(
                     )
                 }
                 items(partyVoters, key = { "${voteFilter}-${it.memberId}" }) { vote ->
-                    VoterRow(vote = vote, onClick = { onNavigateToProfile(vote.memberId) })
+                    VoterRow(vote = vote, onClick = { onNavigateToProfile(vote) })
                 }
             }
 
