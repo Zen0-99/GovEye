@@ -4,23 +4,19 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import androidx.room.withTransaction
-import com.goveye.app.data.local.GovEyeDatabase
+import com.goveye.app.data.local.BundledDatabase
 import com.goveye.app.data.local.dao.DatabaseUpdateDao
 import com.goveye.app.data.local.entity.BillEntity
-import com.goveye.app.data.local.entity.BillFollowEntity
 import com.goveye.app.data.local.entity.BillStageEntity
 import com.goveye.app.data.local.entity.CommitteeEntity
 import com.goveye.app.data.local.entity.DivisionEntity
 import com.goveye.app.data.local.entity.DivisionVoteEntity
-import com.goveye.app.data.local.entity.FollowEntity
 import com.goveye.app.data.local.entity.HansardContributionEntity
 import com.goveye.app.data.local.entity.InterestEntity
 import com.goveye.app.data.local.entity.MpCommitteeCrossRef
 import com.goveye.app.data.local.entity.MpEntity
-import com.goveye.app.data.local.entity.MpNotificationPreferenceEntity
 import com.goveye.app.data.local.entity.RecessDateEntity
 import com.goveye.app.data.local.entity.RecessDatesMetaEntity
-import com.goveye.app.data.local.entity.RemoteKeyEntity
 import com.goveye.app.data.preference.DatabasePreferences
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
@@ -30,6 +26,8 @@ import javax.inject.Inject
 import javax.inject.Named
 import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -42,22 +40,18 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 
 /**
- * Core orchestrator for the bundled DB update flow (D-04, D-05, DATA-01, DATA-03).
+ * Core orchestrator for the bundled DB update flow (D-04, D-05, D-10, D-10a, DATA-01, DATA-03).
  *
- * On startup, [checkForUpdates] fetches manifest.json from the goveye-data
- * repo's `database-latest` release and compares the version against the local
- * DB version stored in [DatabasePreferences].
+ * Implements the hybrid 2-database architecture (D-10a):
+ * - Checks 5 per-API manifests (mps-latest, votes-latest, bills-latest,
+ *   committees-latest, recess-latest) in parallel.
+ * - Downloads up to 5 patch.json files, merges their changes maps (no conflicts
+ *   — each patch only touches its own tables), and applies all to [BundledDatabase]
+ *   in a single Room transaction.
+ * - First-launch downloads the merged goveye.db from the seed-latest release.
  *
- * - First launch (no local DB) → [DatabaseUpdateState.NeedsFullDownload]
- * - Same version → [DatabaseUpdateState.UpToDate]
- * - Exactly 1 behind → [DatabaseUpdateState.NeedsPatch] (patch applied via Room transaction)
- * - Multiple behind → [DatabaseUpdateState.NeedsFullDownload] (full DB swap)
- *
- * Patch application ([applyPatch]) downloads patch.json (5-50KB), decodes
- * per-table upsert/delete arrays, and applies them via [DatabaseUpdateDao]
- * inside a single Room transaction (D-05). Full DB download
- * ([downloadFullDb]) streams the ~160MB DB to a temp file, verifies SHA-256,
- * and swaps it in via [swapDbFile] (Pitfall 3).
+ * [LocalDatabase] (local.db, user data) is NEVER touched by this manager —
+ * user data persists across all DB updates and seed DB swaps.
  */
 @Singleton
 class DatabaseUpdateManager @Inject constructor(
@@ -65,53 +59,81 @@ class DatabaseUpdateManager @Inject constructor(
     private val preferences: DatabasePreferences,
     private val json: Json,
     @ApplicationContext private val context: Context,
-    private val database: GovEyeDatabase,
+    private val database: BundledDatabase,
     private val updateDao: DatabaseUpdateDao,
     @Named("dbDownloadClient") private val dbDownloadClient: OkHttpClient,
 ) {
     /**
-     * Checks whether this is the first app launch (no local DB file exists).
+     * Checks whether this is the first app launch (seed DB not yet downloaded).
      *
-     * Uses [Context.getDatabasePath] to check Room's expected DB location.
+     * Returns true if [DatabasePreferences.seedVersion] is null OR the DB file
+     * does not exist at Room's expected path.
      */
-    fun isFirstLaunch(): Boolean = !context.getDatabasePath(GovEyeDatabase.DATABASE_NAME).exists()
+    suspend fun isFirstLaunch(): Boolean {
+        if (preferences.seedVersion.first() == null) return true
+        return !context.getDatabasePath(BundledDatabase.DATABASE_NAME).exists()
+    }
 
     /**
-     * Fetches manifest.json and compares the version against the local DB version.
+     * Fetches all 5 per-API manifests in parallel and compares each against the
+     * corresponding local version key (D-10, D-10a).
      *
      * Returns the appropriate [DatabaseUpdateState]:
-     * - null local version → NeedsFullDownload(null) (first launch)
-     * - same version → UpToDate
-     * - manifest.previousVersion == localVersion → NeedsPatch
-     * - else → NeedsFullDownload (multiple versions behind)
+     * - null seed version → [DatabaseUpdateState.NeedsFullDownload] (first launch)
+     * - one or more streams 1 behind → [DatabaseUpdateState.NeedsPatches] with
+     *   a list of [PatchInfo]
+     * - a stream multiple versions behind → [DatabaseUpdateState.NeedsFullDownload]
+     *   (fall back to seed DB)
+     * - all up to date → [DatabaseUpdateState.UpToDate]
+     * - all fetches fail → [DatabaseUpdateState.Failed]
      *
-     * Wraps network errors in [DatabaseUpdateState.Failed].
+     * Partial failure is graceful — if one stream's fetch fails, the others
+     * can still update.
      */
-    suspend fun checkForUpdates(): DatabaseUpdateState {
-        return try {
-            val localVersion = preferences.dbVersion.first()
-
-            // First launch — no DB has been downloaded yet
-            if (localVersion == null) {
-                return DatabaseUpdateState.NeedsFullDownload(null)
+    suspend fun checkForUpdates(): DatabaseUpdateState = withContext(Dispatchers.IO) {
+        return@withContext try {
+            // First launch — seed DB not yet downloaded
+            if (preferences.seedVersion.first() == null) {
+                return@withContext DatabaseUpdateState.NeedsFullDownload(null)
             }
 
-            // Fetch the database-latest release from goveye-data (D-06)
-            val release = updateApi.getLatestRelease()
-            val manifestAsset = release.assets.find { it.name == MANIFEST_ASSET_NAME }
-                ?: return DatabaseUpdateState.Failed("manifest.json asset not found in release")
+            // Fetch all 5 releases in parallel (D-10)
+            val results = fetchAllManifests()
 
-            // Download and parse manifest.json (~200B)
-            val manifestJson = downloadAssetText(manifestAsset.browserDownloadUrl)
-            val manifest = json.decodeFromString<DatabaseManifest>(manifestJson)
+            // If all 5 failed, return Failed
+            if (results.all { it == null }) {
+                return@withContext DatabaseUpdateState.Failed("All manifest fetches failed")
+            }
 
-            when {
-                manifest.version == localVersion ->
-                    DatabaseUpdateState.UpToDate
-                manifest.previousVersion == localVersion ->
-                    DatabaseUpdateState.NeedsPatch(manifest)
-                else ->
-                    DatabaseUpdateState.NeedsFullDownload(manifest)
+            val patches = mutableListOf<PatchInfo>()
+            for ((index, result) in results.withIndex()) {
+                if (result == null) continue // partial failure — skip this stream
+
+                val (streamName, manifest) = result
+                val localVersion = getLocalVersion(streamName)
+
+                when {
+                    manifest.version == localVersion -> {
+                        // Up to date — no patch needed
+                    }
+                    manifest.previousVersion == localVersion -> {
+                        // Exactly 1 behind — patch available
+                        val release = releases[index]
+                        if (release != null) {
+                            patches.add(PatchInfo(streamName, manifest, release))
+                        }
+                    }
+                    else -> {
+                        // Multiple versions behind — fall back to seed DB (D-10a)
+                        return@withContext DatabaseUpdateState.NeedsFullDownload(null)
+                    }
+                }
+            }
+
+            if (patches.isNotEmpty()) {
+                DatabaseUpdateState.NeedsPatches(patches)
+            } else {
+                DatabaseUpdateState.UpToDate
             }
         } catch (e: IOException) {
             DatabaseUpdateState.Failed(e.message ?: "Network error")
@@ -121,37 +143,54 @@ class DatabaseUpdateManager @Inject constructor(
     }
 
     /**
-     * Downloads patch.json and applies per-table upsert/delete arrays via a
-     * Room transaction (D-05).
+     * Downloads up to 5 patch.json files, merges their changes maps, and applies
+     * all to [BundledDatabase] in a single Room transaction (D-10a).
      *
-     * The transaction ensures atomicity — if any table fails, the entire
-     * patch rolls back. After successful application, the local DB version
-     * is updated in [DatabasePreferences].
+     * Each patch only touches its own tables (mps patch → mps changes, votes
+     * patch → divisions/division_votes changes), so merging is conflict-free.
      *
-     * @param manifest The manifest pointing to the release containing patch.json.
+     * After successful application, each stream's version key is updated in
+     * [DatabasePreferences].
+     *
+     * @param patches List of [PatchInfo] from [checkForUpdates].
      * @return [DatabaseUpdateState.UpToDate] on success, [DatabaseUpdateState.Failed] on error.
      */
-    suspend fun applyPatch(manifest: DatabaseManifest): DatabaseUpdateState {
-        return try {
-            // 1. Find patch.json asset in the release
-            val release = updateApi.getLatestRelease()
-            val patchAsset = release.assets.find { it.name == PATCH_ASSET_NAME }
-                ?: return DatabaseUpdateState.Failed("patch.json asset not found in release")
+    suspend fun applyPatches(patches: List<PatchInfo>): DatabaseUpdateState = withContext(Dispatchers.IO) {
+        return@withContext try {
+            // 1. Download and parse all patch.json files, merge changes maps
+            val combinedChanges = mutableMapOf<String, TableChanges>()
+            for (patchInfo in patches) {
+                val patchAsset = patchInfo.release.assets.find { it.name == PATCH_ASSET_NAME }
+                    ?: return@withContext DatabaseUpdateState.Failed("patch.json not found for ${patchInfo.streamName}")
 
-            // 2. Download and parse patch.json (5-50KB)
-            val patchJson = downloadAssetText(patchAsset.browserDownloadUrl)
-            val patch = json.decodeFromString<DatabasePatch>(patchJson)
+                val patchJson = downloadAssetText(patchAsset.browserDownloadUrl)
+                val patch = json.decodeFromString<DatabasePatch>(patchJson)
 
-            // 3. Apply all table changes in a single Room transaction
-            database.withTransaction {
+                // Merge changes — each patch touches only its own tables (no conflicts)
                 for ((tableName, changes) in patch.changes) {
+                    val existing = combinedChanges[tableName]
+                    if (existing != null) {
+                        combinedChanges[tableName] = TableChanges(
+                            upsert = existing.upsert + changes.upsert,
+                            delete = existing.delete + changes.delete,
+                        )
+                    } else {
+                        combinedChanges[tableName] = changes
+                    }
+                }
+            }
+
+            // 2. Apply all merged changes in a single Room transaction
+            database.withTransaction {
+                for ((tableName, changes) in combinedChanges) {
                     applyTableChanges(tableName, changes)
                 }
             }
 
-            // 4. Update local version
-            preferences.setDbVersion(manifest.version)
-            preferences.setDbHash(manifest.dbHash)
+            // 3. Update per-API version keys
+            for (patchInfo in patches) {
+                setStreamVersion(patchInfo.streamName, patchInfo.manifest.version)
+            }
 
             DatabaseUpdateState.UpToDate
         } catch (e: Exception) {
@@ -160,29 +199,30 @@ class DatabaseUpdateManager @Inject constructor(
     }
 
     /**
-     * Downloads the full DB (~160MB), verifies SHA-256, and swaps it in (D-05, Pitfall 3).
+     * Downloads the merged goveye.db from the seed-latest release for first
+     * launch (D-04, D-10a).
      *
      * Checks for metered connection first (Pitfall 4) — returns
      * [DatabaseUpdateState.NeedsWifi] if on mobile data.
      *
-     * @param manifest The manifest containing the expected dbHash and version.
+     * Only [BundledDatabase] (goveye.db) is swapped — [LocalDatabase]
+     * (local.db) is NOT touched. User data persists.
+     *
      * @param onProgress Callback receiving download progress as 0f..1f.
-     * @return [DatabaseUpdateState.UpToDate] on success, [DatabaseUpdateState.Failed] or [DatabaseUpdateState.NeedsWifi] on error.
+     * @return [DatabaseUpdateState.UpToDate] on success, [DatabaseUpdateState.Failed]
+     *         or [DatabaseUpdateState.NeedsWifi] on error.
      */
-    suspend fun downloadFullDb(
-        manifest: DatabaseManifest,
-        onProgress: (Float) -> Unit = {},
-    ): DatabaseUpdateState = withContext(Dispatchers.IO) {
+    suspend fun downloadSeedDb(onProgress: (Float) -> Unit = {}): DatabaseUpdateState = withContext(Dispatchers.IO) {
         return@withContext try {
             // 1. Check for metered connection (Pitfall 4)
             if (isMeteredConnection()) {
                 return@withContext DatabaseUpdateState.NeedsWifi
             }
 
-            // 2. Find goveye.db asset in the release
-            val release = updateApi.getLatestRelease()
+            // 2. Fetch the seed-latest release
+            val release = updateApi.getSeedRelease()
             val dbAsset = release.assets.find { it.name == DB_ASSET_NAME }
-                ?: return@withContext DatabaseUpdateState.Failed("goveye.db asset not found in release")
+                ?: return@withContext DatabaseUpdateState.Failed("goveye.db asset not found in seed release")
 
             // 3. Download to a temp file, streaming with progress
             val tempFile = File(context.cacheDir, "goveye_download.db")
@@ -208,31 +248,38 @@ class DatabaseUpdateManager @Inject constructor(
                 }
             }
 
-            // 4. Verify SHA-256 hash (T-10-04-01)
-            val actualHash = calculateSha256(tempFile)
-            if (!actualHash.equals(manifest.dbHash, ignoreCase = true)) {
-                tempFile.delete()
-                return@withContext DatabaseUpdateState.Failed("DB hash mismatch")
+            // 4. Verify SHA-256 hash if manifest.json is available (T-10-06-01)
+            val manifestAsset = release.assets.find { it.name == MANIFEST_ASSET_NAME }
+            if (manifestAsset != null) {
+                val manifestJson = downloadAssetText(manifestAsset.browserDownloadUrl)
+                val manifest = json.decodeFromString<DatabaseManifest>(manifestJson)
+                val actualHash = calculateSha256(tempFile)
+                if (!actualHash.equals(manifest.dbHash, ignoreCase = true)) {
+                    tempFile.delete()
+                    return@withContext DatabaseUpdateState.Failed("DB hash mismatch")
+                }
             }
 
-            // 5. Swap the DB file (Pitfall 3)
+            // 5. Swap the DB file (Pitfall 3) — only BundledDatabase, NOT LocalDatabase
             swapDbFile(tempFile)
 
-            // 6. Update preferences
-            preferences.setDbVersion(manifest.version)
-            preferences.setDbHash(manifest.dbHash)
+            // 6. Mark first launch as complete
+            preferences.setSeedVersion(1)
 
             DatabaseUpdateState.UpToDate
         } catch (e: Exception) {
-            DatabaseUpdateState.Failed(e.message ?: "Full DB download failed")
+            DatabaseUpdateState.Failed(e.message ?: "Seed DB download failed")
         }
     }
 
     /**
      * Swaps the downloaded DB file into Room's expected location (Pitfall 3).
      *
-     * CRITICAL sequence:
-     * 1. Close Room — this checkpoints the WAL.
+     * CRITICAL: Only closes and swaps [BundledDatabase] (goveye.db).
+     * [LocalDatabase] (local.db) is NOT touched — user data persists.
+     *
+     * Sequence:
+     * 1. Close BundledDatabase — this checkpoints the WAL.
      * 2. Delete old DB files: goveye.db, goveye.db-wal, goveye.db-shm.
      * 3. Move the temp file to the DB path.
      * 4. Room reopens lazily on next query access.
@@ -240,11 +287,11 @@ class DatabaseUpdateManager @Inject constructor(
      * If this is the first launch (no existing DB), skip close() and delete.
      */
     private fun swapDbFile(newDbFile: File) {
-        val dbPath = context.getDatabasePath(GovEyeDatabase.DATABASE_NAME)
+        val dbPath = context.getDatabasePath(BundledDatabase.DATABASE_NAME)
         val firstLaunch = !dbPath.exists()
 
         if (!firstLaunch) {
-            // 1. Close Room — checkpoints WAL
+            // 1. Close BundledDatabase — checkpoints WAL
             database.close()
 
             // 2. Delete old DB + WAL + SHM files
@@ -262,6 +309,10 @@ class DatabaseUpdateManager @Inject constructor(
 
     /**
      * Applies upsert/delete arrays for a single table within the current transaction.
+     *
+     * Only handles the 12 bundled tables — user-data tables (follows,
+     * bill_follows, mp_notification_prefs) are in LocalDatabase and never
+     * patched (D-10a).
      */
     private suspend fun applyTableChanges(tableName: String, changes: TableChanges) {
         // Upsert: decode JsonObjects into the entity type and batch-upsert
@@ -275,14 +326,10 @@ class DatabaseUpdateManager @Inject constructor(
                 "mp_committee_cross_ref" -> updateDao.upsertMpCommitteeCrossRef(upsertList.map { json.decodeFromJsonElement<MpCommitteeCrossRef>(it) })
                 "bills" -> updateDao.upsertBills(upsertList.map { json.decodeFromJsonElement<BillEntity>(it) })
                 "bill_stages" -> updateDao.upsertBillStages(upsertList.map { json.decodeFromJsonElement<BillStageEntity>(it) })
-                "bill_follows" -> updateDao.upsertBillFollows(upsertList.map { json.decodeFromJsonElement<BillFollowEntity>(it) })
                 "hansard_contributions" -> updateDao.upsertHansardContributions(upsertList.map { json.decodeFromJsonElement<HansardContributionEntity>(it) })
                 "interests" -> updateDao.upsertInterests(upsertList.map { json.decodeFromJsonElement<InterestEntity>(it) })
-                "follows" -> updateDao.upsertFollows(upsertList.map { json.decodeFromJsonElement<FollowEntity>(it) })
                 "recess_dates" -> updateDao.upsertRecessDates(upsertList.map { json.decodeFromJsonElement<RecessDateEntity>(it) })
                 "recess_dates_meta" -> updateDao.upsertRecessDatesMeta(upsertList.map { json.decodeFromJsonElement<RecessDatesMetaEntity>(it) })
-                "mp_notification_prefs" -> updateDao.upsertMpNotificationPrefs(upsertList.map { json.decodeFromJsonElement<MpNotificationPreferenceEntity>(it) })
-                "remote_keys" -> updateDao.upsertRemoteKeys(upsertList.map { json.decodeFromJsonElement<RemoteKeyEntity>(it) })
                 // mps_fts is NOT handled — auto-synced by FTS4 triggers (Pitfall 2)
             }
         }
@@ -307,15 +354,73 @@ class DatabaseUpdateManager @Inject constructor(
                     obj["billId"]!!.jsonPrimitive.intOrNull!!,
                     obj["stageId"]!!.jsonPrimitive.intOrNull!!,
                 )
-                "bill_follows" -> updateDao.deleteBillFollow(obj["billId"]!!.jsonPrimitive.intOrNull!!)
                 "hansard_contributions" -> updateDao.deleteHansardContribution(obj["itemId"]!!.jsonPrimitive.longOrNull!!)
                 "interests" -> updateDao.deleteInterest(obj["id"]!!.jsonPrimitive.intOrNull!!)
-                "follows" -> updateDao.deleteFollow(obj["memberId"]!!.jsonPrimitive.intOrNull!!)
                 "recess_dates" -> updateDao.deleteRecessDate(obj["id"]!!.jsonPrimitive.longOrNull!!)
                 "recess_dates_meta" -> updateDao.deleteRecessDatesMeta(obj["house"]!!.jsonPrimitive.intOrNull!!)
-                "mp_notification_prefs" -> updateDao.deleteMpNotificationPref(obj["memberId"]!!.jsonPrimitive.intOrNull!!)
-                "remote_keys" -> updateDao.deleteRemoteKey(obj["label"]!!.jsonPrimitive.content)
             }
+        }
+    }
+
+    /**
+     * Fetches all 5 per-API manifests in parallel (D-10).
+     *
+     * Returns a list of 5 nullable (streamName, manifest) pairs — null entries
+     * indicate streams whose fetch failed (partial failure is OK).
+     * Also populates [releases] with the corresponding GithubReleaseDto for
+     * each stream.
+     */
+    private val streamTags = listOf(
+        DatabaseUpdateApi.MPS_TAG to "mps",
+        DatabaseUpdateApi.VOTES_TAG to "votes",
+        DatabaseUpdateApi.BILLS_TAG to "bills",
+        DatabaseUpdateApi.COMMITTEES_TAG to "committees",
+        DatabaseUpdateApi.RECESS_TAG to "recess",
+    )
+
+    private var releases: Array<GithubReleaseDto?> = arrayOfNulls(5)
+
+    private suspend fun fetchAllManifests(): List<Pair<String, DatabaseManifest>?> = coroutineScope {
+        val deferreds = streamTags.mapIndexed { index, (tag, streamName) ->
+            async {
+                try {
+                    val release = updateApi.getReleaseByTag(tag = tag)
+                    releases[index] = release
+                    val manifestAsset = release.assets.find { it.name == MANIFEST_ASSET_NAME }
+                        ?: return@async null
+                    val manifestJson = downloadAssetText(manifestAsset.browserDownloadUrl)
+                    val manifest = json.decodeFromString<DatabaseManifest>(manifestJson)
+                    streamName to manifest
+                } catch (e: Exception) {
+                    null // partial failure — this stream is skipped
+                }
+            }
+        }
+        deferreds.map { it.await() }
+    }
+
+    /**
+     * Gets the local version for a given stream name.
+     */
+    private suspend fun getLocalVersion(streamName: String): Int? = when (streamName) {
+        "mps" -> preferences.mpsVersion.first()
+        "votes" -> preferences.votesVersion.first()
+        "bills" -> preferences.billsVersion.first()
+        "committees" -> preferences.committeesVersion.first()
+        "recess" -> preferences.recessVersion.first()
+        else -> null
+    }
+
+    /**
+     * Sets the local version for a given stream name.
+     */
+    private suspend fun setStreamVersion(streamName: String, version: Int) {
+        when (streamName) {
+            "mps" -> preferences.setMpsVersion(version)
+            "votes" -> preferences.setVotesVersion(version)
+            "bills" -> preferences.setBillsVersion(version)
+            "committees" -> preferences.setCommitteesVersion(version)
+            "recess" -> preferences.setRecessVersion(version)
         }
     }
 

@@ -23,19 +23,25 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class GovEyeDatabaseTest {
-    private lateinit var database: GovEyeDatabase
+    private lateinit var bundledDatabase: BundledDatabase
+    private lateinit var localDatabase: LocalDatabase
 
     @Before
     fun setUp() {
-        database = Room.inMemoryDatabaseBuilder(
+        bundledDatabase = Room.inMemoryDatabaseBuilder(
             RuntimeEnvironment.getApplication(),
-            GovEyeDatabase::class.java,
+            BundledDatabase::class.java,
+        ).allowMainThreadQueries().build()
+        localDatabase = Room.inMemoryDatabaseBuilder(
+            RuntimeEnvironment.getApplication(),
+            LocalDatabase::class.java,
         ).allowMainThreadQueries().build()
     }
 
     @After
     fun tearDown() {
-        database.close()
+        bundledDatabase.close()
+        localDatabase.close()
     }
 
     private fun makeMp(id: Int): MpEntity =
@@ -63,8 +69,8 @@ class GovEyeDatabaseTest {
 
     @Test
     fun `insert and retrieve MP`() = runTest {
-        database.mpDao().upsertAll(listOf(makeMp(172)))
-        val mp = database.mpDao().getMp(172)
+        bundledDatabase.mpDao().upsertAll(listOf(makeMp(172)))
+        val mp = bundledDatabase.mpDao().getMp(172)
         assertEquals(172, mp?.id)
         assertEquals("Abbott, Ms Diane", mp?.nameListAs)
         assertEquals("Labour", mp?.partyName)
@@ -72,7 +78,7 @@ class GovEyeDatabaseTest {
 
     @Test
     fun `insert and retrieve division with votes`() = runTest {
-        database.divisionDao().upsertAll(
+        bundledDatabase.divisionDao().upsertAll(
             listOf(
                 DivisionEntity(
                     id = 2409, title = "Test", date = "2026-01-01", isDeferred = false,
@@ -80,14 +86,14 @@ class GovEyeDatabaseTest {
                 ),
             ),
         )
-        database.divisionDao().upsertVotes(
+        bundledDatabase.divisionDao().upsertVotes(
             listOf(
                 DivisionVoteEntity(2409, 172, "AYE", "Diane Abbott", "Labour", "d50000", "Hackney", false),
                 DivisionVoteEntity(2409, 39, "NO", "John Whittingdale", "Conservative", "0063ba", "Maldon", false),
             ),
         )
 
-        database.divisionDao().observeVotesForDivision(2409).test {
+        bundledDatabase.divisionDao().observeVotesForDivision(2409).test {
             val votes = awaitItem()
             assertEquals(2, votes.size)
             cancelAndIgnoreRemainingEvents()
@@ -96,7 +102,7 @@ class GovEyeDatabaseTest {
 
     @Test
     fun `insert and retrieve bill with stages`() = runTest {
-        database.billDao().upsertAll(
+        bundledDatabase.billDao().upsertAll(
             listOf(
                 BillEntity(
                     id = 3973, shortTitle = "Test Bill", currentHouse = "Commons",
@@ -105,17 +111,17 @@ class GovEyeDatabaseTest {
                 ),
             ),
         )
-        database.billDao().upsertStages(
+        bundledDatabase.billDao().upsertStages(
             listOf(
                 BillStageEntity(3973, 7, "2nd reading", "2R", "Commons", 2, null, listOf("2025-07-11"), System.currentTimeMillis()),
                 BillStageEntity(3973, 6, "1st reading", "1R", "Commons", 1, null, listOf("2025-06-15"), System.currentTimeMillis()),
             ),
         )
 
-        val bill = database.billDao().getBill(3973)
+        val bill = bundledDatabase.billDao().getBill(3973)
         assertEquals(3973, bill?.id)
 
-        database.billDao().observeBillStages(3973).test {
+        bundledDatabase.billDao().observeBillStages(3973).test {
             val stages = awaitItem()
             assertEquals(2, stages.size)
             assertEquals(1, stages[0].sortOrder)
@@ -126,9 +132,9 @@ class GovEyeDatabaseTest {
 
     @Test
     fun `FTS search finds MP by name`() = runTest {
-        database.mpDao().upsertAll(listOf(makeMp(172)))
+        bundledDatabase.mpDao().upsertAll(listOf(makeMp(172)))
 
-        database.searchDao().searchMps("Abbott").test {
+        bundledDatabase.searchDao().searchMps("Abbott").test {
             val results = awaitItem()
             assertTrue(results.isNotEmpty())
             assertEquals(172, results.first().id)
@@ -138,16 +144,16 @@ class GovEyeDatabaseTest {
 
     @Test
     fun `follow insert and delete`() = runTest {
-        database.followDao().insert(FollowEntity(172, System.currentTimeMillis()))
-        assertTrue(database.followDao().isFollowing(172))
+        localDatabase.followDao().insert(FollowEntity(172, System.currentTimeMillis()))
+        assertTrue(localDatabase.followDao().isFollowing(172))
 
-        database.followDao().delete(172)
-        assertFalse(database.followDao().isFollowing(172))
+        localDatabase.followDao().delete(172)
+        assertFalse(localDatabase.followDao().isFollowing(172))
     }
 
     @Test
     fun `type converter for List String`() = runTest {
-        database.billDao().upsertAll(
+        bundledDatabase.billDao().upsertAll(
             listOf(
                 BillEntity(
                     id = 1, shortTitle = "Test", currentHouse = "Commons",
@@ -156,13 +162,13 @@ class GovEyeDatabaseTest {
                 ),
             ),
         )
-        database.billDao().upsertStages(
+        bundledDatabase.billDao().upsertStages(
             listOf(
                 BillStageEntity(1, 1, "Test", "T", "Commons", 1, null, listOf("2025-07-11", "2025-07-12"), System.currentTimeMillis()),
             ),
         )
 
-        database.billDao().observeBillStages(1).test {
+        bundledDatabase.billDao().observeBillStages(1).test {
             val stages = awaitItem()
             assertEquals(1, stages.size)
             assertEquals(listOf("2025-07-11", "2025-07-12"), stages[0].sittingDates)

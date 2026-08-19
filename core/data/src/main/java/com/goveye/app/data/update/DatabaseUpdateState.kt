@@ -1,10 +1,13 @@
 package com.goveye.app.data.update
 
 /**
- * Sealed state for the database update flow (DATA-03).
+ * Sealed state for the database update flow (DATA-03, D-10, D-10a).
  *
  * Drives the UI in [com.goveye.app.MainActivity] and the
  * [com.goveye.app.work.DatabaseUpdateWorker] logic.
+ *
+ * The 5-patch-stream architecture (D-10a) means [NeedsPatches] carries a list
+ * of [PatchInfo] — one per stream that has an available patch.
  */
 sealed interface DatabaseUpdateState {
     /** Initial state — no check has been performed yet. */
@@ -13,17 +16,23 @@ sealed interface DatabaseUpdateState {
     /** Manifest check in progress. */
     data object Checking : DatabaseUpdateState
 
-    /** Local DB version matches manifest version — no action needed. */
+    /** All 5 streams are up to date — no action needed. */
     data object UpToDate : DatabaseUpdateState
 
-    /** Local version is exactly 1 behind — a patch (5-50KB) can be applied (D-05). */
-    data class NeedsPatch(val manifest: DatabaseManifest) : DatabaseUpdateState
+    /**
+     * One or more streams have patches available (D-10a).
+     *
+     * [patches] contains one [PatchInfo] per stream that needs updating.
+     * Patches are tiny (5-50KB each, up to 5 = max 250KB) and are applied
+     * in a single Room transaction.
+     */
+    data class NeedsPatches(val patches: List<PatchInfo>) : DatabaseUpdateState
 
     /**
-     * First launch (manifest is null) or local version is multiple behind —
-     * full DB download (~160MB) required (D-04, D-05).
+     * First launch (seed version is null) or a stream is multiple versions
+     * behind — full seed DB download (~160MB) required (D-04, D-05, D-10a).
      */
-    data class NeedsFullDownload(val manifest: DatabaseManifest?) : DatabaseUpdateState
+    data class NeedsFullDownload(val seedManifest: DatabaseManifest?) : DatabaseUpdateState
 
     /** Download in progress — [progress] is 0f..1f, [isFullDb] distinguishes DB vs patch. */
     data class Downloading(val progress: Float, val isFullDb: Boolean) : DatabaseUpdateState
@@ -37,3 +46,16 @@ sealed interface DatabaseUpdateState {
     /** Metered connection detected before a full DB download (Pitfall 4). */
     data object NeedsWifi : DatabaseUpdateState
 }
+
+/**
+ * Information about a single patch stream that has an available patch (D-10a).
+ *
+ * @param streamName The stream identifier: "mps", "votes", "bills", "committees", or "recess".
+ * @param manifest The manifest from the per-API release (contains version, patch info).
+ * @param release The GitHub release DTO (contains asset download URLs).
+ */
+data class PatchInfo(
+    val streamName: String,
+    val manifest: DatabaseManifest,
+    val release: GithubReleaseDto,
+)

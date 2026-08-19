@@ -15,7 +15,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -26,11 +25,17 @@ import androidx.compose.ui.unit.dp
 import com.goveye.app.data.update.DatabaseUpdateState
 
 /**
- * Loading screen shown during first-launch DB download and full-DB fallback (D-04, D-05).
+ * Loading screen shown during first-launch DB download and patch application
+ * (D-04, D-05, D-10a).
  *
  * Material 3 design: centered column with app name, progress indicator, status
  * text, and a data size hint. For metered connections (Pitfall 4), shows a
  * Wi-Fi warning dialog before proceeding with the ~160MB download.
+ *
+ * - [DatabaseUpdateState.NeedsPatches] — indeterminate progress (patches are
+ *   tiny, applied in <2s, no progress bar needed)
+ * - [DatabaseUpdateState.NeedsFullDownload] — determinate download progress
+ *   for first-launch seed DB (~160MB)
  *
  * @param state The current [DatabaseUpdateState] driving the UI.
  * @param onDownloadNow Called when the user confirms download on metered connection.
@@ -77,6 +82,10 @@ fun DatabaseLoadingScreen(
                         LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                     }
                 }
+                is DatabaseUpdateState.NeedsPatches -> {
+                    // Patches are tiny (5-50KB each, up to 5 = max 250KB) — indeterminate
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
                 is DatabaseUpdateState.Applying -> {
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 }
@@ -99,6 +108,13 @@ fun DatabaseLoadingScreen(
                         "Downloading parliamentary data... $percent%"
                     } else {
                         "Downloading updates..."
+                    }
+                }
+                is DatabaseUpdateState.NeedsPatches -> {
+                    if (state.patches.isNotEmpty()) {
+                        "Applying updates..."
+                    } else {
+                        "Checking for updates..."
                     }
                 }
                 is DatabaseUpdateState.Applying -> "Applying updates..."

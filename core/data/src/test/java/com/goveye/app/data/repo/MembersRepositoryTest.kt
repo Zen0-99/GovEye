@@ -2,13 +2,10 @@ package com.goveye.app.data.repo
 
 import app.cash.turbine.test
 import com.goveye.app.data.api.MembersApi
-import com.goveye.app.data.dto.members.MemberSearchResponse
-import com.goveye.app.data.local.GovEyeDatabase
+import com.goveye.app.data.local.BundledDatabase
 import com.goveye.app.data.local.entity.MpEntity
 import com.goveye.app.data.mapper.MemberMapper
-import com.goveye.app.data.repo.MpRemoteMediator
 import com.goveye.app.domain.model.SyncStatus
-import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -24,18 +21,17 @@ import androidx.room.Room
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class MembersRepositoryTest {
-    private lateinit var database: GovEyeDatabase
+    private lateinit var database: BundledDatabase
     private lateinit var repository: MembersRepository
     private val api: MembersApi = mockk(relaxed = true)
-    private val remoteMediator: MpRemoteMediator = mockk(relaxed = true)
 
     @Before
     fun setUp() {
         database = Room.inMemoryDatabaseBuilder(
             RuntimeEnvironment.getApplication(),
-            GovEyeDatabase::class.java,
+            BundledDatabase::class.java,
         ).allowMainThreadQueries().build()
-        repository = MembersRepository(database.mpDao(), database.searchDao(), api, MemberMapper, remoteMediator, database.remoteKeyDao())
+        repository = MembersRepository(database.mpDao(), database.searchDao(), api, MemberMapper)
     }
 
     @After
@@ -78,12 +74,12 @@ class MembersRepositoryTest {
     }
 
     @Test
-    fun `emits STALE when cache exceeds TTL`() = runTest {
+    fun `emits FRESH regardless of lastUpdated age`() = runTest {
         val eightDaysAgo = System.currentTimeMillis() - (8 * 24 * 60 * 60 * 1000L)
         database.mpDao().upsertAll(listOf(makeMp(1, eightDaysAgo)))
         repository.observeAllMps().test {
             val result = awaitItem()
-            assertEquals(SyncStatus.STALE, result.status)
+            assertEquals(SyncStatus.FRESH, result.status)
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -96,20 +92,5 @@ class MembersRepositoryTest {
             assertEquals(0, result.data.size)
             cancelAndIgnoreRemainingEvents()
         }
-    }
-
-    @Test
-    fun `refresh bypasses TTL and calls API`() = runTest {
-        database.mpDao().upsertAll(listOf(makeMp(1, System.currentTimeMillis())))
-        coEvery { api.searchMembers(any(), any(), any(), any()) } returns MemberSearchResponse()
-        repository.refresh()
-        // Verify API was called - if it wasn't, the mock would throw
-    }
-
-    @Test
-    fun `refresh handles API failure silently`() = runTest {
-        coEvery { api.searchMembers(any(), any(), any(), any()) } throws java.io.IOException("Network error")
-        repository.refresh()
-        // Should not throw - cache is still served
     }
 }

@@ -19,12 +19,8 @@ import retrofit2.converter.kotlinx.serialization.asConverterFactory
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
     private const val MEMBERS_BASE_URL = "https://members-api.parliament.uk/api/"
-    private const val VOTES_BASE_URL = "https://commonsvotes-api.parliament.uk/data/"
-    private const val LORDS_VOTES_BASE_URL = "https://lordsvotes-api.parliament.uk/data/"
-    private const val BILLS_BASE_URL = "https://bills-api.parliament.uk/api/v1/"
     private const val HANSARD_BASE_URL = "https://hansard-api.parliament.uk/"
     private const val INTERESTS_BASE_URL = "https://interests-api.parliament.uk/api/v1/"
-    private const val COMMITTEES_BASE_URL = "https://committees-api.parliament.uk/api/"
     private const val GITHUB_API_BASE_URL = "https://api.github.com/"
     private const val TIMEOUT_SECONDS = 30L
     private const val HANSARD_TIMEOUT_SECONDS = 15L
@@ -76,7 +72,7 @@ object NetworkModule {
     /**
      * OkHttpClient with a 10-minute timeout for full DB downloads (~160MB).
      * The default 30s timeout is too short for large file downloads on slow
-     * connections. Used by DatabaseUpdateManager.downloadFullDb (D-05).
+     * connections. Used by DatabaseUpdateManager.downloadSeedDb (D-05, D-10a).
      */
     @Provides
     @Singleton
@@ -99,30 +95,6 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    @Named("votesApi")
-    fun provideVotesRetrofit(
-        okHttpClient: OkHttpClient,
-        json: Json,
-    ): Retrofit = buildRetrofit(VOTES_BASE_URL, okHttpClient, json)
-
-    @Provides
-    @Singleton
-    @Named("lordsVotesApi")
-    fun provideLordsVotesRetrofit(
-        okHttpClient: OkHttpClient,
-        json: Json,
-    ): Retrofit = buildRetrofit(LORDS_VOTES_BASE_URL, okHttpClient, json)
-
-    @Provides
-    @Singleton
-    @Named("billsApi")
-    fun provideBillsRetrofit(
-        okHttpClient: OkHttpClient,
-        json: Json,
-    ): Retrofit = buildRetrofit(BILLS_BASE_URL, okHttpClient, json)
-
-    @Provides
-    @Singleton
     @Named("hansardApi")
     fun provideHansardRetrofit(
         @Named("hansardClient") okHttpClient: OkHttpClient,
@@ -136,14 +108,6 @@ object NetworkModule {
         okHttpClient: OkHttpClient,
         json: Json,
     ): Retrofit = buildRetrofit(INTERESTS_BASE_URL, okHttpClient, json)
-
-    @Provides
-    @Singleton
-    @Named("committeesApi")
-    fun provideCommitteesRetrofit(
-        okHttpClient: OkHttpClient,
-        json: Json,
-    ): Retrofit = buildRetrofit(COMMITTEES_BASE_URL, okHttpClient, json)
 
     /**
      * Retrofit for the GitHub Releases API (D-06).

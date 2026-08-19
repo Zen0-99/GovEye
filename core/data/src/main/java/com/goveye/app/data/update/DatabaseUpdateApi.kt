@@ -6,26 +6,55 @@ import retrofit2.http.GET
 import retrofit2.http.Path
 
 /**
- * Retrofit interface for the GitHub Releases API (D-06).
+ * Retrofit interface for the GitHub Releases API (D-06, D-10, D-10a).
  *
- * Fetches the `database-latest` release from the `Zen0-99/goveye-data` repo.
- * The repo must be public so that `browser_download_url` works without auth
- * (Pitfall 6).
+ * Fetches releases from the `Zen0-99/goveye-data` repo. The repo must be
+ * public so that `browser_download_url` works without auth (Pitfall 6).
+ *
+ * Five per-API release tags are checked for patch updates (D-10):
+ * - [MPS_TAG] (mps-latest) — MP data
+ * - [VOTES_TAG] (votes-latest) — divisions + division_votes
+ * - [BILLS_TAG] (bills-latest) — bills + bill_stages
+ * - [COMMITTEES_TAG] (committees-latest) — committees + mp_committee_cross_ref
+ * - [RECESS_TAG] (recess-latest) — recess_dates + recess_dates_meta
+ *
+ * The [SEED_TAG] (seed-latest) release holds the merged goveye.db for
+ * first-launch download (D-04, D-10a).
  */
 interface DatabaseUpdateApi {
     /**
-     * Fetch the `database-latest` release from the goveye-data repo.
-     * Assets: manifest.json, patch.json, goveye.db.
+     * Fetch any release by its tag name. Used for the 5 per-API patch streams.
+     *
+     * Each per-API release has: manifest.json, patch.json, and a per-API .db.
      */
-    @GET("repos/{owner}/{repo}/releases/tags/database-latest")
-    suspend fun getLatestRelease(
+    @GET("repos/{owner}/{repo}/releases/tags/{tag}")
+    suspend fun getReleaseByTag(
+        @Path("owner") owner: String = OWNER,
+        @Path("repo") repo: String = REPO,
+        @Path("tag") tag: String,
+    ): GithubReleaseDto
+
+    /**
+     * Fetch the `seed-latest` release for first-launch DB download (D-04, D-10a).
+     *
+     * Assets: goveye.db (merged by merge_dbs.py), optionally manifest.json.
+     */
+    @GET("repos/{owner}/{repo}/releases/tags/seed-latest")
+    suspend fun getSeedRelease(
         @Path("owner") owner: String = OWNER,
         @Path("repo") repo: String = REPO,
     ): GithubReleaseDto
 
-    private companion object {
-        const val OWNER = "Zen0-99"
-        const val REPO = "goveye-data"
+    companion object {
+        const val MPS_TAG = "mps-latest"
+        const val VOTES_TAG = "votes-latest"
+        const val BILLS_TAG = "bills-latest"
+        const val COMMITTEES_TAG = "committees-latest"
+        const val RECESS_TAG = "recess-latest"
+        const val SEED_TAG = "seed-latest"
+
+        private const val OWNER = "Zen0-99"
+        private const val REPO = "goveye-data"
     }
 }
 

@@ -11,12 +11,16 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 
 /**
- * Daily background worker that checks for DB updates (DATA-03).
+ * Background worker that checks for DB updates every 6h (D-09, DATA-03).
  *
- * - If a patch is available (5-50KB), applies it silently in the background (D-05).
- * - If a full DB download is needed (~160MB), does NOT download — defers to the
- *   foreground where the user sees progress (Pitfall 4). The next app launch
- *   via [com.goveye.app.MainActivity]'s LaunchedEffect handles the full download.
+ * - If patches are available (up to 5 × 5-50KB = max 250KB), applies them
+ *   silently in the background (D-05, D-10a) via DatabaseUpdateManager.applyPatches().
+ * - After applying patches, enqueues VotePollingWorker and/or BillPollingWorker
+ *   as one-shot workers to detect new divisions or bill stage changes (D-09).
+ * - If a full DB download is needed (~160MB), does NOT download — defers to
+ *   the foreground where the user sees progress (Pitfall 4). The next app
+ *   launch via [com.goveye.app.MainActivity]'s LaunchedEffect handles the
+ *   full download.
  * - Returns [Result.retry] on transient network failures.
  *
  * Follows the [VotePollingWorker] @HiltWorker pattern.
@@ -35,12 +39,26 @@ class DatabaseUpdateWorker @AssistedInject constructor(
     override suspend fun doWork(): Result {
         return try {
             when (val state = databaseUpdateManager.checkForUpdates()) {
-                is DatabaseUpdateState.NeedsPatch -> {
-                    Log.i(TAG, "Patch available, applying in background")
-                    val result = databaseUpdateManager.applyPatch(state.manifest)
+                is DatabaseUpdateState.NeedsPatches -> {
+                    Log.i(TAG, "Patches available for ${state.patches.size} streams: ${state.patches.joinToString { it.streamName }}")
+                    val result = databaseUpdateManager.applyPatches(state.patches)
                     when (result) {
-                        is DatabaseUpdateState.UpToDate ->
-                            Log.i(TAG, "Patch applied successfully")
+                        is DatabaseUpdateState.UpToDate -> {
+                            Log.i(TAG, "Patches applied successfully")
+
+                            // Determine which streams were patched
+                            val appliedStreams = state.patches.map { it.streamName }.toSet()
+
+                            // Trigger polling workers for streams that had updates
+                            if ("votes" in appliedStreams) {
+                                Log.i(TAG, "Votes patch applied — enqueuing VotePollingWorker")
+                                WorkScheduler.enqueueVotePollingOneShot(applicationContext)
+                            }
+                            if ("bills" in appliedStreams) {
+                                Log.i(TAG, "Bills patch applied — enqueuing BillPollingWorker")
+                                WorkScheduler.enqueueBillPollingOneShot(applicationContext)
+                            }
+                        }
                         is DatabaseUpdateState.Failed -> {
                             Log.w(TAG, "Patch application failed: ${result.message}")
                             return Result.retry()
@@ -55,7 +73,7 @@ class DatabaseUpdateWorker @AssistedInject constructor(
                     Result.success()
                 }
                 is DatabaseUpdateState.UpToDate -> {
-                    Log.i(TAG, "Database is up to date")
+                    Log.i(TAG, "All streams up to date")
                     Result.success()
                 }
                 is DatabaseUpdateState.Failed -> {

@@ -12,35 +12,101 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 /**
- * Stores the current bundled DB version and hash in DataStore (DATA-03).
+ * Stores per-API DB version keys in DataStore (DATA-03, D-10a).
  *
- * Used by [com.goveye.app.data.update.DatabaseUpdateManager] to compare the
- * local version against the manifest version on startup.
+ * Five per-API version keys track which patch stream version the local
+ * BundledDatabase is at:
+ * - [mpsVersion] — mps-latest stream
+ * - [votesVersion] — votes-latest stream
+ * - [billsVersion] — bills-latest stream
+ * - [committeesVersion] — committees-latest stream
+ * - [recessVersion] — recess-latest stream
  *
- * Follows the [DirectoryPreferences] pattern.
+ * The [seedVersion] key tracks whether the first-launch seed DB download has
+ * been completed (null = first launch, not yet downloaded).
+ *
+ * Used by [com.goveye.app.data.update.DatabaseUpdateManager] to compare local
+ * versions against manifest versions on startup.
  */
 @Singleton
 class DatabasePreferences @Inject constructor(
     @Named("database") private val dataStore: DataStore<Preferences>,
 ) {
-    /** Current local DB version, or null if the DB has never been downloaded (first launch). */
-    val dbVersion: Flow<Int?> =
-        dataStore.data.map { it[DB_VERSION_KEY] }
+    /** Current local mps stream version, or null if never updated. */
+    val mpsVersion: Flow<Int?> = dataStore.data.map { it[MPS_VERSION_KEY] }
 
-    /** SHA-256 hash of the current local DB file, or null if not yet set. */
-    val dbHash: Flow<String?> =
-        dataStore.data.map { it[DB_HASH_KEY] }
+    /** Current local votes stream version, or null if never updated. */
+    val votesVersion: Flow<Int?> = dataStore.data.map { it[VOTES_VERSION_KEY] }
 
-    suspend fun setDbVersion(version: Int) {
-        dataStore.edit { it[DB_VERSION_KEY] = version }
+    /** Current local bills stream version, or null if never updated. */
+    val billsVersion: Flow<Int?> = dataStore.data.map { it[BILLS_VERSION_KEY] }
+
+    /** Current local committees stream version, or null if never updated. */
+    val committeesVersion: Flow<Int?> = dataStore.data.map { it[COMMITTEES_VERSION_KEY] }
+
+    /** Current local recess stream version, or null if never updated. */
+    val recessVersion: Flow<Int?> = dataStore.data.map { it[RECESS_VERSION_KEY] }
+
+    /**
+     * Seed DB version — null means first launch (seed DB not yet downloaded).
+     * Set to 1 after the first-launch download completes.
+     */
+    val seedVersion: Flow<Int?> = dataStore.data.map { it[SEED_VERSION_KEY] }
+
+    suspend fun setMpsVersion(version: Int) {
+        dataStore.edit { it[MPS_VERSION_KEY] = version }
     }
 
-    suspend fun setDbHash(hash: String) {
-        dataStore.edit { it[DB_HASH_KEY] = hash }
+    suspend fun setVotesVersion(version: Int) {
+        dataStore.edit { it[VOTES_VERSION_KEY] = version }
+    }
+
+    suspend fun setBillsVersion(version: Int) {
+        dataStore.edit { it[BILLS_VERSION_KEY] = version }
+    }
+
+    suspend fun setCommitteesVersion(version: Int) {
+        dataStore.edit { it[COMMITTEES_VERSION_KEY] = version }
+    }
+
+    suspend fun setRecessVersion(version: Int) {
+        dataStore.edit { it[RECESS_VERSION_KEY] = version }
+    }
+
+    suspend fun setSeedVersion(version: Int) {
+        dataStore.edit { it[SEED_VERSION_KEY] = version }
+    }
+
+    /**
+     * Last notified division ID — tracks the highest division ID for which
+     * vote notifications have been dispatched (D-09). Used by VotePollingWorker
+     * to detect new divisions after a votes patch.
+     */
+    val lastNotifiedDivisionId: Flow<Int?> = dataStore.data.map { it[LAST_NOTIFIED_DIVISION_ID_KEY] }
+
+    suspend fun setLastNotifiedDivisionId(id: Int) {
+        dataStore.edit { it[LAST_NOTIFIED_DIVISION_ID_KEY] = id }
+    }
+
+    /**
+     * Last known bill stages — JSON map of billId → currentStageDescription
+     * for all followed bills (D-09, BILLS-04). Used by BillPollingWorker to
+     * detect stage changes after a bills patch.
+     */
+    val lastNotifiedBillStages: Flow<String?> = dataStore.data.map { it[LAST_NOTIFIED_BILL_STAGES_KEY] }
+
+    suspend fun setLastNotifiedBillStages(json: String) {
+        dataStore.edit { it[LAST_NOTIFIED_BILL_STAGES_KEY] = json }
     }
 
     private companion object {
-        val DB_VERSION_KEY = intPreferencesKey("db_version")
-        val DB_HASH_KEY = stringPreferencesKey("db_hash")
+        val MPS_VERSION_KEY = intPreferencesKey("mps_version")
+        val VOTES_VERSION_KEY = intPreferencesKey("votes_version")
+        val BILLS_VERSION_KEY = intPreferencesKey("bills_version")
+        val COMMITTEES_VERSION_KEY = intPreferencesKey("committees_version")
+        val RECESS_VERSION_KEY = intPreferencesKey("recess_version")
+        val SEED_VERSION_KEY = intPreferencesKey("seed_version")
+        val LAST_NOTIFIED_DIVISION_ID_KEY = intPreferencesKey("last_notified_division_id")
+        val LAST_NOTIFIED_BILL_STAGES_KEY = stringPreferencesKey("last_notified_bill_stages")
     }
 }

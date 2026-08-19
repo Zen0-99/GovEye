@@ -1,12 +1,9 @@
 package com.goveye.app.data.repo
 
 import app.cash.turbine.test
-import com.goveye.app.data.api.BillsApi
-import com.goveye.app.data.local.GovEyeDatabase
+import com.goveye.app.data.local.BundledDatabase
 import com.goveye.app.data.local.entity.BillEntity
-import com.goveye.app.data.mapper.BillMapper
 import com.goveye.app.domain.model.SyncStatus
-import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -21,17 +18,16 @@ import androidx.room.Room
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class BillsRepositoryTest {
-    private lateinit var database: GovEyeDatabase
+    private lateinit var database: BundledDatabase
     private lateinit var repository: BillsRepository
-    private val api: BillsApi = mockk(relaxed = true)
 
     @Before
     fun setUp() {
         database = Room.inMemoryDatabaseBuilder(
             RuntimeEnvironment.getApplication(),
-            GovEyeDatabase::class.java,
+            BundledDatabase::class.java,
         ).allowMainThreadQueries().build()
-        repository = BillsRepository(database.billDao(), api, BillMapper)
+        repository = BillsRepository(database.billDao())
     }
 
     @After
@@ -68,7 +64,7 @@ class BillsRepositoryTest {
     }
 
     @Test
-    fun `emits STALE when bills exceed TTL`() = runTest {
+    fun `emits FRESH regardless of lastUpdated age`() = runTest {
         val twoHoursAgo = System.currentTimeMillis() - (2 * 60 * 60 * 1000L)
         database.billDao().upsertAll(
             listOf(
@@ -81,7 +77,7 @@ class BillsRepositoryTest {
         )
         repository.observeBills().test {
             val result = awaitItem()
-            assertEquals(SyncStatus.STALE, result.status)
+            assertEquals(SyncStatus.FRESH, result.status)
             cancelAndIgnoreRemainingEvents()
         }
     }

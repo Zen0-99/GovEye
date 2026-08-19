@@ -3,18 +3,22 @@ package com.goveye.app.work
 import android.content.Context
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import java.util.concurrent.TimeUnit
 
 /**
- * Schedules the [VotePollingWorker] as unique periodic work (D-01, FOLLOW-04).
+ * Schedules background workers for GovEye (D-09).
  *
- * Uses [ExistingPeriodicWorkPolicy.UPDATE] so re-scheduling doesn't cancel
- * a running worker. The initial interval is 30 minutes (sitting day default);
- * the worker uses [androidx.work.WorkRequest.setNextScheduleTimeOverride] to
- * adaptively adjust the next run based on sitting-day detection.
+ * - [scheduleDatabaseUpdateCheck]: Periodic every 6h — checks 5 manifest tags
+ *   for DB patches, applies them, and triggers one-shot polling workers.
+ * - [enqueueVotePollingOneShot]: One-shot — triggered after a votes patch.
+ * - [enqueueBillPollingOneShot]: One-shot — triggered after a bills patch.
+ *
+ * No periodic polling workers — all change detection is DB-patch-driven (D-09).
  */
 object WorkScheduler {
     const val VOTE_POLLING_WORK_NAME = "vote-polling"
@@ -22,77 +26,55 @@ object WorkScheduler {
     const val DATABASE_UPDATE_WORK_NAME = "database-update"
 
     /**
-     * Schedule the vote polling worker if not already scheduled.
-     * Safe to call multiple times — uses unique work policy.
+     * Enqueue VotePollingWorker as one-shot work (triggered after a votes patch).
+     * Uses [ExistingWorkPolicy.REPLACE] so if a previous one-shot is still queued,
+     * it's replaced with the latest.
      */
-    fun scheduleVotePolling(context: Context) {
+    fun enqueueVotePollingOneShot(context: Context) {
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
 
-        val request = PeriodicWorkRequestBuilder<VotePollingWorker>(
-            30,
-            TimeUnit.MINUTES,
-        )
-            .setInitialDelay(1, TimeUnit.MINUTES)
+        val request = OneTimeWorkRequestBuilder<VotePollingWorker>()
             .setConstraints(constraints)
             .addTag(VOTE_POLLING_WORK_NAME)
             .build()
 
-        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+        WorkManager.getInstance(context).enqueueUniqueWork(
             VOTE_POLLING_WORK_NAME,
-            ExistingPeriodicWorkPolicy.UPDATE,
+            ExistingWorkPolicy.REPLACE,
             request,
         )
     }
 
     /**
-     * Cancel the vote polling worker (e.g., when user unfollows their last MP).
+     * Enqueue BillPollingWorker as one-shot work (triggered after a bills patch).
      */
-    fun cancelVotePolling(context: Context) {
-        WorkManager.getInstance(context).cancelUniqueWork(VOTE_POLLING_WORK_NAME)
-    }
-
-    /**
-     * Schedule the bill polling worker if not already scheduled.
-     * Runs every 4 hours (bills change less frequently than votes).
-     */
-    fun scheduleBillPolling(context: Context) {
+    fun enqueueBillPollingOneShot(context: Context) {
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
 
-        val request = PeriodicWorkRequestBuilder<BillPollingWorker>(
-            4,
-            TimeUnit.HOURS,
-        )
-            .setInitialDelay(5, TimeUnit.MINUTES)
+        val request = OneTimeWorkRequestBuilder<BillPollingWorker>()
             .setConstraints(constraints)
             .addTag(BILL_POLLING_WORK_NAME)
             .build()
 
-        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+        WorkManager.getInstance(context).enqueueUniqueWork(
             BILL_POLLING_WORK_NAME,
-            ExistingPeriodicWorkPolicy.UPDATE,
+            ExistingWorkPolicy.REPLACE,
             request,
         )
     }
 
     /**
-     * Cancel the bill polling worker (e.g., when user unfollows their last bill).
-     */
-    fun cancelBillPolling(context: Context) {
-        WorkManager.getInstance(context).cancelUniqueWork(BILL_POLLING_WORK_NAME)
-    }
-
-    /**
-     * Schedule the database update check worker (DATA-03).
+     * Schedule the database update check worker (DATA-03, D-09).
      *
-     * Runs daily (24h period) with a 6-hour flex period so it runs once per day
-     * but not at a fixed time — avoids thundering herd on the GitHub API.
-     * Uses [ExistingPeriodicWorkPolicy.KEEP] so re-scheduling doesn't replace
-     * an already-scheduled worker. Initial delay is 15 minutes after app start
-     * (the startup check in MainActivity handles the immediate check).
+     * Runs every 6 hours with a 2-hour flex period per D-09 (6h latency,
+     * not daily). Uses [ExistingPeriodicWorkPolicy.KEEP] so re-scheduling
+     * doesn't replace an already-scheduled worker. Initial delay is 15
+     * minutes after app start (the startup check in MainActivity handles
+     * the immediate check).
      */
     fun scheduleDatabaseUpdateCheck(context: Context) {
         val constraints = Constraints.Builder()
@@ -100,9 +82,9 @@ object WorkScheduler {
             .build()
 
         val request = PeriodicWorkRequestBuilder<DatabaseUpdateWorker>(
-            24,
-            TimeUnit.HOURS,
             6,
+            TimeUnit.HOURS,
+            2,
             TimeUnit.HOURS,
         )
             .setInitialDelay(15, TimeUnit.MINUTES)

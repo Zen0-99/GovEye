@@ -2,7 +2,8 @@ package com.goveye.app.di
 
 import android.content.Context
 import androidx.room.Room
-import com.goveye.app.data.local.GovEyeDatabase
+import com.goveye.app.data.local.BundledDatabase
+import com.goveye.app.data.local.LocalDatabase
 import com.goveye.app.data.local.dao.BillDao
 import com.goveye.app.data.local.dao.BillFollowDao
 import com.goveye.app.data.local.dao.DatabaseUpdateDao
@@ -14,10 +15,7 @@ import com.goveye.app.data.local.dao.CommitteeDao
 import com.goveye.app.data.local.dao.MpDao
 import com.goveye.app.data.local.dao.MpNotificationPreferenceDao
 import com.goveye.app.data.local.dao.RecessDateDao
-import com.goveye.app.data.local.dao.RemoteKeyDao
 import com.goveye.app.data.local.dao.SearchDao
-import com.goveye.app.data.mapper.BillMapper
-import com.goveye.app.data.mapper.DivisionMapper
 import com.goveye.app.data.mapper.HansardMapper
 import com.goveye.app.data.mapper.InterestMapper
 import com.goveye.app.data.mapper.MemberMapper
@@ -28,7 +26,6 @@ import com.goveye.app.data.repo.FollowRepository
 import com.goveye.app.data.repo.HansardRepository
 import com.goveye.app.data.repo.InterestsRepository
 import com.goveye.app.data.repo.MembersRepository
-import com.goveye.app.data.repo.MpRemoteMediator
 import com.goveye.app.data.repo.VotesRepository
 import dagger.Module
 import dagger.Provides
@@ -42,71 +39,80 @@ import javax.inject.Singleton
 object DatabaseModule {
     @Provides
     @Singleton
-    fun provideGovEyeDatabase(@ApplicationContext context: Context): GovEyeDatabase {
+    fun provideBundledDatabase(@ApplicationContext context: Context): BundledDatabase {
         // Ensure the databases directory exists so that the first-launch download
         // can place the DB file at Room's expected path before Room opens (D-04).
-        context.getDatabasePath(GovEyeDatabase.DATABASE_NAME).parentFile?.mkdirs()
+        context.getDatabasePath(BundledDatabase.DATABASE_NAME).parentFile?.mkdirs()
         return Room
             .databaseBuilder(
                 context,
-                GovEyeDatabase::class.java,
-                GovEyeDatabase.DATABASE_NAME,
+                BundledDatabase::class.java,
+                BundledDatabase.DATABASE_NAME,
             ).fallbackToDestructiveMigration(dropAllTables = true)
             .build()
     }
 
     @Provides
-    fun provideSearchDao(database: GovEyeDatabase): SearchDao = database.searchDao()
+    @Singleton
+    fun provideLocalDatabase(@ApplicationContext context: Context): LocalDatabase {
+        // LocalDatabase is created fresh on first launch by Room (no pre-placed file).
+        // User data persists across all DB updates and seed DB swaps (D-10a).
+        return Room
+            .databaseBuilder(
+                context,
+                LocalDatabase::class.java,
+                LocalDatabase.DATABASE_NAME,
+            ).fallbackToDestructiveMigration(dropAllTables = true)
+            .build()
+    }
+
+    // ── Bundled table DAOs (from BundledDatabase) ──────────────────────
 
     @Provides
-    fun provideMpDao(database: GovEyeDatabase): MpDao = database.mpDao()
+    fun provideSearchDao(database: BundledDatabase): SearchDao = database.searchDao()
 
     @Provides
-    fun provideRemoteKeyDao(database: GovEyeDatabase): RemoteKeyDao = database.remoteKeyDao()
+    fun provideMpDao(database: BundledDatabase): MpDao = database.mpDao()
 
     @Provides
-    fun provideCommitteeDao(database: GovEyeDatabase): CommitteeDao = database.committeeDao()
+    fun provideCommitteeDao(database: BundledDatabase): CommitteeDao = database.committeeDao()
 
     @Provides
-    fun provideDivisionDao(database: GovEyeDatabase): DivisionDao = database.divisionDao()
+    fun provideDivisionDao(database: BundledDatabase): DivisionDao = database.divisionDao()
 
     @Provides
-    fun provideBillDao(database: GovEyeDatabase): BillDao = database.billDao()
+    fun provideBillDao(database: BundledDatabase): BillDao = database.billDao()
 
     @Provides
-    fun provideBillFollowDao(database: GovEyeDatabase): BillFollowDao = database.billFollowDao()
+    fun provideHansardDao(database: BundledDatabase): HansardDao = database.hansardDao()
 
     @Provides
-    fun provideHansardDao(database: GovEyeDatabase): HansardDao = database.hansardDao()
+    fun provideInterestDao(database: BundledDatabase): InterestDao = database.interestDao()
 
     @Provides
-    fun provideInterestDao(database: GovEyeDatabase): InterestDao = database.interestDao()
+    fun provideRecessDateDao(database: BundledDatabase): RecessDateDao = database.recessDateDao()
 
     @Provides
-    fun provideFollowDao(database: GovEyeDatabase): FollowDao = database.followDao()
+    fun provideDatabaseUpdateDao(database: BundledDatabase): DatabaseUpdateDao =
+        database.databaseUpdateDao()
+
+    // ── User-data DAOs (from LocalDatabase) ────────────────────────────
 
     @Provides
-    fun provideRecessDateDao(database: GovEyeDatabase): RecessDateDao = database.recessDateDao()
+    fun provideFollowDao(database: LocalDatabase): FollowDao = database.followDao()
 
     @Provides
-    fun provideMpNotificationPreferenceDao(database: GovEyeDatabase): MpNotificationPreferenceDao =
+    fun provideBillFollowDao(database: LocalDatabase): BillFollowDao = database.billFollowDao()
+
+    @Provides
+    fun provideMpNotificationPreferenceDao(database: LocalDatabase): MpNotificationPreferenceDao =
         database.mpNotificationPreferenceDao()
 
-    @Provides
-    fun provideDatabaseUpdateDao(database: GovEyeDatabase): DatabaseUpdateDao =
-        database.databaseUpdateDao()
+    // ── Mappers ────────────────────────────────────────────────────────
 
     @Provides
     @Singleton
     fun provideMemberMapper(): MemberMapper = MemberMapper
-
-    @Provides
-    @Singleton
-    fun provideDivisionMapper(): DivisionMapper = DivisionMapper
-
-    @Provides
-    @Singleton
-    fun provideBillMapper(): BillMapper = BillMapper
 
     @Provides
     @Singleton
@@ -116,14 +122,7 @@ object DatabaseModule {
     @Singleton
     fun provideInterestMapper(): InterestMapper = InterestMapper
 
-    @Provides
-    @Singleton
-    fun provideMpRemoteMediator(
-        mpDao: MpDao,
-        remoteKeyDao: RemoteKeyDao,
-        membersApi: com.goveye.app.data.api.MembersApi,
-        memberMapper: MemberMapper,
-    ): MpRemoteMediator = MpRemoteMediator(mpDao, remoteKeyDao, membersApi, memberMapper)
+    // ── Repositories ───────────────────────────────────────────────────
 
     @Provides
     @Singleton
@@ -132,33 +131,25 @@ object DatabaseModule {
         searchDao: SearchDao,
         membersApi: com.goveye.app.data.api.MembersApi,
         memberMapper: MemberMapper,
-        mpRemoteMediator: MpRemoteMediator,
-        remoteKeyDao: RemoteKeyDao,
-    ): MembersRepository = MembersRepository(mpDao, searchDao, membersApi, memberMapper, mpRemoteMediator, remoteKeyDao)
+    ): MembersRepository = MembersRepository(mpDao, searchDao, membersApi, memberMapper)
 
     @Provides
     @Singleton
     fun provideCommitteesRepository(
         committeeDao: CommitteeDao,
-        committeesApi: com.goveye.app.data.api.CommitteesApi,
-    ): CommitteesRepository = CommitteesRepository(committeeDao, committeesApi)
+    ): CommitteesRepository = CommitteesRepository(committeeDao)
 
     @Provides
     @Singleton
     fun provideVotesRepository(
         divisionDao: DivisionDao,
-        votesApi: com.goveye.app.data.api.VotesApi,
-        lordsVotesApi: com.goveye.app.data.api.LordsVotesApi,
-        divisionMapper: DivisionMapper,
-    ): VotesRepository = VotesRepository(divisionDao, votesApi, lordsVotesApi, divisionMapper)
+    ): VotesRepository = VotesRepository(divisionDao)
 
     @Provides
     @Singleton
     fun provideBillsRepository(
         billDao: BillDao,
-        billsApi: com.goveye.app.data.api.BillsApi,
-        billMapper: BillMapper,
-    ): BillsRepository = BillsRepository(billDao, billsApi, billMapper)
+    ): BillsRepository = BillsRepository(billDao)
 
     @Provides
     @Singleton
@@ -178,7 +169,8 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideFollowRepository(followDao: FollowDao): FollowRepository = FollowRepository(followDao)
+    fun provideFollowRepository(followDao: FollowDao, mpDao: MpDao): FollowRepository =
+        FollowRepository(followDao, mpDao)
 
     @Provides
     @Singleton

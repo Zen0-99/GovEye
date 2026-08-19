@@ -83,45 +83,32 @@ class MainActivity : ComponentActivity() {
             }
 
             // Database update state — drives whether to show the loading screen
-            // or the main app (D-04, D-05, DATA-03).
+            // or the main app (D-04, D-05, D-10a, DATA-03).
             var dbState by remember { mutableStateOf<DatabaseUpdateState>(DatabaseUpdateState.Idle) }
 
             LaunchedEffect(Unit) {
                 if (databaseUpdateManager.isFirstLaunch()) {
-                    // First launch — need to download the full DB before showing the app
+                    // First launch — need to download the seed DB before showing the app
                     dbState = DatabaseUpdateState.NeedsFullDownload(null)
-                    val checkResult = databaseUpdateManager.checkForUpdates()
-                    if (checkResult is DatabaseUpdateState.NeedsFullDownload) {
-                        val manifest = checkResult.manifest
-                        if (manifest != null) {
-                            dbState = DatabaseUpdateState.Downloading(0f, true)
-                            val downloadResult = databaseUpdateManager.downloadFullDb(manifest) { progress ->
-                                dbState = DatabaseUpdateState.Downloading(progress, true)
-                            }
-                            dbState = downloadResult
-                        } else {
-                            // No manifest available — can't download, show failed
-                            dbState = DatabaseUpdateState.Failed("No database release found")
-                        }
-                    } else {
-                        dbState = checkResult
+                    dbState = DatabaseUpdateState.Downloading(0f, true)
+                    val downloadResult = databaseUpdateManager.downloadSeedDb { progress ->
+                        dbState = DatabaseUpdateState.Downloading(progress, true)
                     }
+                    dbState = downloadResult
                 } else {
                     // Subsequent launch — check for updates silently
                     dbState = databaseUpdateManager.checkForUpdates()
                     when (dbState) {
-                        is DatabaseUpdateState.NeedsPatch -> {
-                            val manifest = (dbState as DatabaseUpdateState.NeedsPatch).manifest
+                        is DatabaseUpdateState.NeedsPatches -> {
+                            val patches = (dbState as DatabaseUpdateState.NeedsPatches).patches
                             dbState = DatabaseUpdateState.Applying
-                            dbState = databaseUpdateManager.applyPatch(manifest)
+                            dbState = databaseUpdateManager.applyPatches(patches)
                         }
                         is DatabaseUpdateState.NeedsFullDownload -> {
-                            val manifest = (dbState as DatabaseUpdateState.NeedsFullDownload).manifest
-                            if (manifest != null) {
-                                dbState = DatabaseUpdateState.Downloading(0f, true)
-                                dbState = databaseUpdateManager.downloadFullDb(manifest) { progress ->
-                                    dbState = DatabaseUpdateState.Downloading(progress, true)
-                                }
+                            // Full DB download needed (stream multiple behind) — show loading screen
+                            dbState = DatabaseUpdateState.Downloading(0f, true)
+                            dbState = databaseUpdateManager.downloadSeedDb { progress ->
+                                dbState = DatabaseUpdateState.Downloading(progress, true)
                             }
                         }
                         else -> { /* UpToDate or Failed — proceed to app */ }
@@ -135,6 +122,7 @@ class MainActivity : ComponentActivity() {
                 is DatabaseUpdateState.Downloading,
                 is DatabaseUpdateState.Applying,
                 is DatabaseUpdateState.NeedsWifi,
+                is DatabaseUpdateState.NeedsPatches,
                 is DatabaseUpdateState.Checking -> {
                     DatabaseLoadingScreen(state = dbState)
                 }

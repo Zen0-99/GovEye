@@ -2,7 +2,7 @@ package com.goveye.app.data.local.dao
 
 import androidx.room.Room
 import app.cash.turbine.test
-import com.goveye.app.data.local.GovEyeDatabase
+import com.goveye.app.data.local.BundledDatabase
 import com.goveye.app.data.local.entity.MpEntity
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -18,13 +18,13 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class SearchDaoFtsTest {
-    private lateinit var database: GovEyeDatabase
+    private lateinit var database: BundledDatabase
 
     @Before
     fun setUp() {
         database = Room.inMemoryDatabaseBuilder(
             RuntimeEnvironment.getApplication(),
-            GovEyeDatabase::class.java,
+            BundledDatabase::class.java,
         ).allowMainThreadQueries().build()
     }
 

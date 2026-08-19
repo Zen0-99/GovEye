@@ -1,13 +1,9 @@
 package com.goveye.app.data.repo
 
 import app.cash.turbine.test
-import com.goveye.app.data.api.LordsVotesApi
-import com.goveye.app.data.api.VotesApi
-import com.goveye.app.data.local.GovEyeDatabase
+import com.goveye.app.data.local.BundledDatabase
 import com.goveye.app.data.local.entity.DivisionEntity
-import com.goveye.app.data.mapper.DivisionMapper
 import com.goveye.app.domain.model.SyncStatus
-import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -22,18 +18,16 @@ import androidx.room.Room
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class VotesRepositoryTest {
-    private lateinit var database: GovEyeDatabase
+    private lateinit var database: BundledDatabase
     private lateinit var repository: VotesRepository
-    private val api: VotesApi = mockk(relaxed = true)
-    private val lordsApi: LordsVotesApi = mockk(relaxed = true)
 
     @Before
     fun setUp() {
         database = Room.inMemoryDatabaseBuilder(
             RuntimeEnvironment.getApplication(),
-            GovEyeDatabase::class.java,
+            BundledDatabase::class.java,
         ).allowMainThreadQueries().build()
-        repository = VotesRepository(database.divisionDao(), api, lordsApi, DivisionMapper)
+        repository = VotesRepository(database.divisionDao())
     }
 
     @After
@@ -69,7 +63,7 @@ class VotesRepositoryTest {
     }
 
     @Test
-    fun `emits STALE when divisions exceed TTL`() = runTest {
+    fun `emits FRESH regardless of lastUpdated age`() = runTest {
         val twoHoursAgo = System.currentTimeMillis() - (2 * 60 * 60 * 1000L)
         database.divisionDao().upsertAll(
             listOf(
@@ -81,7 +75,7 @@ class VotesRepositoryTest {
         )
         repository.observeDivisions().test {
             val result = awaitItem()
-            assertEquals(SyncStatus.STALE, result.status)
+            assertEquals(SyncStatus.FRESH, result.status)
             cancelAndIgnoreRemainingEvents()
         }
     }

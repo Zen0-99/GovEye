@@ -6,30 +6,31 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Upsert
 import com.goveye.app.data.local.entity.BillEntity
-import com.goveye.app.data.local.entity.BillFollowEntity
 import com.goveye.app.data.local.entity.BillStageEntity
 import com.goveye.app.data.local.entity.CommitteeEntity
 import com.goveye.app.data.local.entity.DivisionEntity
 import com.goveye.app.data.local.entity.DivisionVoteEntity
-import com.goveye.app.data.local.entity.FollowEntity
 import com.goveye.app.data.local.entity.HansardContributionEntity
 import com.goveye.app.data.local.entity.InterestEntity
 import com.goveye.app.data.local.entity.MpCommitteeCrossRef
 import com.goveye.app.data.local.entity.MpEntity
-import com.goveye.app.data.local.entity.MpNotificationPreferenceEntity
 import com.goveye.app.data.local.entity.RecessDateEntity
 import com.goveye.app.data.local.entity.RecessDatesMetaEntity
-import com.goveye.app.data.local.entity.RemoteKeyEntity
 
 /**
- * DAO for applying JSON diff patches from the goveye-data repo (D-05).
+ * DAO for applying JSON diff patches from the goveye-data repo (D-05, D-10a).
  *
- * Has @Upsert and @Query DELETE methods for all 15 writable tables.
- * The `mps_fts` table is NOT included — it is auto-synced by FTS4 triggers
- * when rows are inserted/updated/deleted in the `mps` table (Pitfall 2).
+ * Has @Upsert and @Query DELETE methods for the 12 bundled tables in
+ * [com.goveye.app.data.local.BundledDatabase]. The `mps_fts` table is NOT
+ * included — it is auto-synced by FTS4 triggers when rows are
+ * inserted/updated/deleted in the `mps` table (Pitfall 2).
+ *
+ * User-data tables (follows, bill_follows, mp_notification_prefs) are NOT
+ * here — they live in [com.goveye.app.data.local.LocalDatabase] and are
+ * never patched (D-10a).
  *
  * All methods are called inside a single Room transaction by
- * [com.goveye.app.data.update.DatabaseUpdateManager.applyPatch] to ensure
+ * [com.goveye.app.data.update.DatabaseUpdateManager.applyPatches] to ensure
  * atomicity — if any table fails, the entire patch rolls back.
  */
 @Dao
@@ -83,13 +84,6 @@ interface DatabaseUpdateDao {
     @Query("DELETE FROM bill_stages WHERE billId = :billId AND stageId = :stageId")
     suspend fun deleteBillStage(billId: Int, stageId: Int)
 
-    // ── bill_follows (PK: billId) ─────────────────────────────────────
-    @Upsert
-    suspend fun upsertBillFollows(follows: List<BillFollowEntity>)
-
-    @Query("DELETE FROM bill_follows WHERE billId = :billId")
-    suspend fun deleteBillFollow(billId: Int)
-
     // ── hansard_contributions (PK: itemId) ────────────────────────────
     @Upsert
     suspend fun upsertHansardContributions(contributions: List<HansardContributionEntity>)
@@ -104,13 +98,6 @@ interface DatabaseUpdateDao {
     @Query("DELETE FROM interests WHERE id = :id")
     suspend fun deleteInterest(id: Int)
 
-    // ── follows (PK: memberId) ────────────────────────────────────────
-    @Upsert
-    suspend fun upsertFollows(follows: List<FollowEntity>)
-
-    @Query("DELETE FROM follows WHERE memberId = :memberId")
-    suspend fun deleteFollow(memberId: Int)
-
     // ── recess_dates (PK: id, autoGenerate) ───────────────────────────
     @Upsert
     suspend fun upsertRecessDates(dates: List<RecessDateEntity>)
@@ -124,18 +111,4 @@ interface DatabaseUpdateDao {
 
     @Query("DELETE FROM recess_dates_meta WHERE house = :house")
     suspend fun deleteRecessDatesMeta(house: Int)
-
-    // ── mp_notification_prefs (PK: memberId) ──────────────────────────
-    @Upsert
-    suspend fun upsertMpNotificationPrefs(prefs: List<MpNotificationPreferenceEntity>)
-
-    @Query("DELETE FROM mp_notification_prefs WHERE memberId = :memberId")
-    suspend fun deleteMpNotificationPref(memberId: Int)
-
-    // ── remote_keys (PK: label) ───────────────────────────────────────
-    @Upsert
-    suspend fun upsertRemoteKeys(keys: List<RemoteKeyEntity>)
-
-    @Query("DELETE FROM remote_keys WHERE label = :label")
-    suspend fun deleteRemoteKey(label: String)
 }

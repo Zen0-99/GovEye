@@ -4,11 +4,14 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * Manifest.json format from 10-03's manifest.py output.
+ * Manifest.json format from the goveye-data repo's build scripts (D-05, D-10).
  *
- * Published as a release asset on the `database-latest` tag in the
- * goveye-data repo (D-06). The app fetches this (~200B) on startup to
- * determine whether a patch or full DB download is needed (DATA-03).
+ * Each per-API release (mps-latest, votes-latest, bills-latest,
+ * committees-latest, recess-latest) has its own manifest.json with its own
+ * version number. The Android app fetches 5 manifests and compares each
+ * against its corresponding per-API version key in DatabasePreferences
+ * (D-10a). The seed-latest release may optionally have a manifest for
+ * SHA-256 verification.
  */
 @Serializable
 data class DatabaseManifest(
