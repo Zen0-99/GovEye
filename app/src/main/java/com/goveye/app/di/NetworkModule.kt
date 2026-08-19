@@ -25,6 +25,7 @@ object NetworkModule {
     private const val HANSARD_BASE_URL = "https://hansard-api.parliament.uk/"
     private const val INTERESTS_BASE_URL = "https://interests-api.parliament.uk/api/v1/"
     private const val COMMITTEES_BASE_URL = "https://committees-api.parliament.uk/api/"
+    private const val GITHUB_API_BASE_URL = "https://api.github.com/"
     private const val TIMEOUT_SECONDS = 30L
     private const val HANSARD_TIMEOUT_SECONDS = 15L
     private const val USER_AGENT = "GovEye/0.1.0 (open-source; https://github.com/GovEye)"
@@ -126,6 +127,20 @@ object NetworkModule {
         okHttpClient: OkHttpClient,
         json: Json,
     ): Retrofit = buildRetrofit(COMMITTEES_BASE_URL, okHttpClient, json)
+
+    /**
+     * Retrofit for the GitHub Releases API (D-06).
+     * Used by DatabaseUpdateApi to fetch the database-latest release from
+     * Zen0-99/goveye-data. The existing 30s timeout is sufficient for
+     * manifest.json (~200B) and patch.json (5-50KB).
+     */
+    @Provides
+    @Singleton
+    @Named("githubApi")
+    fun provideGithubRetrofit(
+        okHttpClient: OkHttpClient,
+        json: Json,
+    ): Retrofit = buildRetrofit(GITHUB_API_BASE_URL, okHttpClient, json)
 
     private fun buildRetrofit(
         baseUrl: String,
