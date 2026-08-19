@@ -39,9 +39,29 @@ COMMONS_VOTES_BASE = "https://commonsvotes-api.parliament.uk/data/"
 LORDS_VOTES_BASE = "https://lordsvotes-api.parliament.uk/data/"
 
 API_DELAY = 0.2  # seconds between API calls for rate limiting (A3)
+API_TIMEOUT = 60  # seconds — Lords API is slow, 30s wasn't enough
+API_MAX_RETRIES = 3  # retry on timeout/connection error
 PAGE_SIZE_MEMBERS = 20
 PAGE_SIZE_DIVISIONS = 25
 BATCH_SIZE = 1000  # rows per transaction for batch inserts (Pitfall 7)
+
+
+def api_get(url, params=None, timeout=None, max_retries=None):
+    """GET with retry logic. Retries on timeout and connection errors."""
+    _timeout = timeout or API_TIMEOUT
+    _max_retries = max_retries or API_MAX_RETRIES
+    last_exc = None
+    for attempt in range(_max_retries):
+        try:
+            r = requests.get(url, params=params, timeout=_timeout)
+            r.raise_for_status()
+            return r
+        except (requests.exceptions.ReadTimeout, requests.exceptions.ConnectionError) as e:
+            last_exc = e
+            wait = 2 ** attempt  # exponential backoff: 1s, 2s, 4s
+            logger.warning("API retry %d/%d for %s (waiting %ds): %s", attempt + 1, _max_retries, url, wait, type(e).__name__)
+            time.sleep(wait)
+    raise last_exc
 
 logging.basicConfig(
     level=logging.INFO,
@@ -117,7 +137,7 @@ def fetch_all_mps(mp_limit=None):
             "skip": skip,
         }
         logger.info("Fetching MPs: skip=%d", skip)
-        r = requests.get(
+        r = api_get(
             f"{MEMBERS_BASE}Members/Search",
             params=params,
             timeout=30,
@@ -176,20 +196,20 @@ def map_mp_to_entity(member_dto, timestamp_millis):
         party_abbrev = f"{party_abbrev} Co-op"
 
     return (
-        member_dto.get("id", 0),
-        member_dto.get("nameListAs", ""),
-        member_dto.get("nameDisplayAs", ""),
+        member_dto.get("id") or 0,
+        member_dto.get("nameListAs") or "",
+        member_dto.get("nameDisplayAs") or "",
         member_dto.get("nameFullTitle"),
         member_dto.get("nameAddressAs"),
         member_dto.get("gender"),
-        latest_party.get("id", 0),
-        party_name,
-        party_abbrev,
-        latest_party.get("backgroundColour", ""),
-        latest_party.get("foregroundColour", ""),
-        latest_membership.get("membershipFromId", 0),
-        latest_membership.get("membershipFrom", ""),
-        latest_membership.get("house", 1),
+        latest_party.get("id", 0) or 0,
+        party_name or "",
+        party_abbrev or "",
+        latest_party.get("backgroundColour") or "",
+        latest_party.get("foregroundColour") or "",
+        latest_membership.get("membershipFromId") or 0,
+        latest_membership.get("membershipFrom") or "",
+        latest_membership.get("house") or 1,
         latest_membership.get("membershipStartDate"),
         latest_membership.get("membershipEndDate"),
         1 if membership_status.get("statusIsActive", False) else 0,
@@ -248,7 +268,7 @@ def fetch_commons_divisions(divisions_limit=None):
             "skip": skip,
         }
         logger.info("Fetching Commons divisions: skip=%d", skip)
-        r = requests.get(
+        r = api_get(
             f"{COMMONS_VOTES_BASE}divisions.json/search",
             params=params,
             timeout=30,
@@ -280,7 +300,7 @@ def fetch_commons_division_detail(division_id):
 
     Returns a dict with Ayes[], Noes[], AyeTellers[], NoTellers[] arrays.
     """
-    r = requests.get(
+    r = api_get(
         f"{COMMONS_VOTES_BASE}division/{division_id}.json",
         timeout=30,
     )
@@ -409,7 +429,7 @@ def fetch_lords_divisions(divisions_limit=None):
             "skip": skip,
         }
         logger.info("Fetching Lords divisions: skip=%d", skip)
-        r = requests.get(
+        r = api_get(
             f"{LORDS_VOTES_BASE}Divisions/search",
             params=params,
             timeout=30,
@@ -442,7 +462,7 @@ def fetch_lords_division_detail(division_id):
     Returns a dict with contents[], notContents[], contentTellers[],
     notContentTellers[] arrays.
     """
-    r = requests.get(
+    r = api_get(
         f"{LORDS_VOTES_BASE}Divisions/{division_id}",
         timeout=30,
     )
@@ -580,7 +600,7 @@ def fetch_commons_divisions_since(max_id, divisions_limit=None):
             "skip": skip,
         }
         logger.info("Fetching Commons divisions (delta): skip=%d", skip)
-        r = requests.get(
+        r = api_get(
             f"{COMMONS_VOTES_BASE}divisions.json/search",
             params=params,
             timeout=30,
@@ -631,7 +651,7 @@ def fetch_lords_divisions_since(max_id, divisions_limit=None):
             "skip": skip,
         }
         logger.info("Fetching Lords divisions (delta): skip=%d", skip)
-        r = requests.get(
+        r = api_get(
             f"{LORDS_VOTES_BASE}Divisions/search",
             params=params,
             timeout=30,
