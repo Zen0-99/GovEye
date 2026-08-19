@@ -21,8 +21,6 @@ class GovEyeApplication : Application(), Configuration.Provider {
     override fun onCreate() {
         super.onCreate()
         notificationHelper.createChannels()
-        com.goveye.app.work.WorkScheduler.scheduleVotePolling(this)
-        com.goveye.app.work.WorkScheduler.scheduleBillPolling(this)
         com.goveye.app.work.WorkScheduler.scheduleDatabaseUpdateCheck(this)
     }
 }

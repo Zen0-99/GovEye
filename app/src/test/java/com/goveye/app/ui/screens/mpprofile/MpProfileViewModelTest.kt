@@ -3,8 +3,11 @@ package com.goveye.app.ui.screens.mpprofile
 import app.cash.turbine.test
 import com.goveye.app.data.local.dao.MpDao
 import com.goveye.app.data.local.entity.MpEntity
+import com.goveye.app.data.local.entity.MpNotificationPreferenceEntity
 import com.goveye.app.data.repo.CommitteesRepository
+import com.goveye.app.data.repo.FollowRepository
 import com.goveye.app.data.repo.MembersRepository
+import com.goveye.app.data.repo.NotificationPreferenceRepository
 import com.goveye.app.data.repo.VotesRepository
 import com.goveye.app.domain.model.Constituency
 import com.goveye.app.domain.model.Mp
@@ -26,6 +29,8 @@ class ProfileViewModelTest {
     private val membersRepository = mockk<MembersRepository>(relaxed = true)
     private val committeesRepository = mockk<CommitteesRepository>(relaxed = true)
     private val votesRepository = mockk<VotesRepository>(relaxed = true)
+    private val followRepository = mockk<FollowRepository>(relaxed = true)
+    private val notificationPrefRepository = mockk<NotificationPreferenceRepository>(relaxed = true)
     private val mpDao = mockk<MpDao>(relaxed = true)
 
     private fun makeMpEntity(id: Int): MpEntity = MpEntity(
@@ -77,7 +82,10 @@ class ProfileViewModelTest {
         coEvery { membersRepository.getContact(1) } returns emptyList()
         coEvery { membersRepository.getExperience(1) } returns emptyList()
 
-        val viewModel = ProfileViewModel(membersRepository, committeesRepository, votesRepository, mpDao)
+        every { followRepository.observeIsFollowing(1) } returns flowOf(false)
+        every { notificationPrefRepository.observe(1) } returns flowOf(MpNotificationPreferenceEntity(1))
+
+        val viewModel = ProfileViewModel(membersRepository, committeesRepository, votesRepository, followRepository, notificationPrefRepository, mpDao)
         viewModel.loadProfile(1)
 
         viewModel.uiState.test {
@@ -100,7 +108,10 @@ class ProfileViewModelTest {
         coEvery { membersRepository.getContact(999) } returns emptyList()
         coEvery { membersRepository.getExperience(999) } returns emptyList()
 
-        val viewModel = ProfileViewModel(membersRepository, committeesRepository, votesRepository, mpDao)
+        every { followRepository.observeIsFollowing(999) } returns flowOf(false)
+        every { notificationPrefRepository.observe(999) } returns flowOf(MpNotificationPreferenceEntity(999))
+
+        val viewModel = ProfileViewModel(membersRepository, committeesRepository, votesRepository, followRepository, notificationPrefRepository, mpDao)
         viewModel.loadProfile(999)
 
         viewModel.uiState.test {

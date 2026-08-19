@@ -48,6 +48,15 @@ interface DivisionDao {
     @Query("SELECT * FROM division_votes WHERE divisionId = :divisionId")
     suspend fun getVotesForDivision(divisionId: Int): List<DivisionVoteEntity>
 
+    @Query("SELECT MAX(id) FROM divisions")
+    suspend fun getMaxDivisionId(): Int?
+
+    @Query("SELECT * FROM divisions WHERE id > :id ORDER BY id")
+    suspend fun getDivisionsAfterId(id: Int): List<DivisionEntity>
+
+    @Query("SELECT * FROM division_votes WHERE divisionId IN (:divisionIds)")
+    suspend fun getVotesForDivisions(divisionIds: List<Int>): List<DivisionVoteEntity>
+
     @Upsert
     suspend fun upsertVotes(votes: List<DivisionVoteEntity>)
 
