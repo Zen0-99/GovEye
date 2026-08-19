@@ -52,10 +52,6 @@ class BillBrowseViewModel @Inject constructor(
             initialValue = BillBrowseUiState(),
         )
 
-    init {
-        viewModelScope.launch { billsRepository.refresh() }
-    }
-
     fun setSearchQuery(query: String) {
         _searchQuery.value = query
         viewModelScope.launch {

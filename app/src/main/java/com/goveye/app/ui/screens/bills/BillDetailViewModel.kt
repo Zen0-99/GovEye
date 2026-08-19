@@ -38,13 +38,8 @@ class BillDetailViewModel @Inject constructor(
         if (loadedBillId == billId) return
         loadedBillId = billId
 
-        viewModelScope.launch {
-            _state.value = _state.value.copy(isLoading = true)
-            // Refresh bill detail + stages from API
-            billsRepository.refreshBillDetail(billId)
-            billsRepository.refreshBillStages(billId)
-        }
-
+        // Observe bill + stages + follow state from the bundled DB.
+        // The DB is the source of truth, updated via patches (D-09, D-10a).
         viewModelScope.launch {
             combine(
                 billsRepository.observeBill(billId),

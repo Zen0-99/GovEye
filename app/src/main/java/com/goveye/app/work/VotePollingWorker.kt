@@ -4,112 +4,158 @@ import android.content.Context
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.goveye.app.data.local.dao.DivisionDao
 import com.goveye.app.data.local.dao.MpDao
+import com.goveye.app.data.preference.DatabasePreferences
 import com.goveye.app.data.repo.NotificationPreferenceRepository
-import com.goveye.app.data.repo.SittingDayResolver
-import com.goveye.app.data.repo.VotesRepository
+import com.goveye.app.domain.model.NewVote
+import com.goveye.app.domain.model.VoteType
 import com.goveye.app.notifications.NotificationHelper
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
-import java.time.LocalDate
+import kotlinx.coroutines.flow.first
+import kotlinx.serialization.json.Json
 
 /**
- * Periodic worker that polls for new votes by MPs with vote notifications
- * enabled and dispatches notifications (D-01, D-02, FOLLOW-02, FOLLOW-04).
+ * One-shot worker that detects new divisions after a votes DB patch and
+ * dispatches vote notifications for MPs with votesEnabled=true (D-09).
  *
- * Notifications are per-MP (decoupled from follows) — the worker queries
- * all MPs with votesEnabled = true in mp_notification_prefs.
+ * Triggered by [DatabaseUpdateWorker] after a votes patch is applied.
+ * No periodic scheduling — runs on-demand only.
  *
- * Adaptive scheduling (D-01):
- * - Sitting day → 30 min interval
- * - Non-sitting day → 4 hour interval
- *
- * The worker:
- * 1. Refreshes recess dates cache if stale (weekly)
- * 2. Gets MP IDs with vote notifications enabled
- * 3. For each MP, detects new votes (diff against cache)
- * 4. Dispatches notifications (max 5 per cycle, then summary)
+ * Flow:
+ * 1. Read lastNotifiedDivisionId from DatabasePreferences
+ * 2. Query divisions WHERE id > lastNotifiedDivisionId
+ * 3. For each new division, check if any notification-enabled MP voted
+ * 4. Dispatch notifications (max 5 per cycle, then summary)
+ * 5. Update lastNotifiedDivisionId to current max
  */
 @HiltWorker
 class VotePollingWorker @AssistedInject constructor(
     @Assisted appContext: Context,
     @Assisted params: WorkerParameters,
-    private val votesRepository: VotesRepository,
+    private val divisionDao: DivisionDao,
     private val mpDao: MpDao,
     private val notificationHelper: NotificationHelper,
     private val notificationPrefRepository: NotificationPreferenceRepository,
-    private val sittingDayResolver: SittingDayResolver,
+    private val databasePreferences: DatabasePreferences,
+    private val json: Json,
 ) : CoroutineWorker(appContext, params) {
 
     companion object {
         private const val MAX_NOTIFICATIONS_PER_CYCLE = 5
-        private const val SITTING_DAY_INTERVAL_MS = 30 * 60 * 1000L      // 30 min
-        private const val NON_SITTING_DAY_INTERVAL_MS = 4 * 60 * 60 * 1000L // 4 hours
     }
 
     override suspend fun doWork(): Result {
-        try {
-            // 1. Refresh recess dates cache if needed (weekly)
-            sittingDayResolver.refreshRecessDatesIfNeeded()
+        return try {
+            // 1. Get the last notified division ID from preferences
+            val lastNotifiedId = databasePreferences.lastNotifiedDivisionId.first() ?: 0
 
-            // 2. Get MP IDs with vote notifications enabled (per-MP, decoupled from follows)
+            // 2. Get current max division ID from DB
+            val currentMaxId = divisionDao.getMaxDivisionId() ?: return Result.success()
+
+            // 3. If no new divisions, return
+            if (currentMaxId <= lastNotifiedId) {
+                return Result.success()
+            }
+
+            // 4. Get new divisions (id > lastNotifiedId)
+            val newDivisions = divisionDao.getDivisionsAfterId(lastNotifiedId)
+            if (newDivisions.isEmpty()) {
+                databasePreferences.setLastNotifiedDivisionId(currentMaxId)
+                return Result.success()
+            }
+
+            // 5. Get MP IDs with vote notifications enabled
             val memberIds = notificationPrefRepository.getMemberIdsWithVotesEnabled()
             if (memberIds.isEmpty()) {
+                databasePreferences.setLastNotifiedDivisionId(currentMaxId)
                 return Result.success()
             }
 
-            // 3. Detect new votes for each MP
-            val allNewVotes = mutableListOf<com.goveye.app.domain.model.NewVote>()
-            for (memberId in memberIds) {
-                try {
-                    val mp = mpDao.getMp(memberId) ?: continue
-                    val newVotes = votesRepository.detectNewVotesForMember(
-                        memberId = memberId,
-                        house = mp.house,
-                        memberName = mp.nameDisplayAs,
-                        thumbnailUrl = mp.thumbnailUrl,
-                        partyName = mp.partyName,
-                    )
-                    allNewVotes.addAll(newVotes)
-                } catch (e: Exception) {
-                    // Continue to next MP on error
+            // 6. Get all votes for the new divisions
+            val newDivisionIds = newDivisions.map { it.id }
+            val votes = divisionDao.getVotesForDivisions(newDivisionIds)
+
+            // 7. Build NewVote list for each enabled MP who voted in a new division
+            val memberIdSet = memberIds.toSet()
+            val allNewVotes = mutableListOf<NewVote>()
+            for (division in newDivisions) {
+                val divisionVotes = votes.filter { it.divisionId == division.id }
+                for (vote in divisionVotes) {
+                    if (vote.memberId in memberIdSet) {
+                        val mp = mpDao.getMp(vote.memberId) ?: continue
+                        val voteType = runCatching { VoteType.valueOf(vote.vote) }.getOrNull() ?: continue
+                        val isRebel = checkIfRebel(division.id, mp.partyName, voteType)
+                        allNewVotes.add(
+                            NewVote(
+                                memberId = vote.memberId,
+                                memberName = mp.nameDisplayAs,
+                                thumbnailUrl = mp.thumbnailUrl,
+                                partyName = mp.partyName,
+                                divisionId = division.id,
+                                house = division.house,
+                                divisionTitle = division.title,
+                                voteType = voteType,
+                                isRebel = isRebel,
+                            ),
+                        )
+                    }
                 }
             }
 
-            // 5. Dispatch notifications (max 5, then summary)
-            if (allNewVotes.isEmpty()) {
-                return Result.success()
-            }
-
-            if (allNewVotes.size <= MAX_NOTIFICATIONS_PER_CYCLE) {
-                for (vote in allNewVotes) {
-                    notificationHelper.showVoteNotification(
-                        NotificationHelper.VoteNotificationData(
-                            mpName = vote.memberName,
-                            mpThumbnailUrl = vote.thumbnailUrl,
-                            divisionId = vote.divisionId,
-                            divisionHouse = vote.house,
-                            divisionTitle = vote.divisionTitle,
-                            voteLabel = vote.voteLabel(),
-                            isRebel = vote.isRebel,
-                        ),
-                    )
+            // 8. Dispatch notifications (max 5, then summary)
+            if (allNewVotes.isNotEmpty()) {
+                if (allNewVotes.size <= MAX_NOTIFICATIONS_PER_CYCLE) {
+                    for (vote in allNewVotes) {
+                        notificationHelper.showVoteNotification(
+                            NotificationHelper.VoteNotificationData(
+                                mpName = vote.memberName,
+                                mpThumbnailUrl = vote.thumbnailUrl,
+                                divisionId = vote.divisionId,
+                                divisionHouse = vote.house,
+                                divisionTitle = vote.divisionTitle,
+                                voteLabel = vote.voteLabel(),
+                                isRebel = vote.isRebel,
+                            ),
+                        )
+                    }
+                } else {
+                    notificationHelper.showSummaryNotification(allNewVotes.size)
                 }
-            } else {
-                notificationHelper.showSummaryNotification(allNewVotes.size)
             }
 
-            return Result.success()
+            // 9. Update lastNotifiedDivisionId
+            databasePreferences.setLastNotifiedDivisionId(currentMaxId)
+
+            Result.success()
         } catch (e: Exception) {
-            return Result.retry()
+            Result.retry()
         }
     }
 
-    private fun com.goveye.app.domain.model.VoteType.label(): String = when (this) {
-        com.goveye.app.domain.model.VoteType.AYE -> "Aye"
-        com.goveye.app.domain.model.VoteType.NO -> "No"
-        com.goveye.app.domain.model.VoteType.NO_VOTE_RECORDED -> "No vote recorded"
+    /**
+     * Check if the MP's vote is a rebellion (against party majority).
+     * Copied from VotesRepository.checkIfRebel() — the worker needs its own
+     * copy since it no longer depends on VotesRepository (D-09).
+     */
+    private suspend fun checkIfRebel(divisionId: Int, partyName: String, mpVote: VoteType): Boolean {
+        if (mpVote == VoteType.NO_VOTE_RECORDED) return false
+        val votes = divisionDao.getVotesForDivision(divisionId)
+        val partyVotes = votes.filter { it.partyName.equals(partyName, ignoreCase = true) }
+        if (partyVotes.isEmpty()) return false
+        val ayes = partyVotes.count { it.vote == "AYE" }
+        val noes = partyVotes.count { it.vote == "NO" }
+        if (ayes == noes) return false
+        val partyMajority = if (ayes > noes) VoteType.AYE else VoteType.NO
+        return mpVote != partyMajority
     }
 
-    private fun com.goveye.app.domain.model.NewVote.voteLabel(): String = voteType.label()
+    private fun VoteType.label(): String = when (this) {
+        VoteType.AYE -> "Aye"
+        VoteType.NO -> "No"
+        VoteType.NO_VOTE_RECORDED -> "No vote recorded"
+    }
+
+    private fun NewVote.voteLabel(): String = voteType.label()
 }

@@ -13,9 +13,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 
 data class DivisionBrowseState(
     val divisions: List<Division> = emptyList(),
@@ -33,25 +32,23 @@ class DivisionBrowseViewModel @Inject constructor(
 
     private val _searchQuery = MutableStateFlow("")
     private val _houseFilter = MutableStateFlow(0)
-    private val _isRefreshing = MutableStateFlow(false)
 
     val state: StateFlow<DivisionBrowseState> =
         combine(
             _searchQuery,
             _houseFilter,
-            _isRefreshing,
-        ) { query, house, refreshing ->
-            Triple(query, house, refreshing)
-        }.flatMapLatest { (query, house, refreshing) ->
+        ) { query, house ->
+            query to house
+        }.flatMapLatest { (query, house) ->
             val resultFlow = if (query.isNotBlank()) {
                 votesRepository.searchDivisions(query, house)
             } else {
                 votesRepository.observeDivisionsByHouse(house)
             }
-            resultFlow.combine(flowOf(refreshing)) { result, isRefreshing ->
+            resultFlow.map { result ->
                 DivisionBrowseState(
                     divisions = result.data,
-                    isLoading = isRefreshing,
+                    isLoading = false,
                     syncStatus = result.status,
                     searchQuery = query,
                     houseFilter = house,
@@ -69,21 +66,5 @@ class DivisionBrowseViewModel @Inject constructor(
 
     fun setHouseFilter(house: Int) {
         _houseFilter.value = house
-    }
-
-    fun refresh() {
-        viewModelScope.launch {
-            _isRefreshing.value = true
-            try {
-                votesRepository.refresh()
-                votesRepository.refreshLords()
-            } finally {
-                _isRefreshing.value = false
-            }
-        }
-    }
-
-    init {
-        refresh()
     }
 }

@@ -1,13 +1,11 @@
 package com.goveye.app.data.repo
 
-import androidx.paging.ExperimentalPagingApi
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.map
 import com.goveye.app.data.api.MembersApi
 import com.goveye.app.data.local.dao.MpDao
-import com.goveye.app.data.local.dao.RemoteKeyDao
 import com.goveye.app.data.local.dao.SearchDao
 import com.goveye.app.data.local.entity.MpEntity
 import com.goveye.app.data.mapper.MemberMapper
@@ -24,23 +22,18 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-@OptIn(ExperimentalPagingApi::class)
 class MembersRepository @Inject constructor(
     private val mpDao: MpDao,
     private val searchDao: SearchDao,
     private val membersApi: MembersApi,
     private val mapper: MemberMapper,
-    private val remoteMediator: MpRemoteMediator,
-    private val remoteKeyDao: RemoteKeyDao,
 ) {
     fun observeAllMps(): Flow<RepositoryResult<List<Mp>>> =
         mpDao.observeAllMps().map { entities ->
             if (entities.isEmpty()) {
                 RepositoryResult(emptyList(), SyncStatus.EMPTY)
             } else {
-                val oldest = entities.minOf { it.lastUpdated }
-                val isStale = System.currentTimeMillis() - oldest > CacheTtl.MPS_MS
-                RepositoryResult(entities.map { it.toDomain() }, if (isStale) SyncStatus.STALE else SyncStatus.FRESH)
+                RepositoryResult(entities.map { it.toDomain() }, SyncStatus.FRESH)
             }
         }
 
@@ -49,8 +42,7 @@ class MembersRepository @Inject constructor(
             if (entity == null) {
                 RepositoryResult(null, SyncStatus.EMPTY)
             } else {
-                val isStale = System.currentTimeMillis() - entity.lastUpdated > CacheTtl.MPS_MS
-                RepositoryResult(entity.toDomain(), if (isStale) SyncStatus.STALE else SyncStatus.FRESH)
+                RepositoryResult(entity.toDomain(), SyncStatus.FRESH)
             }
         }
 
@@ -62,55 +54,10 @@ class MembersRepository @Inject constructor(
                 initialLoadSize = 60,
                 enablePlaceholders = false,
             ),
-            remoteMediator = remoteMediator,
             pagingSourceFactory = { mpDao.pagingSource() },
         ).flow.map { pagingData ->
             pagingData.map { it.toDomain() }
         }
-
-    suspend fun refresh() = refreshMps()
-
-    suspend fun refreshMps() {
-        try {
-            val response = membersApi.searchMembers(itemsPerPage = 200, skip = 0)
-            val entities = response.items.map { item ->
-                val mp = mapper.toDomain(item.value)
-                mapper.toEntity(mp, System.currentTimeMillis())
-            }
-            mpDao.upsertAll(entities)
-        } catch (e: Exception) {
-            // Cache is still served via Flow; error is silent
-        }
-    }
-
-    suspend fun refreshMp(id: Int) {
-        try {
-            val response = membersApi.getMember(id)
-            val mp = mapper.toDomain(response.value)
-            mpDao.upsertAll(listOf(mapper.toEntity(mp, System.currentTimeMillis())))
-        } catch (e: Exception) {
-            // Cache is still served via Flow
-        }
-    }
-
-    /**
-     * API-based search that queries the Parliament API directly.
-     * Works for all 650 MPs regardless of what's been paged into Room.
-     * Results are cached into Room for future use.
-     */
-    suspend fun searchMpsViaApi(query: String): List<Mp> {
-        return try {
-            val response = membersApi.searchMembersByName(name = query)
-            val mps = response.items.map { item -> mapper.toDomain(item.value) }
-            // Cache results into Room
-            val entities = mps.map { mapper.toEntity(it, System.currentTimeMillis()) }
-            mpDao.upsertAll(entities)
-            mps
-        } catch (e: Exception) {
-            // Fall back to local search
-            mpDao.searchMpsLocal(query).map { it.toDomain() }
-        }
-    }
 
     /**
      * Local-first FTS search using Room's mps_fts table.

@@ -86,17 +86,8 @@ class DivisionDetailViewModel @Inject constructor(
         if (loadedDivisionId == divisionId) return
         loadedDivisionId = divisionId
 
-        viewModelScope.launch {
-            _state.value = _state.value.copy(isLoading = true)
-            try {
-                votesRepository.refreshDivisionDetail(divisionId, house)
-            } catch (e: Exception) {
-            }
-        }
-
-        // Observe division + votes together — votes are upserted after
-        // refreshDivisionDetail completes, so observing both ensures the UI
-        // updates when votes arrive (not just when the division entity changes).
+        // Observe division + votes together — the bundled DB is the source of
+        // truth, updated via patches. The observe flows emit the data.
         viewModelScope.launch {
             votesRepository.observeDivision(divisionId).collect { divisionResult ->
                 val division = divisionResult.data
@@ -106,8 +97,6 @@ class DivisionDetailViewModel @Inject constructor(
                 }
 
                 // Re-fetch votes + breakdown each time the division emits.
-                // The division entity may not change when votes are upserted,
-                // but we also observe votes below to catch that case.
                 val votes = votesRepository.getVotesForDivision(divisionId)
                 val breakdown = votesRepository.getPartyBreakdown(divisionId)
                 _state.value = DivisionDetailState(

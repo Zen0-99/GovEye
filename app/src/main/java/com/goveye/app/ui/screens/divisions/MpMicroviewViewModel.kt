@@ -50,7 +50,7 @@ class MpMicroviewViewModel @Inject constructor(
 
     fun load(memberId: Int, fallbackName: String, fallbackPartyName: String?, fallbackPartyColour: String?, fallbackConstituency: String?) {
         viewModelScope.launch {
-            // 1. Try to load from local DB first (fast path)
+            // 1. Try to load from bundled DB first (all 650 MPs are in the DB)
             val mpEntity = mpDao.getMp(memberId)
             if (mpEntity != null) {
                 val mp = Mp(
@@ -72,7 +72,9 @@ class MpMicroviewViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(mp = mp, isLoading = false)
                 loadVotesAndFollow(memberId, mpEntity.house, mpEntity.partyName)
             } else {
-                // 2. MP not in DB — show fallback data immediately, fetch from API
+                // 2. MP not in bundled DB (e.g., a Lord who voted but isn't in the
+                // Commons directory) — show fallback data from the DivisionVote.
+                // Lords aren't in the bundled MP directory by design (D-02).
                 val fallbackMp = Mp(
                     id = memberId,
                     nameListAs = fallbackName,
@@ -91,35 +93,6 @@ class MpMicroviewViewModel @Inject constructor(
                     thumbnailUrl = null,
                 )
                 _uiState.value = _uiState.value.copy(mp = fallbackMp, isLoading = false)
-
-                // 3. Fetch from Members API in background
-                try {
-                    membersRepository.refreshMp(memberId)
-                    val refreshed = mpDao.getMp(memberId)
-                    if (refreshed != null) {
-                        val mp = Mp(
-                            id = refreshed.id,
-                            nameListAs = refreshed.nameListAs,
-                            nameDisplayAs = refreshed.nameDisplayAs,
-                            nameFullTitle = refreshed.nameFullTitle,
-                            gender = refreshed.gender,
-                            party = com.goveye.app.domain.model.Party(
-                                refreshed.partyId, refreshed.partyName, refreshed.partyAbbreviation,
-                                refreshed.partyBackgroundColour, refreshed.partyForegroundColour,
-                            ),
-                            constituency = com.goveye.app.domain.model.Constituency(refreshed.constituencyId, refreshed.constituencyName),
-                            house = refreshed.house,
-                            membershipStartDate = refreshed.membershipStartDate,
-                            isActive = refreshed.isActive,
-                            thumbnailUrl = refreshed.thumbnailUrl,
-                        )
-                        _uiState.value = _uiState.value.copy(mp = mp)
-                        loadVotesAndFollow(memberId, refreshed.house, refreshed.partyName)
-                        return@launch
-                    }
-                } catch (e: Exception) {
-                    // Keep fallback data
-                }
                 // Still load votes with fallback house + party
                 loadVotesAndFollow(memberId, 1, fallbackPartyName)
             }
@@ -138,39 +111,18 @@ class MpMicroviewViewModel @Inject constructor(
                 // Load all division dates for the house (for attendance calc)
                 val allDates = votesRepository.getAllDivisionDates(house)
 
-                // 1. Show cached votes immediately
-                val cachedVotes = votesRepository.getMemberVotingWithDivisions(memberId)
-                if (cachedVotes.isNotEmpty()) {
-                    _uiState.value = _uiState.value.copy(
-                        memberVotes = cachedVotes,
-                        allDivisionDates = allDates,
-                    )
-                    // Compute rebellion stats from cached data
-                    if (partyName != null) {
-                        val memberVotesResult = votesRepository.observeMemberVoting(memberId).first()
-                        val memberVotes = memberVotesResult.data
-                        val divisionIds = memberVotes.map { it.divisionId }.distinct()
-                        val allVotesByDivision = votesRepository.getAllVotesForDivisions(divisionIds)
-                        val stats = RebellionCalculator.compute(memberVotes, allVotesByDivision, partyName)
-                        _uiState.value = _uiState.value.copy(rebellionStats = stats)
-                    }
-                }
-
-                // 2. Refresh from API in background
-                votesRepository.refreshMemberVoting(memberId, house)
-
-                // 3. Batch-fetch full division details for rebellion calc
-                val freshVotes = votesRepository.getMemberVotingWithDivisions(memberId)
-                val freshDates = votesRepository.getAllDivisionDates(house)
+                // Load all votes from the bundled DB (the DB has ALL votes for ALL divisions)
+                val votes = votesRepository.getMemberVotingWithDivisions(memberId)
                 _uiState.value = _uiState.value.copy(
-                    memberVotes = freshVotes,
-                    allDivisionDates = freshDates,
+                    memberVotes = votes,
+                    allDivisionDates = allDates,
                 )
-                if (freshVotes.isNotEmpty() && partyName != null) {
+
+                // Compute rebellion stats from the bundled data
+                if (votes.isNotEmpty() && partyName != null) {
                     val memberVotesResult = votesRepository.observeMemberVoting(memberId).first()
                     val memberVotes = memberVotesResult.data
                     val divisionIds = memberVotes.map { it.divisionId }.distinct()
-                    votesRepository.batchFetchDivisionDetails(divisionIds, house, limit = 100)
                     val allVotesByDivision = votesRepository.getAllVotesForDivisions(divisionIds)
                     val stats = RebellionCalculator.compute(memberVotes, allVotesByDivision, partyName)
                     _uiState.value = _uiState.value.copy(rebellionStats = stats)

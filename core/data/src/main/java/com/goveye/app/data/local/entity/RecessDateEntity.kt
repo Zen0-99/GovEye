@@ -6,9 +6,8 @@ import androidx.room.PrimaryKey
 /**
  * Cached recess date from the Egg Timer API.
  *
- * Used by [com.goveye.app.domain.stats.SittingDayResolver] to determine
- * if Parliament is sitting on a given day. Refreshed weekly by the
- * VotePollingWorker (D-01).
+ * Populated by build_recess.py and bundled into the seed DB. Updated via
+ * the recess-latest patch stream (D-09, D-10a).
  */
 @Entity(tableName = "recess_dates")
 data class RecessDateEntity(

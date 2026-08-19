@@ -120,11 +120,7 @@ class ProfileViewModel @Inject constructor(
             }
         }
 
-        viewModelScope.launch {
-            committeesRepository.refresh(memberId)
-        }
-
-        // Load voting record — show cached data first, then refresh in background
+        // Load voting record from the bundled DB (the DB has ALL votes for ALL divisions)
         viewModelScope.launch {
             try {
                 // 0. Load all division dates for the house (for attendance calc)
@@ -133,39 +129,16 @@ class ProfileViewModel @Inject constructor(
                 val allDates = votesRepository.getAllDivisionDates(house)
                 _uiState.value = _uiState.value.copy(allDivisionDates = allDates)
 
-                // 1. Show cached votes immediately (from previous fetches)
-                val cachedVotes = votesRepository.getMemberVotingWithDivisions(memberId)
-                if (cachedVotes.isNotEmpty()) {
-                    _uiState.value = _uiState.value.copy(memberVotes = cachedVotes)
-                    // Compute rebellion stats from cached data right away
-                    val partyName = _uiState.value.mp?.party?.name
-                    if (partyName != null) {
-                        val memberVotesResult = votesRepository.observeMemberVoting(memberId).first()
-                        val memberVotes = memberVotesResult.data
-                        val divisionIds = memberVotes.map { it.divisionId }.distinct()
-                        val allVotesByDivision = votesRepository.getAllVotesForDivisions(divisionIds)
-                        val stats = RebellionCalculator.compute(memberVotes, allVotesByDivision, partyName)
-                        _uiState.value = _uiState.value.copy(rebellionStats = stats)
-                    }
-                }
+                // 1. Load all votes from the bundled DB
+                val votes = votesRepository.getMemberVotingWithDivisions(memberId)
+                _uiState.value = _uiState.value.copy(memberVotes = votes)
 
-                // 2. Refresh from API in background (upserts per-page, so DB updates progressively)
-                votesRepository.refreshMemberVoting(memberId, house)
-
-                // 3. Batch-fetch full division details (all votes) for the
-                // MP's divisions so rebellion can be computed against actual
-                // party majorities. Without this, only the MP's own vote is
-                // stored per division, making rebellion always 0%.
-                val freshVotes = votesRepository.getMemberVotingWithDivisions(memberId)
-                _uiState.value = _uiState.value.copy(memberVotes = freshVotes)
+                // 2. Compute rebellion stats from the bundled data
                 val partyName = _uiState.value.mp?.party?.name
-                if (freshVotes.isNotEmpty() && partyName != null) {
+                if (votes.isNotEmpty() && partyName != null) {
                     val memberVotesResult = votesRepository.observeMemberVoting(memberId).first()
                     val memberVotes = memberVotesResult.data
                     val divisionIds = memberVotes.map { it.divisionId }.distinct()
-                    // Fetch full voter lists for up to 100 most recent divisions
-                    votesRepository.batchFetchDivisionDetails(divisionIds, house, limit = 100)
-                    // Recompute with the now-populated voter lists
                     val allVotesByDivision = votesRepository.getAllVotesForDivisions(divisionIds)
                     val stats = RebellionCalculator.compute(memberVotes, allVotesByDivision, partyName)
                     _uiState.value = _uiState.value.copy(rebellionStats = stats)
@@ -184,11 +157,13 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
+    /**
+     * No-op — the bundled DB is the source of truth, updated via patches.
+     * Kept for pull-to-refresh UI compatibility; the observe flows re-emit
+     * on their own when the DB changes.
+     */
     fun refresh(memberId: Int) {
-        viewModelScope.launch {
-            membersRepository.refreshMp(memberId)
-            committeesRepository.refresh(memberId)
-        }
+        // No-op — DB is pre-populated and updated via patches (D-09, D-10a)
     }
 
     fun toggleFollow(memberId: Int) {
