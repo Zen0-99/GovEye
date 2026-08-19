@@ -19,6 +19,7 @@ import java.util.concurrent.TimeUnit
 object WorkScheduler {
     const val VOTE_POLLING_WORK_NAME = "vote-polling"
     const val BILL_POLLING_WORK_NAME = "bill-polling"
+    const val DATABASE_UPDATE_WORK_NAME = "database-update"
 
     /**
      * Schedule the vote polling worker if not already scheduled.
@@ -82,5 +83,37 @@ object WorkScheduler {
      */
     fun cancelBillPolling(context: Context) {
         WorkManager.getInstance(context).cancelUniqueWork(BILL_POLLING_WORK_NAME)
+    }
+
+    /**
+     * Schedule the database update check worker (DATA-03).
+     *
+     * Runs daily (24h period) with a 6-hour flex period so it runs once per day
+     * but not at a fixed time — avoids thundering herd on the GitHub API.
+     * Uses [ExistingPeriodicWorkPolicy.KEEP] so re-scheduling doesn't replace
+     * an already-scheduled worker. Initial delay is 15 minutes after app start
+     * (the startup check in MainActivity handles the immediate check).
+     */
+    fun scheduleDatabaseUpdateCheck(context: Context) {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        val request = PeriodicWorkRequestBuilder<DatabaseUpdateWorker>(
+            24,
+            TimeUnit.HOURS,
+            6,
+            TimeUnit.HOURS,
+        )
+            .setInitialDelay(15, TimeUnit.MINUTES)
+            .setConstraints(constraints)
+            .addTag(DATABASE_UPDATE_WORK_NAME)
+            .build()
+
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+            DATABASE_UPDATE_WORK_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            request,
+        )
     }
 }
