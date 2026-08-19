@@ -5,6 +5,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.goveye.app.data.local.dao.BillDao
 import com.goveye.app.data.local.dao.BillFollowDao
+import com.goveye.app.data.local.dao.DatabaseUpdateDao
 import com.goveye.app.data.local.dao.DivisionDao
 import com.goveye.app.data.local.dao.FollowDao
 import com.goveye.app.data.local.dao.HansardDao
@@ -68,6 +69,7 @@ abstract class GovEyeDatabase : RoomDatabase() {
     abstract fun followDao(): FollowDao
     abstract fun recessDateDao(): RecessDateDao
     abstract fun mpNotificationPreferenceDao(): MpNotificationPreferenceDao
+    abstract fun databaseUpdateDao(): DatabaseUpdateDao
 
     companion object {
         const val DATABASE_NAME = "goveye.db"

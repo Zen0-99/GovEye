@@ -28,6 +28,7 @@ object NetworkModule {
     private const val GITHUB_API_BASE_URL = "https://api.github.com/"
     private const val TIMEOUT_SECONDS = 30L
     private const val HANSARD_TIMEOUT_SECONDS = 15L
+    private const val DB_DOWNLOAD_TIMEOUT_MINUTES = 10L
     private const val USER_AGENT = "GovEye/0.1.0 (open-source; https://github.com/GovEye)"
 
     @Provides
@@ -70,6 +71,22 @@ object NetworkModule {
         okHttpClient
             .newBuilder()
             .readTimeout(HANSARD_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .build()
+
+    /**
+     * OkHttpClient with a 10-minute timeout for full DB downloads (~160MB).
+     * The default 30s timeout is too short for large file downloads on slow
+     * connections. Used by DatabaseUpdateManager.downloadFullDb (D-05).
+     */
+    @Provides
+    @Singleton
+    @Named("dbDownloadClient")
+    fun provideDbDownloadOkHttpClient(okHttpClient: OkHttpClient): OkHttpClient =
+        okHttpClient
+            .newBuilder()
+            .connectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .readTimeout(DB_DOWNLOAD_TIMEOUT_MINUTES, TimeUnit.MINUTES)
+            .writeTimeout(DB_DOWNLOAD_TIMEOUT_MINUTES, TimeUnit.MINUTES)
             .build()
 
     @Provides

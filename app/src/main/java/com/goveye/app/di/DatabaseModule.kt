@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.goveye.app.data.local.GovEyeDatabase
 import com.goveye.app.data.local.dao.BillDao
 import com.goveye.app.data.local.dao.BillFollowDao
+import com.goveye.app.data.local.dao.DatabaseUpdateDao
 import com.goveye.app.data.local.dao.DivisionDao
 import com.goveye.app.data.local.dao.FollowDao
 import com.goveye.app.data.local.dao.HansardDao
@@ -41,13 +42,18 @@ import javax.inject.Singleton
 object DatabaseModule {
     @Provides
     @Singleton
-    fun provideGovEyeDatabase(@ApplicationContext context: Context): GovEyeDatabase = Room
-        .databaseBuilder(
-            context,
-            GovEyeDatabase::class.java,
-            GovEyeDatabase.DATABASE_NAME,
-        ).fallbackToDestructiveMigration(dropAllTables = true)
-        .build()
+    fun provideGovEyeDatabase(@ApplicationContext context: Context): GovEyeDatabase {
+        // Ensure the databases directory exists so that the first-launch download
+        // can place the DB file at Room's expected path before Room opens (D-04).
+        context.getDatabasePath(GovEyeDatabase.DATABASE_NAME).parentFile?.mkdirs()
+        return Room
+            .databaseBuilder(
+                context,
+                GovEyeDatabase::class.java,
+                GovEyeDatabase.DATABASE_NAME,
+            ).fallbackToDestructiveMigration(dropAllTables = true)
+            .build()
+    }
 
     @Provides
     fun provideSearchDao(database: GovEyeDatabase): SearchDao = database.searchDao()
@@ -85,6 +91,10 @@ object DatabaseModule {
     @Provides
     fun provideMpNotificationPreferenceDao(database: GovEyeDatabase): MpNotificationPreferenceDao =
         database.mpNotificationPreferenceDao()
+
+    @Provides
+    fun provideDatabaseUpdateDao(database: GovEyeDatabase): DatabaseUpdateDao =
+        database.databaseUpdateDao()
 
     @Provides
     @Singleton

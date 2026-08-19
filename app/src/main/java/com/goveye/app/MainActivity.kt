@@ -10,15 +10,21 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.graphics.luminance
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.goveye.app.data.update.DatabaseUpdateManager
+import com.goveye.app.data.update.DatabaseUpdateState
 import com.goveye.app.domain.ThemeMode
 import com.goveye.app.ui.GovEyeApp
 import com.goveye.app.ui.navigation.DeepLinkHandler
 import com.goveye.app.ui.navigation.DeepLinkNavigator
+import com.goveye.app.ui.screens.DatabaseLoadingScreen
 import com.goveye.app.ui.theme.ThemeViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -31,6 +37,9 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
     @Inject
     lateinit var deepLinkNavigator: DeepLinkNavigator
+
+    @Inject
+    lateinit var databaseUpdateManager: DatabaseUpdateManager
 
     @Volatile
     private var splashVisible = true
@@ -73,7 +82,67 @@ class MainActivity : ComponentActivity() {
                 )
             }
 
-            GovEyeApp(deepLinkNavigator = deepLinkNavigator)
+            // Database update state — drives whether to show the loading screen
+            // or the main app (D-04, D-05, DATA-03).
+            var dbState by remember { mutableStateOf<DatabaseUpdateState>(DatabaseUpdateState.Idle) }
+
+            LaunchedEffect(Unit) {
+                if (databaseUpdateManager.isFirstLaunch()) {
+                    // First launch — need to download the full DB before showing the app
+                    dbState = DatabaseUpdateState.NeedsFullDownload(null)
+                    val checkResult = databaseUpdateManager.checkForUpdates()
+                    if (checkResult is DatabaseUpdateState.NeedsFullDownload) {
+                        val manifest = checkResult.manifest
+                        if (manifest != null) {
+                            dbState = DatabaseUpdateState.Downloading(0f, true)
+                            val downloadResult = databaseUpdateManager.downloadFullDb(manifest) { progress ->
+                                dbState = DatabaseUpdateState.Downloading(progress, true)
+                            }
+                            dbState = downloadResult
+                        } else {
+                            // No manifest available — can't download, show failed
+                            dbState = DatabaseUpdateState.Failed("No database release found")
+                        }
+                    } else {
+                        dbState = checkResult
+                    }
+                } else {
+                    // Subsequent launch — check for updates silently
+                    dbState = databaseUpdateManager.checkForUpdates()
+                    when (dbState) {
+                        is DatabaseUpdateState.NeedsPatch -> {
+                            val manifest = (dbState as DatabaseUpdateState.NeedsPatch).manifest
+                            dbState = DatabaseUpdateState.Applying
+                            dbState = databaseUpdateManager.applyPatch(manifest)
+                        }
+                        is DatabaseUpdateState.NeedsFullDownload -> {
+                            val manifest = (dbState as DatabaseUpdateState.NeedsFullDownload).manifest
+                            if (manifest != null) {
+                                dbState = DatabaseUpdateState.Downloading(0f, true)
+                                dbState = databaseUpdateManager.downloadFullDb(manifest) { progress ->
+                                    dbState = DatabaseUpdateState.Downloading(progress, true)
+                                }
+                            }
+                        }
+                        else -> { /* UpToDate or Failed — proceed to app */ }
+                    }
+                }
+            }
+
+            // Show loading screen during download/apply, otherwise show the app
+            when (dbState) {
+                is DatabaseUpdateState.NeedsFullDownload,
+                is DatabaseUpdateState.Downloading,
+                is DatabaseUpdateState.Applying,
+                is DatabaseUpdateState.NeedsWifi,
+                is DatabaseUpdateState.Checking -> {
+                    DatabaseLoadingScreen(state = dbState)
+                }
+                else -> {
+                    // UpToDate, Failed, or Idle — show the app
+                    GovEyeApp(deepLinkNavigator = deepLinkNavigator)
+                }
+            }
         }
 
         handleDeepLink(intent)
