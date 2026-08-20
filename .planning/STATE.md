@@ -4,11 +4,11 @@ milestone: v3.0
 milestone_name: milestone
 current_phase: 9
 current_phase_name: Interests & Income
-status: phase_context_gathered
-stopped_at: Phase 9 context gathered — 4 gray areas discussed (parser, bucket mapping, UI layout, schema migration)
-last_updated: "2026-08-20T00:30:00.000Z"
+status: phase_planned
+stopped_at: Phase 9 planned — 3 plans created (09-01 build-side, 09-02 Android data, 09-03 Android UI)
+last_updated: "2026-08-20T08:00:00.000Z"
 last_activity: 2026-08-20
-last_activity_desc: Phase 9 discuss-phase complete — CONTEXT.md written with 12 decisions, ready for planning
+last_activity_desc: Phase 9 plan-phase complete — RESEARCH.md + 3 PLAN.md files created, ready for execution
 progress:
   total_phases: 8
   completed_phases: 7
@@ -25,14 +25,14 @@ completed_phases: 7
 See: .planning/PROJECT.md (updated 2026-08-16)
 
 **Core value:** Make UK government activity as easy to follow as a football team — so anyone, especially younger voters, can see what their representatives are actually doing.
-**Current focus:** Phase 9 — Interests & Income (6th patch stream, monetary parser, dashboard UI) — CONTEXT GATHERED
+**Current focus:** Phase 9 — Interests & Income (7th patch stream, monetary parser, dashboard UI) — PLANNED
 
 ## Current Position
 
-Phase: 9 (Interests & Income) — CONTEXT GATHERED
-Plans: None yet (ready for planning)
-Status: Discuss-phase complete. 12 decisions captured in 09-CONTEXT.md. Ready for plan-phase.
-Last activity: 2026-08-20 — Phase 9 discuss-phase complete (parser, bucket mapping, UI layout, schema migration grilled)
+Phase: 9 (Interests & Income) — PLANNED
+Plans: 3 plans created (09-01, 09-02, 09-03)
+Status: Plan-phase complete. RESEARCH.md + 3 PLAN.md files created. Ready for execution.
+Last activity: 2026-08-20 — Phase 9 plan-phase complete (research + 3 plans)
 
 Progress: [████████████████░░] 73% (7 of 11 phases complete, Phase 9 context gathered)
 
@@ -131,6 +131,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-08-20T00:30:00.000Z
-Stopped at: Phase 9 context gathered (discuss-phase complete)
-Resume file: .planning/phases/09-interests-income/09-CONTEXT.md
+Last session: 2026-08-20T08:00:00.000Z
+Stopped at: Phase 9 planned (3 plans created, ready for execution)
+Resume file: .planning/phases/09-interests-income/09-01-PLAN.md
