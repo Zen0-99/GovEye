@@ -9,9 +9,11 @@ import com.goveye.app.data.repo.FollowRepository
 import com.goveye.app.data.repo.MembersRepository
 import com.goveye.app.data.repo.NotificationPreferenceRepository
 import com.goveye.app.data.repo.VotesRepository
+import com.goveye.app.data.repo.InterestsRepository
 import com.goveye.app.domain.model.BiographyExperience
 import com.goveye.app.domain.model.Committee
 import com.goveye.app.domain.model.Contact
+import com.goveye.app.domain.model.Interest
 import com.goveye.app.domain.model.MemberVoteWithDivision
 import com.goveye.app.domain.model.Mp
 import com.goveye.app.domain.model.SyncStatus
@@ -37,6 +39,7 @@ data class ProfileUiState(
     val memberVotes: List<MemberVoteWithDivision> = emptyList(),
     val rebellionStats: RebellionStats? = null,
     val allDivisionDates: List<String> = emptyList(),
+    val interests: List<Interest> = emptyList(),
     val isFollowing: Boolean = false,
     val notificationsEnabled: Boolean = false,
     val votesNotificationsEnabled: Boolean = false,
@@ -53,6 +56,7 @@ class ProfileViewModel @Inject constructor(
     private val followRepository: FollowRepository,
     private val notificationPrefRepository: NotificationPreferenceRepository,
     private val mpDao: MpDao,
+    private val interestsRepository: InterestsRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -144,6 +148,13 @@ class ProfileViewModel @Inject constructor(
                     _uiState.value = _uiState.value.copy(rebellionStats = stats)
                 }
             } catch (e: Exception) {
+            }
+        }
+
+        // Load interests from the bundled DB
+        viewModelScope.launch {
+            interestsRepository.observeInterestsForMember(memberId).collect { result ->
+                _uiState.value = _uiState.value.copy(interests = result.data)
             }
         }
     }

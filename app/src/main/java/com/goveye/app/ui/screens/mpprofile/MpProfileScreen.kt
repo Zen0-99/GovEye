@@ -78,6 +78,7 @@ private enum class ProfileTab(val title: String) {
     CAREER("Career"),
     COMMITTEES("Committees"),
     VOTES("Votes"),
+    INTERESTS("Interests"),
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -87,6 +88,7 @@ fun ProfileScreen(
     onBack: () -> Unit,
     onNavigateToProfile: (Int) -> Unit,
     onNavigateToDivision: (Int, Int) -> Unit = { _, _ -> },
+    onNavigateToInterestBucket: (Int, String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
     viewModel: ProfileViewModel = hiltViewModel(),
 ) {
@@ -208,6 +210,13 @@ fun ProfileScreen(
                                 allDivisionDates = uiState.allDivisionDates,
                                 onNavigateToDivision = { divisionId, house ->
                                     onNavigateToDivision(divisionId, house)
+                                },
+                            )
+                            ProfileTab.INTERESTS -> InterestsTabContent(
+                                memberId = memberId,
+                                interests = uiState.interests,
+                                onNavigateToBucketDetail = { bucketLabel ->
+                                    onNavigateToInterestBucket(memberId, bucketLabel)
                                 },
                             )
                         }

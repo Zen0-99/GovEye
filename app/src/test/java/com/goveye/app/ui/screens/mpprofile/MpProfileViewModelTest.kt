@@ -6,6 +6,7 @@ import com.goveye.app.data.local.entity.MpEntity
 import com.goveye.app.data.local.entity.MpNotificationPreferenceEntity
 import com.goveye.app.data.repo.CommitteesRepository
 import com.goveye.app.data.repo.FollowRepository
+import com.goveye.app.data.repo.InterestsRepository
 import com.goveye.app.data.repo.MembersRepository
 import com.goveye.app.data.repo.NotificationPreferenceRepository
 import com.goveye.app.data.repo.VotesRepository
@@ -32,6 +33,7 @@ class ProfileViewModelTest {
     private val followRepository = mockk<FollowRepository>(relaxed = true)
     private val notificationPrefRepository = mockk<NotificationPreferenceRepository>(relaxed = true)
     private val mpDao = mockk<MpDao>(relaxed = true)
+    private val interestsRepository = mockk<InterestsRepository>(relaxed = true)
 
     private fun makeMpEntity(id: Int): MpEntity = MpEntity(
         id = id,
@@ -85,7 +87,7 @@ class ProfileViewModelTest {
         every { followRepository.observeIsFollowing(1) } returns flowOf(false)
         every { notificationPrefRepository.observe(1) } returns flowOf(MpNotificationPreferenceEntity(1))
 
-        val viewModel = ProfileViewModel(membersRepository, committeesRepository, votesRepository, followRepository, notificationPrefRepository, mpDao)
+        val viewModel = ProfileViewModel(membersRepository, committeesRepository, votesRepository, followRepository, notificationPrefRepository, mpDao, interestsRepository)
         viewModel.loadProfile(1)
 
         viewModel.uiState.test {
@@ -111,7 +113,7 @@ class ProfileViewModelTest {
         every { followRepository.observeIsFollowing(999) } returns flowOf(false)
         every { notificationPrefRepository.observe(999) } returns flowOf(MpNotificationPreferenceEntity(999))
 
-        val viewModel = ProfileViewModel(membersRepository, committeesRepository, votesRepository, followRepository, notificationPrefRepository, mpDao)
+        val viewModel = ProfileViewModel(membersRepository, committeesRepository, votesRepository, followRepository, notificationPrefRepository, mpDao, interestsRepository)
         viewModel.loadProfile(999)
 
         viewModel.uiState.test {

@@ -55,6 +55,7 @@ import com.goveye.app.ui.navigation.ProfileRoute
 import com.goveye.app.ui.navigation.SettingsRoute
 import com.goveye.app.ui.navigation.BillDetailRoute
 import com.goveye.app.ui.navigation.DivisionDetailRoute
+import com.goveye.app.ui.navigation.InterestBucketDetailRoute
 import com.goveye.app.ui.screens.FeedScreen
 import com.goveye.app.ui.screens.FollowingScreen
 import com.goveye.app.ui.screens.SettingsScreen
@@ -62,6 +63,7 @@ import com.goveye.app.ui.screens.directory.DirectoryScreen
 import com.goveye.app.ui.screens.bills.BillDetailScreen
 import com.goveye.app.ui.screens.divisions.DivisionDetailScreen
 import com.goveye.app.ui.screens.mpprofile.ProfileScreen
+import com.goveye.app.ui.screens.mpprofile.InterestBucketDetailScreen
 import com.goveye.app.ui.theme.GovEyeTheme
 import com.goveye.app.ui.theme.ThemeViewModel
 
@@ -147,6 +149,10 @@ private fun GovEyeAppContent(
                     currentTabIndex = 1
                     directoryBackStack.add(route)
                 }
+                is InterestBucketDetailRoute -> {
+                    currentTabIndex = 1
+                    directoryBackStack.add(route)
+                }
                 is DirectoryRoute -> {
                     currentTabIndex = 1
                 }
@@ -196,6 +202,9 @@ private fun GovEyeAppContent(
                             onNavigateToDivision = { divisionId, house ->
                                 currentBackStack.add(DivisionDetailRoute(divisionId, house))
                             },
+                            onNavigateToInterestBucket = { targetMemberId, bucketLabel ->
+                                currentBackStack.add(InterestBucketDetailRoute(targetMemberId, bucketLabel))
+                            },
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
@@ -217,6 +226,16 @@ private fun GovEyeAppContent(
                     NavEntry(key) {
                         BillDetailScreen(
                             billId = key.billId,
+                            onBack = { currentBackStack.removeLastOrNull() },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+
+                is InterestBucketDetailRoute ->
+                    NavEntry(key) {
+                        InterestBucketDetailScreen(
+                            memberId = key.memberId,
+                            bucketLabel = key.bucketLabel,
                             onBack = { currentBackStack.removeLastOrNull() },
                             modifier = Modifier.fillMaxSize(),
                         )
@@ -245,14 +264,14 @@ private fun GovEyeAppContent(
         }
 
     val showBottomBar = currentBackStack.lastOrNull()?.let {
-        it !is ProfileRoute && it !is DivisionDetailRoute && it !is BillDetailRoute
+        it !is ProfileRoute && it !is DivisionDetailRoute && it !is BillDetailRoute && it !is InterestBucketDetailRoute
     } ?: true
 
     // Search bar is hidden on profile screens (they have their own header).
     // On division/bill detail, the global search bar is configured by the screen
     // with back button (no filter icon).
     val showSearchBar = currentBackStack.lastOrNull()?.let {
-        it !is ProfileRoute
+        it !is ProfileRoute && it !is InterestBucketDetailRoute
     } ?: true
 
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
