@@ -78,6 +78,7 @@ private enum class ProfileTab(val title: String) {
     CAREER("Career"),
     COMMITTEES("Committees"),
     VOTES("Votes"),
+    ACTIVITY("Activity"),
     INTERESTS("Interests"),
 }
 
@@ -208,6 +209,15 @@ fun ProfileScreen(
                                 memberVotes = uiState.memberVotes,
                                 rebellionStats = uiState.rebellionStats,
                                 allDivisionDates = uiState.allDivisionDates,
+                                onNavigateToDivision = { divisionId, house ->
+                                    onNavigateToDivision(divisionId, house)
+                                },
+                            )
+                            ProfileTab.ACTIVITY -> ActivityTabContent(
+                                memberVotes = uiState.memberVotes,
+                                rebellionStats = uiState.rebellionStats,
+                                allVotesByDivision = uiState.allVotesByDivision,
+                                memberPartyName = uiState.memberPartyName,
                                 onNavigateToDivision = { divisionId, house ->
                                     onNavigateToDivision(divisionId, house)
                                 },

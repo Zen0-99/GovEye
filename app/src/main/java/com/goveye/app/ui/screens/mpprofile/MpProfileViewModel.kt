@@ -13,6 +13,7 @@ import com.goveye.app.data.repo.InterestsRepository
 import com.goveye.app.domain.model.BiographyExperience
 import com.goveye.app.domain.model.Committee
 import com.goveye.app.domain.model.Contact
+import com.goveye.app.domain.model.DivisionVote
 import com.goveye.app.domain.model.Interest
 import com.goveye.app.domain.model.MemberVoteWithDivision
 import com.goveye.app.domain.model.Mp
@@ -39,6 +40,8 @@ data class ProfileUiState(
     val memberVotes: List<MemberVoteWithDivision> = emptyList(),
     val rebellionStats: RebellionStats? = null,
     val allDivisionDates: List<String> = emptyList(),
+    val allVotesByDivision: Map<Int, List<DivisionVote>> = emptyMap(),
+    val memberPartyName: String? = null,
     val interests: List<Interest> = emptyList(),
     val isFollowing: Boolean = false,
     val notificationsEnabled: Boolean = false,
@@ -139,11 +142,13 @@ class ProfileViewModel @Inject constructor(
 
                 // 2. Compute rebellion stats from the bundled data
                 val partyName = _uiState.value.mp?.party?.name
+                _uiState.value = _uiState.value.copy(memberPartyName = partyName)
                 if (votes.isNotEmpty() && partyName != null) {
                     val memberVotesResult = votesRepository.observeMemberVoting(memberId).first()
                     val memberVotes = memberVotesResult.data
                     val divisionIds = memberVotes.map { it.divisionId }.distinct()
                     val allVotesByDivision = votesRepository.getAllVotesForDivisions(divisionIds)
+                    _uiState.value = _uiState.value.copy(allVotesByDivision = allVotesByDivision)
                     val stats = RebellionCalculator.compute(memberVotes, allVotesByDivision, partyName)
                     _uiState.value = _uiState.value.copy(rebellionStats = stats)
                 }
