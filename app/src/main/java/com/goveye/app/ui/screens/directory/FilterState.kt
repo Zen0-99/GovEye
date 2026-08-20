@@ -49,10 +49,11 @@ data class DirectoryFilterState(
     val excludedParties: Set<String> = emptySet(),
     val houseFilter: Int = 0,  // 0 = all, 1 = Commons, 2 = Lords
     val currentOnly: Boolean = false,
+    val followingOnly: Boolean = false,  // feed filter — Following only toggle
 ) {
     val hasActiveFilters: Boolean
         get() = includedParties.isNotEmpty() || excludedParties.isNotEmpty() ||
-            houseFilter != 0 || currentOnly
+            houseFilter != 0 || currentOnly || followingOnly
 
     /**
      * Returns the [PartyFilterState] for [party] — DISABLED, INCLUDED, or EXCLUDED.

@@ -172,7 +172,12 @@ private fun GovEyeAppContent(
             when (key) {
                 is FeedRoute ->
                     NavEntry(key) {
-                        FeedScreen(modifier = Modifier.fillMaxSize())
+                        FeedScreen(
+                            onNavigateToDivision = { divisionId, house ->
+                                currentBackStack.add(DivisionDetailRoute(divisionId, house))
+                            },
+                            modifier = Modifier.fillMaxSize(),
+                        )
                     }
 
                 is DirectoryRoute ->

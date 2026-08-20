@@ -174,7 +174,11 @@ fun DirectoryScreen(
                     houseFilter = filterState.houseFilter,
                     searchQuery = searchQuery,
                 )
-                DirectoryTab.DEBATES -> PlaceholderTabContent("Debates")
+                DirectoryTab.DEBATES -> DivisionsTabContent(
+                    onNavigateToDivision = onNavigateToDivision,
+                    houseFilter = filterState.houseFilter,
+                    searchQuery = searchQuery,
+                )
             }
         }
     }
@@ -184,6 +188,7 @@ fun DirectoryScreen(
         val currentTabType = when (DirectoryTab.entries[pagerState.currentPage]) {
             DirectoryTab.OFFICIALS -> FilterTabType.OFFICIALS
             DirectoryTab.DIVISIONS -> FilterTabType.DIVISIONS
+            DirectoryTab.DEBATES -> FilterTabType.DIVISIONS
             else -> FilterTabType.OTHER
         }
         FilterBottomSheet(

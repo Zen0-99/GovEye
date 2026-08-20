@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -400,6 +401,35 @@ private fun DivisionHeaderCard(division: Division) {
                     ayeCount = division.ayeCount,
                     noCount = division.noCount,
                     barHeight = 32.dp,
+                )
+            }
+            // TheyWorkForYou external link — opens browser search for this division.
+            // Uses search URL fallback since the bundled DB has no GID field.
+            // When GIDs are added in a future phase, this can be upgraded to the
+            // direct division URL (https://www.theyworkforyou.com/divisions/[gid]).
+            val context = androidx.compose.ui.platform.LocalContext.current
+            val twfyUrl = "https://www.theyworkforyou.com/search/?s=" +
+                java.net.URLEncoder.encode(division.title, "UTF-8")
+            androidx.compose.material3.TextButton(
+                onClick = {
+                    val intent = android.content.Intent(
+                        android.content.Intent.ACTION_VIEW,
+                        android.net.Uri.parse(twfyUrl),
+                    )
+                    intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(intent)
+                },
+                modifier = Modifier.align(Alignment.End),
+            ) {
+                androidx.compose.material3.Icon(
+                    imageVector = Icons.Outlined.Search,
+                    contentDescription = "View on TheyWorkForYou",
+                    modifier = Modifier.size(16.dp),
+                )
+                androidx.compose.foundation.layout.Spacer(modifier = Modifier.size(4.dp))
+                Text(
+                    text = "View on TheyWorkForYou",
+                    style = MaterialTheme.typography.labelMedium,
                 )
             }
         }

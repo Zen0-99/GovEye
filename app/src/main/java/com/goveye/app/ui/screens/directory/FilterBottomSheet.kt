@@ -33,6 +33,7 @@ import com.goveye.app.data.preference.DirectoryViewMode
 enum class FilterTabType {
     OFFICIALS,
     DIVISIONS,
+    FEED,
     OTHER,
 }
 
@@ -46,6 +47,7 @@ fun FilterBottomSheet(
     onPartyToggle: (String) -> Unit,
     onHouseChange: (Int) -> Unit,
     onCurrentOnlyChange: (Boolean) -> Unit,
+    onFollowingOnlyChange: (Boolean) -> Unit = {},
     onViewModeChange: (DirectoryViewMode) -> Unit,
     onClearFilters: () -> Unit,
     onDismiss: () -> Unit,
@@ -124,6 +126,34 @@ fun FilterBottomSheet(
 
                     FilterTabType.DIVISIONS -> {
                         // House — All / Commons / Lords
+                        item {
+                            SectionLabel("House")
+                            SegmentedPill(
+                                options = listOf(
+                                    "All" to 0,
+                                    "Commons" to 1,
+                                    "Lords" to 2,
+                                ),
+                                selectedValue = filterState.houseFilter,
+                                onValueChange = onHouseChange,
+                            )
+                        }
+                    }
+
+                    FilterTabType.FEED -> {
+                        // Following only — All / Following
+                        item {
+                            SectionLabel("Following")
+                            SegmentedPill(
+                                options = listOf(
+                                    "All" to false,
+                                    "Following" to true,
+                                ),
+                                selectedValue = filterState.followingOnly,
+                                onValueChange = onFollowingOnlyChange,
+                            )
+                        }
+                        // House — All / Commons / Lords (same as DIVISIONS)
                         item {
                             SectionLabel("House")
                             SegmentedPill(
