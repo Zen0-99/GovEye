@@ -23,4 +23,15 @@ interface RecessDateDao {
 
     @Query("DELETE FROM recess_dates WHERE house = :house")
     suspend fun deleteForHouse(house: Int)
+
+    @Query(
+        """
+        SELECT * FROM recess_dates
+        WHERE house = :house
+        AND startDate <= :currentDate
+        AND endDate >= :currentDate
+        LIMIT 1
+        """,
+    )
+    suspend fun getCurrentRecess(house: Int, currentDate: String): RecessDateEntity?
 }

@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: milestone
-current_phase: 9
-current_phase_name: Interests & Income
-status: phase_in_progress
-stopped_at: Phase 9 — Plans 09-01, 09-02, 09-03 complete; 09-04 (CI infra) pending
-last_updated: "2026-08-20T15:00:00.000Z"
+current_phase: 8
+current_phase_name: Activity Feed
+status: phase_planned
+stopped_at: Phase 8 — 3 plans created (08-01, 08-02, 08-03), plan-checker APPROVED, ready for execution
+last_updated: "2026-08-20T19:00:00.000Z"
 last_activity: 2026-08-20
-last_activity_desc: Plans 09-01, 09-02, 09-03 complete — build script, data layer, and Android UI all done, all tests green
+last_activity_desc: Phase 8 planned — 3 plans (08-01 data pipeline, 08-02 feed UI, 08-03 MP timeline), plan-checker approved with 0 issues
 progress:
   total_phases: 8
   completed_phases: 7
@@ -25,14 +25,14 @@ completed_phases: 7
 See: .planning/PROJECT.md (updated 2026-08-16)
 
 **Core value:** Make UK government activity as easy to follow as a football team — so anyone, especially younger voters, can see what their representatives are actually doing.
-**Current focus:** Phase 9 — Interests & Income (7th patch stream, monetary parser, dashboard UI) — IN PROGRESS (09-01, 09-02, 09-03 done)
+**Current focus:** Phase 9 — Interests & Income (7th patch stream, monetary parser, dashboard UI) — COMPLETE (09-01 through 09-04 done)
 
 ## Current Position
 
-Phase: 9 (Interests & Income) — IN PROGRESS
-Plans: 09-01 (build-side) COMPLETE, 09-02 (Android data) COMPLETE, 09-03 (Android UI) COMPLETE, 09-04 (CI infra) PENDING
-Status: 3 of 4 plans complete. Build script + data layer + UI all done, all tests green. Next: 09-04 CI infrastructure.
-Last activity: 2026-08-20 — Plan 09-03 complete (5th tab, dashboard, bucket detail, date filter)
+Phase: 9 (Interests & Income) — COMPLETE
+Plans: 09-01 (build-side) COMPLETE, 09-02 (Android data) COMPLETE, 09-03 (Android UI) COMPLETE, 09-04 (CI infra) COMPLETE
+Status: 4 of 4 plans complete. All Phase 9 work done — build script, data layer, UI, and CI infrastructure. All 118 Python tests + 110 Kotlin tests green.
+Last activity: 2026-08-20 — Plan 09-04 complete (recess gates, checkpoint/resume, smart Bills delta)
 
 Progress: [████████████████░░] 73% (7 of 11 phases complete, Phase 9 context gathered)
 
@@ -131,6 +131,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-08-20T15:00:00.000Z
-Stopped at: Phase 9 — Plans 09-01, 09-02, 09-03 complete; 09-04 (CI infra) next
-Resume file: .planning/phases/09-interests-income/09-04-PLAN.md
+Last session: 2026-08-20T16:00:00.000Z
+Stopped at: Phase 9 — All 4 plans complete (09-01 through 09-04). Phase 9 done.
+Resume file: .planning/ROADMAP.md (next phase selection)

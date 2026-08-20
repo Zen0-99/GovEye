@@ -1,4 +1,4 @@
-﻿# Roadmap: GovEye
+# Roadmap: GovEye
 
 ## Overview
 
@@ -185,9 +185,9 @@ Plans:
 
 Plans:
 
-- [ ] 08-01: Feed data pipeline â€” aggregate divisions + Hansard contributions with fallbacks
-- [ ] 08-02: Feed UI â€” timeline cards, filters, deep links
-- [ ] 08-03: Per-MP recent activity timeline â€” reuses feed pipeline, per-event weights on MP profile (MPDIR-08)
+- [ ] 08-01: Feed data pipeline - DivisionWeightCalculator, relative date utility, new DAO queries, FeedRepository
+- [ ] 08-02: Feed UI - sticky date headers, division cards, followed highlight, filter, Debates tab, TheyWorkForYou link
+- [ ] 08-03: Per-MP recent activity timeline - Activity tab on MP profile with DivisionWeightCalculator badges
 
 ### Phase 9: Interests & Income
 

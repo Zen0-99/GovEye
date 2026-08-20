@@ -112,4 +112,13 @@ interface DivisionDao {
         """,
     )
     fun observeRecentVoteForMember(memberId: Int): Flow<MemberRecentVote?>
+
+    @Query(
+        """
+        SELECT DISTINCT divisionId FROM division_votes
+        WHERE memberId IN (:memberIds)
+        ORDER BY divisionId DESC
+        """,
+    )
+    suspend fun getDivisionIdsWithMemberVotes(memberIds: List<Int>): List<Int>
 }

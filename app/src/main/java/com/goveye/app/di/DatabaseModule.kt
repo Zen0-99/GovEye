@@ -21,6 +21,7 @@ import com.goveye.app.data.mapper.MemberMapper
 import com.goveye.app.data.repo.BillsRepository
 import com.goveye.app.data.repo.BillFollowRepository
 import com.goveye.app.data.repo.CommitteesRepository
+import com.goveye.app.data.repo.FeedRepository
 import com.goveye.app.data.repo.FollowRepository
 import com.goveye.app.data.repo.HansardRepository
 import com.goveye.app.data.repo.InterestsRepository
@@ -139,6 +140,14 @@ object DatabaseModule {
     fun provideVotesRepository(
         divisionDao: DivisionDao,
     ): VotesRepository = VotesRepository(divisionDao)
+
+    @Provides
+    @Singleton
+    fun provideFeedRepository(
+        divisionDao: DivisionDao,
+        followDao: FollowDao,
+        recessDateDao: RecessDateDao,
+    ): FeedRepository = FeedRepository(divisionDao, followDao, recessDateDao)
 
     @Provides
     @Singleton
