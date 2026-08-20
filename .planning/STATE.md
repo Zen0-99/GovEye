@@ -4,11 +4,11 @@ milestone: v3.0
 milestone_name: milestone
 current_phase: 9
 current_phase_name: Interests & Income
-status: phase_planned
-stopped_at: Phase 9 planned — 4 plans created (09-01 build-side, 09-02 Android data, 09-03 Android UI, 09-04 CI infra)
-last_updated: "2026-08-20T09:00:00.000Z"
+status: phase_in_progress
+stopped_at: Phase 9 — Plans 09-01 and 09-02 complete; 09-03 (Android UI) and 09-04 (CI infra) pending
+last_updated: "2026-08-20T14:00:00.000Z"
 last_activity: 2026-08-20
-last_activity_desc: Phase 9 plan-phase complete — RESEARCH.md + 4 PLAN.md files created, ready for execution
+last_activity_desc: Plans 09-01 (build-side) and 09-02 (Android data layer) complete — 7th stream wired, schema v2, all tests green
 progress:
   total_phases: 8
   completed_phases: 7
@@ -25,14 +25,14 @@ completed_phases: 7
 See: .planning/PROJECT.md (updated 2026-08-16)
 
 **Core value:** Make UK government activity as easy to follow as a football team — so anyone, especially younger voters, can see what their representatives are actually doing.
-**Current focus:** Phase 9 — Interests & Income (7th patch stream, monetary parser, dashboard UI) — PLANNED
+**Current focus:** Phase 9 — Interests & Income (7th patch stream, monetary parser, dashboard UI) — IN PROGRESS (09-01, 09-02 done)
 
 ## Current Position
 
-Phase: 9 (Interests & Income) — PLANNED
-Plans: 4 plans created (09-01, 09-02, 09-03, 09-04)
-Status: Plan-phase complete. RESEARCH.md + 4 PLAN.md files created. Ready for execution.
-Last activity: 2026-08-20 — Phase 9 plan-phase complete (research + 4 plans, including CI infrastructure)
+Phase: 9 (Interests & Income) — IN PROGRESS
+Plans: 09-01 (build-side) COMPLETE, 09-02 (Android data) COMPLETE, 09-03 (Android UI) PENDING, 09-04 (CI infra) PENDING
+Status: 2 of 4 plans complete. Build script + Android data layer done, all tests green. Next: 09-03 Android UI.
+Last activity: 2026-08-20 — Plans 09-01 and 09-02 complete (7th stream, schema v2, DAO-only repo)
 
 Progress: [████████████████░░] 73% (7 of 11 phases complete, Phase 9 context gathered)
 
@@ -131,6 +131,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-08-20T09:00:00.000Z
-Stopped at: Phase 9 planned (4 plans created, ready for execution)
-Resume file: .planning/phases/09-interests-income/09-01-PLAN.md
+Last session: 2026-08-20T14:00:00.000Z
+Stopped at: Phase 9 — Plans 09-01 and 09-02 complete; 09-03 (Android UI) next
+Resume file: .planning/phases/09-interests-income/09-03-PLAN.md
