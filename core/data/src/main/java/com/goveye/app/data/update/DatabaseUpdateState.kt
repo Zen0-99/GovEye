@@ -50,7 +50,7 @@ sealed interface DatabaseUpdateState {
 /**
  * Information about a single patch stream that has an available patch (D-10a).
  *
- * @param streamName The stream identifier: "mps", "votes", "bills", "committees", or "recess".
+ * @param streamName The stream identifier: "mps", "commons-votes", "lords-votes", "bills", "committees", or "recess".
  * @param manifest The manifest from the per-API release (contains version, patch info).
  * @param release The GitHub release DTO (contains asset download URLs).
  */

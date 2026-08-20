@@ -31,7 +31,8 @@ import com.goveye.app.data.local.entity.RecessDatesMetaEntity
  * This database holds all pre-built parliamentary data (MPs, votes, bills,
  * committees, recess dates, hansard, interests) that is downloaded from the
  * goveye-data repo on first launch and updated via 5 patch streams
- * (mps-latest, votes-latest, bills-latest, committees-latest, recess-latest).
+ * (mps-latest, commons-votes-latest, lords-votes-latest, bills-latest,
+ * committees-latest, recess-latest).
  *
  * User-data tables (follows, bill_follows, mp_notification_prefs) live in
  * [LocalDatabase] — they are never touched by patches or seed DB swaps.

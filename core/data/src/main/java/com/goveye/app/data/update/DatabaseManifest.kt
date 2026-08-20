@@ -6,9 +6,9 @@ import kotlinx.serialization.Serializable
 /**
  * Manifest.json format from the goveye-data repo's build scripts (D-05, D-10).
  *
- * Each per-API release (mps-latest, votes-latest, bills-latest,
- * committees-latest, recess-latest) has its own manifest.json with its own
- * version number. The Android app fetches 5 manifests and compares each
+ * Each per-API release (mps-latest, commons-votes-latest, lords-votes-latest,
+ * bills-latest, committees-latest, recess-latest) has its own manifest.json with its own
+ * version number. The Android app fetches 6 manifests and compares each
  * against its corresponding per-API version key in DatabasePreferences
  * (D-10a). The seed-latest release may optionally have a manifest for
  * SHA-256 verification.

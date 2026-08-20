@@ -11,9 +11,10 @@ import retrofit2.http.Path
  * Fetches releases from the `Zen0-99/goveye-data` repo. The repo must be
  * public so that `browser_download_url` works without auth (Pitfall 6).
  *
- * Five per-API release tags are checked for patch updates (D-10):
+ * Six per-API release tags are checked for patch updates (D-10):
  * - [MPS_TAG] (mps-latest) — MP data
- * - [VOTES_TAG] (votes-latest) — divisions + division_votes
+ * - [COMMONS_VOTES_TAG] (commons-votes-latest) — Commons divisions + division_votes (house=1)
+ * - [LORDS_VOTES_TAG] (lords-votes-latest) — Lords divisions + division_votes (house=2)
  * - [BILLS_TAG] (bills-latest) — bills + bill_stages
  * - [COMMITTEES_TAG] (committees-latest) — committees + mp_committee_cross_ref
  * - [RECESS_TAG] (recess-latest) — recess_dates + recess_dates_meta
@@ -23,7 +24,7 @@ import retrofit2.http.Path
  */
 interface DatabaseUpdateApi {
     /**
-     * Fetch any release by its tag name. Used for the 5 per-API patch streams.
+     * Fetch any release by its tag name. Used for the 6 per-API patch streams.
      *
      * Each per-API release has: manifest.json, patch.json, and a per-API .db.
      */
@@ -47,7 +48,8 @@ interface DatabaseUpdateApi {
 
     companion object {
         const val MPS_TAG = "mps-latest"
-        const val VOTES_TAG = "votes-latest"
+        const val COMMONS_VOTES_TAG = "commons-votes-latest"
+        const val LORDS_VOTES_TAG = "lords-votes-latest"
         const val BILLS_TAG = "bills-latest"
         const val COMMITTEES_TAG = "committees-latest"
         const val RECESS_TAG = "recess-latest"

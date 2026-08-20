@@ -50,7 +50,7 @@ class DatabaseUpdateWorker @AssistedInject constructor(
                             val appliedStreams = state.patches.map { it.streamName }.toSet()
 
                             // Trigger polling workers for streams that had updates
-                            if ("votes" in appliedStreams) {
+                            if ("commons-votes" in appliedStreams || "lords-votes" in appliedStreams) {
                                 Log.i(TAG, "Votes patch applied — enqueuing VotePollingWorker")
                                 WorkScheduler.enqueueVotePollingOneShot(applicationContext)
                             }

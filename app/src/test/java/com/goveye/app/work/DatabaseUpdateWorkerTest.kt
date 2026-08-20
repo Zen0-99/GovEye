@@ -79,8 +79,22 @@ class DatabaseUpdateWorkerTest {
     }
 
     @Test
-    fun `NeedsPatches with votes stream enqueues VotePollingWorker`() = runTest {
-        val patches = listOf(makePatch("votes"))
+    fun `NeedsPatches with commons-votes stream enqueues VotePollingWorker`() = runTest {
+        val patches = listOf(makePatch("commons-votes"))
+        coEvery { databaseUpdateManager.checkForUpdates() } returns DatabaseUpdateState.NeedsPatches(patches)
+        coEvery { databaseUpdateManager.applyPatches(patches) } returns DatabaseUpdateState.UpToDate
+
+        val result = createWorker().doWork()
+
+        assertTrue(result is androidx.work.ListenableWorker.Result.Success)
+        coVerify { databaseUpdateManager.applyPatches(patches) }
+        verify { WorkScheduler.enqueueVotePollingOneShot(any()) }
+        verify(exactly = 0) { WorkScheduler.enqueueBillPollingOneShot(any()) }
+    }
+
+    @Test
+    fun `NeedsPatches with lords-votes stream enqueues VotePollingWorker`() = runTest {
+        val patches = listOf(makePatch("lords-votes"))
         coEvery { databaseUpdateManager.checkForUpdates() } returns DatabaseUpdateState.NeedsPatches(patches)
         coEvery { databaseUpdateManager.applyPatches(patches) } returns DatabaseUpdateState.UpToDate
 
@@ -107,8 +121,8 @@ class DatabaseUpdateWorkerTest {
     }
 
     @Test
-    fun `NeedsPatches with both votes and bills enqueues both polling workers`() = runTest {
-        val patches = listOf(makePatch("votes"), makePatch("bills"))
+    fun `NeedsPatches with both commons-votes and bills enqueues both polling workers`() = runTest {
+        val patches = listOf(makePatch("commons-votes"), makePatch("bills"))
         coEvery { databaseUpdateManager.checkForUpdates() } returns DatabaseUpdateState.NeedsPatches(patches)
         coEvery { databaseUpdateManager.applyPatches(patches) } returns DatabaseUpdateState.UpToDate
 

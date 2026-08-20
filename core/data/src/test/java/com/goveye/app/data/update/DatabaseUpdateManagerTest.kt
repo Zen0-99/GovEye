@@ -138,21 +138,23 @@ class DatabaseUpdateManagerTest {
 
     private val allTags = listOf(
         DatabaseUpdateApi.MPS_TAG,
-        DatabaseUpdateApi.VOTES_TAG,
+        DatabaseUpdateApi.COMMONS_VOTES_TAG,
+        DatabaseUpdateApi.LORDS_VOTES_TAG,
         DatabaseUpdateApi.BILLS_TAG,
         DatabaseUpdateApi.COMMITTEES_TAG,
         DatabaseUpdateApi.RECESS_TAG,
     )
 
     /**
-     * Helper: mocks all 5 streams as up to date at the given version.
+     * Helper: mocks all 6 streams as up to date at the given version.
      */
     private suspend fun mockAllStreamsUpToDate(version: Int) {
         for (tag in allTags) {
             mockReleaseWithManifest(tag, manifestJson(version = version, previousVersion = version - 1))
         }
         preferences.setMpsVersion(version)
-        preferences.setVotesVersion(version)
+        preferences.setCommonsVotesVersion(version)
+        preferences.setLordsVotesVersion(version)
         preferences.setBillsVersion(version)
         preferences.setCommitteesVersion(version)
         preferences.setRecessVersion(version)
@@ -180,10 +182,11 @@ class DatabaseUpdateManagerTest {
         // mps is 1 behind, others up to date
         mockReleaseWithManifest(DatabaseUpdateApi.MPS_TAG, manifestJson(version = 6, previousVersion = 5))
         preferences.setMpsVersion(5)
-        for (tag in listOf(DatabaseUpdateApi.VOTES_TAG, DatabaseUpdateApi.BILLS_TAG, DatabaseUpdateApi.COMMITTEES_TAG, DatabaseUpdateApi.RECESS_TAG)) {
+        for (tag in listOf(DatabaseUpdateApi.COMMONS_VOTES_TAG, DatabaseUpdateApi.LORDS_VOTES_TAG, DatabaseUpdateApi.BILLS_TAG, DatabaseUpdateApi.COMMITTEES_TAG, DatabaseUpdateApi.RECESS_TAG)) {
             mockReleaseWithManifest(tag, manifestJson(version = 5, previousVersion = 4))
         }
-        preferences.setVotesVersion(5)
+        preferences.setCommonsVotesVersion(5)
+        preferences.setLordsVotesVersion(5)
         preferences.setBillsVersion(5)
         preferences.setCommitteesVersion(5)
         preferences.setRecessVersion(5)
@@ -198,14 +201,15 @@ class DatabaseUpdateManagerTest {
     @Test
     fun `needs patches for multiple streams`() = runTest {
         preferences.setSeedVersion(1)
-        // mps and votes are 1 behind, others up to date
+        // mps and commons-votes are 1 behind, others up to date
         mockReleaseWithManifest(DatabaseUpdateApi.MPS_TAG, manifestJson(version = 6, previousVersion = 5))
-        mockReleaseWithManifest(DatabaseUpdateApi.VOTES_TAG, manifestJson(version = 6, previousVersion = 5))
+        mockReleaseWithManifest(DatabaseUpdateApi.COMMONS_VOTES_TAG, manifestJson(version = 6, previousVersion = 5))
         preferences.setMpsVersion(5)
-        preferences.setVotesVersion(5)
-        for (tag in listOf(DatabaseUpdateApi.BILLS_TAG, DatabaseUpdateApi.COMMITTEES_TAG, DatabaseUpdateApi.RECESS_TAG)) {
+        preferences.setCommonsVotesVersion(5)
+        for (tag in listOf(DatabaseUpdateApi.LORDS_VOTES_TAG, DatabaseUpdateApi.BILLS_TAG, DatabaseUpdateApi.COMMITTEES_TAG, DatabaseUpdateApi.RECESS_TAG)) {
             mockReleaseWithManifest(tag, manifestJson(version = 5, previousVersion = 4))
         }
+        preferences.setLordsVotesVersion(5)
         preferences.setBillsVersion(5)
         preferences.setCommitteesVersion(5)
         preferences.setRecessVersion(5)
@@ -215,7 +219,7 @@ class DatabaseUpdateManagerTest {
         val patches = (state as DatabaseUpdateState.NeedsPatches).patches
         assertEquals(2, patches.size)
         val streamNames = patches.map { it.streamName }.sorted()
-        assertEquals(listOf("mps", "votes"), streamNames)
+        assertEquals(listOf("commons-votes", "mps"), streamNames)
     }
 
     @Test
@@ -223,11 +227,12 @@ class DatabaseUpdateManagerTest {
         preferences.setSeedVersion(1)
         // mps fetch fails, others succeed and are up to date
         mockReleaseFailure(DatabaseUpdateApi.MPS_TAG)
-        for (tag in listOf(DatabaseUpdateApi.VOTES_TAG, DatabaseUpdateApi.BILLS_TAG, DatabaseUpdateApi.COMMITTEES_TAG, DatabaseUpdateApi.RECESS_TAG)) {
+        for (tag in listOf(DatabaseUpdateApi.COMMONS_VOTES_TAG, DatabaseUpdateApi.LORDS_VOTES_TAG, DatabaseUpdateApi.BILLS_TAG, DatabaseUpdateApi.COMMITTEES_TAG, DatabaseUpdateApi.RECESS_TAG)) {
             mockReleaseWithManifest(tag, manifestJson(version = 5, previousVersion = 4))
         }
         preferences.setMpsVersion(5)
-        preferences.setVotesVersion(5)
+        preferences.setCommonsVotesVersion(5)
+        preferences.setLordsVotesVersion(5)
         preferences.setBillsVersion(5)
         preferences.setCommitteesVersion(5)
         preferences.setRecessVersion(5)
@@ -243,10 +248,11 @@ class DatabaseUpdateManagerTest {
         // mpsVersion is 3, manifest version is 5, previousVersion is 4 → multiple behind
         mockReleaseWithManifest(DatabaseUpdateApi.MPS_TAG, manifestJson(version = 5, previousVersion = 4))
         preferences.setMpsVersion(3)
-        for (tag in listOf(DatabaseUpdateApi.VOTES_TAG, DatabaseUpdateApi.BILLS_TAG, DatabaseUpdateApi.COMMITTEES_TAG, DatabaseUpdateApi.RECESS_TAG)) {
+        for (tag in listOf(DatabaseUpdateApi.COMMONS_VOTES_TAG, DatabaseUpdateApi.LORDS_VOTES_TAG, DatabaseUpdateApi.BILLS_TAG, DatabaseUpdateApi.COMMITTEES_TAG, DatabaseUpdateApi.RECESS_TAG)) {
             mockReleaseWithManifest(tag, manifestJson(version = 5, previousVersion = 4))
         }
-        preferences.setVotesVersion(5)
+        preferences.setCommonsVotesVersion(5)
+        preferences.setLordsVotesVersion(5)
         preferences.setBillsVersion(5)
         preferences.setCommitteesVersion(5)
         preferences.setRecessVersion(5)

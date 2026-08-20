@@ -43,9 +43,9 @@ import okhttp3.Request
  * Core orchestrator for the bundled DB update flow (D-04, D-05, D-10, D-10a, DATA-01, DATA-03).
  *
  * Implements the hybrid 2-database architecture (D-10a):
- * - Checks 5 per-API manifests (mps-latest, votes-latest, bills-latest,
- *   committees-latest, recess-latest) in parallel.
- * - Downloads up to 5 patch.json files, merges their changes maps (no conflicts
+ * - Checks 6 per-API manifests (mps-latest, commons-votes-latest,
+ *   lords-votes-latest, bills-latest, committees-latest, recess-latest) in parallel.
+ * - Downloads up to 6 patch.json files, merges their changes maps (no conflicts
  *   — each patch only touches its own tables), and applies all to [BundledDatabase]
  *   in a single Room transaction.
  * - First-launch downloads the merged goveye.db from the seed-latest release.
@@ -372,13 +372,14 @@ class DatabaseUpdateManager @Inject constructor(
      */
     private val streamTags = listOf(
         DatabaseUpdateApi.MPS_TAG to "mps",
-        DatabaseUpdateApi.VOTES_TAG to "votes",
+        DatabaseUpdateApi.COMMONS_VOTES_TAG to "commons-votes",
+        DatabaseUpdateApi.LORDS_VOTES_TAG to "lords-votes",
         DatabaseUpdateApi.BILLS_TAG to "bills",
         DatabaseUpdateApi.COMMITTEES_TAG to "committees",
         DatabaseUpdateApi.RECESS_TAG to "recess",
     )
 
-    private var releases: Array<GithubReleaseDto?> = arrayOfNulls(5)
+    private var releases: Array<GithubReleaseDto?> = arrayOfNulls(6)
 
     private suspend fun fetchAllManifests(): List<Pair<String, DatabaseManifest>?> = coroutineScope {
         val deferreds = streamTags.mapIndexed { index, (tag, streamName) ->
@@ -404,7 +405,8 @@ class DatabaseUpdateManager @Inject constructor(
      */
     private suspend fun getLocalVersion(streamName: String): Int? = when (streamName) {
         "mps" -> preferences.mpsVersion.first()
-        "votes" -> preferences.votesVersion.first()
+        "commons-votes" -> preferences.commonsVotesVersion.first()
+        "lords-votes" -> preferences.lordsVotesVersion.first()
         "bills" -> preferences.billsVersion.first()
         "committees" -> preferences.committeesVersion.first()
         "recess" -> preferences.recessVersion.first()
@@ -417,7 +419,8 @@ class DatabaseUpdateManager @Inject constructor(
     private suspend fun setStreamVersion(streamName: String, version: Int) {
         when (streamName) {
             "mps" -> preferences.setMpsVersion(version)
-            "votes" -> preferences.setVotesVersion(version)
+            "commons-votes" -> preferences.setCommonsVotesVersion(version)
+            "lords-votes" -> preferences.setLordsVotesVersion(version)
             "bills" -> preferences.setBillsVersion(version)
             "committees" -> preferences.setCommitteesVersion(version)
             "recess" -> preferences.setRecessVersion(version)

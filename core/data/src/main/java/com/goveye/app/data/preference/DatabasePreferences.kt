@@ -14,10 +14,11 @@ import kotlinx.coroutines.flow.map
 /**
  * Stores per-API DB version keys in DataStore (DATA-03, D-10a).
  *
- * Five per-API version keys track which patch stream version the local
+ * Six per-API version keys track which patch stream version the local
  * BundledDatabase is at:
  * - [mpsVersion] — mps-latest stream
- * - [votesVersion] — votes-latest stream
+ * - [commonsVotesVersion] — commons-votes-latest stream
+ * - [lordsVotesVersion] — lords-votes-latest stream
  * - [billsVersion] — bills-latest stream
  * - [committeesVersion] — committees-latest stream
  * - [recessVersion] — recess-latest stream
@@ -35,8 +36,11 @@ class DatabasePreferences @Inject constructor(
     /** Current local mps stream version, or null if never updated. */
     val mpsVersion: Flow<Int?> = dataStore.data.map { it[MPS_VERSION_KEY] }
 
-    /** Current local votes stream version, or null if never updated. */
-    val votesVersion: Flow<Int?> = dataStore.data.map { it[VOTES_VERSION_KEY] }
+    /** Current local Commons votes stream version, or null if never updated. */
+    val commonsVotesVersion: Flow<Int?> = dataStore.data.map { it[COMMONS_VOTES_VERSION_KEY] }
+
+    /** Current local Lords votes stream version, or null if never updated. */
+    val lordsVotesVersion: Flow<Int?> = dataStore.data.map { it[LORDS_VOTES_VERSION_KEY] }
 
     /** Current local bills stream version, or null if never updated. */
     val billsVersion: Flow<Int?> = dataStore.data.map { it[BILLS_VERSION_KEY] }
@@ -57,8 +61,12 @@ class DatabasePreferences @Inject constructor(
         dataStore.edit { it[MPS_VERSION_KEY] = version }
     }
 
-    suspend fun setVotesVersion(version: Int) {
-        dataStore.edit { it[VOTES_VERSION_KEY] = version }
+    suspend fun setCommonsVotesVersion(version: Int) {
+        dataStore.edit { it[COMMONS_VOTES_VERSION_KEY] = version }
+    }
+
+    suspend fun setLordsVotesVersion(version: Int) {
+        dataStore.edit { it[LORDS_VOTES_VERSION_KEY] = version }
     }
 
     suspend fun setBillsVersion(version: Int) {
@@ -101,7 +109,8 @@ class DatabasePreferences @Inject constructor(
 
     private companion object {
         val MPS_VERSION_KEY = intPreferencesKey("mps_version")
-        val VOTES_VERSION_KEY = intPreferencesKey("votes_version")
+        val COMMONS_VOTES_VERSION_KEY = intPreferencesKey("commons_votes_version")
+        val LORDS_VOTES_VERSION_KEY = intPreferencesKey("lords_votes_version")
         val BILLS_VERSION_KEY = intPreferencesKey("bills_version")
         val COMMITTEES_VERSION_KEY = intPreferencesKey("committees_version")
         val RECESS_VERSION_KEY = intPreferencesKey("recess_version")
