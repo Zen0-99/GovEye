@@ -13,7 +13,7 @@ import dagger.assisted.AssistedInject
 /**
  * Background worker that checks for DB updates every 6h (D-09, DATA-03).
  *
- * - If patches are available (up to 5 × 5-50KB = max 250KB), applies them
+ * - If patches are available (up to 7 × 5-50KB = max 350KB), applies them
  *   silently in the background (D-05, D-10a) via DatabaseUpdateManager.applyPatches().
  * - After applying patches, enqueues VotePollingWorker and/or BillPollingWorker
  *   as one-shot workers to detect new divisions or bill stage changes (D-09).

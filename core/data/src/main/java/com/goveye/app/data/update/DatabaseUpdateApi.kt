@@ -18,13 +18,14 @@ import retrofit2.http.Path
  * - [BILLS_TAG] (bills-latest) — bills + bill_stages
  * - [COMMITTEES_TAG] (committees-latest) — committees + mp_committee_cross_ref
  * - [RECESS_TAG] (recess-latest) — recess_dates + recess_dates_meta
+ * - [INTERESTS_TAG] (interests-latest) — interests
  *
  * The [SEED_TAG] (seed-latest) release holds the merged goveye.db for
  * first-launch download (D-04, D-10a).
  */
 interface DatabaseUpdateApi {
     /**
-     * Fetch any release by its tag name. Used for the 6 per-API patch streams.
+     * Fetch any release by its tag name. Used for the 7 per-API patch streams.
      *
      * Each per-API release has: manifest.json, patch.json, and a per-API .db.
      */
@@ -53,6 +54,7 @@ interface DatabaseUpdateApi {
         const val BILLS_TAG = "bills-latest"
         const val COMMITTEES_TAG = "committees-latest"
         const val RECESS_TAG = "recess-latest"
+        const val INTERESTS_TAG = "interests-latest"
         const val SEED_TAG = "seed-latest"
 
         private const val OWNER = "Zen0-99"

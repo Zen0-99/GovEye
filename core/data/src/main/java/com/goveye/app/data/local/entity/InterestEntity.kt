@@ -16,4 +16,7 @@ data class InterestEntity(
     val rectified: Boolean,
     val fieldsJson: String,
     val lastUpdated: Long,
+    val parsedAmountPence: Long? = null,
+    val currencyCode: String? = null,
+    val bucket: String? = null,
 )

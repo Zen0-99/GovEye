@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.map
  * - [billsVersion] — bills-latest stream
  * - [committeesVersion] — committees-latest stream
  * - [recessVersion] — recess-latest stream
+ * - [interestsVersion] — interests-latest stream
  *
  * The [seedVersion] key tracks whether the first-launch seed DB download has
  * been completed (null = first launch, not yet downloaded).
@@ -51,6 +52,9 @@ class DatabasePreferences @Inject constructor(
     /** Current local recess stream version, or null if never updated. */
     val recessVersion: Flow<Int?> = dataStore.data.map { it[RECESS_VERSION_KEY] }
 
+    /** Current local interests stream version, or null if never updated. */
+    val interestsVersion: Flow<Int?> = dataStore.data.map { it[INTERESTS_VERSION_KEY] }
+
     /**
      * Seed DB version — null means first launch (seed DB not yet downloaded).
      * Set to 1 after the first-launch download completes.
@@ -79,6 +83,10 @@ class DatabasePreferences @Inject constructor(
 
     suspend fun setRecessVersion(version: Int) {
         dataStore.edit { it[RECESS_VERSION_KEY] = version }
+    }
+
+    suspend fun setInterestsVersion(version: Int) {
+        dataStore.edit { it[INTERESTS_VERSION_KEY] = version }
     }
 
     suspend fun setSeedVersion(version: Int) {
@@ -114,6 +122,7 @@ class DatabasePreferences @Inject constructor(
         val BILLS_VERSION_KEY = intPreferencesKey("bills_version")
         val COMMITTEES_VERSION_KEY = intPreferencesKey("committees_version")
         val RECESS_VERSION_KEY = intPreferencesKey("recess_version")
+        val INTERESTS_VERSION_KEY = intPreferencesKey("interests_version")
         val SEED_VERSION_KEY = intPreferencesKey("seed_version")
         val LAST_NOTIFIED_DIVISION_ID_KEY = intPreferencesKey("last_notified_division_id")
         val LAST_NOTIFIED_BILL_STAGES_KEY = stringPreferencesKey("last_notified_bill_stages")

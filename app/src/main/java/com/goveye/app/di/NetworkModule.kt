@@ -20,7 +20,6 @@ import retrofit2.converter.kotlinx.serialization.asConverterFactory
 object NetworkModule {
     private const val MEMBERS_BASE_URL = "https://members-api.parliament.uk/api/"
     private const val HANSARD_BASE_URL = "https://hansard-api.parliament.uk/"
-    private const val INTERESTS_BASE_URL = "https://interests-api.parliament.uk/api/v1/"
     private const val GITHUB_API_BASE_URL = "https://api.github.com/"
     private const val TIMEOUT_SECONDS = 30L
     private const val HANSARD_TIMEOUT_SECONDS = 15L
@@ -100,14 +99,6 @@ object NetworkModule {
         @Named("hansardClient") okHttpClient: OkHttpClient,
         json: Json,
     ): Retrofit = buildRetrofit(HANSARD_BASE_URL, okHttpClient, json)
-
-    @Provides
-    @Singleton
-    @Named("interestsApi")
-    fun provideInterestsRetrofit(
-        okHttpClient: OkHttpClient,
-        json: Json,
-    ): Retrofit = buildRetrofit(INTERESTS_BASE_URL, okHttpClient, json)
 
     /**
      * Retrofit for the GitHub Releases API (D-06).

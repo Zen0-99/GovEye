@@ -43,9 +43,10 @@ import okhttp3.Request
  * Core orchestrator for the bundled DB update flow (D-04, D-05, D-10, D-10a, DATA-01, DATA-03).
  *
  * Implements the hybrid 2-database architecture (D-10a):
- * - Checks 6 per-API manifests (mps-latest, commons-votes-latest,
- *   lords-votes-latest, bills-latest, committees-latest, recess-latest) in parallel.
- * - Downloads up to 6 patch.json files, merges their changes maps (no conflicts
+ * - Checks 7 per-API manifests (mps-latest, commons-votes-latest,
+ *   lords-votes-latest, bills-latest, committees-latest, recess-latest,
+ *   interests-latest) in parallel.
+ * - Downloads up to 7 patch.json files, merges their changes maps (no conflicts
  *   — each patch only touches its own tables), and applies all to [BundledDatabase]
  *   in a single Room transaction.
  * - First-launch downloads the merged goveye.db from the seed-latest release.
@@ -75,7 +76,7 @@ class DatabaseUpdateManager @Inject constructor(
     }
 
     /**
-     * Fetches all 5 per-API manifests in parallel and compares each against the
+     * Fetches all 7 per-API manifests in parallel and compares each against the
      * corresponding local version key (D-10, D-10a).
      *
      * Returns the appropriate [DatabaseUpdateState]:
@@ -97,10 +98,10 @@ class DatabaseUpdateManager @Inject constructor(
                 return@withContext DatabaseUpdateState.NeedsFullDownload(null)
             }
 
-            // Fetch all 5 releases in parallel (D-10)
+            // Fetch all 7 releases in parallel (D-10)
             val results = fetchAllManifests()
 
-            // If all 5 failed, return Failed
+            // If all 7 failed, return Failed
             if (results.all { it == null }) {
                 return@withContext DatabaseUpdateState.Failed("All manifest fetches failed")
             }
@@ -143,7 +144,7 @@ class DatabaseUpdateManager @Inject constructor(
     }
 
     /**
-     * Downloads up to 5 patch.json files, merges their changes maps, and applies
+     * Downloads up to 7 patch.json files, merges their changes maps, and applies
      * all to [BundledDatabase] in a single Room transaction (D-10a).
      *
      * Each patch only touches its own tables (mps patch → mps changes, votes
@@ -363,9 +364,9 @@ class DatabaseUpdateManager @Inject constructor(
     }
 
     /**
-     * Fetches all 5 per-API manifests in parallel (D-10).
+     * Fetches all 7 per-API manifests in parallel (D-10).
      *
-     * Returns a list of 5 nullable (streamName, manifest) pairs — null entries
+     * Returns a list of 7 nullable (streamName, manifest) pairs — null entries
      * indicate streams whose fetch failed (partial failure is OK).
      * Also populates [releases] with the corresponding GithubReleaseDto for
      * each stream.
@@ -377,9 +378,10 @@ class DatabaseUpdateManager @Inject constructor(
         DatabaseUpdateApi.BILLS_TAG to "bills",
         DatabaseUpdateApi.COMMITTEES_TAG to "committees",
         DatabaseUpdateApi.RECESS_TAG to "recess",
+        DatabaseUpdateApi.INTERESTS_TAG to "interests",
     )
 
-    private var releases: Array<GithubReleaseDto?> = arrayOfNulls(6)
+    private var releases: Array<GithubReleaseDto?> = arrayOfNulls(7)
 
     private suspend fun fetchAllManifests(): List<Pair<String, DatabaseManifest>?> = coroutineScope {
         val deferreds = streamTags.mapIndexed { index, (tag, streamName) ->
@@ -410,6 +412,7 @@ class DatabaseUpdateManager @Inject constructor(
         "bills" -> preferences.billsVersion.first()
         "committees" -> preferences.committeesVersion.first()
         "recess" -> preferences.recessVersion.first()
+        "interests" -> preferences.interestsVersion.first()
         else -> null
     }
 
@@ -424,6 +427,7 @@ class DatabaseUpdateManager @Inject constructor(
             "bills" -> preferences.setBillsVersion(version)
             "committees" -> preferences.setCommitteesVersion(version)
             "recess" -> preferences.setRecessVersion(version)
+            "interests" -> preferences.setInterestsVersion(version)
         }
     }
 

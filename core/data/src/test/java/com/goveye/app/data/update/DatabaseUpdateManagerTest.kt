@@ -143,10 +143,11 @@ class DatabaseUpdateManagerTest {
         DatabaseUpdateApi.BILLS_TAG,
         DatabaseUpdateApi.COMMITTEES_TAG,
         DatabaseUpdateApi.RECESS_TAG,
+        DatabaseUpdateApi.INTERESTS_TAG,
     )
 
     /**
-     * Helper: mocks all 6 streams as up to date at the given version.
+     * Helper: mocks all 7 streams as up to date at the given version.
      */
     private suspend fun mockAllStreamsUpToDate(version: Int) {
         for (tag in allTags) {
@@ -158,6 +159,7 @@ class DatabaseUpdateManagerTest {
         preferences.setBillsVersion(version)
         preferences.setCommitteesVersion(version)
         preferences.setRecessVersion(version)
+        preferences.setInterestsVersion(version)
     }
 
     @Test
@@ -182,7 +184,7 @@ class DatabaseUpdateManagerTest {
         // mps is 1 behind, others up to date
         mockReleaseWithManifest(DatabaseUpdateApi.MPS_TAG, manifestJson(version = 6, previousVersion = 5))
         preferences.setMpsVersion(5)
-        for (tag in listOf(DatabaseUpdateApi.COMMONS_VOTES_TAG, DatabaseUpdateApi.LORDS_VOTES_TAG, DatabaseUpdateApi.BILLS_TAG, DatabaseUpdateApi.COMMITTEES_TAG, DatabaseUpdateApi.RECESS_TAG)) {
+        for (tag in listOf(DatabaseUpdateApi.COMMONS_VOTES_TAG, DatabaseUpdateApi.LORDS_VOTES_TAG, DatabaseUpdateApi.BILLS_TAG, DatabaseUpdateApi.COMMITTEES_TAG, DatabaseUpdateApi.RECESS_TAG, DatabaseUpdateApi.INTERESTS_TAG)) {
             mockReleaseWithManifest(tag, manifestJson(version = 5, previousVersion = 4))
         }
         preferences.setCommonsVotesVersion(5)
@@ -190,6 +192,7 @@ class DatabaseUpdateManagerTest {
         preferences.setBillsVersion(5)
         preferences.setCommitteesVersion(5)
         preferences.setRecessVersion(5)
+        preferences.setInterestsVersion(5)
 
         val state = manager.checkForUpdates()
         assertTrue(state is DatabaseUpdateState.NeedsPatches)
@@ -206,13 +209,14 @@ class DatabaseUpdateManagerTest {
         mockReleaseWithManifest(DatabaseUpdateApi.COMMONS_VOTES_TAG, manifestJson(version = 6, previousVersion = 5))
         preferences.setMpsVersion(5)
         preferences.setCommonsVotesVersion(5)
-        for (tag in listOf(DatabaseUpdateApi.LORDS_VOTES_TAG, DatabaseUpdateApi.BILLS_TAG, DatabaseUpdateApi.COMMITTEES_TAG, DatabaseUpdateApi.RECESS_TAG)) {
+        for (tag in listOf(DatabaseUpdateApi.LORDS_VOTES_TAG, DatabaseUpdateApi.BILLS_TAG, DatabaseUpdateApi.COMMITTEES_TAG, DatabaseUpdateApi.RECESS_TAG, DatabaseUpdateApi.INTERESTS_TAG)) {
             mockReleaseWithManifest(tag, manifestJson(version = 5, previousVersion = 4))
         }
         preferences.setLordsVotesVersion(5)
         preferences.setBillsVersion(5)
         preferences.setCommitteesVersion(5)
         preferences.setRecessVersion(5)
+        preferences.setInterestsVersion(5)
 
         val state = manager.checkForUpdates()
         assertTrue(state is DatabaseUpdateState.NeedsPatches)
@@ -227,7 +231,7 @@ class DatabaseUpdateManagerTest {
         preferences.setSeedVersion(1)
         // mps fetch fails, others succeed and are up to date
         mockReleaseFailure(DatabaseUpdateApi.MPS_TAG)
-        for (tag in listOf(DatabaseUpdateApi.COMMONS_VOTES_TAG, DatabaseUpdateApi.LORDS_VOTES_TAG, DatabaseUpdateApi.BILLS_TAG, DatabaseUpdateApi.COMMITTEES_TAG, DatabaseUpdateApi.RECESS_TAG)) {
+        for (tag in listOf(DatabaseUpdateApi.COMMONS_VOTES_TAG, DatabaseUpdateApi.LORDS_VOTES_TAG, DatabaseUpdateApi.BILLS_TAG, DatabaseUpdateApi.COMMITTEES_TAG, DatabaseUpdateApi.RECESS_TAG, DatabaseUpdateApi.INTERESTS_TAG)) {
             mockReleaseWithManifest(tag, manifestJson(version = 5, previousVersion = 4))
         }
         preferences.setMpsVersion(5)
@@ -236,6 +240,7 @@ class DatabaseUpdateManagerTest {
         preferences.setBillsVersion(5)
         preferences.setCommitteesVersion(5)
         preferences.setRecessVersion(5)
+        preferences.setInterestsVersion(5)
 
         val state = manager.checkForUpdates()
         // The failed stream is skipped; others are up to date → UpToDate
@@ -248,7 +253,7 @@ class DatabaseUpdateManagerTest {
         // mpsVersion is 3, manifest version is 5, previousVersion is 4 → multiple behind
         mockReleaseWithManifest(DatabaseUpdateApi.MPS_TAG, manifestJson(version = 5, previousVersion = 4))
         preferences.setMpsVersion(3)
-        for (tag in listOf(DatabaseUpdateApi.COMMONS_VOTES_TAG, DatabaseUpdateApi.LORDS_VOTES_TAG, DatabaseUpdateApi.BILLS_TAG, DatabaseUpdateApi.COMMITTEES_TAG, DatabaseUpdateApi.RECESS_TAG)) {
+        for (tag in listOf(DatabaseUpdateApi.COMMONS_VOTES_TAG, DatabaseUpdateApi.LORDS_VOTES_TAG, DatabaseUpdateApi.BILLS_TAG, DatabaseUpdateApi.COMMITTEES_TAG, DatabaseUpdateApi.RECESS_TAG, DatabaseUpdateApi.INTERESTS_TAG)) {
             mockReleaseWithManifest(tag, manifestJson(version = 5, previousVersion = 4))
         }
         preferences.setCommonsVotesVersion(5)
@@ -256,9 +261,33 @@ class DatabaseUpdateManagerTest {
         preferences.setBillsVersion(5)
         preferences.setCommitteesVersion(5)
         preferences.setRecessVersion(5)
+        preferences.setInterestsVersion(5)
 
         val state = manager.checkForUpdates()
         assertTrue(state is DatabaseUpdateState.NeedsFullDownload)
+    }
+
+    @Test
+    fun `needs patches for interests stream`() = runTest {
+        preferences.setSeedVersion(1)
+        // interests is 1 behind, others up to date
+        mockReleaseWithManifest(DatabaseUpdateApi.INTERESTS_TAG, manifestJson(version = 6, previousVersion = 5))
+        preferences.setInterestsVersion(5)
+        for (tag in listOf(DatabaseUpdateApi.MPS_TAG, DatabaseUpdateApi.COMMONS_VOTES_TAG, DatabaseUpdateApi.LORDS_VOTES_TAG, DatabaseUpdateApi.BILLS_TAG, DatabaseUpdateApi.COMMITTEES_TAG, DatabaseUpdateApi.RECESS_TAG)) {
+            mockReleaseWithManifest(tag, manifestJson(version = 5, previousVersion = 4))
+        }
+        preferences.setMpsVersion(5)
+        preferences.setCommonsVotesVersion(5)
+        preferences.setLordsVotesVersion(5)
+        preferences.setBillsVersion(5)
+        preferences.setCommitteesVersion(5)
+        preferences.setRecessVersion(5)
+
+        val state = manager.checkForUpdates()
+        assertTrue(state is DatabaseUpdateState.NeedsPatches)
+        val patches = (state as DatabaseUpdateState.NeedsPatches).patches
+        assertEquals(1, patches.size)
+        assertEquals("interests", patches[0].streamName)
     }
 
     @Test

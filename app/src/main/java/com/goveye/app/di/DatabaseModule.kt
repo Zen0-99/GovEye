@@ -17,7 +17,6 @@ import com.goveye.app.data.local.dao.MpNotificationPreferenceDao
 import com.goveye.app.data.local.dao.RecessDateDao
 import com.goveye.app.data.local.dao.SearchDao
 import com.goveye.app.data.mapper.HansardMapper
-import com.goveye.app.data.mapper.InterestMapper
 import com.goveye.app.data.mapper.MemberMapper
 import com.goveye.app.data.repo.BillsRepository
 import com.goveye.app.data.repo.BillFollowRepository
@@ -118,10 +117,6 @@ object DatabaseModule {
     @Singleton
     fun provideHansardMapper(): HansardMapper = HansardMapper
 
-    @Provides
-    @Singleton
-    fun provideInterestMapper(): InterestMapper = InterestMapper
-
     // ── Repositories ───────────────────────────────────────────────────
 
     @Provides
@@ -163,9 +158,7 @@ object DatabaseModule {
     @Singleton
     fun provideInterestsRepository(
         interestDao: InterestDao,
-        interestsApi: com.goveye.app.data.api.InterestsApi,
-        interestMapper: InterestMapper,
-    ): InterestsRepository = InterestsRepository(interestDao, interestsApi, interestMapper)
+    ): InterestsRepository = InterestsRepository(interestDao)
 
     @Provides
     @Singleton

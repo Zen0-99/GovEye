@@ -11,6 +11,19 @@ interface InterestDao {
     @Query("SELECT * FROM interests WHERE memberId = :memberId ORDER BY publishedDate DESC")
     fun observeInterestsForMember(memberId: Int): Flow<List<InterestEntity>>
 
+    @Query("""
+        SELECT * FROM interests
+        WHERE memberId = :memberId
+          AND (:fromDate IS NULL OR publishedDate >= :fromDate)
+          AND (:toDate IS NULL OR publishedDate <= :toDate)
+        ORDER BY publishedDate DESC
+    """)
+    fun observeInterestsForMemberInRange(
+        memberId: Int,
+        fromDate: String?,
+        toDate: String?,
+    ): Flow<List<InterestEntity>>
+
     @Upsert
     suspend fun upsertAll(interests: List<InterestEntity>)
 

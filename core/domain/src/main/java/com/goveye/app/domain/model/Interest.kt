@@ -9,4 +9,7 @@ data class Interest(
     val registrationDate: String?,
     val publishedDate: String?,
     val fieldsJson: String,
+    val parsedAmountPence: Long? = null,
+    val currencyCode: String? = null,
+    val bucket: String? = null,
 )
