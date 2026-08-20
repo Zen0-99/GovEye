@@ -200,13 +200,14 @@ Plans:
   2. Income totals per category are summarized
   3. Free-text parsing handles the Interests API's typed fields array robustly
 
-**Plans**: 3 plans
+**Plans**: 4 plans
 
 Plans:
 
 - [ ] 09-01: Build-side — build_interests.py, monetary parser, update-interests.yml, merge_dbs.py, schema JSON
 - [ ] 09-02: Android data layer — entity migration (v1→v2), repository rewrite, 7th patch stream, DAO date query
 - [ ] 09-03: Android UI — Interests tab, dashboard grid, monthly navigation, date filter, bucket detail screen
+- [ ] 09-04: CI infrastructure — recess-gated workflows, seed automation, checkpoint/resume, Bills smart delta
 
 ### Phase 10: Polish & Release
 
