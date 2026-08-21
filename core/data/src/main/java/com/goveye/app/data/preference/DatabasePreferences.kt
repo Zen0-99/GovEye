@@ -68,6 +68,9 @@ class DatabasePreferences @Inject constructor(@Named("database") private val dat
     /** Current local party-stats stream version, or null if never updated. */
     val partyStatsVersion: Flow<Int?> = dataStore.data.map { it[PARTY_STATS_VERSION_KEY] }
 
+    /** Current local historical-members stream version, or null if never updated. */
+    val historicalMembersVersion: Flow<Int?> = dataStore.data.map { it[HISTORICAL_MEMBERS_VERSION_KEY] }
+
     /**
      * Seed DB version — null means first launch (seed DB not yet downloaded).
      * Set to 1 after the first-launch download completes.
@@ -122,6 +125,10 @@ class DatabasePreferences @Inject constructor(@Named("database") private val dat
         dataStore.edit { it[PARTY_STATS_VERSION_KEY] = version }
     }
 
+    suspend fun setHistoricalMembersVersion(version: Int) {
+        dataStore.edit { it[HISTORICAL_MEMBERS_VERSION_KEY] = version }
+    }
+
     suspend fun setSeedVersion(version: Int) {
         dataStore.edit { it[SEED_VERSION_KEY] = version }
     }
@@ -161,6 +168,7 @@ class DatabasePreferences @Inject constructor(@Named("database") private val dat
         val MP_LINKS_VERSION_KEY = intPreferencesKey("mp_links_version")
         val MANIFESTOS_VERSION_KEY = intPreferencesKey("manifestos_version")
         val PARTY_STATS_VERSION_KEY = intPreferencesKey("party_stats_version")
+        val HISTORICAL_MEMBERS_VERSION_KEY = intPreferencesKey("historical_members_version")
         val SEED_VERSION_KEY = intPreferencesKey("seed_version")
         val LAST_NOTIFIED_DIVISION_ID_KEY = intPreferencesKey("last_notified_division_id")
         val LAST_NOTIFIED_BILL_STAGES_KEY = stringPreferencesKey("last_notified_bill_stages")

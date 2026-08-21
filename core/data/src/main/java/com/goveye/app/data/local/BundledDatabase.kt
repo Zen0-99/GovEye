@@ -11,6 +11,7 @@ import com.goveye.app.data.local.dao.DebateSpeechDao
 import com.goveye.app.data.local.dao.DivisionDao
 import com.goveye.app.data.local.dao.ExpenseDao
 import com.goveye.app.data.local.dao.HansardDao
+import com.goveye.app.data.local.dao.HistoricalMemberDao
 import com.goveye.app.data.local.dao.InterestDao
 import com.goveye.app.data.local.dao.ManifestoDao
 import com.goveye.app.data.local.dao.MpDao
@@ -27,6 +28,8 @@ import com.goveye.app.data.local.entity.DivisionEntity
 import com.goveye.app.data.local.entity.DivisionVoteEntity
 import com.goveye.app.data.local.entity.ExpenseEntity
 import com.goveye.app.data.local.entity.HansardContributionEntity
+import com.goveye.app.data.local.entity.HistoricalMemberEntity
+import com.goveye.app.data.local.entity.HistoricalMemberFts4Entity
 import com.goveye.app.data.local.entity.InterestEntity
 import com.goveye.app.data.local.entity.MpCommitteeCrossRef
 import com.goveye.app.data.local.entity.MpEntity
@@ -73,9 +76,11 @@ import com.goveye.app.data.local.entity.RecessDatesMetaEntity
         MpLinkEntity::class,
         PartyManifestoEntity::class,
         PartyManifestoFts4Entity::class,
-        PartyStatsEntity::class
+        PartyStatsEntity::class,
+        HistoricalMemberEntity::class,
+        HistoricalMemberFts4Entity::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -94,6 +99,7 @@ abstract class BundledDatabase : RoomDatabase() {
     abstract fun mpLinkDao(): MpLinkDao
     abstract fun manifestoDao(): ManifestoDao
     abstract fun partyStatsDao(): PartyStatsDao
+    abstract fun historicalMemberDao(): HistoricalMemberDao
     abstract fun databaseUpdateDao(): DatabaseUpdateDao
 
     companion object {

@@ -635,7 +635,8 @@ class DatabaseUpdateManager @Inject constructor(
         DatabaseUpdateApi.EXPENSES_TAG to "expenses",
         DatabaseUpdateApi.MP_LINKS_TAG to "mp-links",
         DatabaseUpdateApi.MANIFESTOS_TAG to "manifestos",
-        DatabaseUpdateApi.PARTY_STATS_TAG to "party-stats"
+        DatabaseUpdateApi.PARTY_STATS_TAG to "party-stats",
+        DatabaseUpdateApi.HISTORICAL_MEMBERS_TAG to "historical-members"
     )
 
     private suspend fun fetchAllManifests(): List<Pair<String, DatabaseManifest>?> = coroutineScope {
@@ -672,6 +673,7 @@ class DatabaseUpdateManager @Inject constructor(
         "mp-links" -> "mp_links.db"
         "manifestos" -> "manifestos.db"
         "party-stats" -> "party_stats.db"
+        "historical-members" -> "historical_members.db"
         else -> "$streamName.db"
     }
 
@@ -693,6 +695,7 @@ class DatabaseUpdateManager @Inject constructor(
         "mp-links" -> listOf("mp_links")
         "manifestos" -> listOf("party_manifestos")
         "party-stats" -> listOf("party_stats")
+        "historical-members" -> listOf("historical_members", "historical_members_fts4")
         else -> emptyList()
     }
 
@@ -712,6 +715,7 @@ class DatabaseUpdateManager @Inject constructor(
         "mp-links" -> preferences.mpLinksVersion.first()
         "manifestos" -> preferences.manifestosVersion.first()
         "party-stats" -> preferences.partyStatsVersion.first()
+        "historical-members" -> preferences.historicalMembersVersion.first()
         else -> null
     }
 
@@ -732,6 +736,7 @@ class DatabaseUpdateManager @Inject constructor(
             "mp-links" -> preferences.setMpLinksVersion(version)
             "manifestos" -> preferences.setManifestosVersion(version)
             "party-stats" -> preferences.setPartyStatsVersion(version)
+            "historical-members" -> preferences.setHistoricalMembersVersion(version)
         }
     }
 

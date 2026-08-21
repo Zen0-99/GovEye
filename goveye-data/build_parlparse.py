@@ -30,7 +30,7 @@ from api_helper import BATCH_SIZE, api_get, logger
 
 # --- Constants ---
 
-PARLPARSE_PEOPLE_URL = "https://parser.theyworkforyou.com/people.json"
+PARLPARSE_PEOPLE_URL = "https://raw.githubusercontent.com/mysociety/parlparse/master/members/people.json"
 TABLE_NAMES = ["mp_links"]
 
 # --- Honorifics stripping (reused from build_debates.py) ---
