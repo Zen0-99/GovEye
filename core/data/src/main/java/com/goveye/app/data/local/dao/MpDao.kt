@@ -15,6 +15,17 @@ interface MpDao {
     @Query("SELECT * FROM mps WHERE isActive = 1 ORDER BY nameListAs")
     fun pagingSource(): PagingSource<Int, MpEntity>
 
+    @Query("SELECT * FROM mps WHERE partyId = :partyId AND isActive = 1 ORDER BY nameListAs")
+    fun pagingSourceByParty(partyId: Int): PagingSource<Int, MpEntity>
+
+    @Query(
+        """SELECT partyId, partyName, partyAbbreviation, partyBackgroundColour,
+           partyForegroundColour, COUNT(*) as seats
+           FROM mps WHERE isActive = 1 AND partyId IS NOT NULL AND partyId > 0
+           GROUP BY partyId ORDER BY partyName"""
+    )
+    suspend fun getActiveParties(): List<PartySummary>
+
     @Query("SELECT * FROM mps WHERE id = :id")
     fun observeMp(id: Int): Flow<MpEntity?>
 

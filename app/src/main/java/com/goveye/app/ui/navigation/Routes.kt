@@ -32,3 +32,9 @@ data class BillDetailRoute(val billId: Int) : NavKey
 
 @Serializable
 data class InterestBucketDetailRoute(val memberId: Int, val bucketLabel: String) : NavKey
+
+@Serializable
+data class TranscriptRoute(val divisionId: Int, val divisionTitle: String) : NavKey
+
+@Serializable
+data class PartyRoute(val partyId: Int) : NavKey

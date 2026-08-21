@@ -1,5 +1,6 @@
 package com.goveye.app.ui.screens.bills
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,13 +29,16 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.goveye.app.domain.model.Bill
 import com.goveye.app.domain.model.SyncStatus
+import com.goveye.app.ui.components.StickyInfoCard
 import com.goveye.app.ui.components.SyncStatusBanner
 import com.goveye.app.ui.theme.padding
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun BillsTabContent(
     onNavigateToBill: (Int) -> Unit,
     searchQuery: String = "",
+    showInfoCards: Boolean = true,
     modifier: Modifier = Modifier,
     viewModel: BillBrowseViewModel = hiltViewModel()
 ) {
@@ -79,12 +83,21 @@ fun BillsTabContent(
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(
-                        horizontal = 12.dp,
-                        vertical = MaterialTheme.padding.small
+                        start = 12.dp,
+                        end = 12.dp,
+                        bottom = MaterialTheme.padding.small
                     ),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(displayBills, key = { it.id }) { bill ->
+                    if (showInfoCards) {
+                        stickyHeader(key = "tab-info") {
+                            StickyInfoCard(
+                                title = "Bills",
+                                subtitle = "Track legislation as it moves through Parliament."
+                            )
+                        }
+                    }
+                    items(displayBills, key = { it.id }, contentType = { "bill_card" }) { bill ->
                         BillCard(
                             bill = bill,
                             onClick = { onNavigateToBill(bill.id) }

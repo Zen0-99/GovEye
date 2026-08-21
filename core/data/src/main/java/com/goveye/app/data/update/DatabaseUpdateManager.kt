@@ -10,14 +10,19 @@ import com.goveye.app.data.local.BundledDatabase
 import com.goveye.app.data.local.dao.DatabaseUpdateDao
 import com.goveye.app.data.local.entity.BillEntity
 import com.goveye.app.data.local.entity.BillStageEntity
+import com.goveye.app.data.local.entity.BioDataEntity
 import com.goveye.app.data.local.entity.CommitteeEntity
 import com.goveye.app.data.local.entity.DebateSpeechEntity
 import com.goveye.app.data.local.entity.DivisionEntity
 import com.goveye.app.data.local.entity.DivisionVoteEntity
+import com.goveye.app.data.local.entity.ExpenseEntity
 import com.goveye.app.data.local.entity.HansardContributionEntity
 import com.goveye.app.data.local.entity.InterestEntity
 import com.goveye.app.data.local.entity.MpCommitteeCrossRef
 import com.goveye.app.data.local.entity.MpEntity
+import com.goveye.app.data.local.entity.MpLinkEntity
+import com.goveye.app.data.local.entity.PartyManifestoEntity
+import com.goveye.app.data.local.entity.PartyStatsEntity
 import com.goveye.app.data.local.entity.RecessDateEntity
 import com.goveye.app.data.local.entity.RecessDatesMetaEntity
 import com.goveye.app.data.preference.DatabasePreferences
@@ -522,6 +527,36 @@ class DatabaseUpdateManager @Inject constructor(
                         json.decodeFromJsonElement<DebateSpeechEntity>(it)
                     }
                 )
+
+                "bio_data" -> updateDao.upsertBioData(
+                    upsertList.map {
+                        json.decodeFromJsonElement<BioDataEntity>(it)
+                    }
+                )
+
+                "expenses" -> updateDao.upsertExpenses(
+                    upsertList.map {
+                        json.decodeFromJsonElement<ExpenseEntity>(it)
+                    }
+                )
+
+                "mp_links" -> updateDao.upsertMpLinks(
+                    upsertList.map {
+                        json.decodeFromJsonElement<MpLinkEntity>(it)
+                    }
+                )
+
+                "party_manifestos" -> updateDao.upsertManifestos(
+                    upsertList.map {
+                        json.decodeFromJsonElement<PartyManifestoEntity>(it)
+                    }
+                )
+
+                "party_stats" -> updateDao.upsertPartyStats(
+                    upsertList.map {
+                        json.decodeFromJsonElement<PartyStatsEntity>(it)
+                    }
+                )
                 // mps_fts is NOT handled — auto-synced by FTS4 triggers (Pitfall 2)
             }
         }
@@ -567,6 +602,16 @@ class DatabaseUpdateManager @Inject constructor(
                     obj["debateGid"]!!.jsonPrimitive.content,
                     obj["speechGid"]!!.jsonPrimitive.content
                 )
+
+                "bio_data" -> updateDao.deleteBioData(obj["mpId"]!!.jsonPrimitive.intOrNull!!)
+
+                "expenses" -> updateDao.deleteExpense(obj["id"]!!.jsonPrimitive.intOrNull!!)
+
+                "mp_links" -> updateDao.deleteMpLink(obj["mpId"]!!.jsonPrimitive.intOrNull!!)
+
+                "party_manifestos" -> updateDao.deleteManifesto(obj["partyId"]!!.jsonPrimitive.intOrNull!!)
+
+                "party_stats" -> updateDao.deletePartyStats(obj["partyId"]!!.jsonPrimitive.intOrNull!!)
             }
         }
     }
@@ -585,7 +630,12 @@ class DatabaseUpdateManager @Inject constructor(
         DatabaseUpdateApi.COMMITTEES_TAG to "committees",
         DatabaseUpdateApi.RECESS_TAG to "recess",
         DatabaseUpdateApi.INTERESTS_TAG to "interests",
-        DatabaseUpdateApi.DEBATES_TAG to "debates"
+        DatabaseUpdateApi.DEBATES_TAG to "debates",
+        DatabaseUpdateApi.BIO_DATA_TAG to "bio-data",
+        DatabaseUpdateApi.EXPENSES_TAG to "expenses",
+        DatabaseUpdateApi.MP_LINKS_TAG to "mp-links",
+        DatabaseUpdateApi.MANIFESTOS_TAG to "manifestos",
+        DatabaseUpdateApi.PARTY_STATS_TAG to "party-stats"
     )
 
     private suspend fun fetchAllManifests(): List<Pair<String, DatabaseManifest>?> = coroutineScope {
@@ -617,6 +667,11 @@ class DatabaseUpdateManager @Inject constructor(
         "recess" -> "recess.db"
         "interests" -> "interests.db"
         "debates" -> "debates.db"
+        "bio-data" -> "bio_data.db"
+        "expenses" -> "expenses.db"
+        "mp-links" -> "mp_links.db"
+        "manifestos" -> "manifestos.db"
+        "party-stats" -> "party_stats.db"
         else -> "$streamName.db"
     }
 
@@ -633,6 +688,11 @@ class DatabaseUpdateManager @Inject constructor(
         "recess" -> listOf("recess_dates", "recess_dates_meta")
         "interests" -> listOf("interests")
         "debates" -> listOf("debate_speeches")
+        "bio-data" -> listOf("bio_data")
+        "expenses" -> listOf("expenses")
+        "mp-links" -> listOf("mp_links")
+        "manifestos" -> listOf("party_manifestos")
+        "party-stats" -> listOf("party_stats")
         else -> emptyList()
     }
 
@@ -647,6 +707,11 @@ class DatabaseUpdateManager @Inject constructor(
         "committees" -> preferences.committeesVersion.first()
         "recess" -> preferences.recessVersion.first()
         "interests" -> preferences.interestsVersion.first()
+        "bio-data" -> preferences.bioDataVersion.first()
+        "expenses" -> preferences.expensesVersion.first()
+        "mp-links" -> preferences.mpLinksVersion.first()
+        "manifestos" -> preferences.manifestosVersion.first()
+        "party-stats" -> preferences.partyStatsVersion.first()
         else -> null
     }
 
@@ -662,6 +727,11 @@ class DatabaseUpdateManager @Inject constructor(
             "committees" -> preferences.setCommitteesVersion(version)
             "recess" -> preferences.setRecessVersion(version)
             "interests" -> preferences.setInterestsVersion(version)
+            "bio-data" -> preferences.setBioDataVersion(version)
+            "expenses" -> preferences.setExpensesVersion(version)
+            "mp-links" -> preferences.setMpLinksVersion(version)
+            "manifestos" -> preferences.setManifestosVersion(version)
+            "party-stats" -> preferences.setPartyStatsVersion(version)
         }
     }
 

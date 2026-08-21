@@ -1,5 +1,7 @@
 package com.goveye.app.ui.screens.directory
 
+import android.util.Log
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
@@ -49,12 +52,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import com.goveye.app.data.preference.DirectoryViewMode
 import com.goveye.app.ui.components.FloatingSearchBar
+import com.goveye.app.ui.components.InfoCard
+import com.goveye.app.ui.components.StickyInfoCard
 import com.goveye.app.ui.components.TabTextWithBadge
 import com.goveye.app.ui.screens.bills.BillsTabContent
 import com.goveye.app.ui.screens.divisions.DivisionsTabContent
@@ -73,17 +79,20 @@ fun DirectoryScreen(
     onNavigateToProfile: (Int) -> Unit,
     onNavigateToDivision: (Int, Int) -> Unit = { _, _ -> },
     onNavigateToBill: (Int) -> Unit = {},
+    onNavigateToParty: (Int) -> Unit = {},
+    showInfoCards: Boolean = true,
     modifier: Modifier = Modifier,
     viewModel: DirectoryViewModel = hiltViewModel()
 ) {
     val viewMode by viewModel.viewMode.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val lazyPagingItems = viewModel.pagedMps.collectAsLazyPagingItems()
-    val searchResults by viewModel.searchResults.collectAsStateWithLifecycle(emptyList())
-    val filteredMps by viewModel.filteredMps.collectAsStateWithLifecycle(emptyList())
+    val searchResults by viewModel.searchResults.collectAsStateWithLifecycle()
+    val filteredMps by viewModel.filteredMps.collectAsStateWithLifecycle()
     val tabCounts by viewModel.tabCounts.collectAsStateWithLifecycle(emptyMap())
     val filterState by viewModel.filterState.collectAsStateWithLifecycle(DirectoryFilterState())
     val distinctParties by viewModel.distinctParties.collectAsStateWithLifecycle(emptyList())
+    val parties by viewModel.parties.collectAsStateWithLifecycle(emptyList())
     var showFilterSheet by remember { mutableStateOf(false) }
 
     // Save tab index across navigation — rememberSaveable survives screen changes
@@ -91,6 +100,13 @@ fun DirectoryScreen(
     val pagerState = rememberPagerState(
         initialPage = savedTabIndex,
         pageCount = { DirectoryTab.entries.size }
+    )
+
+    Log.i(
+        "GovEye/Directory",
+        "DirectoryScreen compose — searchQuery='$searchQuery' pagingItems=${lazyPagingItems.itemCount} " +
+            "searchResults=${searchResults.size} filteredMps=${filteredMps.size} " +
+            "hasFilters=${filterState.hasActiveFilters} currentPage=${pagerState.currentPage}"
     )
     val coroutineScope = rememberCoroutineScope()
 
@@ -107,14 +123,20 @@ fun DirectoryScreen(
         else -> "Search…"
     }
 
+    // Stable lambdas — prevents ConfigureSearchBar's DisposableEffect from
+    // firing on every recomposition (which would trigger FloatingSearchBar
+    // recompositions at the app shell level during navigation transitions).
+    val onQueryChange = remember(viewModel) { viewModel::updateSearchQuery }
+    val onFilterClick = remember { { showFilterSheet = true } }
+
     // Configure the global search bar — rendered at the app shell level
     com.goveye.app.ui.components.ConfigureSearchBar(
         config = com.goveye.app.ui.components.SearchBarConfig(
             isVisible = true,
             query = searchQuery,
             placeholder = searchPlaceholder,
-            onQueryChange = viewModel::updateSearchQuery,
-            onFilterClick = { showFilterSheet = true },
+            onQueryChange = onQueryChange,
+            onFilterClick = onFilterClick,
             hasActiveFilters = filterState.hasActiveFilters
         )
     )
@@ -144,11 +166,19 @@ fun DirectoryScreen(
             }
         }
 
-        // Pager — each tab has its own content
+        // Pager — each tab has its own content.
+        // Offscreen page limiting: only compose the current page ± 1 to
+        // avoid jank from all 4 tabs composing their lists simultaneously.
+        // Pattern from Miko's AnimeLibraryPager.
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.fillMaxSize().weight(1f)
         ) { page ->
+            if (page !in ((pagerState.currentPage - 1)..(pagerState.currentPage + 1))) {
+                Log.i("GovEye/Directory", "Pager page $page skipped (offscreen)")
+                return@HorizontalPager
+            }
+            Log.i("GovEye/Directory", "Pager composing page $page: ${DirectoryTab.entries[page]}")
             when (DirectoryTab.entries[page]) {
                 DirectoryTab.OFFICIALS -> OfficialsTabContent(
                     searchQuery = searchQuery,
@@ -157,20 +187,26 @@ fun DirectoryScreen(
                     searchResults = searchResults,
                     filteredMps = filteredMps,
                     hasActiveFilters = filterState.hasActiveFilters,
-                    onNavigateToProfile = onNavigateToProfile
+                    onNavigateToProfile = onNavigateToProfile,
+                    showInfoCards = showInfoCards
                 )
 
-                DirectoryTab.PARTIES -> PlaceholderTabContent("Parties")
+                DirectoryTab.PARTIES -> PartiesTabContent(
+                    parties = parties,
+                    onNavigateToParty = onNavigateToParty
+                )
 
                 DirectoryTab.BILLS -> BillsTabContent(
                     onNavigateToBill = onNavigateToBill,
-                    searchQuery = searchQuery
+                    searchQuery = searchQuery,
+                    showInfoCards = showInfoCards
                 )
 
                 DirectoryTab.DIVISIONS -> DivisionsTabContent(
                     onNavigateToDivision = onNavigateToDivision,
                     houseFilter = filterState.houseFilter,
-                    searchQuery = searchQuery
+                    searchQuery = searchQuery,
+                    showInfoCards = showInfoCards
                 )
             }
         }
@@ -202,6 +238,7 @@ fun DirectoryScreen(
  * Officials tab — shows the MP directory (list or grid).
  * This is the only tab with real data; others are placeholders.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun OfficialsTabContent(
     searchQuery: String,
@@ -210,8 +247,13 @@ private fun OfficialsTabContent(
     searchResults: List<com.goveye.app.domain.model.Mp>,
     filteredMps: List<com.goveye.app.domain.model.Mp>,
     hasActiveFilters: Boolean,
-    onNavigateToProfile: (Int) -> Unit
+    onNavigateToProfile: (Int) -> Unit,
+    showInfoCards: Boolean = true
 ) {
+    Log.i(
+        "GovEye/Directory",
+        "OfficialsTabContent compose — searchQuery='$searchQuery' pagingItems=${lazyPagingItems.itemCount} searchResults=${searchResults.size} filteredMps=${filteredMps.size} hasFilters=$hasActiveFilters"
+    )
     // Priority: search results > filtered browsing > paged browsing
     if (searchQuery.isNotBlank()) {
         if (searchResults.isEmpty()) {
@@ -228,9 +270,19 @@ private fun OfficialsTabContent(
             }
         } else {
             LazyColumn(
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(searchResults, key = { it.id }) { mp ->
+                if (showInfoCards) {
+                    stickyHeader(key = "tab-info") {
+                        StickyInfoCard(
+                            title = "Officials",
+                            subtitle = "Browse all MPs and Lords in the UK Parliament."
+                        )
+                    }
+                }
+                items(searchResults, key = { it.id }, contentType = { "mp_row" }) { mp ->
                     MpListRow(
                         mp = mp,
                         onClick = { onNavigateToProfile(mp.id) }
@@ -257,8 +309,20 @@ private fun OfficialsTabContent(
         } else {
             when (viewMode) {
                 DirectoryViewMode.LIST -> {
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(filteredMps, key = { it.id }) { mp ->
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (showInfoCards) {
+                            stickyHeader(key = "tab-info") {
+                                StickyInfoCard(
+                                    title = "Officials",
+                                    subtitle = "Browse all MPs and Lords in the UK Parliament."
+                                )
+                            }
+                        }
+                        items(filteredMps, key = { it.id }, contentType = { "mp_row" }) { mp ->
                             MpListRow(
                                 mp = mp,
                                 onClick = { onNavigateToProfile(mp.id) }
@@ -278,7 +342,15 @@ private fun OfficialsTabContent(
                         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
                         verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small)
                     ) {
-                        items(filteredMps, key = { it.id }) { mp ->
+                        if (showInfoCards) {
+                            item(key = "tab-info", span = { GridItemSpan(maxLineSpan) }) {
+                                InfoCard(
+                                    title = "Officials",
+                                    subtitle = "Browse all MPs and Lords in the UK Parliament."
+                                )
+                            }
+                        }
+                        items(filteredMps, key = { it.id }, contentType = { "mp_grid" }) { mp ->
                             MpGridCard(
                                 mp = mp,
                                 onClick = { onNavigateToProfile(mp.id) }
@@ -336,7 +408,19 @@ private fun OfficialsTabContent(
             else -> {
                 when (viewMode) {
                     DirectoryViewMode.LIST -> {
-                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            if (showInfoCards) {
+                                stickyHeader(key = "tab-info") {
+                                    StickyInfoCard(
+                                        title = "Officials",
+                                        subtitle = "Browse all MPs and Lords in the UK Parliament."
+                                    )
+                                }
+                            }
                             items(
                                 count = lazyPagingItems.itemCount,
                                 key = lazyPagingItems.itemKey { it.id },
@@ -364,6 +448,14 @@ private fun OfficialsTabContent(
                             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
                             verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small)
                         ) {
+                            if (showInfoCards) {
+                                item(key = "tab-info", span = { GridItemSpan(maxLineSpan) }) {
+                                    InfoCard(
+                                        title = "Officials",
+                                        subtitle = "Browse all MPs and Lords in the UK Parliament."
+                                    )
+                                }
+                            }
                             items(
                                 count = lazyPagingItems.itemCount,
                                 key = lazyPagingItems.itemKey { it.id },

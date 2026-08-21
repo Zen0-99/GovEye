@@ -1,5 +1,6 @@
 package com.goveye.app.data.repo
 
+import android.util.Log
 import com.goveye.app.data.local.dao.DivisionDao
 import com.goveye.app.data.local.dao.FollowDao
 import com.goveye.app.data.local.dao.RecessDateDao
@@ -9,8 +10,10 @@ import com.goveye.app.domain.model.Division
 import java.time.LocalDate
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 
 /**
@@ -50,11 +53,18 @@ class FeedRepository @Inject constructor(
     /**
      * Observe the full feed data (all divisions, plus the followed-MP highlight set).
      * The UI layer applies the "Following only" filter on top of this.
+     * Default limit of 50 — loads only the most recent 50 divisions for fast
+     * initial render. The UI can request more as the user scrolls.
      */
-    fun observeFeedData(limit: Int = 200): Flow<FeedData> = combine(
+    fun observeFeedData(limit: Int = 50): Flow<FeedData> = combine(
         divisionDao.observeDivisions(limit),
         followDao.observeUnmutedMemberIds()
     ) { divisionEntities, followedIds ->
+        val dbStart = System.currentTimeMillis()
+        Log.i(
+            "GovEye/FeedRepo",
+            "observeFeedData emit — divisions=${divisionEntities.size} followedIds=${followedIds.size} limit=$limit"
+        )
         val divisionIdsWithFollowedVotes = if (followedIds.isEmpty()) {
             emptySet()
         } else {
@@ -65,14 +75,20 @@ class FeedRepository @Inject constructor(
             followedMemberIds = followedIds.toSet(),
             divisionsWithFollowedVotes = divisionIdsWithFollowedVotes,
             isLoading = false
-        )
-    }
+        ).also {
+            val dbTime = System.currentTimeMillis() - dbStart
+            Log.i(
+                "GovEye/FeedRepo",
+                "FeedData built — ${it.divisions.size} divisions, votesWithFollowed=${it.divisionsWithFollowedVotes.size} dbTime=${dbTime}ms"
+            )
+        }
+    }.flowOn(Dispatchers.Default)
 
     /**
      * Observe the filtered feed — only divisions where at least one unmuted
      * followed MP voted. Used when the "Following only" filter is ON.
      */
-    fun observeFeedDataFiltered(limit: Int = 200): Flow<FeedData> = observeFeedData(limit).map { feedData ->
+    fun observeFeedDataFiltered(limit: Int = 50): Flow<FeedData> = observeFeedData(limit).map { feedData ->
         feedData.copy(
             divisions = feedData.divisions.filter { it.id in feedData.divisionsWithFollowedVotes }
         )

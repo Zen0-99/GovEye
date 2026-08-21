@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Article
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Public
@@ -71,6 +72,7 @@ data class DivisionDetailState(
     val division: Division? = null,
     val votes: List<DivisionVote> = emptyList(),
     val partyBreakdown: List<PartyBreakdown> = emptyList(),
+    val speechCount: Int = 0,
     val isLoading: Boolean = false
 )
 
@@ -99,10 +101,12 @@ class DivisionDetailViewModel @Inject constructor(private val votesRepository: V
                 // Re-fetch votes + breakdown each time the division emits.
                 val votes = votesRepository.getVotesForDivision(divisionId)
                 val breakdown = votesRepository.getPartyBreakdown(divisionId)
+                val speechCount = votesRepository.countSpeechesForDivision(divisionId)
                 _state.value = DivisionDetailState(
                     division = division,
                     votes = votes,
                     partyBreakdown = breakdown,
+                    speechCount = speechCount,
                     isLoading = false
                 )
             }
@@ -134,6 +138,7 @@ fun DivisionDetailScreen(
     house: Int,
     onBack: () -> Unit,
     onNavigateToProfile: (Int) -> Unit,
+    onNavigateToTranscript: (divisionId: Int, divisionTitle: String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
     viewModel: DivisionDetailViewModel = hiltViewModel()
 ) {
@@ -228,6 +233,7 @@ fun DivisionDetailScreen(
                             constituency = vote.constituencyName
                         )
                     },
+                    onNavigateToTranscript = onNavigateToTranscript,
                     searchQuery = searchQuery,
                     voteFilter = voteFilter,
                     modifier = Modifier.fillMaxSize().padding(innerPadding)
@@ -271,6 +277,7 @@ private fun DivisionDetailContent(
     division: Division,
     state: DivisionDetailState,
     onNavigateToProfile: (DivisionVote) -> Unit,
+    onNavigateToTranscript: (Int, String) -> Unit,
     searchQuery: String,
     voteFilter: VoteFilter,
     modifier: Modifier = Modifier
@@ -286,7 +293,15 @@ private fun DivisionDetailContent(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Header card (always visible — contains the main result bar)
-        item { DivisionHeaderCard(division = division) }
+        item {
+            DivisionHeaderCard(
+                division = division,
+                speechCount = state.speechCount,
+                onNavigateToTranscript = {
+                    onNavigateToTranscript(division.id, division.title)
+                }
+            )
+        }
 
         // Party breakdown — collapsible. Hidden while searching so the user
         // only sees the people matching their query (the main result bar in
@@ -363,7 +378,7 @@ private fun DivisionDetailContent(
 enum class VoteFilter { ALL, AYE, NO }
 
 @Composable
-private fun DivisionHeaderCard(division: Division) {
+private fun DivisionHeaderCard(division: Division, speechCount: Int = 0, onNavigateToTranscript: () -> Unit = {}) {
     // TWFY debate URL — stored in the DB at build time (scraped from the
     // TWFY division page). Falls back to the TWFY division page URL if not
     // available (e.g. older DB without the column populated).
@@ -443,6 +458,25 @@ private fun DivisionHeaderCard(division: Division) {
                     noCount = division.noCount,
                     barHeight = 32.dp
                 )
+            }
+            // View Transcript button — only shown if debate speeches exist
+            // in the bundled DB for this division.
+            if (speechCount > 0) {
+                androidx.compose.material3.FilledTonalButton(
+                    onClick = onNavigateToTranscript,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.Article,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    androidx.compose.foundation.layout.Spacer(modifier = Modifier.size(8.dp))
+                    Text(
+                        text = "View Transcript ($speechCount speeches)",
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
             }
         }
     }

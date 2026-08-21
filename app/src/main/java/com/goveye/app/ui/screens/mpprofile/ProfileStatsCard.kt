@@ -14,13 +14,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.goveye.app.data.local.entity.BioDataEntity
 import com.goveye.app.domain.model.Mp
 import com.goveye.app.ui.theme.padding
 import java.time.LocalDate
 import java.time.Period
 
 @Composable
-fun ProfileStatsCard(mp: Mp, modifier: Modifier = Modifier) {
+fun ProfileStatsCard(mp: Mp, bioData: BioDataEntity? = null, modifier: Modifier = Modifier) {
     val yearsInParliament = mp.membershipStartDate?.let { startDate ->
         try {
             val start = LocalDate.parse(startDate.take(10))
@@ -30,8 +31,29 @@ fun ProfileStatsCard(mp: Mp, modifier: Modifier = Modifier) {
         }
     }
 
+    val age = bioData?.dateOfBirth?.let { dob ->
+        try {
+            val birth = LocalDate.parse(dob.take(10))
+            Period.between(birth, LocalDate.now()).years
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    val maidenSpeechFormatted = bioData?.maidenSpeechDate?.let { date ->
+        try {
+            LocalDate.parse(date.take(10)).let {
+                "${it.dayOfMonth} ${it.month.name.lowercase().replaceFirstChar { c -> c.uppercase() }} ${it.year}"
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     val stats = buildList {
         yearsInParliament?.let { add("Years in\nParliament" to "$it") }
+        age?.let { add("Age" to "$it") }
+        maidenSpeechFormatted?.let { add("Maiden\nSpeech" to it) }
         mp.constituency?.name?.let { add("Constituency" to it) }
     }
 

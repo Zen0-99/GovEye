@@ -18,7 +18,7 @@ import androidx.compose.ui.unit.dp
 fun FeedDateHeader(dateHeader: String, modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface
+        color = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
         Text(
             text = dateHeader,

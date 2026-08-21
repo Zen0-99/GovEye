@@ -19,9 +19,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.AccountBalance
+import androidx.compose.material.icons.outlined.Business
 import androidx.compose.material.icons.outlined.CardGiftcard
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.FilterList
+import androidx.compose.material.icons.outlined.Flight
+import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Paid
 import androidx.compose.material.icons.outlined.RealEstateAgent
@@ -41,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.goveye.app.data.local.dao.ExpenseBucketTotal
 import com.goveye.app.domain.model.Interest
 import com.goveye.app.ui.theme.padding
 import java.time.LocalDate
@@ -73,6 +77,7 @@ private val BUCKET_ICONS: Map<String, ImageVector> = mapOf(
 fun InterestsTabContent(
     memberId: Int,
     interests: List<Interest>,
+    expenseBucketTotals: List<ExpenseBucketTotal> = emptyList(),
     onNavigateToBucketDetail: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -104,7 +109,7 @@ fun InterestsTabContent(
         }
     }
 
-    if (interests.isEmpty()) {
+    if (interests.isEmpty() && expenseBucketTotals.isEmpty()) {
         // --- Empty state (R2) ---
         Box(
             modifier = modifier.fillMaxSize(),
@@ -115,6 +120,28 @@ fun InterestsTabContent(
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+        return
+    }
+
+    // If interests is empty but expenses exist, show only the expenses section
+    if (interests.isEmpty()) {
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            modifier = modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                horizontal = MaterialTheme.padding.medium,
+                vertical = MaterialTheme.padding.medium
+            ),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small)
+        ) {
+            item(span = { GridItemSpan(2) }) {
+                ExpenseSectionHeader()
+            }
+            items(expenseBucketTotals, key = { it.bucket }) { total ->
+                ExpenseBucketCard(total = total)
+            }
         }
         return
     }
@@ -211,6 +238,16 @@ fun InterestsTabContent(
                 summary = summary,
                 onClick = { onNavigateToBucketDetail(summary.bucketLabel) }
             )
+        }
+
+        // --- MP Expenses section (IPSA) ---
+        if (expenseBucketTotals.isNotEmpty()) {
+            item(span = { GridItemSpan(2) }) {
+                ExpenseSectionHeader()
+            }
+            items(expenseBucketTotals, key = { "expense_${it.bucket}" }) { total ->
+                ExpenseBucketCard(total = total)
+            }
         }
     }
 
@@ -422,6 +459,74 @@ private fun sumPenceForMonth(interests: List<Interest>, month: YearMonth): Long 
 private fun computePercentChange(current: Long, previous: Long): Float? {
     if (previous == 0L) return null
     return ((current - previous).toFloat() / previous.toFloat()) * 100f
+}
+
+// --- IPSA Expense section ---
+
+private val EXPENSE_BUCKET_ICONS: Map<String, ImageVector> = mapOf(
+    "Staffing" to Icons.Outlined.Groups,
+    "Office" to Icons.Outlined.Business,
+    "Travel" to Icons.Outlined.Flight,
+    "Other" to Icons.Outlined.Category
+)
+
+@Composable
+private fun ExpenseSectionHeader() {
+    Text(
+        text = "MP Expenses (IPSA)",
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.padding(
+            top = MaterialTheme.padding.large,
+            bottom = MaterialTheme.padding.small
+        )
+    )
+}
+
+@Composable
+private fun ExpenseBucketCard(total: ExpenseBucketTotal) {
+    val icon = EXPENSE_BUCKET_ICONS[total.bucket] ?: Icons.Outlined.Category
+    val formattedAmount = formatPenceToGbp(total.totalPence)
+
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(MaterialTheme.padding.medium),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = total.bucket,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(28.dp)
+            )
+            Text(
+                text = formattedAmount,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+            Text(
+                text = total.bucket,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+private fun formatPenceToGbp(pence: Long): String {
+    val pounds = pence / 100.0
+    return if (pounds >= 1000) {
+        "£${String.format("%,.0f", pounds)}"
+    } else {
+        "£${String.format("%,.2f", pounds)}"
+    }
 }
 
 /**

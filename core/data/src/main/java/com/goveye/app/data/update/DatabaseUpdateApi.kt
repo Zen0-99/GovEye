@@ -47,6 +47,11 @@ interface DatabaseUpdateApi {
         const val RECESS_TAG = "recess-latest"
         const val INTERESTS_TAG = "interests-latest"
         const val DEBATES_TAG = "debates-latest"
+        const val BIO_DATA_TAG = "bio-data-latest"
+        const val EXPENSES_TAG = "expenses-latest"
+        const val MP_LINKS_TAG = "mp-links-latest"
+        const val MANIFESTOS_TAG = "manifestos-latest"
+        const val PARTY_STATS_TAG = "party-stats-latest"
 
         private const val OWNER = "Zen0-99"
         private const val REPO = "goveye-data"

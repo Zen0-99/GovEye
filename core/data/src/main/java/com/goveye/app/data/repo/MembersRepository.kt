@@ -28,6 +28,9 @@ class MembersRepository @Inject constructor(
     private val membersApi: MembersApi,
     private val mapper: MemberMapper
 ) {
+
+    suspend fun getMpsByIds(ids: List<Int>): List<MpEntity> = mpDao.getMpsByIds(ids)
+
     fun observeAllMps(): Flow<RepositoryResult<List<Mp>>> = mpDao.observeAllMps().map { entities ->
         if (entities.isEmpty()) {
             RepositoryResult(emptyList(), SyncStatus.EMPTY)
@@ -92,6 +95,11 @@ class MembersRepository @Inject constructor(
      * Distinct party names from active MPs — for the filter bottom sheet's Party section.
      */
     fun observeDistinctParties(): Flow<List<String>> = mpDao.observeDistinctParties()
+
+    /**
+     * Active parties with seat counts — for the Parties tab.
+     */
+    suspend fun getActiveParties(): List<com.goveye.app.data.local.dao.PartySummary> = mpDao.getActiveParties()
 
     // --- In-memory cached profile data (one-shot fetches) ---
 

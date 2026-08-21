@@ -6,27 +6,39 @@ import com.goveye.app.data.local.BundledDatabase
 import com.goveye.app.data.local.LocalDatabase
 import com.goveye.app.data.local.dao.BillDao
 import com.goveye.app.data.local.dao.BillFollowDao
+import com.goveye.app.data.local.dao.BioDataDao
 import com.goveye.app.data.local.dao.CommitteeDao
 import com.goveye.app.data.local.dao.DatabaseUpdateDao
 import com.goveye.app.data.local.dao.DebateSpeechDao
 import com.goveye.app.data.local.dao.DivisionDao
+import com.goveye.app.data.local.dao.ExpenseDao
 import com.goveye.app.data.local.dao.FollowDao
 import com.goveye.app.data.local.dao.HansardDao
 import com.goveye.app.data.local.dao.InterestDao
+import com.goveye.app.data.local.dao.ManifestoDao
 import com.goveye.app.data.local.dao.MpDao
+import com.goveye.app.data.local.dao.MpLinkDao
 import com.goveye.app.data.local.dao.MpNotificationPreferenceDao
+import com.goveye.app.data.local.dao.PartyStatsDao
 import com.goveye.app.data.local.dao.RecessDateDao
 import com.goveye.app.data.local.dao.SearchDao
 import com.goveye.app.data.mapper.HansardMapper
 import com.goveye.app.data.mapper.MemberMapper
 import com.goveye.app.data.repo.BillFollowRepository
 import com.goveye.app.data.repo.BillsRepository
+import com.goveye.app.data.repo.BioDataRepository
 import com.goveye.app.data.repo.CommitteesRepository
+import com.goveye.app.data.repo.ExpensesRepository
 import com.goveye.app.data.repo.FeedRepository
 import com.goveye.app.data.repo.FollowRepository
 import com.goveye.app.data.repo.HansardRepository
 import com.goveye.app.data.repo.InterestsRepository
+import com.goveye.app.data.repo.ManifestoRepository
 import com.goveye.app.data.repo.MembersRepository
+import com.goveye.app.data.repo.MpLinksRepository
+import com.goveye.app.data.repo.NotificationPreferenceRepository
+import com.goveye.app.data.repo.PartyStatsRepository
+import com.goveye.app.data.repo.StatsRepository
 import com.goveye.app.data.repo.VotesRepository
 import dagger.Module
 import dagger.Provides
@@ -97,6 +109,21 @@ object DatabaseModule {
     fun provideDebateSpeechDao(database: BundledDatabase): DebateSpeechDao = database.debateSpeechDao()
 
     @Provides
+    fun provideBioDataDao(database: BundledDatabase): BioDataDao = database.bioDataDao()
+
+    @Provides
+    fun provideExpenseDao(database: BundledDatabase): ExpenseDao = database.expenseDao()
+
+    @Provides
+    fun provideMpLinkDao(database: BundledDatabase): MpLinkDao = database.mpLinkDao()
+
+    @Provides
+    fun provideManifestoDao(database: BundledDatabase): ManifestoDao = database.manifestoDao()
+
+    @Provides
+    fun providePartyStatsDao(database: BundledDatabase): PartyStatsDao = database.partyStatsDao()
+
+    @Provides
     fun provideDatabaseUpdateDao(database: BundledDatabase): DatabaseUpdateDao = database.databaseUpdateDao()
 
     // ── User-data DAOs (from LocalDatabase) ────────────────────────────
@@ -139,7 +166,8 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideVotesRepository(divisionDao: DivisionDao): VotesRepository = VotesRepository(divisionDao)
+    fun provideVotesRepository(divisionDao: DivisionDao, debateSpeechDao: DebateSpeechDao): VotesRepository =
+        VotesRepository(divisionDao, debateSpeechDao)
 
     @Provides
     @Singleton
@@ -164,6 +192,37 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideInterestsRepository(interestDao: InterestDao): InterestsRepository = InterestsRepository(interestDao)
+
+    @Provides
+    @Singleton
+    fun provideBioDataRepository(bioDataDao: BioDataDao): BioDataRepository = BioDataRepository(bioDataDao)
+
+    @Provides
+    @Singleton
+    fun provideExpensesRepository(expenseDao: ExpenseDao): ExpensesRepository = ExpensesRepository(expenseDao)
+
+    @Provides
+    @Singleton
+    fun provideMpLinksRepository(mpLinkDao: MpLinkDao): MpLinksRepository = MpLinksRepository(mpLinkDao)
+
+    @Provides
+    @Singleton
+    fun provideManifestoRepository(manifestoDao: ManifestoDao): ManifestoRepository = ManifestoRepository(manifestoDao)
+
+    @Provides
+    @Singleton
+    fun providePartyStatsRepository(partyStatsDao: PartyStatsDao): PartyStatsRepository =
+        PartyStatsRepository(partyStatsDao)
+
+    @Provides
+    @Singleton
+    fun provideStatsRepository(
+        divisionDao: DivisionDao,
+        committeeDao: CommitteeDao,
+        debateSpeechDao: DebateSpeechDao,
+        hansardDao: HansardDao,
+        mpDao: MpDao
+    ): StatsRepository = StatsRepository(divisionDao, committeeDao, debateSpeechDao, hansardDao, mpDao)
 
     @Provides
     @Singleton

@@ -4,26 +4,37 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.goveye.app.data.local.dao.BillDao
+import com.goveye.app.data.local.dao.BioDataDao
 import com.goveye.app.data.local.dao.CommitteeDao
 import com.goveye.app.data.local.dao.DatabaseUpdateDao
 import com.goveye.app.data.local.dao.DebateSpeechDao
 import com.goveye.app.data.local.dao.DivisionDao
+import com.goveye.app.data.local.dao.ExpenseDao
 import com.goveye.app.data.local.dao.HansardDao
 import com.goveye.app.data.local.dao.InterestDao
+import com.goveye.app.data.local.dao.ManifestoDao
 import com.goveye.app.data.local.dao.MpDao
+import com.goveye.app.data.local.dao.MpLinkDao
+import com.goveye.app.data.local.dao.PartyStatsDao
 import com.goveye.app.data.local.dao.RecessDateDao
 import com.goveye.app.data.local.dao.SearchDao
 import com.goveye.app.data.local.entity.BillEntity
 import com.goveye.app.data.local.entity.BillStageEntity
+import com.goveye.app.data.local.entity.BioDataEntity
 import com.goveye.app.data.local.entity.CommitteeEntity
 import com.goveye.app.data.local.entity.DebateSpeechEntity
 import com.goveye.app.data.local.entity.DivisionEntity
 import com.goveye.app.data.local.entity.DivisionVoteEntity
+import com.goveye.app.data.local.entity.ExpenseEntity
 import com.goveye.app.data.local.entity.HansardContributionEntity
 import com.goveye.app.data.local.entity.InterestEntity
 import com.goveye.app.data.local.entity.MpCommitteeCrossRef
 import com.goveye.app.data.local.entity.MpEntity
 import com.goveye.app.data.local.entity.MpFtsEntity
+import com.goveye.app.data.local.entity.MpLinkEntity
+import com.goveye.app.data.local.entity.PartyManifestoEntity
+import com.goveye.app.data.local.entity.PartyManifestoFts4Entity
+import com.goveye.app.data.local.entity.PartyStatsEntity
 import com.goveye.app.data.local.entity.RecessDateEntity
 import com.goveye.app.data.local.entity.RecessDatesMetaEntity
 
@@ -56,9 +67,15 @@ import com.goveye.app.data.local.entity.RecessDatesMetaEntity
         RecessDatesMetaEntity::class,
         HansardContributionEntity::class,
         InterestEntity::class,
-        DebateSpeechEntity::class
+        DebateSpeechEntity::class,
+        BioDataEntity::class,
+        ExpenseEntity::class,
+        MpLinkEntity::class,
+        PartyManifestoEntity::class,
+        PartyManifestoFts4Entity::class,
+        PartyStatsEntity::class
     ],
-    version = 4,
+    version = 9,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -72,6 +89,11 @@ abstract class BundledDatabase : RoomDatabase() {
     abstract fun interestDao(): InterestDao
     abstract fun recessDateDao(): RecessDateDao
     abstract fun debateSpeechDao(): DebateSpeechDao
+    abstract fun bioDataDao(): BioDataDao
+    abstract fun expenseDao(): ExpenseDao
+    abstract fun mpLinkDao(): MpLinkDao
+    abstract fun manifestoDao(): ManifestoDao
+    abstract fun partyStatsDao(): PartyStatsDao
     abstract fun databaseUpdateDao(): DatabaseUpdateDao
 
     companion object {

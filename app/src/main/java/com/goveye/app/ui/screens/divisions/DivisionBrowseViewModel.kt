@@ -7,12 +7,14 @@ import com.goveye.app.domain.model.Division
 import com.goveye.app.domain.model.SyncStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
@@ -21,7 +23,8 @@ data class DivisionBrowseState(
     val isLoading: Boolean = false,
     val syncStatus: SyncStatus = SyncStatus.EMPTY,
     val searchQuery: String = "",
-    val houseFilter: Int = 0
+    val houseFilter: Int = 0,
+    val hasMore: Boolean = false
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -30,18 +33,20 @@ class DivisionBrowseViewModel @Inject constructor(private val votesRepository: V
 
     private val searchQueryState = MutableStateFlow("")
     private val houseFilterState = MutableStateFlow(0)
+    private val divisionsLimit = MutableStateFlow(50)
 
     val state: StateFlow<DivisionBrowseState> =
         combine(
             searchQueryState,
-            houseFilterState
-        ) { query, house ->
-            query to house
-        }.flatMapLatest { (query, house) ->
+            houseFilterState,
+            divisionsLimit
+        ) { query, house, limit ->
+            Triple(query, house, limit)
+        }.flatMapLatest { (query, house, limit) ->
             val resultFlow = if (query.isNotBlank()) {
                 votesRepository.searchDivisions(query, house)
             } else {
-                votesRepository.observeDivisionsByHouse(house)
+                votesRepository.observeDivisionsByHouse(house, limit)
             }
             resultFlow.map { result ->
                 DivisionBrowseState(
@@ -49,10 +54,12 @@ class DivisionBrowseViewModel @Inject constructor(private val votesRepository: V
                     isLoading = false,
                     syncStatus = result.status,
                     searchQuery = query,
-                    houseFilter = house
+                    houseFilter = house,
+                    hasMore = query.isBlank() && result.data.size >= limit
                 )
             }
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DivisionBrowseState())
+        }.flowOn(Dispatchers.Default)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DivisionBrowseState())
 
     fun updateSearchQuery(query: String) {
         searchQueryState.value = query
@@ -64,5 +71,9 @@ class DivisionBrowseViewModel @Inject constructor(private val votesRepository: V
 
     fun setHouseFilter(house: Int) {
         houseFilterState.value = house
+    }
+
+    fun loadMore() {
+        divisionsLimit.value += 50
     }
 }

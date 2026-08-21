@@ -1,16 +1,20 @@
 package com.goveye.app.ui.screens
 
+import android.util.Log
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -22,6 +26,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.goveye.app.ui.components.ConfigureSearchBar
 import com.goveye.app.ui.components.SearchBarConfig
+import com.goveye.app.ui.components.StickyInfoCard
 import com.goveye.app.ui.screens.directory.DirectoryFilterState
 import com.goveye.app.ui.screens.directory.FilterBottomSheet
 import com.goveye.app.ui.screens.directory.FilterTabType
@@ -40,19 +45,33 @@ import com.goveye.app.ui.screens.feed.FeedViewModel
 @Composable
 fun FeedScreen(
     onNavigateToDivision: (Int, Int) -> Unit,
+    showInfoCards: Boolean = true,
     modifier: Modifier = Modifier,
     viewModel: FeedViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var showFilterSheet by remember { mutableStateOf(false) }
 
+    Log.i(
+        "GovEye/Feed",
+        "FeedScreen compose — isLoading=${state.isLoading} isEmpty=${state.isEmpty} " +
+            "isRecessEmpty=${state.isRecessEmpty} dateGroups=${state.dateGroups.size} " +
+            "totalDivisions=${state.dateGroups.sumOf { it.divisions.size }}"
+    )
+
+    // Stable lambdas — prevents ConfigureSearchBar's DisposableEffect from
+    // firing on every recomposition (which would trigger FloatingSearchBar
+    // recompositions at the app shell level during navigation transitions).
+    val onQueryChange = remember(viewModel) { viewModel::setSearchQuery }
+    val onFilterClick = remember { { showFilterSheet = true } }
+
     ConfigureSearchBar(
         config = SearchBarConfig(
             isVisible = true,
             placeholder = "Search feed…",
             query = state.searchQuery,
-            onQueryChange = viewModel::setSearchQuery,
-            onFilterClick = { showFilterSheet = true },
+            onQueryChange = onQueryChange,
+            onFilterClick = onFilterClick,
             hasActiveFilters = state.followingOnly || state.houseFilter != 0
         )
     )
@@ -87,14 +106,32 @@ fun FeedScreen(
 
             else -> {
                 LazyColumn(
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    // Recess info card — always visible when parliament is in
+                    // recess, even if there's feed content. Previously this
+                    // only showed as an empty state.
+                    val recess = state.currentRecess
+                    if (recess != null && showInfoCards) {
+                        stickyHeader(key = "recess-info") {
+                            StickyInfoCard(
+                                title = "Parliament is in recess",
+                                subtitle = "Returns ${com.goveye.app.domain.util.DateUtils.formatRelativeDate(
+                                    recess.endDate
+                                )}."
+                            )
+                        }
+                    }
+
                     state.dateGroups.forEach { group ->
                         stickyHeader(key = "header-${group.dateKey}") {
                             FeedDateHeader(dateHeader = group.dateHeader)
                         }
-                        items(group.divisions, key = { "division-${it.id}" }) { division ->
+                        items(group.divisions, key = {
+                            "division-${it.id}"
+                        }, contentType = { "feed_division" }) { division ->
                             val hasFollowed = division.id in state.divisionsWithFollowedVotes
                             FeedDivisionCard(
                                 division = division,

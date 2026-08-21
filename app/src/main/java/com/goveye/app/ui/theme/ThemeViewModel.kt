@@ -41,6 +41,9 @@ constructor(private val themePreferences: ThemePreferences) : ViewModel() {
     private val initialAmoled: Boolean = runBlocking {
         themePreferences.isAmoled.first()
     }
+    private val initialShowInfoCards: Boolean = runBlocking {
+        themePreferences.showInfoCards.first()
+    }
 
     val themeMode: StateFlow<ThemeMode> =
         themePreferences.themeMode
@@ -66,6 +69,14 @@ constructor(private val themePreferences: ThemePreferences) : ViewModel() {
                 initialAmoled
             )
 
+    val showInfoCards: StateFlow<Boolean> =
+        themePreferences.showInfoCards
+            .stateIn(
+                viewModelScope,
+                SharingStarted.Eagerly,
+                initialShowInfoCards
+            )
+
     fun setThemeMode(mode: ThemeMode) {
         viewModelScope.launch { themePreferences.setThemeMode(mode) }
     }
@@ -76,5 +87,9 @@ constructor(private val themePreferences: ThemePreferences) : ViewModel() {
 
     fun setAmoled(enabled: Boolean) {
         viewModelScope.launch { themePreferences.setAmoled(enabled) }
+    }
+
+    fun setShowInfoCards(enabled: Boolean) {
+        viewModelScope.launch { themePreferences.setShowInfoCards(enabled) }
     }
 }

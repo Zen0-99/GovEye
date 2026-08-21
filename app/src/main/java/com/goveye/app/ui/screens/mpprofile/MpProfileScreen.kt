@@ -88,6 +88,7 @@ fun ProfileScreen(
     onNavigateToProfile: (Int) -> Unit,
     onNavigateToDivision: (Int, Int) -> Unit = { _, _ -> },
     onNavigateToInterestBucket: (Int, String) -> Unit = { _, _ -> },
+    onNavigateToParty: (Int) -> Unit = {},
     modifier: Modifier = Modifier,
     contentTopPadding: Dp = 0.dp,
     viewModel: ProfileViewModel = hiltViewModel()
@@ -184,7 +185,8 @@ fun ProfileScreen(
                     ProfileContentHeader(
                         mp = mp,
                         isDark = isDark,
-                        contentTopPadding = contentTopPadding
+                        contentTopPadding = contentTopPadding,
+                        onNavigateToParty = onNavigateToParty
                     )
 
                     // Scrollable tabs
@@ -228,6 +230,10 @@ fun ProfileScreen(
                                 contacts = uiState.contacts,
                                 samePartyMps = uiState.samePartyMps,
                                 committeePeerMps = uiState.committeePeerMps,
+                                bioData = uiState.bioData,
+                                mpLinks = uiState.mpLinks,
+                                activityScore = uiState.activityScore,
+                                traitBars = uiState.traitBars,
                                 onNavigateToProfile = onNavigateToProfile
                             )
 
@@ -261,6 +267,7 @@ fun ProfileScreen(
                             ProfileTab.INTERESTS -> InterestsTabContent(
                                 memberId = memberId,
                                 interests = uiState.interests,
+                                expenseBucketTotals = uiState.expenseBucketTotals,
                                 onNavigateToBucketDetail = { bucketLabel ->
                                     onNavigateToInterestBucket(memberId, bucketLabel)
                                 }
@@ -322,6 +329,7 @@ private fun ProfileContentHeader(
     mp: com.goveye.app.domain.model.Mp,
     isDark: Boolean,
     contentTopPadding: Dp = 0.dp,
+    onNavigateToParty: (Int) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val partyColor = parsePartyColor(mp.party?.backgroundColour)
@@ -379,7 +387,11 @@ private fun ProfileContentHeader(
                 Surface(
                     shape = RoundedCornerShape(50),
                     color = pillColor,
-                    modifier = Modifier.padding(top = 4.dp)
+                    modifier = Modifier
+                        .padding(top = 4.dp)
+                        .clickable {
+                            mp.party?.id?.let { onNavigateToParty(it) }
+                        }
                 ) {
                     Text(
                         text = mp.party?.name ?: "",
@@ -401,6 +413,10 @@ private fun ProfileTabContent(
     contacts: List<com.goveye.app.domain.model.Contact>,
     samePartyMps: List<com.goveye.app.domain.model.Mp>,
     committeePeerMps: List<com.goveye.app.domain.model.Mp>,
+    bioData: com.goveye.app.data.local.entity.BioDataEntity? = null,
+    mpLinks: com.goveye.app.data.local.entity.MpLinkEntity? = null,
+    activityScore: com.goveye.app.domain.stats.ActivityScore? = null,
+    traitBars: List<com.goveye.app.domain.stats.TraitBar> = emptyList(),
     onNavigateToProfile: (Int) -> Unit
 ) {
     LazyColumn(
@@ -409,11 +425,28 @@ private fun ProfileTabContent(
     ) {
         item {
             ProfileStatsCard(
-                mp = mp
+                mp = mp,
+                bioData = bioData
             )
+        }
+        // Activity score + trait radar
+        if (activityScore != null) {
+            item {
+                com.goveye.app.ui.components.stats.ActivityScoreStrip(
+                    score = activityScore
+                )
+            }
+        }
+        if (traitBars.isNotEmpty()) {
+            item {
+                com.goveye.app.ui.components.stats.TraitRadarChart(
+                    traitBars = traitBars
+                )
+            }
         }
         // Activity score strip
         item { BioSection(synopsis = synopsis) }
+        item { SocialLinksRow(links = mpLinks) }
         item { ContactSection(contacts = contacts) }
         item {
             RelatedMpsSection(

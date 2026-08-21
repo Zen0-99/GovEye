@@ -16,4 +16,7 @@ interface HansardDao {
 
     @Query("SELECT MIN(lastUpdated) FROM hansard_contributions")
     suspend fun getOldestTimestamp(): Long?
+
+    @Query("SELECT COUNT(*) FROM hansard_contributions WHERE memberId = :memberId")
+    suspend fun countContributionsForMember(memberId: Int): Int
 }

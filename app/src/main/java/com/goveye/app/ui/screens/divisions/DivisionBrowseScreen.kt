@@ -1,5 +1,6 @@
 package com.goveye.app.ui.screens.divisions
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -19,6 +20,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,6 +32,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.goveye.app.domain.model.Division
 import com.goveye.app.domain.model.SyncStatus
+import com.goveye.app.ui.components.StickyInfoCard
 import com.goveye.app.ui.components.SyncStatusBanner
 import com.goveye.app.ui.theme.padding
 
@@ -37,11 +40,13 @@ import com.goveye.app.ui.theme.padding
 private val AyeColor @Composable get() = com.goveye.app.ui.components.VoteColors.aye
 private val NoColor @Composable get() = com.goveye.app.ui.components.VoteColors.no
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun DivisionsTabContent(
     onNavigateToDivision: (Int, Int) -> Unit,
     houseFilter: Int = 0,
     searchQuery: String = "",
+    showInfoCards: Boolean = true,
     modifier: Modifier = Modifier,
     viewModel: DivisionBrowseViewModel = hiltViewModel()
 ) {
@@ -86,12 +91,21 @@ fun DivisionsTabContent(
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
-                    horizontal = 12.dp,
-                    vertical = MaterialTheme.padding.small
+                    start = 12.dp,
+                    end = 12.dp,
+                    bottom = MaterialTheme.padding.small
                 ),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(state.divisions, key = { it.id }) { division ->
+                if (showInfoCards) {
+                    stickyHeader(key = "tab-info") {
+                        StickyInfoCard(
+                            title = "Debates",
+                            subtitle = "Browse every division and vote in the Commons and Lords."
+                        )
+                    }
+                }
+                items(state.divisions, key = { it.id }, contentType = { "division_card" }) { division ->
                     DivisionCard(
                         division = division,
                         onClick = { onNavigateToDivision(division.id, division.house) }

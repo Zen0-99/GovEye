@@ -26,5 +26,6 @@ data class FeedUiState(
     val isLoading: Boolean = true,
     val isEmpty: Boolean = false,
     val isRecessEmpty: Boolean = false,
-    val recentDivisionsForRecess: List<Division> = emptyList()
+    val recentDivisionsForRecess: List<Division> = emptyList(),
+    val hasMore: Boolean = false
 )

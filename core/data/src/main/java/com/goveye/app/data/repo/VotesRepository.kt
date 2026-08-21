@@ -1,8 +1,11 @@
 package com.goveye.app.data.repo
 
+import com.goveye.app.data.local.dao.DebateSpeechDao
 import com.goveye.app.data.local.dao.DivisionDao
+import com.goveye.app.data.local.entity.DebateSpeechEntity
 import com.goveye.app.data.local.entity.DivisionEntity
 import com.goveye.app.data.local.entity.DivisionVoteEntity
+import com.goveye.app.domain.model.DebateSpeech
 import com.goveye.app.domain.model.Division
 import com.goveye.app.domain.model.DivisionVote
 import com.goveye.app.domain.model.MemberVoteWithDivision
@@ -17,8 +20,11 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 @Singleton
-class VotesRepository @Inject constructor(private val divisionDao: DivisionDao) {
-    fun observeDivisions(limit: Int = 200): Flow<RepositoryResult<List<Division>>> =
+class VotesRepository @Inject constructor(
+    private val divisionDao: DivisionDao,
+    private val debateSpeechDao: DebateSpeechDao
+) {
+    fun observeDivisions(limit: Int = 50): Flow<RepositoryResult<List<Division>>> =
         divisionDao.observeDivisions(limit).map { entities ->
             if (entities.isEmpty()) {
                 RepositoryResult(emptyList(), SyncStatus.EMPTY)
@@ -27,18 +33,17 @@ class VotesRepository @Inject constructor(private val divisionDao: DivisionDao) 
             }
         }
 
-    fun observeDivisionsByHouse(house: Int, limit: Int = 200): Flow<RepositoryResult<List<Division>>> =
-        if (house == 0) {
-            observeDivisions(limit)
-        } else {
-            divisionDao.observeDivisionsByHouse(house, limit).map { entities ->
-                if (entities.isEmpty()) {
-                    RepositoryResult(emptyList(), SyncStatus.EMPTY)
-                } else {
-                    RepositoryResult(entities.map { it.toDomain() }, SyncStatus.FRESH)
-                }
+    fun observeDivisionsByHouse(house: Int, limit: Int = 50): Flow<RepositoryResult<List<Division>>> = if (house == 0) {
+        observeDivisions(limit)
+    } else {
+        divisionDao.observeDivisionsByHouse(house, limit).map { entities ->
+            if (entities.isEmpty()) {
+                RepositoryResult(emptyList(), SyncStatus.EMPTY)
+            } else {
+                RepositoryResult(entities.map { it.toDomain() }, SyncStatus.FRESH)
             }
         }
+    }
 
     fun searchDivisions(query: String, house: Int = 0, limit: Int = 50): Flow<RepositoryResult<List<Division>>> =
         if (house == 0) {
@@ -181,5 +186,29 @@ class VotesRepository @Inject constructor(private val divisionDao: DivisionDao) 
         partyColour = partyColour,
         constituencyName = constituencyName,
         isTeller = isTeller
+    )
+
+    // ── Debate transcripts ──────────────────────────────────────────────
+
+    fun observeSpeechesForDivision(divisionId: Int): Flow<List<DebateSpeech>> =
+        debateSpeechDao.observeSpeechesForDivision(divisionId).map { entities ->
+            entities.map { it.toDomain() }
+        }
+
+    suspend fun getSpeechesForDivision(divisionId: Int): List<DebateSpeech> =
+        debateSpeechDao.getSpeechesForDivision(divisionId).map { it.toDomain() }
+
+    suspend fun countSpeechesForDivision(divisionId: Int): Int = debateSpeechDao.countSpeechesForDivision(divisionId)
+
+    private fun DebateSpeechEntity.toDomain(): DebateSpeech = DebateSpeech(
+        debateGid = debateGid,
+        speechGid = speechGid,
+        divisionId = divisionId,
+        speakerName = speakerName,
+        memberId = memberId,
+        speakerPosition = speakerPosition,
+        speechText = speechText,
+        speechOrder = speechOrder,
+        isIntervention = isIntervention
     )
 }

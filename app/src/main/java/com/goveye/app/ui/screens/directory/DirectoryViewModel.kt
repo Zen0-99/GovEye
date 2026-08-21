@@ -1,5 +1,6 @@
 package com.goveye.app.ui.screens.directory
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
@@ -11,6 +12,7 @@ import com.goveye.app.data.repo.MembersRepository
 import com.goveye.app.domain.model.Mp
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
@@ -21,7 +23,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -58,22 +63,41 @@ class DirectoryViewModel @Inject constructor(
         membersRepository.observeDistinctParties()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    // Active parties with seat counts — for the Parties tab
+    val parties: StateFlow<List<com.goveye.app.data.local.dao.PartySummary>> =
+        flow {
+            try {
+                emit(membersRepository.getActiveParties())
+            } catch (e: Exception) {
+                emit(emptyList())
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     // FTS search results with filters applied in Kotlin (RESEARCH.md §5.3 Approach B)
-    val searchResults: Flow<List<Mp>> = _searchQuery
+    // Converted to StateFlow so it has a proper initial value and doesn't
+    // double-emit (emptyList then actual) on first composition — which
+    // caused jank during navigation transitions.
+    // flowOn(Dispatchers.Default) moves the FTS query + filter processing
+    // off the main thread so it doesn't compete with navigation transitions.
+    val searchResults: StateFlow<List<Mp>> = _searchQuery
         .debounce(300)
         .flatMapLatest { query ->
+            Log.i("GovEye/Directory", "searchResults flatMapLatest — query='$query'")
             if (query.isBlank()) {
                 flowOf(emptyList())
             } else {
-                // Switched from searchMpsViaApi (one-shot suspend) to searchMpsFts (reactive Flow)
-                // FTS searches local Room cache across name, party, and constituency
                 membersRepository.searchMpsFts(query.trim())
             }
         }
-        // Apply filters on top of FTS results
         .combine(filterState) { results, filters ->
+            Log.i(
+                "GovEye/Directory",
+                "searchResults combine — results=${results.size} hasFilters=${filters.hasActiveFilters}"
+            )
             results.filter { mp -> filters.matches(mp) }
         }
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     // Paged MP list — used when NO filters are active (efficient lazy loading
     // via Room paging source + remote mediator). When filters ARE active, the
@@ -84,15 +108,23 @@ class DirectoryViewModel @Inject constructor(
         .cachedIn(viewModelScope)
 
     // Filtered MP list — used when filters are active but no search query.
-    // Loads all MPs via observeAllMps() and filters in Kotlin. 650 MPs is
-    // small enough to hold in memory. When no filters are active, this
-    // emits an empty list and the UI falls back to pagedMps.
-    val filteredMps: Flow<List<Mp>> = combine(
-        filterState,
-        membersRepository.observeAllMps()
-    ) { filters, result ->
-        if (!filters.hasActiveFilters) emptyList() else result.data.filter { filters.matches(it) }
-    }
+    // Uses flatMapLatest so observeAllMps() is only called when filters are
+    // actually active — avoids loading all 650 MPs on every DirectoryScreen
+    // composition when no filters are needed.
+    // flowOn(Dispatchers.Default) moves the 650-MP filter off the main thread.
+    val filteredMps: StateFlow<List<Mp>> = filterState
+        .flatMapLatest { filters ->
+            Log.i("GovEye/Directory", "filteredMps flatMapLatest — hasFilters=${filters.hasActiveFilters}")
+            if (!filters.hasActiveFilters) {
+                flowOf(emptyList())
+            } else {
+                membersRepository.observeAllMps().map { result ->
+                    result.data.filter { filters.matches(it) }
+                }
+            }
+        }
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     // Tab counts — show badges during active search OR when filters are active
     val tabCounts: StateFlow<Map<Int, Int>> =

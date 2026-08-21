@@ -7,14 +7,19 @@ import androidx.room.Query
 import androidx.room.Upsert
 import com.goveye.app.data.local.entity.BillEntity
 import com.goveye.app.data.local.entity.BillStageEntity
+import com.goveye.app.data.local.entity.BioDataEntity
 import com.goveye.app.data.local.entity.CommitteeEntity
 import com.goveye.app.data.local.entity.DebateSpeechEntity
 import com.goveye.app.data.local.entity.DivisionEntity
 import com.goveye.app.data.local.entity.DivisionVoteEntity
+import com.goveye.app.data.local.entity.ExpenseEntity
 import com.goveye.app.data.local.entity.HansardContributionEntity
 import com.goveye.app.data.local.entity.InterestEntity
 import com.goveye.app.data.local.entity.MpCommitteeCrossRef
 import com.goveye.app.data.local.entity.MpEntity
+import com.goveye.app.data.local.entity.MpLinkEntity
+import com.goveye.app.data.local.entity.PartyManifestoEntity
+import com.goveye.app.data.local.entity.PartyStatsEntity
 import com.goveye.app.data.local.entity.RecessDateEntity
 import com.goveye.app.data.local.entity.RecessDatesMetaEntity
 
@@ -119,4 +124,39 @@ interface DatabaseUpdateDao {
 
     @Query("DELETE FROM debate_speeches WHERE debateGid = :debateGid AND speechGid = :speechGid")
     suspend fun deleteDebateSpeech(debateGid: String, speechGid: String)
+
+    // ── bio_data (PK: mpId) ───────────────────────────────────────────
+    @Upsert
+    suspend fun upsertBioData(data: List<BioDataEntity>)
+
+    @Query("DELETE FROM bio_data WHERE mpId = :mpId")
+    suspend fun deleteBioData(mpId: Int)
+
+    // ── expenses (PK: id, autoGenerate) ───────────────────────────────
+    @Upsert
+    suspend fun upsertExpenses(expenses: List<ExpenseEntity>)
+
+    @Query("DELETE FROM expenses WHERE id = :id")
+    suspend fun deleteExpense(id: Int)
+
+    // ── mp_links (PK: mpId) ───────────────────────────────────────────
+    @Upsert
+    suspend fun upsertMpLinks(links: List<MpLinkEntity>)
+
+    @Query("DELETE FROM mp_links WHERE mpId = :mpId")
+    suspend fun deleteMpLink(mpId: Int)
+
+    // ── party_manifestos (PK: partyId) — FTS auto-synced by triggers ──
+    @Upsert
+    suspend fun upsertManifestos(manifestos: List<PartyManifestoEntity>)
+
+    @Query("DELETE FROM party_manifestos WHERE partyId = :partyId")
+    suspend fun deleteManifesto(partyId: Int)
+
+    // ── party_stats (PK: partyId) ─────────────────────────────────────
+    @Upsert
+    suspend fun upsertPartyStats(stats: List<PartyStatsEntity>)
+
+    @Query("DELETE FROM party_stats WHERE partyId = :partyId")
+    suspend fun deletePartyStats(partyId: Int)
 }

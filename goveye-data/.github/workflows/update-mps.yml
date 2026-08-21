@@ -1,0 +1,110 @@
+name: Update MPs
+
+on:
+  schedule:
+    - cron: '0 3 * * *'  # Daily 3am UTC
+  workflow_dispatch:      # Manual trigger for seed builds and testing
+
+permissions:
+  contents: write  # Required by softprops/action-gh-release@v3
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30  # MPs fetch is fast — 650 MPs / 20 per page = 33 pages
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Restore seed checkpoint
+        id: restore_checkpoint
+        if: steps.download_prev.outputs.has_previous != 'true'
+        uses: actions/cache@v4
+        with:
+          path: mps.db
+          key: mps-seed-${{ hashFiles('schemas/bundled_schema.json') }}-${{ github.run_id }}
+          restore-keys: |
+            mps-seed-${{ hashFiles('schemas/bundled_schema.json') }}-
+
+      - name: Download previous DB and manifest
+        id: download_prev
+        run: |
+          # Attempt to download previous mps.db and manifest.json from the mps-latest release.
+          # If this fails (first run, no previous release), we proceed in seed mode.
+          gh release download mps-latest \
+            --pattern mps.db --output prev_mps.db || echo "No previous DB (first run)"
+          gh release download mps-latest \
+            --pattern manifest.json --output prev_manifest.json || echo "No previous manifest (first run)"
+          if [ -f prev_mps.db ]; then
+            echo "has_previous=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_previous=false" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build MPs database (seed mode)
+        if: steps.download_prev.outputs.has_previous != 'true'
+        run: |
+          python build_mps.py --output mps.db --schema schemas/bundled_schema.json --mode seed --checkpoint-db mps.db
+
+      - name: Build MPs database (delta mode)
+        if: steps.download_prev.outputs.has_previous == 'true'
+        run: |
+          python build_mps.py --output mps.db --schema schemas/bundled_schema.json --mode delta --previous-db prev_mps.db
+
+      - name: Save seed checkpoint
+        if: steps.download_prev.outputs.has_previous != 'true' && always()
+        uses: actions/cache@v4
+        with:
+          path: mps.db
+          key: mps-seed-${{ hashFiles('schemas/bundled_schema.json') }}-${{ github.run_id }}
+
+      # Per-API DBs are intermediate artifacts, not opened by Room.
+      # Schema validation happens on the merged goveye.db in build-seed.yml.
+      - name: Generate diff patch
+        if: steps.download_prev.outputs.has_previous == 'true'
+        run: |
+          python diff_db.py --new mps.db --previous prev_mps.db --schema schemas/bundled_schema.json --output patch.json --tables mps,mps_fts
+
+      - name: Generate diff patch (first run)
+        if: steps.download_prev.outputs.has_previous != 'true'
+        run: |
+          python diff_db.py --new mps.db --schema schemas/bundled_schema.json --output patch.json --tables mps,mps_fts
+
+      - name: Generate manifest
+        if: steps.download_prev.outputs.has_previous == 'true'
+        run: |
+          python manifest.py --db mps.db --patch patch.json --output manifest.json --schema schemas/bundled_schema.json --previous-manifest prev_manifest.json
+
+      - name: Generate manifest (first run)
+        if: steps.download_prev.outputs.has_previous != 'true'
+        run: |
+          python manifest.py --db mps.db --patch patch.json --output manifest.json --schema schemas/bundled_schema.json
+
+      - name: Publish to GitHub Releases
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: mps-latest
+          name: MPs Latest
+          body: |
+            Daily MPs database update for GovEye.
+
+            - **mps.db**: Per-API SQLite database (mps + mps_fts tables only)
+            - **patch.json**: Incremental diff patch (mps table only)
+            - **manifest.json**: Version, SHA-256 hashes, and file sizes
+
+            See manifest.json for the current version number and file hashes.
+          files: |
+            mps.db
+            patch.json
+            manifest.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

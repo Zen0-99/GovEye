@@ -2,13 +2,20 @@ package com.goveye.app.ui.screens.mpprofile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.goveye.app.data.local.dao.ExpenseBucketTotal
 import com.goveye.app.data.local.dao.MpDao
+import com.goveye.app.data.local.entity.BioDataEntity
 import com.goveye.app.data.local.entity.MpEntity
+import com.goveye.app.data.local.entity.MpLinkEntity
+import com.goveye.app.data.repo.BioDataRepository
 import com.goveye.app.data.repo.CommitteesRepository
+import com.goveye.app.data.repo.ExpensesRepository
 import com.goveye.app.data.repo.FollowRepository
 import com.goveye.app.data.repo.InterestsRepository
 import com.goveye.app.data.repo.MembersRepository
+import com.goveye.app.data.repo.MpLinksRepository
 import com.goveye.app.data.repo.NotificationPreferenceRepository
+import com.goveye.app.data.repo.StatsRepository
 import com.goveye.app.data.repo.VotesRepository
 import com.goveye.app.domain.model.BiographyExperience
 import com.goveye.app.domain.model.Committee
@@ -18,8 +25,10 @@ import com.goveye.app.domain.model.Interest
 import com.goveye.app.domain.model.MemberVoteWithDivision
 import com.goveye.app.domain.model.Mp
 import com.goveye.app.domain.model.SyncStatus
+import com.goveye.app.domain.stats.ActivityScore
 import com.goveye.app.domain.stats.RebellionCalculator
 import com.goveye.app.domain.stats.RebellionStats
+import com.goveye.app.domain.stats.TraitBar
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,6 +52,11 @@ data class ProfileUiState(
     val allVotesByDivision: Map<Int, List<DivisionVote>> = emptyMap(),
     val memberPartyName: String? = null,
     val interests: List<Interest> = emptyList(),
+    val bioData: BioDataEntity? = null,
+    val expenseBucketTotals: List<ExpenseBucketTotal> = emptyList(),
+    val mpLinks: MpLinkEntity? = null,
+    val activityScore: ActivityScore? = null,
+    val traitBars: List<TraitBar> = emptyList(),
     val isFollowing: Boolean = false,
     val notificationsEnabled: Boolean = false,
     val votesNotificationsEnabled: Boolean = false,
@@ -59,7 +73,11 @@ class ProfileViewModel @Inject constructor(
     private val followRepository: FollowRepository,
     private val notificationPrefRepository: NotificationPreferenceRepository,
     private val mpDao: MpDao,
-    private val interestsRepository: InterestsRepository
+    private val interestsRepository: InterestsRepository,
+    private val bioDataRepository: BioDataRepository,
+    private val expensesRepository: ExpensesRepository,
+    private val mpLinksRepository: MpLinksRepository,
+    private val statsRepository: StatsRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -106,7 +124,24 @@ class ProfileViewModel @Inject constructor(
             }
             try {
                 val experiences = membersRepository.getExperience(memberId)
-                _uiState.value = _uiState.value.copy(experiences = experiences)
+                // 3b. Fetch MNIS bio data and merge posts into career timeline (D-02)
+                val bioData = try {
+                    bioDataRepository.getBioData(memberId)
+                } catch (e: Exception) {
+                    null
+                }
+                val mergedExperiences = mergeExperiencesWithMnisPosts(experiences, bioData)
+                _uiState.value = _uiState.value.copy(
+                    experiences = mergedExperiences,
+                    bioData = bioData
+                )
+            } catch (e: Exception) {
+            }
+
+            // 3c. Fetch social links (ParlParse) (D-10)
+            try {
+                val mpLinks = mpLinksRepository.getLinks(memberId)
+                _uiState.value = _uiState.value.copy(mpLinks = mpLinks)
             } catch (e: Exception) {
             }
 
@@ -149,11 +184,76 @@ class ProfileViewModel @Inject constructor(
                 android.util.Log.e("GovEye/Profile", "Failed to load votes for MP $memberId", e)
             }
 
+            // 6b. Activity score + trait bars (peer aggregation, may be slow on first run)
+            try {
+                val house = mp?.house ?: 1
+                val partyName = mp?.party?.name
+                val activityScore = statsRepository.getActivityScore(memberId, house, partyName)
+                val traitBars = statsRepository.getTraitBars(memberId, house, partyName)
+                _uiState.value = _uiState.value.copy(
+                    activityScore = activityScore,
+                    traitBars = traitBars
+                )
+            } catch (e: Exception) {
+                android.util.Log.e("GovEye/Profile", "Failed to compute activity score for MP $memberId", e)
+            }
+
             // 7. Interests (one-shot)
             val interestsResult = interestsRepository.observeInterestsForMember(memberId).first()
             android.util.Log.i("GovEye/Profile", "Loaded ${interestsResult.data.size} interests for MP $memberId")
             _uiState.value = _uiState.value.copy(interests = interestsResult.data)
+
+            // 8. Expense bucket totals (one-shot)
+            try {
+                val bucketTotals = expensesRepository.getBucketTotals(memberId)
+                _uiState.value = _uiState.value.copy(expenseBucketTotals = bucketTotals)
+            } catch (e: Exception) {
+            }
         }
+    }
+
+    /**
+     * Merge MNIS government/opposition posts into the existing career timeline (D-02).
+     *
+     * Parses postsJson (JSON array of {type, title, department, startDate, endDate}),
+     * converts each to a BiographyExperience, merges with existing experiences,
+     * and sorts by startYear descending.
+     */
+    private fun mergeExperiencesWithMnisPosts(
+        experiences: List<BiographyExperience>,
+        bioData: BioDataEntity?
+    ): List<BiographyExperience> {
+        if (bioData?.postsJson == null) return experiences
+
+        val mnisPosts = try {
+            val posts = org.json.JSONArray(bioData.postsJson)
+            (0 until posts.length()).map { i ->
+                val post = posts.getJSONObject(i)
+                val startDate = post.optStringOrNull("startDate")
+                val endDate = post.optStringOrNull("endDate")
+                BiographyExperience(
+                    id = -(i + 1), // Negative IDs to avoid collisions with API experiences
+                    type = post.optStringOrNull("type"),
+                    title = post.optStringOrNull("title"),
+                    organisation = post.optStringOrNull("department"),
+                    startMonth = startDate?.substring(5, 7)?.toIntOrNull(),
+                    startYear = startDate?.substring(0, 4)?.toIntOrNull(),
+                    endMonth = endDate?.substring(5, 7)?.toIntOrNull(),
+                    endYear = endDate?.substring(0, 4)?.toIntOrNull()
+                )
+            }
+        } catch (e: Exception) {
+            emptyList()
+        }
+
+        return (experiences + mnisPosts).sortedByDescending { it.startYear ?: 0 }
+    }
+
+    /** Safely get an optional string from a JSONObject, returning null if missing or empty. */
+    private fun org.json.JSONObject.optStringOrNull(key: String): String? {
+        if (!has(key)) return null
+        val value = optString(key)
+        return value.ifEmpty { null }
     }
 
     private fun loadSamePartyMps(memberId: Int, partyId: Int?) {

@@ -46,6 +46,7 @@ fun SettingsScreen(themeViewModel: ThemeViewModel, modifier: Modifier = Modifier
     )
     val themeMode by themeViewModel.themeMode.collectAsStateWithLifecycle()
     val isAmoled by themeViewModel.isAmoled.collectAsStateWithLifecycle()
+    val showInfoCards by themeViewModel.showInfoCards.collectAsStateWithLifecycle()
 
     // AMOLED toggle only makes sense when the app is actually rendering dark.
     // In SYSTEM mode, that depends on the system dark setting.
@@ -105,6 +106,23 @@ fun SettingsScreen(themeViewModel: ThemeViewModel, modifier: Modifier = Modifier
                     onCheckedChange = { themeViewModel.setAmoled(it) }
                 )
             }
+        }
+
+        // --- Info cards toggle ---
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = MaterialTheme.padding.medium),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Show info cards",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Switch(
+                checked = showInfoCards,
+                onCheckedChange = { themeViewModel.setShowInfoCards(it) }
+            )
         }
     }
 }

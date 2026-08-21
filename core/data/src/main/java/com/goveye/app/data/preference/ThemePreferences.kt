@@ -42,6 +42,11 @@ constructor(@Named("theme") private val dataStore: DataStore<Preferences>) {
             preferences[AMOLED_KEY] ?: DEFAULT_AMOLED
         }
 
+    val showInfoCards: Flow<Boolean> =
+        dataStore.data.map { preferences ->
+            preferences[INFO_CARDS_KEY] ?: DEFAULT_INFO_CARDS
+        }
+
     suspend fun setThemeMode(mode: ThemeMode) {
         dataStore.edit { it[THEME_MODE_KEY] = mode.name }
     }
@@ -54,13 +59,19 @@ constructor(@Named("theme") private val dataStore: DataStore<Preferences>) {
         dataStore.edit { it[AMOLED_KEY] = enabled }
     }
 
+    suspend fun setShowInfoCards(enabled: Boolean) {
+        dataStore.edit { it[INFO_CARDS_KEY] = enabled }
+    }
+
     private companion object {
         val THEME_MODE_KEY = stringPreferencesKey("theme_mode")
         val APP_THEME_KEY = stringPreferencesKey("app_theme")
         val AMOLED_KEY = booleanPreferencesKey("is_amoled")
+        val INFO_CARDS_KEY = booleanPreferencesKey("show_info_cards")
 
         val DEFAULT_THEME_MODE = ThemeMode.SYSTEM
         val DEFAULT_APP_THEME = AppTheme.SKY
         const val DEFAULT_AMOLED = false
+        const val DEFAULT_INFO_CARDS = true
     }
 }

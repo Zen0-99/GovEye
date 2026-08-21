@@ -1,5 +1,6 @@
 package com.goveye.app.ui
 
+import android.util.Log
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -36,9 +37,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
@@ -57,16 +58,20 @@ import com.goveye.app.ui.navigation.DivisionDetailRoute
 import com.goveye.app.ui.navigation.FeedRoute
 import com.goveye.app.ui.navigation.FollowingRoute
 import com.goveye.app.ui.navigation.InterestBucketDetailRoute
+import com.goveye.app.ui.navigation.PartyRoute
 import com.goveye.app.ui.navigation.ProfileRoute
 import com.goveye.app.ui.navigation.SettingsRoute
+import com.goveye.app.ui.navigation.TranscriptRoute
 import com.goveye.app.ui.screens.FeedScreen
 import com.goveye.app.ui.screens.FollowingScreen
 import com.goveye.app.ui.screens.SettingsScreen
 import com.goveye.app.ui.screens.bills.BillDetailScreen
 import com.goveye.app.ui.screens.directory.DirectoryScreen
 import com.goveye.app.ui.screens.divisions.DivisionDetailScreen
+import com.goveye.app.ui.screens.divisions.TranscriptScreen
 import com.goveye.app.ui.screens.mpprofile.InterestBucketDetailScreen
 import com.goveye.app.ui.screens.mpprofile.ProfileScreen
+import com.goveye.app.ui.screens.party.PartyScreen
 import com.goveye.app.ui.theme.ThemeViewModel
 
 /**
@@ -98,6 +103,7 @@ private fun GovEyeAppContent(
     searchStateHolder: SearchBarStateHolder
 ) {
     val searchConfig by searchStateHolder.config
+    val showInfoCards by themeViewModel.showInfoCards.collectAsStateWithLifecycle()
     // Per-tab back stacks (D-20)
     val feedBackStack = rememberNavBackStack(FeedRoute)
     val directoryBackStack = rememberNavBackStack(DirectoryRoute)
@@ -125,6 +131,11 @@ private fun GovEyeAppContent(
             SettingsRoute -> settingsBackStack
             else -> feedBackStack
         }
+
+    Log.i(
+        "GovEye/Nav",
+        "GovEyeApp compose — tab=$currentTabIndex route=${currentBackStack.lastOrNull()?.javaClass?.simpleName} backstackSize=${currentBackStack.size}"
+    )
 
     LaunchedEffect(Unit) {
         deepLinkNavigator.deepLinkEvents.collect { route ->
@@ -171,47 +182,52 @@ private fun GovEyeAppContent(
     // SideEffect. Passed to tab screens (so content sits below the search
     // bar) and to the profile screen (so its header content is padded below
     // the transparent detail top bar while the gradient extends behind it).
-    var topBarHeight by remember { mutableStateOf(0.dp) }
+    // Initialize with status bar padding as a minimum so the first frame
+    // doesn't render content behind the search bar. SideEffect updates
+    // with the actual height after the first composition.
+    val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    var topBarHeight by remember { mutableStateOf(statusBarPadding) }
+    var bottomBarHeight by remember { mutableStateOf(0.dp) }
 
     val entries =
         rememberDecoratedNavEntries(currentBackStack, decorators) { key ->
+            Log.i("GovEye/Nav", "NavEntry created: ${key.javaClass.simpleName}")
             when (key) {
                 is FeedRoute ->
                     NavEntry(key) {
-                        TabScreenScaffold(
-                            currentTabIndex = currentTabIndex,
-                            onTabSelected = { currentTabIndex = it },
-                            topPadding = topBarHeight
-                        ) { contentModifier ->
-                            FeedScreen(
-                                onNavigateToDivision = { divisionId, house ->
-                                    currentBackStack.add(DivisionDetailRoute(divisionId, house))
-                                },
-                                modifier = contentModifier
-                            )
-                        }
+                        FeedScreen(
+                            onNavigateToDivision = { divisionId, house ->
+                                currentBackStack.add(DivisionDetailRoute(divisionId, house))
+                            },
+                            showInfoCards = showInfoCards,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(top = topBarHeight)
+                                .padding(bottom = bottomBarHeight)
+                        )
                     }
 
                 is DirectoryRoute ->
                     NavEntry(key) {
-                        TabScreenScaffold(
-                            currentTabIndex = currentTabIndex,
-                            onTabSelected = { currentTabIndex = it },
-                            topPadding = topBarHeight
-                        ) { contentModifier ->
-                            DirectoryScreen(
-                                onNavigateToProfile = { memberId ->
-                                    currentBackStack.add(ProfileRoute(memberId))
-                                },
-                                onNavigateToDivision = { divisionId, house ->
-                                    currentBackStack.add(DivisionDetailRoute(divisionId, house))
-                                },
-                                onNavigateToBill = { billId ->
-                                    currentBackStack.add(BillDetailRoute(billId))
-                                },
-                                modifier = contentModifier
-                            )
-                        }
+                        DirectoryScreen(
+                            onNavigateToProfile = { memberId ->
+                                currentBackStack.add(ProfileRoute(memberId))
+                            },
+                            onNavigateToDivision = { divisionId, house ->
+                                currentBackStack.add(DivisionDetailRoute(divisionId, house))
+                            },
+                            onNavigateToBill = { billId ->
+                                currentBackStack.add(BillDetailRoute(billId))
+                            },
+                            onNavigateToParty = { partyId ->
+                                currentBackStack.add(PartyRoute(partyId))
+                            },
+                            showInfoCards = showInfoCards,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(top = topBarHeight)
+                                .padding(bottom = bottomBarHeight)
+                        )
                     }
 
                 is ProfileRoute ->
@@ -228,8 +244,24 @@ private fun GovEyeAppContent(
                             onNavigateToInterestBucket = { targetMemberId, bucketLabel ->
                                 currentBackStack.add(InterestBucketDetailRoute(targetMemberId, bucketLabel))
                             },
+                            onNavigateToParty = { partyId ->
+                                currentBackStack.add(PartyRoute(partyId))
+                            },
                             contentTopPadding = topBarHeight,
                             modifier = Modifier.fillMaxSize()
+                        )
+                    }
+
+                is PartyRoute ->
+                    NavEntry(key) {
+                        PartyScreen(
+                            partyId = key.partyId,
+                            onBack = { currentBackStack.removeLastOrNull() },
+                            onNavigateToProfile = { targetId ->
+                                currentBackStack.add(ProfileRoute(targetId))
+                            },
+                            contentTopPadding = topBarHeight,
+                            modifier = Modifier.fillMaxSize().padding(top = topBarHeight)
                         )
                     }
 
@@ -238,6 +270,22 @@ private fun GovEyeAppContent(
                         DivisionDetailScreen(
                             divisionId = key.divisionId,
                             house = key.house,
+                            onBack = { currentBackStack.removeLastOrNull() },
+                            onNavigateToProfile = { targetId ->
+                                currentBackStack.add(ProfileRoute(targetId))
+                            },
+                            onNavigateToTranscript = { divId, divTitle ->
+                                currentBackStack.add(TranscriptRoute(divId, divTitle))
+                            },
+                            modifier = Modifier.fillMaxSize().padding(top = topBarHeight)
+                        )
+                    }
+
+                is TranscriptRoute ->
+                    NavEntry(key) {
+                        TranscriptScreen(
+                            divisionId = key.divisionId,
+                            divisionTitle = key.divisionTitle,
                             onBack = { currentBackStack.removeLastOrNull() },
                             onNavigateToProfile = { targetId ->
                                 currentBackStack.add(ProfileRoute(targetId))
@@ -267,32 +315,26 @@ private fun GovEyeAppContent(
 
                 is FollowingRoute ->
                     NavEntry(key) {
-                        TabScreenScaffold(
-                            currentTabIndex = currentTabIndex,
-                            onTabSelected = { currentTabIndex = it },
-                            topPadding = topBarHeight
-                        ) { contentModifier ->
-                            FollowingScreen(
-                                onNavigateToProfile = { memberId ->
-                                    currentBackStack.add(ProfileRoute(memberId))
-                                },
-                                modifier = contentModifier
-                            )
-                        }
+                        FollowingScreen(
+                            onNavigateToProfile = { memberId ->
+                                currentBackStack.add(ProfileRoute(memberId))
+                            },
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(top = topBarHeight)
+                                .padding(bottom = bottomBarHeight)
+                        )
                     }
 
                 is SettingsRoute ->
                     NavEntry(key) {
-                        TabScreenScaffold(
-                            currentTabIndex = currentTabIndex,
-                            onTabSelected = { currentTabIndex = it },
-                            topPadding = topBarHeight
-                        ) { contentModifier ->
-                            SettingsScreen(
-                                themeViewModel = themeViewModel,
-                                modifier = contentModifier
-                            )
-                        }
+                        SettingsScreen(
+                            themeViewModel = themeViewModel,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(top = topBarHeight)
+                                .padding(bottom = bottomBarHeight)
+                        )
                     }
 
                 else -> NavEntry(key) { Text("Unknown") }
@@ -303,14 +345,27 @@ private fun GovEyeAppContent(
     // - Profile and interest bucket screens use the detail top bar
     //   (Miko-style shared toolbar with title + back button)
     // - All other screens use the floating search bar
-    val isDetailTopBar = currentBackStack.lastOrNull()?.let {
-        it is ProfileRoute || it is InterestBucketDetailRoute
-    } ?: false
+    val currentRoute = currentBackStack.lastOrNull()
+    val isDetailTopBar =
+        currentRoute is ProfileRoute || currentRoute is InterestBucketDetailRoute || currentRoute is PartyRoute
 
-    val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    // Bottom bar is only shown on tab root screens — not on detail screens
+    // pushed onto a tab's back stack.
+    val isTabRoot = currentRoute is FeedRoute ||
+        currentRoute is DirectoryRoute ||
+        currentRoute is FollowingRoute ||
+        currentRoute is SettingsRoute
 
     Scaffold(
         contentWindowInsets = WindowInsets.navigationBars.only(WindowInsetsSides.Horizontal),
+        bottomBar = {
+            if (isTabRoot) {
+                GovEyeBottomBar(currentTabIndex) {
+                    Log.i("GovEye/Nav", "Tab selected: $it (was $currentTabIndex)")
+                    currentTabIndex = it
+                }
+            }
+        },
         topBar = {
             // Miko-style shared top bar — swaps between the floating search
             // bar (list screens) and the detail top bar (profile/bucket
@@ -356,6 +411,7 @@ private fun GovEyeAppContent(
         // top bar while letting the gradient extend behind it).
         SideEffect {
             topBarHeight = innerPadding.calculateTopPadding()
+            bottomBarHeight = innerPadding.calculateBottomPadding()
         }
         NavDisplay(
             entries = entries,
@@ -407,39 +463,6 @@ private fun GovEyeAppContent(
                     )
                     )
             }
-        )
-    }
-}
-
-/**
- * Per-tab Scaffold that owns the bottom navigation bar.
- *
- * Each tab root screen (Feed, Directory, Following, Settings) is wrapped in
- * this Scaffold so the bottom bar is part of the tab root's composition.
- * When a detail screen is pushed onto the back stack, the tab root (with
- * this bar) exits via the NavDisplay transition — the bar leaves with the
- * screen, not as a separate overlay. This mirrors Miko's architecture where
- * the bottom bar lives inside the tab container, not the root shell.
- *
- * [topPadding] is the root Scaffold's top bar height (search bar). It's
- * applied to the content so the tab content sits below the search bar,
- * since the NavDisplay no longer applies top padding itself.
- */
-@Composable
-private fun TabScreenScaffold(
-    currentTabIndex: Int,
-    onTabSelected: (Int) -> Unit,
-    topPadding: Dp = 0.dp,
-    content: @Composable (Modifier) -> Unit
-) {
-    Scaffold(
-        bottomBar = { GovEyeBottomBar(currentTabIndex, onTabSelected) },
-        contentWindowInsets = WindowInsets(0, 0, 0, 0)
-    ) { innerPadding ->
-        content(
-            Modifier.fillMaxSize()
-                .padding(top = topPadding)
-                .padding(innerPadding)
         )
     }
 }

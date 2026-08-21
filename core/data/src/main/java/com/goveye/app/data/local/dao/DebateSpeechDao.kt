@@ -23,4 +23,7 @@ interface DebateSpeechDao {
 
     @Query("SELECT COUNT(*) FROM debate_speeches")
     suspend fun countAll(): Int
+
+    @Query("SELECT COUNT(*) FROM debate_speeches WHERE memberId = :memberId AND isIntervention = 0")
+    suspend fun countSpeechesForMember(memberId: Int): Int
 }
