@@ -157,13 +157,22 @@ private fun SpeechCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 if (isCurrentMp && mpInfo != null) {
-                    // Current sitting MP — show avatar with photo
+                    // Current sitting MP — show avatar with photo from mps table
                     MpAvatar(
                         thumbnailUrl = mpInfo.thumbnailUrl,
                         displayName = mpInfo.nameDisplayAs,
                         partyColorHex = mpInfo.partyBackgroundColour,
                         size = 36.dp,
                         modifier = Modifier.clickable { onNavigateToProfile(speech.memberId) }
+                    )
+                } else if (historicalMember != null && historicalMember.parliamentMemberId != null) {
+                    // Former MP / Lord with Parliament ID — construct photo URL
+                    val photoUrl = "https://members-api.parliament.uk/api/Members/${historicalMember.parliamentMemberId}/Thumbnail"
+                    MpAvatar(
+                        thumbnailUrl = photoUrl,
+                        displayName = speech.speakerName,
+                        partyColorHex = null,
+                        size = 36.dp
                     )
                 } else {
                     // Former MP / Lord / unmatched — show initials circle
