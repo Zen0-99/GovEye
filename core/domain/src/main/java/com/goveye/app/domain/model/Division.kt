@@ -8,7 +8,8 @@ data class Division(
     val ayeCount: Int,
     val noCount: Int,
     val isDeferred: Boolean,
-    val house: Int
+    val house: Int,
+    val twfyDebateUrl: String? = null
 )
 
 data class DivisionVote(

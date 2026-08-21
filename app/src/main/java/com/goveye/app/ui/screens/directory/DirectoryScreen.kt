@@ -31,9 +31,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -49,7 +49,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.collectAsLazyPagingItems
@@ -66,8 +65,7 @@ private enum class DirectoryTab(val title: String) {
     OFFICIALS("Officials"),
     PARTIES("Parties"),
     BILLS("Bills"),
-    DIVISIONS("Divisions"),
-    DEBATES("Debates")
+    DIVISIONS("Debates")
 }
 
 @Composable
@@ -104,7 +102,7 @@ fun DirectoryScreen(
     // Context-aware placeholder based on current tab
     val currentTab = DirectoryTab.entries[pagerState.currentPage]
     val searchPlaceholder = when (currentTab) {
-        DirectoryTab.DIVISIONS -> "Search divisions…"
+        DirectoryTab.DIVISIONS -> "Search debates…"
         DirectoryTab.OFFICIALS -> "Search MPs, parties, constituencies…"
         else -> "Search…"
     }
@@ -122,14 +120,11 @@ fun DirectoryScreen(
     )
 
     Column(modifier = modifier.fillMaxSize()) {
-        // Tab row — Miko Updates-style scrollable sub-tabs under the search bar.
-        // ScrollableTabRow allows variable-width tabs so longer names like
-        // "Divisions" fit without truncation.
-        ScrollableTabRow(
+        // Tab row — 4 tabs fill the full width evenly.
+        TabRow(
             selectedTabIndex = pagerState.currentPage,
             containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            edgePadding = 16.dp
+            contentColor = MaterialTheme.colorScheme.onSurface
         ) {
             DirectoryTab.entries.forEachIndexed { index, tab ->
                 Tab(
@@ -177,12 +172,6 @@ fun DirectoryScreen(
                     houseFilter = filterState.houseFilter,
                     searchQuery = searchQuery
                 )
-
-                DirectoryTab.DEBATES -> DivisionsTabContent(
-                    onNavigateToDivision = onNavigateToDivision,
-                    houseFilter = filterState.houseFilter,
-                    searchQuery = searchQuery
-                )
             }
         }
     }
@@ -192,7 +181,6 @@ fun DirectoryScreen(
         val currentTabType = when (DirectoryTab.entries[pagerState.currentPage]) {
             DirectoryTab.OFFICIALS -> FilterTabType.OFFICIALS
             DirectoryTab.DIVISIONS -> FilterTabType.DIVISIONS
-            DirectoryTab.DEBATES -> FilterTabType.DIVISIONS
             else -> FilterTabType.OTHER
         }
         FilterBottomSheet(

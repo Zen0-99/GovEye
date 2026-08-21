@@ -26,16 +26,6 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Restore seed checkpoint
-        id: restore_checkpoint
-        if: steps.download_prev.outputs.has_previous != 'true'
-        uses: actions/cache@v4
-        with:
-          path: goveye-data/interests.db
-          key: interests-seed-${{ hashFiles('goveye-data/schemas/bundled_schema.json') }}-${{ github.run_id }}
-          restore-keys: |
-            interests-seed-${{ hashFiles('goveye-data/schemas/bundled_schema.json') }}-
-
       - name: Download previous DB and manifest
         id: download_prev
         run: |
@@ -52,6 +42,16 @@ jobs:
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Restore seed checkpoint
+        id: restore_checkpoint
+        if: steps.download_prev.outputs.has_previous != 'true'
+        uses: actions/cache@v4
+        with:
+          path: goveye-data/interests.db
+          key: interests-seed-${{ hashFiles('goveye-data/schemas/bundled_schema.json') }}-${{ github.run_id }}
+          restore-keys: |
+            interests-seed-${{ hashFiles('goveye-data/schemas/bundled_schema.json') }}-
 
       - name: Build Interests database (seed mode)
         if: steps.download_prev.outputs.has_previous != 'true'
@@ -94,6 +94,7 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           tag_name: interests-latest
+          fail_on_unmatched_files: true
           name: Interests Latest
           body: |
             Interests database update for GovEye (weekly).

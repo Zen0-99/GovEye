@@ -53,6 +53,6 @@ sealed interface DatabaseUpdateState {
  *
  * @param streamName The stream identifier: "mps", "commons-votes", "lords-votes", "bills", "committees", or "recess".
  * @param manifest The manifest from the per-API release (contains version, patch info).
- * @param release The GitHub release DTO (contains asset download URLs).
+ * @param patchUrl Direct download URL for the patch.json file.
  */
-data class PatchInfo(val streamName: String, val manifest: DatabaseManifest, val release: GithubReleaseDto)
+data class PatchInfo(val streamName: String, val manifest: DatabaseManifest, val patchUrl: String)

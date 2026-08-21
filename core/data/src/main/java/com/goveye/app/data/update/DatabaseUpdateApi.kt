@@ -20,6 +20,7 @@ import retrofit2.http.Path
  * - [COMMITTEES_TAG] (committees-latest) — committees + mp_committee_cross_ref
  * - [RECESS_TAG] (recess-latest) — recess_dates + recess_dates_meta
  * - [INTERESTS_TAG] (interests-latest) — interests
+ * - [DEBATES_TAG] (debates-latest) — debate_speeches (transcripts scraped from TWFY)
  *
  * First launch downloads all 7 per-API .db files and merges them on-device
  * into goveye.db. No separate seed release is needed.
@@ -45,6 +46,7 @@ interface DatabaseUpdateApi {
         const val COMMITTEES_TAG = "committees-latest"
         const val RECESS_TAG = "recess-latest"
         const val INTERESTS_TAG = "interests-latest"
+        const val DEBATES_TAG = "debates-latest"
 
         private const val OWNER = "Zen0-99"
         private const val REPO = "goveye-data"

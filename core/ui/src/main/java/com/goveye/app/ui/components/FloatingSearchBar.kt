@@ -32,14 +32,21 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 
 /**
@@ -141,9 +148,41 @@ fun FloatingSearchBar(
                                     maxLines = 1
                                 )
                             }
+                            // Use a local TextFieldValue to preserve cursor
+                            // position across recompositions. When the query
+                            // is updated from external state (ViewModel →
+                            // StateFlow → recomposition), a BasicTextField with
+                            // String value resets the cursor to position 0.
+                            // TextFieldValue carries the selection, so the
+                            // cursor stays where the user put it.
+                            var textFieldValue by remember {
+                                mutableStateOf(
+                                    TextFieldValue(
+                                        text = query,
+                                        selection = TextRange(query.length)
+                                    )
+                                )
+                            }
+                            // Sync external query changes (e.g., clear button,
+                            // view model reset) to local state. When the user
+                            // types, onValueChange updates textFieldValue first,
+                            // then calls onQueryChange — so when the external
+                            // query flows back, textFieldValue.text already
+                            // matches and we skip the reset.
+                            LaunchedEffect(query) {
+                                if (textFieldValue.text != query) {
+                                    textFieldValue = TextFieldValue(
+                                        text = query,
+                                        selection = TextRange(query.length)
+                                    )
+                                }
+                            }
                             BasicTextField(
-                                value = query,
-                                onValueChange = onQueryChange,
+                                value = textFieldValue,
+                                onValueChange = { newValue ->
+                                    textFieldValue = newValue
+                                    onQueryChange(newValue.text)
+                                },
                                 singleLine = true,
                                 textStyle = MaterialTheme.typography.titleMedium.copy(
                                     color = colorScheme.onSurface

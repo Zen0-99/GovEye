@@ -102,6 +102,8 @@ class VotesRepository @Inject constructor(private val divisionDao: DivisionDao) 
         val divisions = divisionIds.associateWith { divisionDao.getDivision(it) }
         return votes.mapNotNull { voteEntity ->
             val division = divisions[voteEntity.divisionId] ?: return@mapNotNull null
+            val voteType = runCatching { VoteType.valueOf(voteEntity.vote) }.getOrNull()
+                ?: return@mapNotNull null
             MemberVoteWithDivision(
                 divisionId = division.id,
                 divisionTitle = division.title,
@@ -109,7 +111,7 @@ class VotesRepository @Inject constructor(private val divisionDao: DivisionDao) 
                 house = division.house,
                 ayeCount = division.ayeCount,
                 noCount = division.noCount,
-                vote = VoteType.valueOf(voteEntity.vote),
+                vote = voteType,
                 isTeller = voteEntity.isTeller
             )
         }.sortedByDescending { it.divisionDate }
@@ -166,13 +168,14 @@ class VotesRepository @Inject constructor(private val divisionDao: DivisionDao) 
         ayeCount = ayeCount,
         noCount = noCount,
         isDeferred = isDeferred,
-        house = house
+        house = house,
+        twfyDebateUrl = twfyDebateUrl
     )
 
     private fun DivisionVoteEntity.toDomain(): DivisionVote = DivisionVote(
         divisionId = divisionId,
         memberId = memberId,
-        vote = VoteType.valueOf(vote),
+        vote = runCatching { VoteType.valueOf(vote) }.getOrDefault(VoteType.NO_VOTE_RECORDED),
         memberName = memberName,
         partyName = partyName,
         partyColour = partyColour,

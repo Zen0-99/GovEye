@@ -5,9 +5,7 @@ import androidx.work.WorkerParameters
 import com.goveye.app.data.update.DatabaseManifest
 import com.goveye.app.data.update.DatabaseUpdateManager
 import com.goveye.app.data.update.DatabaseUpdateState
-import com.goveye.app.data.update.GithubReleaseDto
 import com.goveye.app.data.update.PatchInfo
-import com.goveye.app.data.update.ReleaseAssetDto
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -66,16 +64,7 @@ class DatabaseUpdateWorkerTest {
             patchHash = "def456",
             patchSize = 50000
         )
-        val release = GithubReleaseDto(
-            assets = listOf(
-                ReleaseAssetDto(
-                    name = "patch.json",
-                    browserDownloadUrl = "https://example.com/patch.json",
-                    size = 50000
-                )
-            )
-        )
-        return PatchInfo(streamName, manifest, release)
+        return PatchInfo(streamName, manifest, "https://example.com/patch.json")
     }
 
     @Test

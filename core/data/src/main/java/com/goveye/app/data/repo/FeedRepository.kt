@@ -94,6 +94,7 @@ class FeedRepository @Inject constructor(
         ayeCount = ayeCount,
         noCount = noCount,
         isDeferred = isDeferred,
-        house = house
+        house = house,
+        twfyDebateUrl = twfyDebateUrl
     )
 }

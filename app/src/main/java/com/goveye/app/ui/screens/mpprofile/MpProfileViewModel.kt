@@ -66,101 +66,93 @@ class ProfileViewModel @Inject constructor(
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
 
     fun loadProfile(memberId: Int) {
+        // Load everything in a single coroutine to avoid staged loading.
+        // The bundled DB is local — all queries are fast. Running them
+        // sequentially in one coroutine ensures the UI state updates in
+        // one batch instead of trickling in over multiple coroutine
+        // scheduling cycles.
         viewModelScope.launch {
-            membersRepository.observeMp(memberId).collect { result ->
-                _uiState.value = _uiState.value.copy(
-                    mp = result.data,
-                    syncStatus = result.status,
-                    isLoading = false
-                )
-                result.data?.let { mp ->
-                    loadSamePartyMps(memberId, mp.party?.id)
-                }
-            }
-        }
+            // 1. MP basic data (one-shot, not Flow — no need to observe a
+            //    bundled DB that doesn't change during a session)
+            val mpResult = membersRepository.observeMp(memberId).first()
+            val mp = mpResult.data
+            _uiState.value = _uiState.value.copy(
+                mp = mp,
+                syncStatus = mpResult.status,
+                isLoading = false
+            )
 
-        // Observe follow state
-        viewModelScope.launch {
-            followRepository.observeIsFollowing(memberId).collect { isFollowing ->
-                _uiState.value = _uiState.value.copy(isFollowing = isFollowing)
-            }
-        }
+            // 2. Follow state + notification prefs (one-shot)
+            val isFollowing = followRepository.observeIsFollowing(memberId).first()
+            _uiState.value = _uiState.value.copy(isFollowing = isFollowing)
 
-        // Observe per-MP notification preferences
-        viewModelScope.launch {
-            notificationPrefRepository.observe(memberId).collect { pref ->
-                _uiState.value = _uiState.value.copy(
-                    notificationsEnabled = pref.notificationsEnabled,
-                    votesNotificationsEnabled = pref.votesEnabled,
-                    speechesNotificationsEnabled = pref.speechesEnabled
-                )
-            }
-        }
+            val notifPref = notificationPrefRepository.observe(memberId).first()
+            _uiState.value = _uiState.value.copy(
+                notificationsEnabled = notifPref.notificationsEnabled,
+                votesNotificationsEnabled = notifPref.votesEnabled,
+                speechesNotificationsEnabled = notifPref.speechesEnabled
+            )
 
-        viewModelScope.launch {
+            // 3. Synopsis, contacts, experiences (one-shot)
             try {
                 val synopsis = membersRepository.getSynopsis(memberId)
                 _uiState.value = _uiState.value.copy(synopsis = synopsis)
             } catch (e: Exception) {
             }
-        }
-
-        viewModelScope.launch {
             try {
                 val contacts = membersRepository.getContact(memberId)
                 _uiState.value = _uiState.value.copy(contacts = contacts)
             } catch (e: Exception) {
             }
-        }
-
-        viewModelScope.launch {
             try {
                 val experiences = membersRepository.getExperience(memberId)
                 _uiState.value = _uiState.value.copy(experiences = experiences)
             } catch (e: Exception) {
             }
-        }
 
-        viewModelScope.launch {
-            committeesRepository.observeCommitteesForMember(memberId).collect { result ->
-                _uiState.value = _uiState.value.copy(committees = result.data)
+            // 4. Committees (one-shot)
+            val committeesResult = committeesRepository.observeCommitteesForMember(memberId).first()
+            _uiState.value = _uiState.value.copy(committees = committeesResult.data)
+
+            // 5. Same-party MPs
+            mp?.party?.id?.let { partyId ->
+                val entities = mpDao.getMpsByParty(partyId, memberId)
+                _uiState.value = _uiState.value.copy(samePartyMps = entities.map { it.toDomainMp() })
             }
-        }
 
-        // Load voting record from the bundled DB (the DB has ALL votes for ALL divisions)
-        viewModelScope.launch {
+            // 6. Votes + rebellion stats — all queries in one batch
             try {
-                // 0. Load all division dates for the house (for attendance calc)
-                val mp = mpDao.getMp(memberId)
                 val house = mp?.house ?: 1
                 val allDates = votesRepository.getAllDivisionDates(house)
-                _uiState.value = _uiState.value.copy(allDivisionDates = allDates)
-
-                // 1. Load all votes from the bundled DB
                 val votes = votesRepository.getMemberVotingWithDivisions(memberId)
-                _uiState.value = _uiState.value.copy(memberVotes = votes)
+                android.util.Log.i("GovEye/Profile", "Loaded ${votes.size} votes for MP $memberId (house=$house)")
 
-                // 2. Compute rebellion stats from the bundled data
-                val partyName = _uiState.value.mp?.party?.name
-                _uiState.value = _uiState.value.copy(memberPartyName = partyName)
-                if (votes.isNotEmpty() && partyName != null) {
+                val partyName = mp?.party?.name
+                val rebellionStats = if (votes.isNotEmpty() && partyName != null) {
                     val memberVotesResult = votesRepository.observeMemberVoting(memberId).first()
                     val memberVotes = memberVotesResult.data
                     val divisionIds = memberVotes.map { it.divisionId }.distinct()
                     val allVotesByDivision = votesRepository.getAllVotesForDivisions(divisionIds)
                     _uiState.value = _uiState.value.copy(allVotesByDivision = allVotesByDivision)
-                    val stats = RebellionCalculator.compute(memberVotes, allVotesByDivision, partyName)
-                    _uiState.value = _uiState.value.copy(rebellionStats = stats)
+                    RebellionCalculator.compute(memberVotes, allVotesByDivision, partyName)
+                } else {
+                    null
                 }
-            } catch (e: Exception) {
-            }
-        }
 
-        // Load interests from the bundled DB
-        viewModelScope.launch {
-            interestsRepository.observeInterestsForMember(memberId).collect { result ->
-                _uiState.value = _uiState.value.copy(interests = result.data)
+                _uiState.value = _uiState.value.copy(
+                    allDivisionDates = allDates,
+                    memberVotes = votes,
+                    memberPartyName = partyName,
+                    rebellionStats = rebellionStats
+                )
+            } catch (e: Exception) {
+                android.util.Log.e("GovEye/Profile", "Failed to load votes for MP $memberId", e)
             }
+
+            // 7. Interests (one-shot)
+            val interestsResult = interestsRepository.observeInterestsForMember(memberId).first()
+            android.util.Log.i("GovEye/Profile", "Loaded ${interestsResult.data.size} interests for MP $memberId")
+            _uiState.value = _uiState.value.copy(interests = interestsResult.data)
         }
     }
 

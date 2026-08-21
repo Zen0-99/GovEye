@@ -39,14 +39,49 @@ data class SearchBarConfig(
 )
 
 /**
- * Mutable holder for the global search bar state.
+ * An action icon shown in the [DetailTopBarConfig].
+ */
+data class DetailTopBarAction(
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val contentDescription: String,
+    val onClick: () -> Unit,
+    val tint: androidx.compose.ui.graphics.Color? = null
+)
+
+/**
+ * Configuration for the detail top bar — the Miko-style shared toolbar
+ * that replaces the search bar on detail screens (profile, bill, etc.).
+ *
+ * Like [SearchBarConfig], this is rendered at the app shell level.
+ * Detail screens configure it via [ConfigureDetailTopBar].
+ */
+data class DetailTopBarConfig(
+    val title: String = "",
+    val onBack: () -> Unit = {},
+    val actions: List<DetailTopBarAction> = emptyList(),
+    /** Optional party color for a subtle gradient accent (profile screens). */
+    val accentColor: androidx.compose.ui.graphics.Color? = null,
+    /** Icon tint for back button and actions (use white over gradients). */
+    val iconTint: androidx.compose.ui.graphics.Color? = null
+)
+
+/**
+ * Mutable holder for the global top bar state.
  * Provided via [LocalSearchBarState] at the app shell level.
+ *
+ * Holds both search bar config and detail top bar config. The shell
+ * decides which to render based on the current route.
  */
 class SearchBarStateHolder {
     val config: MutableState<SearchBarConfig> = mutableStateOf(SearchBarConfig())
+    val detailConfig: MutableState<DetailTopBarConfig> = mutableStateOf(DetailTopBarConfig())
 
     fun update(config: SearchBarConfig) {
         this.config.value = config
+    }
+
+    fun updateDetail(config: DetailTopBarConfig) {
+        this.detailConfig.value = config
     }
 
     fun clear() {
@@ -73,5 +108,19 @@ fun ConfigureSearchBar(config: SearchBarConfig) {
             // Keep the last config — don't clear. This prevents janky
             // element-by-element destruction when navigating to detail screens.
         }
+    }
+}
+
+/**
+ * Configures the detail top bar for a detail screen.
+ * Like [ConfigureSearchBar], does NOT clear on dispose so the last config
+ * persists when navigating away.
+ */
+@Composable
+fun ConfigureDetailTopBar(config: DetailTopBarConfig) {
+    val holder = LocalSearchBarState.current
+    DisposableEffect(config) {
+        holder.updateDetail(config)
+        onDispose { }
     }
 }

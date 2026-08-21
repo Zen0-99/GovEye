@@ -6,23 +6,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -36,9 +28,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.goveye.app.domain.model.Interest
+import com.goveye.app.ui.components.ConfigureDetailTopBar
 import com.goveye.app.ui.theme.padding
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InterestBucketDetailScreen(
     memberId: Int,
@@ -52,6 +44,14 @@ fun InterestBucketDetailScreen(
     LaunchedEffect(memberId) {
         viewModel.loadProfile(memberId)
     }
+
+    // Configure the shell's detail top bar with bucket label as title
+    ConfigureDetailTopBar(
+        config = com.goveye.app.ui.components.DetailTopBarConfig(
+            title = bucketLabel,
+            onBack = onBack
+        )
+    )
 
     // Filter interests to the selected bucket
     val bucketInterests = remember(uiState.interests, bucketLabel) {
@@ -68,92 +68,58 @@ fun InterestBucketDetailScreen(
             }
     }
 
-    Scaffold(
-        modifier = modifier,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        topBar = {
-            TopAppBar(
-                title = { Text(bucketLabel) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
-                    }
-                }
+    if (bucketInterests.isEmpty()) {
+        Box(
+            modifier = modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "No interests in this category",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-    ) { innerPadding ->
-        if (bucketInterests.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "No interests in this category",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
-                contentPadding = PaddingValues(
-                    horizontal = MaterialTheme.padding.medium,
-                    vertical = MaterialTheme.padding.medium
-                ),
-                verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small)
-            ) {
-                groupedByCategory.forEach { (categoryName, entries) ->
-                    item {
-                        CategoryGroupHeader(
-                            categoryName = categoryName,
-                            entryCount = entries.size,
-                            totalPence = entries.sumOf { it.parsedAmountPence ?: 0L }
-                        )
-                    }
-                    items(entries, key = { it.id }) { interest ->
-                        InterestEntryRow(interest = interest)
-                    }
+    } else {
+        LazyColumn(
+            modifier = modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                horizontal = MaterialTheme.padding.medium,
+                vertical = MaterialTheme.padding.medium
+            ),
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small)
+        ) {
+            groupedByCategory.forEach { (categoryName, entries) ->
+                // Inline heading — same pattern as feed date headings.
+                // Not a card, just a text label that separates groups.
+                item(key = "header_$categoryName") {
+                    CategoryInlineHeader(
+                        categoryName = categoryName,
+                        entryCount = entries.size
+                    )
+                }
+                items(entries, key = { it.id }) { interest ->
+                    InterestEntryRow(interest = interest)
                 }
             }
         }
     }
 }
 
+/**
+ * Inline category heading — like the feed's date headers.
+ * Simple text on surface color, not a card.
+ */
 @Composable
-private fun CategoryGroupHeader(categoryName: String, entryCount: Int, totalPence: Long) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = categoryName,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = "$entryCount entries",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            if (totalPence > 0) {
-                Text(
-                    text = formatPencePublic(totalPence),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-    }
+private fun CategoryInlineHeader(categoryName: String, entryCount: Int) {
+    Text(
+        text = "$categoryName  ·  $entryCount ${if (entryCount == 1) "entry" else "entries"}",
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp, vertical = 8.dp)
+    )
 }
 
 @Composable

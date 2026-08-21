@@ -4,12 +4,14 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.util.Log
 import androidx.room.withTransaction
 import com.goveye.app.data.local.BundledDatabase
 import com.goveye.app.data.local.dao.DatabaseUpdateDao
 import com.goveye.app.data.local.entity.BillEntity
 import com.goveye.app.data.local.entity.BillStageEntity
 import com.goveye.app.data.local.entity.CommitteeEntity
+import com.goveye.app.data.local.entity.DebateSpeechEntity
 import com.goveye.app.data.local.entity.DivisionEntity
 import com.goveye.app.data.local.entity.DivisionVoteEntity
 import com.goveye.app.data.local.entity.HansardContributionEntity
@@ -58,7 +60,6 @@ import okhttp3.Request
  */
 @Singleton
 class DatabaseUpdateManager @Inject constructor(
-    private val updateApi: DatabaseUpdateApi,
     private val preferences: DatabasePreferences,
     private val json: Json,
     @ApplicationContext private val context: Context,
@@ -76,6 +77,12 @@ class DatabaseUpdateManager @Inject constructor(
         if (preferences.seedVersion.first() == null) return true
         return !context.getDatabasePath(BundledDatabase.DATABASE_NAME).exists()
     }
+
+    /**
+     * Synchronous check — does the DB file exist at Room's expected path?
+     * Used to decide the initial UI state without awaiting a suspend call.
+     */
+    fun databaseFileExists(): Boolean = context.getDatabasePath(BundledDatabase.DATABASE_NAME).exists()
 
     /**
      * Fetches all 7 per-API manifests in parallel and compares each against the
@@ -100,7 +107,8 @@ class DatabaseUpdateManager @Inject constructor(
                 return@withContext DatabaseUpdateState.NeedsFullDownload(null)
             }
 
-            // Fetch all 7 releases in parallel (D-10)
+            // Fetch all 7 manifests in parallel via direct GitHub download URLs
+            // (bypasses the 60 req/hour unauthenticated API rate limit)
             val results = fetchAllManifests()
 
             // If all 7 failed, return Failed
@@ -122,10 +130,9 @@ class DatabaseUpdateManager @Inject constructor(
 
                     manifest.previousVersion == localVersion -> {
                         // Exactly 1 behind — patch available
-                        val release = releases[index]
-                        if (release != null) {
-                            patches.add(PatchInfo(streamName, manifest, release))
-                        }
+                        val (tag, _) = streamTags[index]
+                        val patchUrl = "$GITHUB_DOWNLOAD_BASE/$tag/$PATCH_ASSET_NAME"
+                        patches.add(PatchInfo(streamName, manifest, patchUrl))
                     }
 
                     else -> {
@@ -165,10 +172,7 @@ class DatabaseUpdateManager @Inject constructor(
             // 1. Download and parse all patch.json files, merge changes maps
             val combinedChanges = mutableMapOf<String, TableChanges>()
             for (patchInfo in patches) {
-                val patchAsset = patchInfo.release.assets.find { it.name == PATCH_ASSET_NAME }
-                    ?: return@withContext DatabaseUpdateState.Failed("patch.json not found for ${patchInfo.streamName}")
-
-                val patchJson = downloadAssetText(patchAsset.browserDownloadUrl)
+                val patchJson = downloadAssetText(patchInfo.patchUrl)
                 val patch = json.decodeFromString<DatabasePatch>(patchJson)
 
                 // Merge changes — each patch touches only its own tables (no conflicts)
@@ -231,72 +235,93 @@ class DatabaseUpdateManager @Inject constructor(
             return@withContext try {
                 // 1. Check for metered connection (Pitfall 4)
                 if (isMeteredConnection()) {
+                    Log.w(TAG, "Metered connection — deferring download")
                     return@withContext DatabaseUpdateState.NeedsWifi
                 }
 
-                // 2. Fetch all 7 per-API releases in parallel
-                val releases = fetchAllReleases()
-                if (releases.all { it == null }) {
-                    return@withContext DatabaseUpdateState.Failed("All per-API release fetches failed")
-                }
-
-                // 3. Let Room create the empty goveye.db with all tables + FTS triggers
-                //    Opening the DB triggers schema creation. We then close it so we
-                //    can open it with raw SQLite for the merge.
+                // 2. Let Room create the empty goveye.db with all tables + FTS triggers.
+                //    Keep Room open — we'll use a separate raw SQLite connection for
+                //    the merge (ATTACH conflicts with Room's WAL transaction management)
+                //    and force the InvalidationTracker to refresh afterward.
+                Log.i(TAG, "Creating empty goveye.db via Room")
                 database.openHelper.writableDatabase
-                database.close()
 
-                // 4. Download all 7 per-API .db files to cacheDir, tracking combined progress
+                // 3. Download all 7 per-API .db files directly from GitHub release URLs.
+                //    We bypass the GitHub API (60 req/hour unauthenticated rate limit)
+                //    by constructing download URLs directly:
+                //    https://github.com/{owner}/{repo}/releases/download/{tag}/{asset}
                 val dbFiles = mutableMapOf<String, File>()
                 val manifests = mutableMapOf<String, DatabaseManifest>()
                 var totalProgress = 0f
-                val perStreamProgress = FloatArray(7)
+                val perStreamProgress = FloatArray(streamTags.size)
 
-                for ((index, release) in releases.withIndex()) {
-                    if (release == null) continue
-                    val (streamName, _) = streamTags[index]
+                for ((index, pair) in streamTags.withIndex()) {
+                    val (tag, streamName) = pair
+                    val dbFileName = perApiDbFileName(streamName)
+                    val dbUrl = "$GITHUB_DOWNLOAD_BASE/$tag/$dbFileName"
+                    val manifestUrl = "$GITHUB_DOWNLOAD_BASE/$tag/$MANIFEST_ASSET_NAME"
 
-                    val dbAsset = release.assets.find { it.name == perApiDbFileName(streamName) }
-                    if (dbAsset == null) continue
+                    Log.i(TAG, "Downloading $streamName DB from $dbUrl")
 
-                    val tempFile = File(context.cacheDir, "${streamName}_download.db")
-                    val request = Request.Builder().url(dbAsset.browserDownloadUrl).build()
-                    dbDownloadClient.newCall(request).execute().use { response ->
-                        if (!response.isSuccessful) {
-                            continue
-                        }
-                        val contentLength = response.body.contentLength()
-                        response.body.byteStream().use { input ->
-                            tempFile.outputStream().use { output ->
-                                val buffer = ByteArray(BUFFER_SIZE)
-                                var bytesRead: Int
-                                var totalRead = 0L
-                                while (input.read(buffer).also { bytesRead = it } != -1) {
-                                    output.write(buffer, 0, bytesRead)
-                                    totalRead += bytesRead
-                                    if (contentLength > 0) {
-                                        perStreamProgress[index] = totalRead.toFloat() / contentLength
-                                        totalProgress = perStreamProgress.sum() / 7f
-                                        onProgress(totalProgress)
-                                    }
-                                }
-                            }
-                        }
+                    // Download manifest first (small, gives us hash + version)
+                    val manifest: DatabaseManifest? = try {
+                        val manifestJson = downloadAssetText(manifestUrl)
+                        json.decodeFromString<DatabaseManifest>(manifestJson)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Failed to download manifest for $streamName: ${e.message}")
+                        null
                     }
 
-                    // Verify hash if manifest is available
-                    val manifestAsset = release.assets.find { it.name == MANIFEST_ASSET_NAME }
-                    if (manifestAsset != null) {
-                        val manifestJson = downloadAssetText(manifestAsset.browserDownloadUrl)
-                        val manifest = json.decodeFromString<DatabaseManifest>(manifestJson)
+                    // Download the .db file with progress tracking
+                    val tempFile = File(context.cacheDir, "${streamName}_download.db")
+                    val request = Request.Builder().url(dbUrl).build()
+                    val downloadSuccess = try {
+                        dbDownloadClient.newCall(request).execute().use { response ->
+                            if (!response.isSuccessful) {
+                                Log.w(TAG, "HTTP ${response.code} downloading $streamName DB")
+                                false
+                            } else {
+                                val contentLength = response.body.contentLength()
+                                response.body.byteStream().use { input ->
+                                    tempFile.outputStream().use { output ->
+                                        val buffer = ByteArray(BUFFER_SIZE)
+                                        var bytesRead: Int
+                                        var totalRead = 0L
+                                        while (input.read(buffer).also { bytesRead = it } != -1) {
+                                            output.write(buffer, 0, bytesRead)
+                                            totalRead += bytesRead
+                                            if (contentLength > 0) {
+                                                perStreamProgress[index] = totalRead.toFloat() / contentLength
+                                                totalProgress = perStreamProgress.sum() / 7f
+                                                onProgress(totalProgress)
+                                            }
+                                        }
+                                    }
+                                }
+                                true
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Exception downloading $streamName DB: ${e.message}")
+                        tempFile.delete()
+                        false
+                    }
+
+                    if (!downloadSuccess) continue
+
+                    // Verify hash if manifest was downloaded
+                    if (manifest != null) {
                         val actualHash = calculateSha256(tempFile)
                         if (actualHash.equals(manifest.dbHash, ignoreCase = true)) {
+                            Log.i(TAG, "$streamName DB hash verified (${tempFile.length()} bytes)")
                             dbFiles[streamName] = tempFile
                             manifests[streamName] = manifest
                         } else {
+                            Log.w(TAG, "$streamName DB hash mismatch — expected ${manifest.dbHash}, got $actualHash")
                             tempFile.delete()
                         }
                     } else {
+                        Log.w(TAG, "$streamName has no manifest — skipping hash verification")
                         dbFiles[streamName] = tempFile
                     }
                 }
@@ -305,8 +330,15 @@ class DatabaseUpdateManager @Inject constructor(
                     return@withContext DatabaseUpdateState.Failed("No per-API DBs downloaded successfully")
                 }
 
-                // 5. Merge: open goveye.db with raw SQLite, ATTACH + INSERT OR REPLACE
+                Log.i(TAG, "Downloaded ${dbFiles.size} DBs: ${dbFiles.keys}")
+
+                // 4. Merge: open a SEPARATE raw SQLite connection to goveye.db (Room
+                //    stays open) and do ATTACH + INSERT OR REPLACE. ATTACH conflicts
+                //    with Room's WAL transaction management, so we can't use Room's
+                //    connection. After the merge, we force-refresh the InvalidationTracker
+                //    so Room's Flow queries re-emit with the new data.
                 val dbPath = context.getDatabasePath(BundledDatabase.DATABASE_NAME)
+                Log.i(TAG, "Opening ${dbPath.path} for merge (separate connection)")
                 val mergedDb = SQLiteDatabase.openDatabase(
                     dbPath.path,
                     null,
@@ -315,36 +347,102 @@ class DatabaseUpdateManager @Inject constructor(
 
                 for ((streamName, dbFile) in dbFiles) {
                     val tables = perApiTables(streamName)
-                    mergedDb.execSQL("ATTACH DATABASE '${dbFile.path}' AS src_$streamName")
+                    // Sanitize schema alias — hyphens in stream names (e.g. "commons-votes")
+                    // break SQLite syntax, so replace with underscores.
+                    val schemaAlias = "src_${streamName.replace("-", "_")}"
+                    Log.i(TAG, "Merging $streamName → tables: $tables")
+                    mergedDb.execSQL("ATTACH DATABASE '${dbFile.path}' AS $schemaAlias")
+
+                    // Commons-votes and lords-votes share the same tables (divisions,
+                    // division_votes). A blanket DELETE FROM would wipe the other house's
+                    // data when the second stream merges. Instead, delete only rows
+                    // belonging to this stream's house:
+                    //   house=1 for commons-votes, house=2 for lords-votes.
+                    val houseFilter = when (streamName) {
+                        "commons-votes" -> 1
+                        "lords-votes" -> 2
+                        else -> null
+                    }
 
                     for (table in tables) {
                         // mps_fts is auto-populated by FTS4 triggers — skip direct insert
                         if (table == "mps_fts") continue
-                        // Wipe existing data (handles "multiple versions behind" case
-                        // where stale rows need to be removed) then copy fresh data
-                        mergedDb.execSQL("DELETE FROM $table")
-                        mergedDb.execSQL(
-                            "INSERT OR REPLACE INTO $table SELECT * FROM src_$streamName.$table"
-                        )
+
+                        if (houseFilter != null && table == "divisions") {
+                            // Delete votes for this house's divisions first (FK-like),
+                            // then delete the divisions themselves.
+                            mergedDb.execSQL(
+                                "DELETE FROM division_votes WHERE divisionId IN " +
+                                    "(SELECT id FROM divisions WHERE house = $houseFilter)"
+                            )
+                            mergedDb.execSQL("DELETE FROM divisions WHERE house = $houseFilter")
+                            // Explicitly list columns — the source per-API DB may have
+                            // fewer columns than the destination (e.g. twfyDebateUrl was
+                            // added later). SELECT * would fail with a column count mismatch.
+                            // Check if the source has twfyDebateUrl; if not, select NULL.
+                            val hasTwfyUrl = try {
+                                mergedDb.rawQuery(
+                                    "SELECT twfyDebateUrl FROM $schemaAlias.divisions LIMIT 0",
+                                    null
+                                ).use { true }
+                            } catch (e: Exception) {
+                                false
+                            }
+                            val twfyCol = if (hasTwfyUrl) "twfyDebateUrl" else "NULL"
+                            mergedDb.execSQL(
+                                "INSERT OR REPLACE INTO divisions " +
+                                    "(id, title, date, publicationUpdated, number, isDeferred, " +
+                                    "ayeCount, noCount, house, lastUpdated, twfyDebateUrl) " +
+                                    "SELECT id, title, date, publicationUpdated, number, isDeferred, " +
+                                    "ayeCount, noCount, house, lastUpdated, $twfyCol " +
+                                    "FROM $schemaAlias.divisions"
+                            )
+                            mergedDb.execSQL(
+                                "INSERT OR REPLACE INTO division_votes SELECT * FROM $schemaAlias.division_votes"
+                            )
+                        } else if (houseFilter != null && table == "division_votes") {
+                            // Already handled above alongside divisions — skip.
+                            continue
+                        } else {
+                            // Wipe existing data then copy fresh data
+                            mergedDb.execSQL("DELETE FROM $table")
+                            mergedDb.execSQL(
+                                "INSERT OR REPLACE INTO $table SELECT * FROM $schemaAlias.$table"
+                            )
+                        }
+                        val count = mergedDb.rawQuery("SELECT COUNT(*) FROM $table", null).use {
+                            if (it.moveToFirst()) it.getInt(0) else -1
+                        }
+                        Log.i(TAG, "  $table: $count rows after merge")
                     }
 
-                    mergedDb.execSQL("DETACH DATABASE src_$streamName")
+                    mergedDb.execSQL("DETACH DATABASE $schemaAlias")
                     dbFile.delete()
                 }
 
-                mergedDb.execSQL("VACUUM")
+                // Checkpoint WAL so data lands in the main DB file, then close.
+                // PRAGMA returns a result row so we must use rawQuery, not execSQL.
+                mergedDb.rawQuery("PRAGMA wal_checkpoint(TRUNCATE)", null).use { it.moveToFirst() }
                 mergedDb.close()
+                Log.i(TAG, "Merge complete, WAL checkpointed")
 
-                // 6. Set per-API version keys from manifests
+                // 4b. Force Room's InvalidationTracker to refresh so Flow queries
+                //     notice the data written by the separate connection and re-emit.
+                Log.i(TAG, "Refreshing Room InvalidationTracker")
+                database.invalidationTracker.refreshVersionsSync()
+
+                // 5. Set per-API version keys from manifests
                 for ((streamName, manifest) in manifests) {
                     setStreamVersion(streamName, manifest.version)
                 }
 
-                // 7. Mark seed version as complete
+                // 6. Mark seed version as complete
                 preferences.setSeedVersion(1)
+                Log.i(TAG, "Seed version set to 1 — first launch complete")
 
                 DatabaseUpdateState.UpToDate
             } catch (e: Exception) {
+                Log.e(TAG, "downloadAndMergePerApiDbs failed", e)
                 DatabaseUpdateState.Failed(e.message ?: "Per-API DB download and merge failed")
             }
         }
@@ -418,6 +516,12 @@ class DatabaseUpdateManager @Inject constructor(
                         json.decodeFromJsonElement<RecessDatesMetaEntity>(it)
                     }
                 )
+
+                "debate_speeches" -> updateDao.upsertDebateSpeeches(
+                    upsertList.map {
+                        json.decodeFromJsonElement<DebateSpeechEntity>(it)
+                    }
+                )
                 // mps_fts is NOT handled — auto-synced by FTS4 triggers (Pitfall 2)
             }
         }
@@ -458,6 +562,11 @@ class DatabaseUpdateManager @Inject constructor(
                 "recess_dates" -> updateDao.deleteRecessDate(obj["id"]!!.jsonPrimitive.longOrNull!!)
 
                 "recess_dates_meta" -> updateDao.deleteRecessDatesMeta(obj["house"]!!.jsonPrimitive.intOrNull!!)
+
+                "debate_speeches" -> updateDao.deleteDebateSpeech(
+                    obj["debateGid"]!!.jsonPrimitive.content,
+                    obj["speechGid"]!!.jsonPrimitive.content
+                )
             }
         }
     }
@@ -467,8 +576,6 @@ class DatabaseUpdateManager @Inject constructor(
      *
      * Returns a list of 7 nullable (streamName, manifest) pairs — null entries
      * indicate streams whose fetch failed (partial failure is OK).
-     * Also populates [releases] with the corresponding GithubReleaseDto for
-     * each stream.
      */
     private val streamTags = listOf(
         DatabaseUpdateApi.MPS_TAG to "mps",
@@ -477,42 +584,21 @@ class DatabaseUpdateManager @Inject constructor(
         DatabaseUpdateApi.BILLS_TAG to "bills",
         DatabaseUpdateApi.COMMITTEES_TAG to "committees",
         DatabaseUpdateApi.RECESS_TAG to "recess",
-        DatabaseUpdateApi.INTERESTS_TAG to "interests"
+        DatabaseUpdateApi.INTERESTS_TAG to "interests",
+        DatabaseUpdateApi.DEBATES_TAG to "debates"
     )
 
-    private var releases: Array<GithubReleaseDto?> = arrayOfNulls(7)
-
     private suspend fun fetchAllManifests(): List<Pair<String, DatabaseManifest>?> = coroutineScope {
-        val deferreds = streamTags.mapIndexed { index, (tag, streamName) ->
+        val deferreds = streamTags.map { (tag, streamName) ->
             async {
                 try {
-                    val release = updateApi.getReleaseByTag(tag = tag)
-                    releases[index] = release
-                    val manifestAsset = release.assets.find { it.name == MANIFEST_ASSET_NAME }
-                        ?: return@async null
-                    val manifestJson = downloadAssetText(manifestAsset.browserDownloadUrl)
+                    val manifestUrl = "$GITHUB_DOWNLOAD_BASE/$tag/$MANIFEST_ASSET_NAME"
+                    val manifestJson = downloadAssetText(manifestUrl)
                     val manifest = json.decodeFromString<DatabaseManifest>(manifestJson)
                     streamName to manifest
                 } catch (e: Exception) {
+                    Log.w(TAG, "Failed to fetch manifest for $streamName: ${e.message}")
                     null // partial failure — this stream is skipped
-                }
-            }
-        }
-        deferreds.map { it.await() }
-    }
-
-    /**
-     * Fetches all 7 per-API releases in parallel (for first-launch DB download).
-     * Returns a list of 7 nullable GithubReleaseDto — null entries indicate
-     * streams whose fetch failed (partial failure is OK).
-     */
-    private suspend fun fetchAllReleases(): List<GithubReleaseDto?> = coroutineScope {
-        val deferreds = streamTags.map { (tag, _) ->
-            async {
-                try {
-                    updateApi.getReleaseByTag(tag = tag)
-                } catch (e: Exception) {
-                    null
                 }
             }
         }
@@ -530,6 +616,7 @@ class DatabaseUpdateManager @Inject constructor(
         "committees" -> "committees.db"
         "recess" -> "recess.db"
         "interests" -> "interests.db"
+        "debates" -> "debates.db"
         else -> "$streamName.db"
     }
 
@@ -545,6 +632,7 @@ class DatabaseUpdateManager @Inject constructor(
         "committees" -> listOf("committees", "mp_committee_cross_ref")
         "recess" -> listOf("recess_dates", "recess_dates_meta")
         "interests" -> listOf("interests")
+        "debates" -> listOf("debate_speeches")
         else -> emptyList()
     }
 
@@ -621,5 +709,8 @@ class DatabaseUpdateManager @Inject constructor(
         internal const val MANIFEST_ASSET_NAME = "manifest.json"
         internal const val PATCH_ASSET_NAME = "patch.json"
         private const val BUFFER_SIZE = 8192
+        private const val TAG = "GovEye/DbUpdate"
+        private const val GITHUB_DOWNLOAD_BASE =
+            "https://github.com/Zen0-99/goveye-data/releases/download"
     }
 }

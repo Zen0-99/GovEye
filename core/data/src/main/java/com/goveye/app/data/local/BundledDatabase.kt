@@ -6,6 +6,7 @@ import androidx.room.TypeConverters
 import com.goveye.app.data.local.dao.BillDao
 import com.goveye.app.data.local.dao.CommitteeDao
 import com.goveye.app.data.local.dao.DatabaseUpdateDao
+import com.goveye.app.data.local.dao.DebateSpeechDao
 import com.goveye.app.data.local.dao.DivisionDao
 import com.goveye.app.data.local.dao.HansardDao
 import com.goveye.app.data.local.dao.InterestDao
@@ -15,6 +16,7 @@ import com.goveye.app.data.local.dao.SearchDao
 import com.goveye.app.data.local.entity.BillEntity
 import com.goveye.app.data.local.entity.BillStageEntity
 import com.goveye.app.data.local.entity.CommitteeEntity
+import com.goveye.app.data.local.entity.DebateSpeechEntity
 import com.goveye.app.data.local.entity.DivisionEntity
 import com.goveye.app.data.local.entity.DivisionVoteEntity
 import com.goveye.app.data.local.entity.HansardContributionEntity
@@ -53,9 +55,10 @@ import com.goveye.app.data.local.entity.RecessDatesMetaEntity
         RecessDateEntity::class,
         RecessDatesMetaEntity::class,
         HansardContributionEntity::class,
-        InterestEntity::class
+        InterestEntity::class,
+        DebateSpeechEntity::class
     ],
-    version = 2,
+    version = 4,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -68,6 +71,7 @@ abstract class BundledDatabase : RoomDatabase() {
     abstract fun hansardDao(): HansardDao
     abstract fun interestDao(): InterestDao
     abstract fun recessDateDao(): RecessDateDao
+    abstract fun debateSpeechDao(): DebateSpeechDao
     abstract fun databaseUpdateDao(): DatabaseUpdateDao
 
     companion object {

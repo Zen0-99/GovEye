@@ -1,8 +1,8 @@
 {
   "formatVersion": 1,
   "database": {
-    "version": 4,
-    "identityHash": "ebd3a258ffd1c36a696959347543c45a",
+    "version": 3,
+    "identityHash": "45763f69505160732d1acdd91ecfda9e",
     "entities": [
       {
         "tableName": "mps",
@@ -783,90 +783,11 @@
             "id"
           ]
         }
-      },
-      {
-        "tableName": "debate_speeches",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`debateGid` TEXT NOT NULL, `speechGid` TEXT NOT NULL, `divisionId` INTEGER NOT NULL, `speakerName` TEXT NOT NULL, `memberId` INTEGER NOT NULL, `twfyPersonId` INTEGER NOT NULL, `speakerPosition` TEXT NOT NULL, `speechText` TEXT NOT NULL, `speechOrder` INTEGER NOT NULL, `isIntervention` INTEGER NOT NULL, `lastUpdated` INTEGER NOT NULL, PRIMARY KEY(`debateGid`, `speechGid`))",
-        "fields": [
-          {
-            "fieldPath": "debateGid",
-            "columnName": "debateGid",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "speechGid",
-            "columnName": "speechGid",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "divisionId",
-            "columnName": "divisionId",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "speakerName",
-            "columnName": "speakerName",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "memberId",
-            "columnName": "memberId",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "twfyPersonId",
-            "columnName": "twfyPersonId",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "speakerPosition",
-            "columnName": "speakerPosition",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "speechText",
-            "columnName": "speechText",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "speechOrder",
-            "columnName": "speechOrder",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "isIntervention",
-            "columnName": "isIntervention",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "lastUpdated",
-            "columnName": "lastUpdated",
-            "affinity": "INTEGER",
-            "notNull": true
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": false,
-          "columnNames": [
-            "debateGid",
-            "speechGid"
-          ]
-        }
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'ebd3a258ffd1c36a696959347543c45a')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '45763f69505160732d1acdd91ecfda9e')"
     ]
   }
 }

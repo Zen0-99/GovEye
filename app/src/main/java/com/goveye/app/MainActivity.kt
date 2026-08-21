@@ -2,19 +2,18 @@ package com.goveye.app
 
 import android.graphics.Color
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.luminance
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -25,6 +24,7 @@ import com.goveye.app.ui.GovEyeApp
 import com.goveye.app.ui.navigation.DeepLinkHandler
 import com.goveye.app.ui.navigation.DeepLinkNavigator
 import com.goveye.app.ui.screens.DatabaseLoadingScreen
+import com.goveye.app.ui.theme.GovEyeTheme
 import com.goveye.app.ui.theme.ThemeViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -59,7 +59,9 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val themeViewModel: ThemeViewModel = hiltViewModel()
+            val appTheme by themeViewModel.appTheme.collectAsStateWithLifecycle()
             val themeMode by themeViewModel.themeMode.collectAsStateWithLifecycle()
+            val isAmoled by themeViewModel.isAmoled.collectAsStateWithLifecycle()
 
             val isSystemDark = isSystemInDarkTheme()
             val isDark = when (themeMode) {
@@ -68,70 +70,102 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.SYSTEM -> isSystemDark
             }
 
-            // Port Miko's approach: set transparent system bars with proper
-            // light/dark icon styles based on the current theme's surface luminance.
-            // This makes the status bar transparent so content draws behind it,
-            // with icons that are visible against the background.
-            val surfaceColor = MaterialTheme.colorScheme.surface
-            LaunchedEffect(isDark, surfaceColor) {
+            // Status bar: use isDark directly to pick icon style.
+            // darkStyle = light (white) icons on transparent background
+            // lightStyle = dark icons on transparent background
+            LaunchedEffect(isDark) {
                 val lightStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.BLACK)
                 val darkStyle = SystemBarStyle.dark(Color.TRANSPARENT)
                 enableEdgeToEdge(
-                    statusBarStyle = if (surfaceColor.luminance() > 0.5f) lightStyle else darkStyle,
+                    statusBarStyle = if (isDark) darkStyle else lightStyle,
                     navigationBarStyle = if (isDark) darkStyle else lightStyle
                 )
             }
 
-            // Database update state — drives whether to show the loading screen
-            // or the main app (D-04, D-05, D-10a, DATA-03).
-            var dbState by remember { mutableStateOf<DatabaseUpdateState>(DatabaseUpdateState.Idle) }
-
-            LaunchedEffect(Unit) {
-                if (databaseUpdateManager.isFirstLaunch()) {
-                    // First launch — download all 7 per-API DBs and merge on-device
-                    dbState = DatabaseUpdateState.NeedsFullDownload(null)
-                    dbState = DatabaseUpdateState.Downloading(0f, true)
-                    val downloadResult = databaseUpdateManager.downloadAndMergePerApiDbs { progress ->
-                        dbState = DatabaseUpdateState.Downloading(progress, true)
-                    }
-                    dbState = downloadResult
-                } else {
-                    // Subsequent launch — check for updates silently
-                    dbState = databaseUpdateManager.checkForUpdates()
-                    when (dbState) {
-                        is DatabaseUpdateState.NeedsPatches -> {
-                            val patches = (dbState as DatabaseUpdateState.NeedsPatches).patches
-                            dbState = DatabaseUpdateState.Applying
-                            dbState = databaseUpdateManager.applyPatches(patches)
+            // Wrap everything in GovEyeTheme so both DatabaseLoadingScreen
+            // and GovEyeApp use the correct colors.
+            GovEyeTheme(
+                appTheme = appTheme,
+                themeMode = themeMode,
+                isAmoled = isAmoled
+            ) {
+                // Database update state — drives whether to show the loading screen
+                // or the main app (D-04, D-05, D-10a, DATA-03).
+                // On first launch (no DB file yet), start with Checking to show
+                // the loading screen. On subsequent launches, start with UpToDate
+                // so the app shows immediately — update checks happen in the
+                // background without any loading screen.
+                val dbFileExists = remember {
+                    databaseUpdateManager.databaseFileExists()
+                }
+                var dbState by remember {
+                    mutableStateOf<DatabaseUpdateState>(
+                        if (dbFileExists) {
+                            DatabaseUpdateState.UpToDate
+                        } else {
+                            DatabaseUpdateState.Checking
                         }
+                    )
+                }
+                var retryCount by remember { mutableIntStateOf(0) }
 
-                        is DatabaseUpdateState.NeedsFullDownload -> {
-                            // Full DB download needed (stream multiple behind) — show loading screen
-                            dbState = DatabaseUpdateState.Downloading(0f, true)
-                            dbState = databaseUpdateManager.downloadAndMergePerApiDbs { progress ->
-                                dbState = DatabaseUpdateState.Downloading(progress, true)
+                LaunchedEffect(retryCount) {
+                    val isFirstLaunch = databaseUpdateManager.isFirstLaunch()
+                    if (isFirstLaunch) {
+                        Log.i(TAG, "First launch — downloading per-API DBs")
+                        dbState = DatabaseUpdateState.NeedsFullDownload(null)
+                        dbState = DatabaseUpdateState.Downloading(0f, true)
+                        val downloadResult = databaseUpdateManager.downloadAndMergePerApiDbs { progress ->
+                            dbState = DatabaseUpdateState.Downloading(progress, true)
+                        }
+                        Log.i(TAG, "Download result: $downloadResult")
+                        dbState = downloadResult
+                    } else {
+                        // Subsequent launch — check for updates silently in the
+                        // background. The app is already visible (UpToDate), so
+                        // the user doesn't see any loading screen.
+                        val updateState = databaseUpdateManager.checkForUpdates()
+                        when (updateState) {
+                            is DatabaseUpdateState.NeedsPatches -> {
+                                val patches = (updateState as DatabaseUpdateState.NeedsPatches).patches
+                                databaseUpdateManager.applyPatches(patches)
                             }
-                        }
 
-                        else -> { /* UpToDate or Failed — proceed to app */ }
+                            is DatabaseUpdateState.NeedsFullDownload -> {
+                                Log.i(TAG, "Full download needed (stream multiple behind)")
+                                databaseUpdateManager.downloadAndMergePerApiDbs { }
+                            }
+
+                            else -> { /* UpToDate or Failed — nothing to do */ }
+                        }
                     }
                 }
-            }
 
-            // Show loading screen during download/apply, otherwise show the app
-            when (dbState) {
-                is DatabaseUpdateState.NeedsFullDownload,
-                is DatabaseUpdateState.Downloading,
-                is DatabaseUpdateState.Applying,
-                is DatabaseUpdateState.NeedsWifi,
-                is DatabaseUpdateState.NeedsPatches,
-                is DatabaseUpdateState.Checking -> {
-                    DatabaseLoadingScreen(state = dbState)
-                }
+                // Show loading screen only on first launch (download/apply states).
+                // On subsequent launches, dbState starts as UpToDate so the app
+                // shows immediately. Failed state shows the loading screen with
+                // error/retry so the user sees the error instead of an empty app.
+                when (dbState) {
+                    is DatabaseUpdateState.NeedsFullDownload,
+                    is DatabaseUpdateState.Downloading,
+                    is DatabaseUpdateState.Applying,
+                    is DatabaseUpdateState.NeedsWifi,
+                    is DatabaseUpdateState.NeedsPatches,
+                    is DatabaseUpdateState.Checking,
+                    is DatabaseUpdateState.Failed -> {
+                        DatabaseLoadingScreen(
+                            state = dbState,
+                            onRetry = {
+                                dbState = DatabaseUpdateState.Checking
+                                retryCount++
+                            }
+                        )
+                    }
 
-                else -> {
-                    // UpToDate, Failed, or Idle — show the app
-                    GovEyeApp(deepLinkNavigator = deepLinkNavigator)
+                    else -> {
+                        // UpToDate or Idle — show the app
+                        GovEyeApp(deepLinkNavigator = deepLinkNavigator)
+                    }
                 }
             }
         }
@@ -152,5 +186,9 @@ class MainActivity : ComponentActivity() {
                 deepLinkNavigator.emit(route)
             }
         }
+    }
+
+    companion object {
+        private const val TAG = "GovEye/MainActivity"
     }
 }

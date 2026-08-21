@@ -8,6 +8,7 @@ import androidx.room.Upsert
 import com.goveye.app.data.local.entity.BillEntity
 import com.goveye.app.data.local.entity.BillStageEntity
 import com.goveye.app.data.local.entity.CommitteeEntity
+import com.goveye.app.data.local.entity.DebateSpeechEntity
 import com.goveye.app.data.local.entity.DivisionEntity
 import com.goveye.app.data.local.entity.DivisionVoteEntity
 import com.goveye.app.data.local.entity.HansardContributionEntity
@@ -111,4 +112,11 @@ interface DatabaseUpdateDao {
 
     @Query("DELETE FROM recess_dates_meta WHERE house = :house")
     suspend fun deleteRecessDatesMeta(house: Int)
+
+    // ── debate_speeches (composite PK: debateGid, speechGid) ──────────
+    @Upsert
+    suspend fun upsertDebateSpeeches(speeches: List<DebateSpeechEntity>)
+
+    @Query("DELETE FROM debate_speeches WHERE debateGid = :debateGid AND speechGid = :speechGid")
+    suspend fun deleteDebateSpeech(debateGid: String, speechGid: String)
 }

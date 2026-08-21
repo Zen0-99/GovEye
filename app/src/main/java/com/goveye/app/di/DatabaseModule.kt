@@ -8,6 +8,7 @@ import com.goveye.app.data.local.dao.BillDao
 import com.goveye.app.data.local.dao.BillFollowDao
 import com.goveye.app.data.local.dao.CommitteeDao
 import com.goveye.app.data.local.dao.DatabaseUpdateDao
+import com.goveye.app.data.local.dao.DebateSpeechDao
 import com.goveye.app.data.local.dao.DivisionDao
 import com.goveye.app.data.local.dao.FollowDao
 import com.goveye.app.data.local.dao.HansardDao
@@ -91,6 +92,9 @@ object DatabaseModule {
 
     @Provides
     fun provideRecessDateDao(database: BundledDatabase): RecessDateDao = database.recessDateDao()
+
+    @Provides
+    fun provideDebateSpeechDao(database: BundledDatabase): DebateSpeechDao = database.debateSpeechDao()
 
     @Provides
     fun provideDatabaseUpdateDao(database: BundledDatabase): DatabaseUpdateDao = database.databaseUpdateDao()

@@ -5,16 +5,12 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -25,19 +21,17 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.NotificationsActive
+import androidx.compose.material.icons.outlined.PersonAdd
+import androidx.compose.material.icons.outlined.PersonRemove
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -49,11 +43,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -63,6 +59,9 @@ import com.goveye.app.domain.model.VoteType
 import com.goveye.app.domain.stats.RebellionStats
 import com.goveye.app.domain.stats.VoteMapCalculator
 import com.goveye.app.domain.stats.VotingStatsCalculator
+import com.goveye.app.ui.components.ConfigureDetailTopBar
+import com.goveye.app.ui.components.DetailTopBarAction
+import com.goveye.app.ui.components.MpAvatar
 import com.goveye.app.ui.components.charts.AttendanceLineChart
 import com.goveye.app.ui.components.charts.RebellionLineChart
 import com.goveye.app.ui.components.charts.VotingBarChart
@@ -90,6 +89,7 @@ fun ProfileScreen(
     onNavigateToDivision: (Int, Int) -> Unit = { _, _ -> },
     onNavigateToInterestBucket: (Int, String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
+    contentTopPadding: Dp = 0.dp,
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -109,162 +109,162 @@ fun ProfileScreen(
         viewModel.loadProfile(memberId)
     }
 
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val pagerState = rememberPagerState(pageCount = { ProfileTab.entries.size })
     val coroutineScope = rememberCoroutineScope()
-    val isCollapsed = scrollBehavior.state.collapsedFraction > 0.5f
 
-    Scaffold(
-        modifier = modifier,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0)
-    ) { innerPadding ->
-        if (uiState.isLoading && uiState.mp == null) {
-            Box(
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        } else if (uiState.mp == null) {
-            Box(
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("MP not found", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        } else {
-            val mp = uiState.mp!!
-            val partyColor = remember(mp) { parsePartyColor(mp.party?.backgroundColour) }
-            val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-            val partyScheme = partyAccentColorScheme(partyColor, isDark)
+    // Configure the shell's detail top bar (Miko-style shared toolbar).
+    // No title — the name lives in the content header beside the avatar.
+    // Icons are white to be readable over the party gradient that extends
+    // from the top of the screen behind the top bar.
+    val mp = uiState.mp
+    val partyColor = remember(mp) { parsePartyColor(mp?.party?.backgroundColour) }
+    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    val headerIconTint = if (isDark) Color.White else Color(0xFF1A1A1A)
 
-            CompositionLocalProvider(LocalPartyAccent provides partyColor) {
-                MaterialTheme(colorScheme = partyScheme) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(innerPadding)
+    ConfigureDetailTopBar(
+        config = com.goveye.app.ui.components.DetailTopBarConfig(
+            title = "",
+            onBack = onBack,
+            iconTint = if (mp != null) headerIconTint else null,
+            actions = if (mp != null) {
+                listOf(
+                    DetailTopBarAction(
+                        icon = if (uiState.notificationsEnabled) {
+                            Icons.Outlined.NotificationsActive
+                        } else {
+                            Icons.Outlined.Notifications
+                        },
+                        contentDescription = "Notification settings",
+                        onClick = { showNotificationSheet = true },
+                        tint = headerIconTint
+                    ),
+                    DetailTopBarAction(
+                        icon = if (uiState.isFollowing) {
+                            Icons.Outlined.PersonRemove
+                        } else {
+                            Icons.Outlined.PersonAdd
+                        },
+                        contentDescription = if (uiState.isFollowing) "Unfollow" else "Follow",
+                        onClick = { viewModel.toggleFollow(memberId) },
+                        tint = headerIconTint
+                    )
+                )
+            } else {
+                emptyList()
+            }
+        )
+    )
+
+    if (uiState.isLoading && mp == null) {
+        Box(
+            modifier = modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+    } else if (mp == null) {
+        Box(
+            modifier = modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("MP not found", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    } else {
+        val partyScheme = partyAccentColorScheme(partyColor, isDark)
+
+        CompositionLocalProvider(LocalPartyAccent provides partyColor) {
+            MaterialTheme(colorScheme = partyScheme) {
+                Column(
+                    modifier = modifier.fillMaxSize()
+                ) {
+                    // Scrolling content header — gradient + avatar + name + party pill.
+                    // The gradient extends from the top of the screen (behind the
+                    // transparent detail top bar) downwards. No back/action buttons
+                    // (those are in the shell's detail top bar).
+                    ProfileContentHeader(
+                        mp = mp,
+                        isDark = isDark,
+                        contentTopPadding = contentTopPadding
+                    )
+
+                    // Scrollable tabs
+                    ScrollableTabRow(
+                        selectedTabIndex = pagerState.currentPage,
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                        edgePadding = 16.dp
                     ) {
-                        Column(modifier = Modifier.fillMaxSize()) {
-                            // Fixed header — does not scroll
-                            ProfileHeader(
+                        ProfileTab.entries.forEachIndexed { index, tab ->
+                            Tab(
+                                selected = pagerState.currentPage == index,
+                                onClick = {
+                                    coroutineScope.launch { pagerState.animateScrollToPage(index) }
+                                },
+                                text = {
+                                    Text(
+                                        text = tab.title,
+                                        color = if (pagerState.currentPage == index) {
+                                            MaterialTheme.colorScheme.onSurface
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        }
+                                    )
+                                },
+                                selectedContentColor = MaterialTheme.colorScheme.onSurface,
+                                unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    // Pager — each page has its own scrollable LazyColumn
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier.fillMaxWidth().weight(1f)
+                    ) { page ->
+                        when (ProfileTab.entries[page]) {
+                            ProfileTab.PROFILE -> ProfileTabContent(
                                 mp = mp,
-                                onBack = onBack,
-                                isFollowing = uiState.isFollowing,
-                                notificationsEnabled = uiState.notificationsEnabled,
-                                onFollowClick = { viewModel.toggleFollow(memberId) },
-                                onNotificationClick = { showNotificationSheet = true }
+                                synopsis = uiState.synopsis,
+                                contacts = uiState.contacts,
+                                samePartyMps = uiState.samePartyMps,
+                                committeePeerMps = uiState.committeePeerMps,
+                                onNavigateToProfile = onNavigateToProfile
                             )
 
-                            // Fixed tabs — selected text uses onSurface (theme-adaptive),
-                            // unselected uses onSurfaceVariant. No accent color influence.
-                            TabRow(
-                                selectedTabIndex = pagerState.currentPage,
-                                containerColor = MaterialTheme.colorScheme.surface,
-                                contentColor = MaterialTheme.colorScheme.onSurface
-                            ) {
-                                ProfileTab.entries.forEachIndexed { index, tab ->
-                                    Tab(
-                                        selected = pagerState.currentPage == index,
-                                        onClick = {
-                                            coroutineScope.launch { pagerState.animateScrollToPage(index) }
-                                        },
-                                        text = {
-                                            Text(
-                                                text = tab.title,
-                                                color = if (pagerState.currentPage == index) {
-                                                    MaterialTheme.colorScheme.onSurface
-                                                } else {
-                                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                                }
-                                            )
-                                        },
-                                        selectedContentColor = MaterialTheme.colorScheme.onSurface,
-                                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                            ProfileTab.CAREER -> CareerTabContent(
+                                experiences = uiState.experiences
+                            )
+
+                            ProfileTab.COMMITTEES -> CommitteesTabContent(
+                                committees = uiState.committees
+                            )
+
+                            ProfileTab.VOTES -> VotesTabContent(
+                                memberVotes = uiState.memberVotes,
+                                rebellionStats = uiState.rebellionStats,
+                                allDivisionDates = uiState.allDivisionDates,
+                                onNavigateToDivision = { divisionId, house ->
+                                    onNavigateToDivision(divisionId, house)
                                 }
-                            }
+                            )
 
-                            // Pager — each page has its own scrollable LazyColumn
-                            HorizontalPager(
-                                state = pagerState,
-                                modifier = Modifier.fillMaxWidth().weight(1f)
-                            ) { page ->
-                                when (ProfileTab.entries[page]) {
-                                    ProfileTab.PROFILE -> ProfileTabContent(
-                                        mp = mp,
-                                        synopsis = uiState.synopsis,
-                                        contacts = uiState.contacts,
-                                        samePartyMps = uiState.samePartyMps,
-                                        committeePeerMps = uiState.committeePeerMps,
-                                        onNavigateToProfile = onNavigateToProfile
-                                    )
-
-                                    ProfileTab.CAREER -> CareerTabContent(
-                                        experiences = uiState.experiences
-                                    )
-
-                                    ProfileTab.COMMITTEES -> CommitteesTabContent(
-                                        committees = uiState.committees
-                                    )
-
-                                    ProfileTab.VOTES -> VotesTabContent(
-                                        memberVotes = uiState.memberVotes,
-                                        rebellionStats = uiState.rebellionStats,
-                                        allDivisionDates = uiState.allDivisionDates,
-                                        onNavigateToDivision = { divisionId, house ->
-                                            onNavigateToDivision(divisionId, house)
-                                        }
-                                    )
-
-                                    ProfileTab.ACTIVITY -> ActivityTabContent(
-                                        memberVotes = uiState.memberVotes,
-                                        rebellionStats = uiState.rebellionStats,
-                                        allVotesByDivision = uiState.allVotesByDivision,
-                                        memberPartyName = uiState.memberPartyName,
-                                        onNavigateToDivision = { divisionId, house ->
-                                            onNavigateToDivision(divisionId, house)
-                                        }
-                                    )
-
-                                    ProfileTab.INTERESTS -> InterestsTabContent(
-                                        memberId = memberId,
-                                        interests = uiState.interests,
-                                        onNavigateToBucketDetail = { bucketLabel ->
-                                            onNavigateToInterestBucket(memberId, bucketLabel)
-                                        }
-                                    )
+                            ProfileTab.ACTIVITY -> ActivityTabContent(
+                                memberVotes = uiState.memberVotes,
+                                rebellionStats = uiState.rebellionStats,
+                                allVotesByDivision = uiState.allVotesByDivision,
+                                memberPartyName = uiState.memberPartyName,
+                                onNavigateToDivision = { divisionId, house ->
+                                    onNavigateToDivision(divisionId, house)
                                 }
-                            }
-                        }
+                            )
 
-                        // Animated collapsed header — fades in when scrolled
-                        AnimatedVisibility(
-                            visible = isCollapsed,
-                            enter = fadeIn(),
-                            exit = fadeOut(),
-                            modifier = Modifier.align(Alignment.TopCenter)
-                        ) {
-                            Surface(
-                                modifier = Modifier.fillMaxWidth(),
-                                color = MaterialTheme.colorScheme.surface,
-                                shadowElevation = 3.dp
-                            ) {
-                                TopAppBar(
-                                    title = { Text(mp.nameDisplayAs) },
-                                    navigationIcon = {
-                                        IconButton(onClick = onBack) {
-                                            Icon(
-                                                Icons.AutoMirrored.Outlined.ArrowBack,
-                                                contentDescription = "Back"
-                                            )
-                                        }
-                                    },
-                                    colors = TopAppBarDefaults.topAppBarColors(
-                                        containerColor = Color.Transparent
-                                    )
-                                )
-                            }
+                            ProfileTab.INTERESTS -> InterestsTabContent(
+                                memberId = memberId,
+                                interests = uiState.interests,
+                                onNavigateToBucketDetail = { bucketLabel ->
+                                    onNavigateToInterestBucket(memberId, bucketLabel)
+                                }
+                            )
                         }
                     }
                 }
@@ -301,6 +301,95 @@ fun ProfileScreen(
                 },
                 onDismiss = { showNotificationSheet = false }
             )
+        }
+    }
+}
+
+/**
+ * Scrolling content header for the profile screen — gradient background with
+ * avatar, name, and party pill. Unlike the old [ProfileHeader], this does NOT
+ * include back/action buttons (those are in the shell's detail top bar).
+ *
+ * [contentTopPadding] is the height of the transparent detail top bar
+ * (including status bar inset). The gradient fills from y=0 (behind the top
+ * bar), but the content (avatar, name, pill) is padded down by this amount
+ * so it doesn't overlap the back/action buttons — mirroring Miko's
+ * AnimeInfoHeader where the cover-art backdrop fills from the top but the
+ * titles are padded by appBarPadding.
+ */
+@Composable
+private fun ProfileContentHeader(
+    mp: com.goveye.app.domain.model.Mp,
+    isDark: Boolean,
+    contentTopPadding: Dp = 0.dp,
+    modifier: Modifier = Modifier
+) {
+    val partyColor = parsePartyColor(mp.party?.backgroundColour)
+    val headerTextColor = if (isDark) Color.White else Color(0xFF1A1A1A)
+
+    val pillColor = if (isDark) {
+        partyColor.copy(alpha = 0.9f)
+    } else {
+        Color(
+            red = partyColor.red * 0.8f,
+            green = partyColor.green * 0.8f,
+            blue = partyColor.blue * 0.8f,
+            alpha = 0.85f
+        )
+    }
+    val pillTextColor = if (pillColor.luminance() > 0.5f) Color(0xFF1A1A1A) else Color.White
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        partyColor.copy(alpha = if (isDark) 0.85f else 0.7f),
+                        partyColor.copy(alpha = if (isDark) 0.3f else 0.2f),
+                        Color.Transparent
+                    )
+                )
+            )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = MaterialTheme.padding.medium)
+                .padding(top = contentTopPadding + MaterialTheme.padding.small, bottom = MaterialTheme.padding.small),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.medium)
+        ) {
+            MpAvatar(
+                thumbnailUrl = mp.thumbnailUrl,
+                displayName = mp.nameDisplayAs,
+                partyColorHex = mp.party?.backgroundColour,
+                size = 60.dp,
+                borderWidth = 2.dp
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = mp.nameDisplayAs,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = headerTextColor,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = pillColor,
+                    modifier = Modifier.padding(top = 4.dp)
+                ) {
+                    Text(
+                        text = mp.party?.name ?: "",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = pillTextColor,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                    )
+                }
+            }
         }
     }
 }

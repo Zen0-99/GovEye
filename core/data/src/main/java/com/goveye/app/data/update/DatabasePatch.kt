@@ -16,8 +16,8 @@ import kotlinx.serialization.json.JsonObject
  */
 @Serializable
 data class DatabasePatch(
-    @SerialName("patchVersion") val patchVersion: Int,
-    @SerialName("previousVersion") val previousVersion: Int,
+    @SerialName("patchVersion") val patchVersion: Int? = null,
+    @SerialName("previousVersion") val previousVersion: Int? = null,
     @SerialName("generatedAt") val generatedAt: String,
     @SerialName("schemaVersion") val schemaVersion: Int,
     val changes: Map<String, TableChanges> = emptyMap()

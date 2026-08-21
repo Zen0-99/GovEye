@@ -25,10 +25,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
-import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -363,6 +364,21 @@ enum class VoteFilter { ALL, AYE, NO }
 
 @Composable
 private fun DivisionHeaderCard(division: Division) {
+    // TWFY debate URL — stored in the DB at build time (scraped from the
+    // TWFY division page). Falls back to the TWFY division page URL if not
+    // available (e.g. older DB without the column populated).
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val twfyUrl = division.twfyDebateUrl ?: run {
+        val dateOnly = division.date.substringBefore('T')
+        if (division.number != null) {
+            val houseName = if (division.house == 2) "lords" else "commons"
+            "https://www.theyworkforyou.com/divisions/pw-$dateOnly-${division.number}-$houseName"
+        } else {
+            "https://www.theyworkforyou.com/search/?s=" +
+                java.net.URLEncoder.encode(division.title, "UTF-8")
+        }
+    }
+
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -372,11 +388,37 @@ private fun DivisionHeaderCard(division: Division) {
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(
-                text = division.title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Text(
+                    text = division.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                // Globe icon — opens the TWFY debate page (with speeches)
+                IconButton(
+                    onClick = {
+                        val intent = android.content.Intent(
+                            android.content.Intent.ACTION_VIEW,
+                            android.net.Uri.parse(twfyUrl)
+                        )
+                        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                        context.startActivity(intent)
+                    },
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Public,
+                        contentDescription = "View debate on TheyWorkForYou",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -400,35 +442,6 @@ private fun DivisionHeaderCard(division: Division) {
                     ayeCount = division.ayeCount,
                     noCount = division.noCount,
                     barHeight = 32.dp
-                )
-            }
-            // TheyWorkForYou external link — opens browser search for this division.
-            // Uses search URL fallback since the bundled DB has no GID field.
-            // When GIDs are added in a future phase, this can be upgraded to the
-            // direct division URL (https://www.theyworkforyou.com/divisions/[gid]).
-            val context = androidx.compose.ui.platform.LocalContext.current
-            val twfyUrl = "https://www.theyworkforyou.com/search/?s=" +
-                java.net.URLEncoder.encode(division.title, "UTF-8")
-            androidx.compose.material3.TextButton(
-                onClick = {
-                    val intent = android.content.Intent(
-                        android.content.Intent.ACTION_VIEW,
-                        android.net.Uri.parse(twfyUrl)
-                    )
-                    intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                    context.startActivity(intent)
-                },
-                modifier = Modifier.align(Alignment.End)
-            ) {
-                androidx.compose.material3.Icon(
-                    imageVector = Icons.Outlined.Search,
-                    contentDescription = "View on TheyWorkForYou",
-                    modifier = Modifier.size(16.dp)
-                )
-                androidx.compose.foundation.layout.Spacer(modifier = Modifier.size(4.dp))
-                Text(
-                    text = "View on TheyWorkForYou",
-                    style = MaterialTheme.typography.labelMedium
                 )
             }
         }
