@@ -1,6 +1,7 @@
 package com.goveye.app.data.update
 
 import android.content.Context
+import android.database.sqlite.SQLiteDatabase
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import androidx.room.withTransaction
@@ -49,10 +50,11 @@ import okhttp3.Request
  * - Downloads up to 7 patch.json files, merges their changes maps (no conflicts
  *   — each patch only touches its own tables), and applies all to [BundledDatabase]
  *   in a single Room transaction.
- * - First-launch downloads the merged goveye.db from the seed-latest release.
+ * - First-launch downloads all 7 per-API .db files and merges them on-device
+ *   into goveye.db (no separate seed release needed).
  *
  * [LocalDatabase] (local.db, user data) is NEVER touched by this manager —
- * user data persists across all DB updates and seed DB swaps.
+ * user data persists across all DB updates and DB swaps.
  */
 @Singleton
 class DatabaseUpdateManager @Inject constructor(
@@ -127,7 +129,7 @@ class DatabaseUpdateManager @Inject constructor(
                     }
 
                     else -> {
-                        // Multiple versions behind — fall back to seed DB (D-10a)
+                        // Multiple versions behind — fall back to full per-API download
                         return@withContext DatabaseUpdateState.NeedsFullDownload(null)
                     }
                 }
@@ -202,113 +204,150 @@ class DatabaseUpdateManager @Inject constructor(
     }
 
     /**
-     * Downloads the merged goveye.db from the seed-latest release for first
-     * launch (D-04, D-10a).
+     * Downloads all 7 per-API .db files and merges them on-device into goveye.db
+     * for first launch.
+     *
+     * Instead of downloading a single pre-merged seed DB, this approach:
+     * 1. Lets Room create the empty goveye.db with all tables + FTS triggers
+     * 2. Closes Room
+     * 3. Downloads all 7 per-API .db files to cacheDir (with combined progress)
+     * 4. Opens goveye.db with raw SQLite, ATTACHes each per-API DB, and
+     *    INSERT OR REPLACE into the corresponding tables
+     * 5. VACUUMs to minimize size
+     * 6. Room reopens lazily on next query
+     *
+     * Partial failure is graceful — if one per-API DB download fails, the
+     * remaining 6 are still merged (that table set is just empty).
      *
      * Checks for metered connection first (Pitfall 4) — returns
      * [DatabaseUpdateState.NeedsWifi] if on mobile data.
      *
-     * Only [BundledDatabase] (goveye.db) is swapped — [LocalDatabase]
-     * (local.db) is NOT touched. User data persists.
-     *
-     * @param onProgress Callback receiving download progress as 0f..1f.
+     * @param onProgress Callback receiving download progress as 0f..1f across all 7 downloads.
      * @return [DatabaseUpdateState.UpToDate] on success, [DatabaseUpdateState.Failed]
      *         or [DatabaseUpdateState.NeedsWifi] on error.
      */
-    suspend fun downloadSeedDb(onProgress: (Float) -> Unit = {}): DatabaseUpdateState = withContext(Dispatchers.IO) {
-        return@withContext try {
-            // 1. Check for metered connection (Pitfall 4)
-            if (isMeteredConnection()) {
-                return@withContext DatabaseUpdateState.NeedsWifi
-            }
-
-            // 2. Fetch the seed-latest release
-            val release = updateApi.getSeedRelease()
-            val dbAsset = release.assets.find { it.name == DB_ASSET_NAME }
-                ?: return@withContext DatabaseUpdateState.Failed("goveye.db asset not found in seed release")
-
-            // 3. Download to a temp file, streaming with progress
-            val tempFile = File(context.cacheDir, "goveye_download.db")
-            val request = Request.Builder().url(dbAsset.browserDownloadUrl).build()
-            dbDownloadClient.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) {
-                    return@withContext DatabaseUpdateState.Failed("HTTP ${response.code} downloading DB")
+    suspend fun downloadAndMergePerApiDbs(onProgress: (Float) -> Unit = {}): DatabaseUpdateState =
+        withContext(Dispatchers.IO) {
+            return@withContext try {
+                // 1. Check for metered connection (Pitfall 4)
+                if (isMeteredConnection()) {
+                    return@withContext DatabaseUpdateState.NeedsWifi
                 }
-                val contentLength = response.body.contentLength()
-                response.body.byteStream().use { input ->
-                    tempFile.outputStream().use { output ->
-                        val buffer = ByteArray(BUFFER_SIZE)
-                        var bytesRead: Int
-                        var totalRead = 0L
-                        while (input.read(buffer).also { bytesRead = it } != -1) {
-                            output.write(buffer, 0, bytesRead)
-                            totalRead += bytesRead
-                            if (contentLength > 0) {
-                                onProgress(totalRead.toFloat() / contentLength)
+
+                // 2. Fetch all 7 per-API releases in parallel
+                val releases = fetchAllReleases()
+                if (releases.all { it == null }) {
+                    return@withContext DatabaseUpdateState.Failed("All per-API release fetches failed")
+                }
+
+                // 3. Let Room create the empty goveye.db with all tables + FTS triggers
+                //    Opening the DB triggers schema creation. We then close it so we
+                //    can open it with raw SQLite for the merge.
+                database.openHelper.writableDatabase
+                database.close()
+
+                // 4. Download all 7 per-API .db files to cacheDir, tracking combined progress
+                val dbFiles = mutableMapOf<String, File>()
+                val manifests = mutableMapOf<String, DatabaseManifest>()
+                var totalProgress = 0f
+                val perStreamProgress = FloatArray(7)
+
+                for ((index, release) in releases.withIndex()) {
+                    if (release == null) continue
+                    val (streamName, _) = streamTags[index]
+
+                    val dbAsset = release.assets.find { it.name == perApiDbFileName(streamName) }
+                    if (dbAsset == null) continue
+
+                    val tempFile = File(context.cacheDir, "${streamName}_download.db")
+                    val request = Request.Builder().url(dbAsset.browserDownloadUrl).build()
+                    dbDownloadClient.newCall(request).execute().use { response ->
+                        if (!response.isSuccessful) {
+                            continue
+                        }
+                        val contentLength = response.body.contentLength()
+                        response.body.byteStream().use { input ->
+                            tempFile.outputStream().use { output ->
+                                val buffer = ByteArray(BUFFER_SIZE)
+                                var bytesRead: Int
+                                var totalRead = 0L
+                                while (input.read(buffer).also { bytesRead = it } != -1) {
+                                    output.write(buffer, 0, bytesRead)
+                                    totalRead += bytesRead
+                                    if (contentLength > 0) {
+                                        perStreamProgress[index] = totalRead.toFloat() / contentLength
+                                        totalProgress = perStreamProgress.sum() / 7f
+                                        onProgress(totalProgress)
+                                    }
+                                }
                             }
                         }
                     }
+
+                    // Verify hash if manifest is available
+                    val manifestAsset = release.assets.find { it.name == MANIFEST_ASSET_NAME }
+                    if (manifestAsset != null) {
+                        val manifestJson = downloadAssetText(manifestAsset.browserDownloadUrl)
+                        val manifest = json.decodeFromString<DatabaseManifest>(manifestJson)
+                        val actualHash = calculateSha256(tempFile)
+                        if (actualHash.equals(manifest.dbHash, ignoreCase = true)) {
+                            dbFiles[streamName] = tempFile
+                            manifests[streamName] = manifest
+                        } else {
+                            tempFile.delete()
+                        }
+                    } else {
+                        dbFiles[streamName] = tempFile
+                    }
                 }
-            }
 
-            // 4. Verify SHA-256 hash if manifest.json is available (T-10-06-01)
-            val manifestAsset = release.assets.find { it.name == MANIFEST_ASSET_NAME }
-            if (manifestAsset != null) {
-                val manifestJson = downloadAssetText(manifestAsset.browserDownloadUrl)
-                val manifest = json.decodeFromString<DatabaseManifest>(manifestJson)
-                val actualHash = calculateSha256(tempFile)
-                if (!actualHash.equals(manifest.dbHash, ignoreCase = true)) {
-                    tempFile.delete()
-                    return@withContext DatabaseUpdateState.Failed("DB hash mismatch")
+                if (dbFiles.isEmpty()) {
+                    return@withContext DatabaseUpdateState.Failed("No per-API DBs downloaded successfully")
                 }
+
+                // 5. Merge: open goveye.db with raw SQLite, ATTACH + INSERT OR REPLACE
+                val dbPath = context.getDatabasePath(BundledDatabase.DATABASE_NAME)
+                val mergedDb = SQLiteDatabase.openDatabase(
+                    dbPath.path,
+                    null,
+                    SQLiteDatabase.OPEN_READWRITE
+                )
+
+                for ((streamName, dbFile) in dbFiles) {
+                    val tables = perApiTables(streamName)
+                    mergedDb.execSQL("ATTACH DATABASE '${dbFile.path}' AS src_$streamName")
+
+                    for (table in tables) {
+                        // mps_fts is auto-populated by FTS4 triggers — skip direct insert
+                        if (table == "mps_fts") continue
+                        // Wipe existing data (handles "multiple versions behind" case
+                        // where stale rows need to be removed) then copy fresh data
+                        mergedDb.execSQL("DELETE FROM $table")
+                        mergedDb.execSQL(
+                            "INSERT OR REPLACE INTO $table SELECT * FROM src_$streamName.$table"
+                        )
+                    }
+
+                    mergedDb.execSQL("DETACH DATABASE src_$streamName")
+                    dbFile.delete()
+                }
+
+                mergedDb.execSQL("VACUUM")
+                mergedDb.close()
+
+                // 6. Set per-API version keys from manifests
+                for ((streamName, manifest) in manifests) {
+                    setStreamVersion(streamName, manifest.version)
+                }
+
+                // 7. Mark seed version as complete
+                preferences.setSeedVersion(1)
+
+                DatabaseUpdateState.UpToDate
+            } catch (e: Exception) {
+                DatabaseUpdateState.Failed(e.message ?: "Per-API DB download and merge failed")
             }
-
-            // 5. Swap the DB file (Pitfall 3) — only BundledDatabase, NOT LocalDatabase
-            swapDbFile(tempFile)
-
-            // 6. Mark first launch as complete
-            preferences.setSeedVersion(1)
-
-            DatabaseUpdateState.UpToDate
-        } catch (e: Exception) {
-            DatabaseUpdateState.Failed(e.message ?: "Seed DB download failed")
         }
-    }
-
-    /**
-     * Swaps the downloaded DB file into Room's expected location (Pitfall 3).
-     *
-     * CRITICAL: Only closes and swaps [BundledDatabase] (goveye.db).
-     * [LocalDatabase] (local.db) is NOT touched — user data persists.
-     *
-     * Sequence:
-     * 1. Close BundledDatabase — this checkpoints the WAL.
-     * 2. Delete old DB files: goveye.db, goveye.db-wal, goveye.db-shm.
-     * 3. Move the temp file to the DB path.
-     * 4. Room reopens lazily on next query access.
-     *
-     * If this is the first launch (no existing DB), skip close() and delete.
-     */
-    private fun swapDbFile(newDbFile: File) {
-        val dbPath = context.getDatabasePath(BundledDatabase.DATABASE_NAME)
-        val firstLaunch = !dbPath.exists()
-
-        if (!firstLaunch) {
-            // 1. Close BundledDatabase — checkpoints WAL
-            database.close()
-
-            // 2. Delete old DB + WAL + SHM files
-            dbPath.delete()
-            File(dbPath.path + "-wal").delete()
-            File(dbPath.path + "-shm").delete()
-        }
-
-        // 3. Move the temp file to the DB path
-        dbPath.parentFile?.mkdirs()
-        newDbFile.renameTo(dbPath)
-
-        // 4. Room reopens lazily on next query — no manual reopen needed
-    }
 
     /**
      * Applies upsert/delete arrays for a single table within the current transaction.
@@ -463,6 +502,53 @@ class DatabaseUpdateManager @Inject constructor(
     }
 
     /**
+     * Fetches all 7 per-API releases in parallel (for first-launch DB download).
+     * Returns a list of 7 nullable GithubReleaseDto — null entries indicate
+     * streams whose fetch failed (partial failure is OK).
+     */
+    private suspend fun fetchAllReleases(): List<GithubReleaseDto?> = coroutineScope {
+        val deferreds = streamTags.map { (tag, _) ->
+            async {
+                try {
+                    updateApi.getReleaseByTag(tag = tag)
+                } catch (e: Exception) {
+                    null
+                }
+            }
+        }
+        deferreds.map { it.await() }
+    }
+
+    /**
+     * Returns the .db file name for a given stream name.
+     */
+    private fun perApiDbFileName(streamName: String): String = when (streamName) {
+        "mps" -> "mps.db"
+        "commons-votes" -> "commons_votes.db"
+        "lords-votes" -> "lords_votes.db"
+        "bills" -> "bills.db"
+        "committees" -> "committees.db"
+        "recess" -> "recess.db"
+        "interests" -> "interests.db"
+        else -> "$streamName.db"
+    }
+
+    /**
+     * Returns the list of tables that a given per-API stream owns.
+     * Matches the SOURCE_MAP in the former merge_dbs.py.
+     */
+    private fun perApiTables(streamName: String): List<String> = when (streamName) {
+        "mps" -> listOf("mps", "mps_fts")
+        "commons-votes" -> listOf("divisions", "division_votes")
+        "lords-votes" -> listOf("divisions", "division_votes")
+        "bills" -> listOf("bills", "bill_stages")
+        "committees" -> listOf("committees", "mp_committee_cross_ref")
+        "recess" -> listOf("recess_dates", "recess_dates_meta")
+        "interests" -> listOf("interests")
+        else -> emptyList()
+    }
+
+    /**
      * Gets the local version for a given stream name.
      */
     private suspend fun getLocalVersion(streamName: String): Int? = when (streamName) {
@@ -493,7 +579,7 @@ class DatabaseUpdateManager @Inject constructor(
 
     /**
      * Checks if the current network connection is metered (mobile data).
-     * Used to warn the user before a ~160MB download (Pitfall 4).
+     * Used to warn the user before per-API DB downloads (Pitfall 4).
      */
     private fun isMeteredConnection(): Boolean {
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
@@ -534,7 +620,6 @@ class DatabaseUpdateManager @Inject constructor(
     companion object {
         internal const val MANIFEST_ASSET_NAME = "manifest.json"
         internal const val PATCH_ASSET_NAME = "patch.json"
-        internal const val DB_ASSET_NAME = "goveye.db"
         private const val BUFFER_SIZE = 8192
     }
 }

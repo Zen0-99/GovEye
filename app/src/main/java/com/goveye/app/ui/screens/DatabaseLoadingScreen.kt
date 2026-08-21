@@ -30,12 +30,12 @@ import com.goveye.app.data.update.DatabaseUpdateState
  *
  * Material 3 design: centered column with app name, progress indicator, status
  * text, and a data size hint. For metered connections (Pitfall 4), shows a
- * Wi-Fi warning dialog before proceeding with the ~160MB download.
+ * Wi-Fi warning dialog before proceeding with the per-API DB downloads.
  *
  * - [DatabaseUpdateState.NeedsPatches] — indeterminate progress (patches are
  *   tiny, applied in <2s, no progress bar needed)
  * - [DatabaseUpdateState.NeedsFullDownload] — determinate download progress
- *   for first-launch seed DB (~160MB)
+ *   for first-launch per-API DB downloads
  *
  * @param state The current [DatabaseUpdateState] driving the UI.
  * @param onDownloadNow Called when the user confirms download on metered connection.
@@ -146,7 +146,7 @@ fun DatabaseLoadingScreen(
             ) {
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = "~160MB",
+                    text = "Downloading parliamentary data (7 databases)",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -163,7 +163,7 @@ fun DatabaseLoadingScreen(
             },
             title = { Text("Wi-Fi recommended") },
             text = {
-                Text("GovEye needs to download ~160MB of parliamentary data. Connect to Wi-Fi?")
+                Text("GovEye needs to download parliamentary data (7 databases). Connect to Wi-Fi?")
             },
             confirmButton = {
                 TextButton(onClick = {

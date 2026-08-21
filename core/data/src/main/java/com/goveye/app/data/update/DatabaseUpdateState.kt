@@ -30,7 +30,8 @@ sealed interface DatabaseUpdateState {
 
     /**
      * First launch (seed version is null) or a stream is multiple versions
-     * behind — full seed DB download (~160MB) required (D-04, D-05, D-10a).
+     * behind — full per-API DB download required (D-04, D-05, D-10a).
+     * The app downloads all 7 per-API .db files and merges them on-device.
      */
     data class NeedsFullDownload(val seedManifest: DatabaseManifest?) : DatabaseUpdateState
 

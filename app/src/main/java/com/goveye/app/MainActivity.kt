@@ -88,10 +88,10 @@ class MainActivity : ComponentActivity() {
 
             LaunchedEffect(Unit) {
                 if (databaseUpdateManager.isFirstLaunch()) {
-                    // First launch — need to download the seed DB before showing the app
+                    // First launch — download all 7 per-API DBs and merge on-device
                     dbState = DatabaseUpdateState.NeedsFullDownload(null)
                     dbState = DatabaseUpdateState.Downloading(0f, true)
-                    val downloadResult = databaseUpdateManager.downloadSeedDb { progress ->
+                    val downloadResult = databaseUpdateManager.downloadAndMergePerApiDbs { progress ->
                         dbState = DatabaseUpdateState.Downloading(progress, true)
                     }
                     dbState = downloadResult
@@ -108,7 +108,7 @@ class MainActivity : ComponentActivity() {
                         is DatabaseUpdateState.NeedsFullDownload -> {
                             // Full DB download needed (stream multiple behind) — show loading screen
                             dbState = DatabaseUpdateState.Downloading(0f, true)
-                            dbState = databaseUpdateManager.downloadSeedDb { progress ->
+                            dbState = databaseUpdateManager.downloadAndMergePerApiDbs { progress ->
                                 dbState = DatabaseUpdateState.Downloading(progress, true)
                             }
                         }

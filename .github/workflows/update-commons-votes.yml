@@ -12,6 +12,9 @@ jobs:
   build-and-publish:
     runs-on: ubuntu-latest
     timeout-minutes: 45  # Commons divisions with detail fetches
+    defaults:
+      run:
+        working-directory: goveye-data
 
     steps:
       - uses: actions/checkout@v4
@@ -32,10 +35,10 @@ jobs:
         if: steps.download_prev.outputs.has_previous != 'true' && steps.recess_check.outputs.skip != 'true'
         uses: actions/cache@v4
         with:
-          path: commons_votes.db
-          key: commons-votes-seed-${{ hashFiles('schemas/bundled_schema.json') }}-${{ github.run_id }}
+          path: goveye-data/commons_votes.db
+          key: commons-votes-seed-${{ hashFiles('goveye-data/schemas/bundled_schema.json') }}-${{ github.run_id }}
           restore-keys: |
-            commons-votes-seed-${{ hashFiles('schemas/bundled_schema.json') }}-
+            commons-votes-seed-${{ hashFiles('goveye-data/schemas/bundled_schema.json') }}-
 
       - name: Download previous DB and manifest
         id: download_prev
@@ -66,11 +69,9 @@ jobs:
         if: steps.download_prev.outputs.has_previous != 'true' && steps.recess_check.outputs.skip != 'true' && always()
         uses: actions/cache@v4
         with:
-          path: commons_votes.db
-          key: commons-votes-seed-${{ hashFiles('schemas/bundled_schema.json') }}-${{ github.run_id }}
+          path: goveye-data/commons_votes.db
+          key: commons-votes-seed-${{ hashFiles('goveye-data/schemas/bundled_schema.json') }}-${{ github.run_id }}
 
-      # Per-API DBs are intermediate artifacts, not opened by Room.
-      # Schema validation happens on the merged goveye.db in build-seed.yml.
       - name: Generate diff patch
         if: steps.download_prev.outputs.has_previous == 'true' && steps.recess_check.outputs.skip != 'true'
         run: |
@@ -104,8 +105,8 @@ jobs:
             - **patch.json**: Incremental diff patch (divisions + division_votes)
             - **manifest.json**: Version, SHA-256 hashes, and file sizes
           files: |
-            commons_votes.db
-            patch.json
-            manifest.json
+            goveye-data/commons_votes.db
+            goveye-data/patch.json
+            goveye-data/manifest.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

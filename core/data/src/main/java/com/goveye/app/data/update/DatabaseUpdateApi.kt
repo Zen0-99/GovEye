@@ -11,7 +11,8 @@ import retrofit2.http.Path
  * Fetches releases from the `Zen0-99/goveye-data` repo. The repo must be
  * public so that `browser_download_url` works without auth (Pitfall 6).
  *
- * Six per-API release tags are checked for patch updates (D-10):
+ * Seven per-API release tags are used for both first-launch DB downloads
+ * and incremental patch updates:
  * - [MPS_TAG] (mps-latest) — MP data
  * - [COMMONS_VOTES_TAG] (commons-votes-latest) — Commons divisions + division_votes (house=1)
  * - [LORDS_VOTES_TAG] (lords-votes-latest) — Lords divisions + division_votes (house=2)
@@ -20,12 +21,12 @@ import retrofit2.http.Path
  * - [RECESS_TAG] (recess-latest) — recess_dates + recess_dates_meta
  * - [INTERESTS_TAG] (interests-latest) — interests
  *
- * The [SEED_TAG] (seed-latest) release holds the merged goveye.db for
- * first-launch download (D-04, D-10a).
+ * First launch downloads all 7 per-API .db files and merges them on-device
+ * into goveye.db. No separate seed release is needed.
  */
 interface DatabaseUpdateApi {
     /**
-     * Fetch any release by its tag name. Used for the 7 per-API patch streams.
+     * Fetch any release by its tag name. Used for the 7 per-API streams.
      *
      * Each per-API release has: manifest.json, patch.json, and a per-API .db.
      */
@@ -36,17 +37,6 @@ interface DatabaseUpdateApi {
         @Path("tag") tag: String
     ): GithubReleaseDto
 
-    /**
-     * Fetch the `seed-latest` release for first-launch DB download (D-04, D-10a).
-     *
-     * Assets: goveye.db (merged by merge_dbs.py), optionally manifest.json.
-     */
-    @GET("repos/{owner}/{repo}/releases/tags/seed-latest")
-    suspend fun getSeedRelease(
-        @Path("owner") owner: String = OWNER,
-        @Path("repo") repo: String = REPO
-    ): GithubReleaseDto
-
     companion object {
         const val MPS_TAG = "mps-latest"
         const val COMMONS_VOTES_TAG = "commons-votes-latest"
@@ -55,7 +45,6 @@ interface DatabaseUpdateApi {
         const val COMMITTEES_TAG = "committees-latest"
         const val RECESS_TAG = "recess-latest"
         const val INTERESTS_TAG = "interests-latest"
-        const val SEED_TAG = "seed-latest"
 
         private const val OWNER = "Zen0-99"
         private const val REPO = "goveye-data"

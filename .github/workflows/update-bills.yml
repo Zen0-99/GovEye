@@ -12,6 +12,9 @@ jobs:
   build-and-publish:
     runs-on: ubuntu-latest
     timeout-minutes: 120  # Seed fetch: ~4000 bills with per-bill stage detail fetches
+    defaults:
+      run:
+        working-directory: goveye-data
 
     steps:
       - uses: actions/checkout@v4
@@ -28,10 +31,10 @@ jobs:
         if: steps.download_prev.outputs.has_previous != 'true'
         uses: actions/cache@v4
         with:
-          path: bills.db
-          key: bills-seed-${{ hashFiles('schemas/bundled_schema.json') }}-${{ github.run_id }}
+          path: goveye-data/bills.db
+          key: bills-seed-${{ hashFiles('goveye-data/schemas/bundled_schema.json') }}-${{ github.run_id }}
           restore-keys: |
-            bills-seed-${{ hashFiles('schemas/bundled_schema.json') }}-
+            bills-seed-${{ hashFiles('goveye-data/schemas/bundled_schema.json') }}-
 
       - name: Download previous DB and manifest
         id: download_prev
@@ -64,11 +67,9 @@ jobs:
         if: steps.download_prev.outputs.has_previous != 'true' && always()
         uses: actions/cache@v4
         with:
-          path: bills.db
-          key: bills-seed-${{ hashFiles('schemas/bundled_schema.json') }}-${{ github.run_id }}
+          path: goveye-data/bills.db
+          key: bills-seed-${{ hashFiles('goveye-data/schemas/bundled_schema.json') }}-${{ github.run_id }}
 
-      # Per-API DBs are intermediate artifacts, not opened by Room.
-      # Schema validation happens on the merged goveye.db in build-seed.yml.
       - name: Generate diff patch
         if: steps.download_prev.outputs.has_previous == 'true'
         run: |
@@ -103,8 +104,8 @@ jobs:
 
             See manifest.json for the current version number and file hashes.
           files: |
-            bills.db
-            patch.json
-            manifest.json
+            goveye-data/bills.db
+            goveye-data/patch.json
+            goveye-data/manifest.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

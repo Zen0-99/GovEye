@@ -68,9 +68,9 @@ object NetworkModule {
         .build()
 
     /**
-     * OkHttpClient with a 10-minute timeout for full DB downloads (~160MB).
+     * OkHttpClient with a 10-minute timeout for per-API DB downloads.
      * The default 30s timeout is too short for large file downloads on slow
-     * connections. Used by DatabaseUpdateManager.downloadSeedDb (D-05, D-10a).
+     * connections. Used by DatabaseUpdateManager.downloadAndMergePerApiDbs.
      */
     @Provides
     @Singleton
