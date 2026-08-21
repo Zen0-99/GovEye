@@ -63,7 +63,10 @@ class DirectoryViewModel @Inject constructor(
         membersRepository.observeDistinctParties()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    // Active parties with seat counts — for the Parties tab
+    // Active parties with seat counts — for the Parties tab.
+    // Uses SharingStarted.Eagerly so the one-shot query runs once and the
+    // result is cached for the ViewModel's lifetime — avoids re-querying
+    // the database every time DirectoryScreen enters composition.
     val parties: StateFlow<List<com.goveye.app.data.local.dao.PartySummary>> =
         flow {
             try {
@@ -71,16 +74,13 @@ class DirectoryViewModel @Inject constructor(
             } catch (e: Exception) {
                 emit(emptyList())
             }
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     // FTS search results with filters applied in Kotlin (RESEARCH.md §5.3 Approach B)
-    // Converted to StateFlow so it has a proper initial value and doesn't
-    // double-emit (emptyList then actual) on first composition — which
-    // caused jank during navigation transitions.
-    // flowOn(Dispatchers.Default) moves the FTS query + filter processing
-    // off the main thread so it doesn't compete with navigation transitions.
+    // Skip debounce for empty queries — avoids a 300ms delayed no-op emission
+    // on every DirectoryScreen composition. Only debounce actual search input.
     val searchResults: StateFlow<List<Mp>> = _searchQuery
-        .debounce(300)
+        .debounce { query -> if (query.isBlank()) 0 else 300 }
         .flatMapLatest { query ->
             Log.i("GovEye/Directory", "searchResults flatMapLatest — query='$query'")
             if (query.isBlank()) {

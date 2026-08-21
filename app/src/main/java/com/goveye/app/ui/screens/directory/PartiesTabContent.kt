@@ -4,13 +4,15 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -19,9 +21,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.goveye.app.data.local.dao.PartySummary
 import com.goveye.app.ui.theme.padding
@@ -43,14 +46,12 @@ fun PartiesTabContent(parties: List<PartySummary>, onNavigateToParty: (Int) -> U
         return
     }
 
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
+    LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+        contentPadding = PaddingValues(
             horizontal = MaterialTheme.padding.medium,
             vertical = MaterialTheme.padding.medium
         ),
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small)
     ) {
         items(parties, key = { it.partyId }) { party ->
@@ -72,7 +73,7 @@ private fun PartyCard(party: PartySummary, onClick: () -> Unit) {
     val foregroundColor = try {
         Color(android.graphics.Color.parseColor(party.partyForegroundColour))
     } catch (e: Exception) {
-        Color.White
+        if (backgroundColor.luminance() > 0.5f) Color(0xFF1A1A1A) else Color.White
     }
 
     Surface(
@@ -80,42 +81,49 @@ private fun PartyCard(party: PartySummary, onClick: () -> Unit) {
         color = backgroundColor,
         modifier = Modifier
             .fillMaxWidth()
-            .height(120.dp)
             .clickable(onClick = onClick)
     ) {
-        Column(
-            modifier = Modifier.padding(MaterialTheme.padding.medium),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(MaterialTheme.padding.medium),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.medium)
         ) {
-            // Logo or abbreviation fallback
+            // Party logo (top-left, inline with name)
             partyLogoResId(party.partyId)?.let { resId ->
                 androidx.compose.foundation.Image(
                     painter = painterResource(resId),
                     contentDescription = party.partyName,
-                    modifier = Modifier.height(32.dp)
+                    modifier = Modifier.size(40.dp)
                 )
-            } ?: Text(
-                text = party.partyAbbreviation,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = foregroundColor
-            )
+            } ?: Box(
+                modifier = Modifier.size(40.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = party.partyAbbreviation.take(3).uppercase(),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = foregroundColor
+                )
+            }
 
-            Text(
-                text = party.partyName,
-                style = MaterialTheme.typography.labelMedium,
-                color = foregroundColor,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                modifier = Modifier.padding(top = 4.dp)
-            )
-
-            Text(
-                text = "${party.seats} MPs",
-                style = MaterialTheme.typography.labelSmall,
-                color = foregroundColor.copy(alpha = 0.8f)
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = party.partyName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = foregroundColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "${party.seats} MP${if (party.seats != 1) "s" else ""}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = foregroundColor.copy(alpha = 0.8f)
+                )
+            }
         }
     }
 }

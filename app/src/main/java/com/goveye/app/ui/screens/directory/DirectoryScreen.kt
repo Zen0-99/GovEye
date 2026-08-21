@@ -167,14 +167,13 @@ fun DirectoryScreen(
         }
 
         // Pager — each tab has its own content.
-        // Offscreen page limiting: only compose the current page ± 1 to
-        // avoid jank from all 4 tabs composing their lists simultaneously.
-        // Pattern from Miko's AnimeLibraryPager.
+        // Only compose the current page — no offscreen pre-composition.
+        // This prevents adjacent tabs from doing work during navigation transitions.
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.fillMaxSize().weight(1f)
         ) { page ->
-            if (page !in ((pagerState.currentPage - 1)..(pagerState.currentPage + 1))) {
+            if (page != pagerState.currentPage) {
                 Log.i("GovEye/Directory", "Pager page $page skipped (offscreen)")
                 return@HorizontalPager
             }

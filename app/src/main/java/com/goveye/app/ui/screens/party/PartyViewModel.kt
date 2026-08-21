@@ -32,7 +32,9 @@ data class PartyUiState(
     val party: PartySummary? = null,
     val stats: PartyStatsEntity? = null,
     val manifesto: PartyManifestoEntity? = null,
-    val isLoading: Boolean = true
+    val isLoading: Boolean = true,
+    val isFollowing: Boolean = false,
+    val notificationsEnabled: Boolean = false
 )
 
 @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
@@ -111,5 +113,10 @@ class PartyViewModel @Inject constructor(
         ).flow.cachedIn(viewModelScope)
         cachedPagedMps = flow
         flow
+    }
+
+    // TODO: Implement party follow/notifications persistence (no PartyFollowDao yet)
+    fun toggleFollow(partyId: Int) {
+        _uiState.value = _uiState.value.copy(isFollowing = !_uiState.value.isFollowing)
     }
 }

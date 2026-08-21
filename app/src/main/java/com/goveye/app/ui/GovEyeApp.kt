@@ -261,7 +261,7 @@ private fun GovEyeAppContent(
                                 currentBackStack.add(ProfileRoute(targetId))
                             },
                             contentTopPadding = topBarHeight,
-                            modifier = Modifier.fillMaxSize().padding(top = topBarHeight)
+                            modifier = Modifier.fillMaxSize()
                         )
                     }
 
@@ -423,42 +423,42 @@ private fun GovEyeAppContent(
             // Miko-style transitions: crossfade + subtle 20% horizontal slide.
             // Push: new screen fades in from right 20%, old fades out sliding left 20%.
             // Pop: old screen fades out sliding right 20%, new fades in from left 20%.
-            // Duration: 200ms push, 150ms pop — snappy like Miko.
+            // Duration: 150ms push, 100ms pop — snappy, minimal overlap window.
             transitionSpec = {
                 (
-                    fadeIn(animationSpec = tween(200)) + slideInHorizontally(
-                        animationSpec = tween(200),
+                    fadeIn(animationSpec = tween(150)) + slideInHorizontally(
+                        animationSpec = tween(150),
                         initialOffsetX = { it / 5 }
                     )
                     ) togetherWith (
-                    fadeOut(animationSpec = tween(200)) + slideOutHorizontally(
-                        animationSpec = tween(200),
+                    fadeOut(animationSpec = tween(150)) + slideOutHorizontally(
+                        animationSpec = tween(150),
                         targetOffsetX = { -it / 5 }
                     )
                     )
             },
             popTransitionSpec = {
                 (
-                    fadeIn(animationSpec = tween(150)) + slideInHorizontally(
-                        animationSpec = tween(150),
+                    fadeIn(animationSpec = tween(100)) + slideInHorizontally(
+                        animationSpec = tween(100),
                         initialOffsetX = { -it / 5 }
                     )
                     ) togetherWith (
-                    fadeOut(animationSpec = tween(150)) + slideOutHorizontally(
-                        animationSpec = tween(150),
+                    fadeOut(animationSpec = tween(100)) + slideOutHorizontally(
+                        animationSpec = tween(100),
                         targetOffsetX = { it / 5 }
                     )
                     )
             },
             predictivePopTransitionSpec = { _ ->
                 (
-                    fadeIn(animationSpec = tween(150)) + slideInHorizontally(
-                        animationSpec = tween(150),
+                    fadeIn(animationSpec = tween(100)) + slideInHorizontally(
+                        animationSpec = tween(100),
                         initialOffsetX = { -it / 5 }
                     )
                     ) togetherWith (
-                    fadeOut(animationSpec = tween(150)) + slideOutHorizontally(
-                        animationSpec = tween(150),
+                    fadeOut(animationSpec = tween(100)) + slideOutHorizontally(
+                        animationSpec = tween(100),
                         targetOffsetX = { it / 5 }
                     )
                     )

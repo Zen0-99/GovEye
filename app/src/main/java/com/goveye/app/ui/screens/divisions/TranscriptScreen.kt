@@ -175,7 +175,10 @@ private fun SpeechCard(
                     )
                 } else if (historicalMember != null && historicalMember.parliamentMemberId != null) {
                     // Former MP / Lord with Parliament ID — load photo from API at runtime
-                    val photoUrl = "https://members-api.parliament.uk/api/Members/${historicalMember.parliamentMemberId}/Thumbnail"
+                    val photoUrl = (
+                        "https://members-api.parliament.uk/api/Members/" +
+                            "${historicalMember.parliamentMemberId}/Thumbnail"
+                        )
                     MpAvatar(
                         thumbnailUrl = photoUrl,
                         displayName = speech.speakerName,
