@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 10,
-    "identityHash": "2aac78a7b758582262a815b8ea2e9192",
+    "identityHash": "7fce8342723865329bbad4d9eff7a38c",
     "entities": [
       {
         "tableName": "mps",
@@ -1166,7 +1166,7 @@
       },
       {
         "tableName": "historical_members",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`twfyPersonId` INTEGER NOT NULL, `parliamentMemberId` INTEGER, `displayName` TEXT NOT NULL, `alternateNames` TEXT, `party` TEXT, `house` INTEGER NOT NULL, `startDate` TEXT, `endDate` TEXT, `constituency` TEXT, `isCurrent` INTEGER NOT NULL, `lastUpdated` INTEGER NOT NULL, PRIMARY KEY(`twfyPersonId`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`twfyPersonId` INTEGER NOT NULL, `parliamentMemberId` INTEGER, `displayName` TEXT NOT NULL, `alternateNames` TEXT, `party` TEXT, `house` INTEGER NOT NULL, `startDate` TEXT, `endDate` TEXT, `constituency` TEXT, `isCurrent` INTEGER NOT NULL, `photo` BLOB, `lastUpdated` INTEGER NOT NULL, PRIMARY KEY(`twfyPersonId`))",
         "fields": [
           {
             "fieldPath": "twfyPersonId",
@@ -1221,6 +1221,11 @@
             "columnName": "isCurrent",
             "affinity": "INTEGER",
             "notNull": true
+          },
+          {
+            "fieldPath": "photo",
+            "columnName": "photo",
+            "affinity": "BLOB"
           },
           {
             "fieldPath": "lastUpdated",
@@ -1279,7 +1284,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '2aac78a7b758582262a815b8ea2e9192')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '7fce8342723865329bbad4d9eff7a38c')"
     ]
   }
 }

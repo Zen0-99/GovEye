@@ -165,8 +165,16 @@ private fun SpeechCard(
                         size = 36.dp,
                         modifier = Modifier.clickable { onNavigateToProfile(speech.memberId) }
                     )
+                } else if (historicalMember != null && historicalMember.photo != null) {
+                    // PM or notable figure — photo stored as BLOB in DB
+                    MpAvatar(
+                        photoBytes = historicalMember.photo,
+                        displayName = speech.speakerName,
+                        partyColorHex = null,
+                        size = 36.dp
+                    )
                 } else if (historicalMember != null && historicalMember.parliamentMemberId != null) {
-                    // Former MP / Lord with Parliament ID — construct photo URL
+                    // Former MP / Lord with Parliament ID — load photo from API at runtime
                     val photoUrl = "https://members-api.parliament.uk/api/Members/${historicalMember.parliamentMemberId}/Thumbnail"
                     MpAvatar(
                         thumbnailUrl = photoUrl,

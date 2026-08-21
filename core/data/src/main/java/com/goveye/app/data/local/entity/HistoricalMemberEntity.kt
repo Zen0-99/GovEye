@@ -17,8 +17,17 @@ data class HistoricalMemberEntity(
     val endDate: String? = null,
     val constituency: String? = null,
     val isCurrent: Int = 0,
+    val photo: ByteArray? = null,
     val lastUpdated: Long
-)
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is HistoricalMemberEntity) return false
+        return twfyPersonId == other.twfyPersonId
+    }
+
+    override fun hashCode(): Int = twfyPersonId
+}
 
 @Fts4(contentEntity = HistoricalMemberEntity::class)
 @Entity(tableName = "historical_members_fts4")

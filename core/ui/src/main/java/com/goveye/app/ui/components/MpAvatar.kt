@@ -40,6 +40,47 @@ fun MpAvatar(
     size: Dp = 40.dp,
     borderWidth: Dp = 0.dp
 ) {
+    MpAvatarImpl(
+        imageData = thumbnailUrl,
+        displayName = displayName,
+        partyColorHex = partyColorHex,
+        modifier = modifier,
+        size = size,
+        borderWidth = borderWidth
+    )
+}
+
+/**
+ * Overload for loading avatar from a BLOB (e.g. PM photos stored in DB).
+ */
+@Composable
+fun MpAvatar(
+    photoBytes: ByteArray?,
+    displayName: String,
+    partyColorHex: String?,
+    modifier: Modifier = Modifier,
+    size: Dp = 40.dp,
+    borderWidth: Dp = 0.dp
+) {
+    MpAvatarImpl(
+        imageData = photoBytes,
+        displayName = displayName,
+        partyColorHex = partyColorHex,
+        modifier = modifier,
+        size = size,
+        borderWidth = borderWidth
+    )
+}
+
+@Composable
+private fun MpAvatarImpl(
+    imageData: Any?,
+    displayName: String,
+    partyColorHex: String?,
+    modifier: Modifier = Modifier,
+    size: Dp = 40.dp,
+    borderWidth: Dp = 0.dp
+) {
     val partyColor = remember(partyColorHex) { parseMutedPartyColor(partyColorHex) }
     val initials = remember(displayName) { deriveInitials(displayName) }
     val borderModifier = if (borderWidth > 0.dp) {
@@ -49,11 +90,11 @@ fun MpAvatar(
         Modifier
     }
 
-    if (thumbnailUrl != null) {
+    if (imageData != null) {
         val context = androidx.compose.ui.platform.LocalContext.current
-        val request = remember(thumbnailUrl) {
+        val request = remember(imageData) {
             ImageRequest.Builder(context)
-                .data(thumbnailUrl)
+                .data(imageData)
                 .crossfade(true)
                 .build()
         }
