@@ -13,10 +13,10 @@ GovEye is a free, open-source Android app that makes UK Parliament as followable
 - [x] **Phase 5: Divisions & Voting Stats** - Division browse, voting records, rebellion stats, activity score, trait bars, vote map (completed 2026-08-18)
 - [x] **Phase 6: Follow MPs & Notifications** - Follow list, WorkManager polling, local notifications (completed 2026-08-18)
 - [x] **Phase 7: Bill Tracking** - Bill list, progress stages timeline, Commons Library summaries (completed 2026-08-18)
-- [ ] **Phase 8: Activity Feed** - Aggregate divisions/debates into a "what happened today" feed + per-MP activity timelines
-- [ ] **Phase 9: Interests & Income** - Register of Members' Financial Interests display
+- [x] **Phase 8: Activity Feed** - Aggregate divisions/debates into a "what happened today" feed + per-MP activity timelines (completed 2026-08-18)
+- [x] **Phase 9: Interests & Income** - Register of Members' Financial Interests display (completed 2026-08-20)
 - [ ] **Phase 10: Polish & Release** - OPL attribution, notification reliability, Play Store release
-- [ ] **Phase 11: API Enrichment** - Re-integrate MNIS + Ayes & Noes, add Public Whip, IPSA, ParlParse, evaluate TheyWorkForYou (see research/API-ENRICHMENT.md)
+- [ ] **Phase 11: Build-time Data Enrichment** - MNIS biographical data, IPSA expenses, ParlParse social/Wikipedia links, party manifestos with FTS search, Parties tab + PartyView (build-time into bundled DB). Dropped: Ayes & Noes, Public Whip, TWFY (see research/API-ENRICHMENT.md)
 
 ## Phase Details
 
@@ -181,13 +181,13 @@ Plans:
   3. Feed degrades gracefully when Hansard API is unavailable (divisions still shown)
   4. MP profile shows a recent activity timeline with per-event activity weight
 
-**Plans**: 3 plans
+**Plans**: 3/3 plans executed
 
 Plans:
 
-- [ ] 08-01: Feed data pipeline - DivisionWeightCalculator, relative date utility, new DAO queries, FeedRepository
-- [ ] 08-02: Feed UI - sticky date headers, division cards, followed highlight, filter, Debates tab, TheyWorkForYou link
-- [ ] 08-03: Per-MP recent activity timeline - Activity tab on MP profile with DivisionWeightCalculator badges
+- [x] 08-01: Feed data pipeline - DivisionWeightCalculator, relative date utility, new DAO queries, FeedRepository
+- [x] 08-02: Feed UI - sticky date headers, division cards, followed highlight, filter, Debates tab, TheyWorkForYou link
+- [x] 08-03: Per-MP recent activity timeline - Activity tab on MP profile with DivisionWeightCalculator badges
 
 ### Phase 9: Interests & Income
 
@@ -200,14 +200,14 @@ Plans:
   2. Income totals per category are summarized
   3. Free-text parsing handles the Interests API's typed fields array robustly
 
-**Plans**: 4 plans
+**Plans**: 4/4 plans executed
 
 Plans:
 
-- [ ] 09-01: Build-side — build_interests.py, monetary parser, update-interests.yml, merge_dbs.py, schema JSON
-- [ ] 09-02: Android data layer — entity migration (v1→v2), repository rewrite, 7th patch stream, DAO date query
-- [ ] 09-03: Android UI — Interests tab, dashboard grid, monthly navigation, date filter, bucket detail screen
-- [ ] 09-04: CI infrastructure — recess-gated workflows, seed automation, checkpoint/resume, Bills smart delta
+- [x] 09-01: Build-side — build_interests.py, monetary parser, update-interests.yml, merge_dbs.py, schema JSON
+- [x] 09-02: Android data layer — entity migration (v1→v2), repository rewrite, 7th patch stream, DAO date query
+- [x] 09-03: Android UI — Interests tab, dashboard grid, monthly navigation, date filter, bucket detail screen
+- [x] 09-04: CI infrastructure — recess-gated workflows, seed automation, checkpoint/resume, Bills smart delta
 
 ### Phase 10: Polish & Release
 
@@ -240,31 +240,41 @@ Plans:
 - [x] 10-08: Rewrite workers for DB-patch notifications â€” VotePollingWorker + BillPollingWorker as one-shot workers triggered by DatabaseUpdateWorker after patch application (D-09)
 - [ ] 10-09: Release â€” versioning, release build, Play Store listing prep
 
-### Phase 11: API Enrichment
+### Phase 11: Build-time Data Enrichment
 
-**Goal**: Enrich MP profiles and stats with data from external APIs beyond the core Parliament Members API. Re-integrate MNIS and Ayes & Noes (removed from Phase 3 as premature), add Public Whip bulk data, IPSA expenses, ParlParse social media links, and evaluate TheyWorkForYou behind a credential adapter.
+**Goal**: Enrich MP profiles with biographical, financial, and social data from external sources, integrated at build time into the bundled DB via Python scripts. MNIS for biographical details (maiden speeches, posts, honours, DOB), IPSA for expense claims, ParlParse for social media and Wikipedia links. Add a Parties tab to the directory with tinted party cards (using existing partyBackgroundColour from mps.db), a PartyView screen with 4 tabs (Info, Members, Stats, Manifesto), and bundled party manifestos with full-text search. Dropped sources documented in research/API-ENRICHMENT.md as fallback.
 **Depends on**: Phase 10 (core UX finalized, bundled DB infrastructure in place)
 **Requirements**: DATA-01, DATA-02, DATA-03, DATA-04 (enriched data feeds into bundled DB)
 **Success Criteria** (what must be TRUE):
 
-  1. MNIS API provides maiden speech dates, government/opposition posts, honours, DOB, and committee chairing details on MP profiles
-  2. Ayes & Noes API provides recorded vote counts, rebellion counts, and voting summaries
-  3. Public Whip bulk data provides attendance rates and historical rebellion data
-  4. IPSA CSV parsing provides expense claims data (periodic download)
-  5. ParlParse provides social media and Wikipedia links on MP profiles
-  6. TheyWorkForYou is behind a credential/config adapter (not enabled by default due to quota)
-  7. All enriched data feeds into the bundled DB daily update pipeline (Phase 10 infra)
+  1. MNIS build script fetches maiden speech dates, government/opposition posts with dates, honours, DOB, and committee chairing details; stores in bundled DB; enriches career timeline and profile
+  2. IPSA build script downloads CSV expense claims (published every 2 months), parses and stores in bundled DB; expense cards appear in the Interests tab on MP profiles
+  3. ParlParse build script clones repo, extracts social media links and Wikipedia URLs; stores in bundled DB; adds links to MP profile
+  4. Activity Score and Trait Radar on MP profile are wired to real peer aggregation data (Hansard speeches, committee counts, self-computed rebellion rates) with peer averages across all same-house MPs
+  5. All enriched data feeds into the bundled DB daily update pipeline (Phase 10 infra) as new per-API streams
+  6. Parties tab in directory shows all 17 active parties as tinted cards (partyBackgroundColour fill, abbreviation badge, party name, seat count), sorted alphabetically by party name
+  7. PartyView screen opens on card click with 4 tabs: Info (party name, abbreviation, seat count, description), Members (same paged list as Officials tab, filtered by partyId), Stats (vote share at last election, seat count history), Manifesto (full text with FTS search)
+  8. Party manifesto build script downloads plain-text manifestos for 7 major parties (Conservative, Labour, Lib Dem, Green, Plaid Cymru, SNP, Reform UK) from Lancaster Wmatrix or party websites; stores in manifestos.db as a new per-API stream; total ~815KB
+  9. Manifesto tab has a top bar search field; typing queries FTS (Room @Fts4 with snippet() and BM25 ranking), shows matching snippets with highlighted terms (Compose AnnotatedString with SpanStyle), tapping a snippet scrolls to that section in the full text
+  10. Party pill on MP profile is clickable and navigates to PartyView for that party
 
-**Plans**: 6 plans (tentative â€” will be detailed when phase is planned)
+**Plans**: 7 plans (tentative — will be detailed when phase is planned)
 
 Plans:
 
-- [ ] 11-01: MNIS re-integration â€” biographical data (maiden speeches, posts, honours, DOB)
-- [ ] 11-02: Ayes & Noes re-integration â€” voting stats, rebellion counts, EDMs
-- [ ] 11-03: Public Whip + IPSA â€” bulk rebellion/attendance data, expense claims
-- [ ] 11-04: ParlParse â€” social media links, Wikipedia URLs, minister history
-- [ ] 11-05: TheyWorkForYou adapter â€” credential-gated, quota-managed
-- [ ] 11-06: Activity Score + Trait Radar â€” wire ActivityScoreCalculator and TraitRadarChart with real peer aggregation data (questions from Hansard, speeches from Hansard, committee counts, rebellion rates from Public Whip). Requires peer averages computed across all same-house MPs. The UI components (ActivityScoreComponents.kt, TraitRadarChart.kt) and domain calculators (ActivityScoreCalculator, TraitBarCalculator, PercentileCalculator) already exist â€” this plan wires them to real data and re-enables them on the MP profile.
+- [ ] 11-01: MNIS biographical data — build_mnis.py (XML parse), bio_data table in bundled DB, career timeline + profile enrichment (maiden speeches, govt/opposition posts, honours, DOB)
+- [ ] 11-02: IPSA expenses — build_ipsa.py (CSV download + parse), expenses table in bundled DB, expense cards in Interests tab on MP profile
+- [ ] 11-03: ParlParse enrichment — build_parlparse.py (git clone + XML/JSON parse), mp_links table in bundled DB, social media + Wikipedia links on MP profile
+- [ ] 11-04: Activity Score + Trait Radar — wire existing ActivityScoreComponents.kt and TraitRadarChart.kt to real peer aggregation data (questions from Hansard, speeches from debate_speeches table, committee counts, self-computed rebellion rates). Requires peer averages computed across all same-house MPs. Domain calculators (ActivityScoreCalculator, TraitBarCalculator, PercentileCalculator) already exist — this plan wires them to real data and re-enables them on the MP profile.
+- [ ] 11-05: Party manifestos build script — build_manifestos.py (download 7 plain-text manifestos from Lancaster Wmatrix/party websites), party_manifestos table + party_manifestos_fts (FTS4) in manifestos.db, update-manifestos.yml workflow, merge into bundled DB as new per-API stream
+- [ ] 11-06: Parties tab + PartyView screen — Parties tab in directory (tinted cards from partyBackgroundColour, abbreviation badge, seat count, alphabetical sort), PartyView with 4 tabs (Info: name/abbrev/seats/description, Members: reuse Officials paged list filtered by partyId, Stats: vote share + seat history, Manifesto: full text display + FTS search with snippet highlighting), party pill click on MP profile navigates to PartyView
+- [ ] 11-07: Manifesto FTS search UI — top bar search field on Manifesto tab, Room @Fts4 query with snippet() and BM25 ranking, results list with highlighted terms (AnnotatedString + SpanStyle pattern from Odysseus Vault _hlSearch), tap snippet to scroll to full text section, empty state when no matches
+
+### Dropped sources (kept in research/API-ENRICHMENT.md as fallback)
+
+- **Ayes & Noes** (ayesandnoes.co.uk) — dropped: 90% redundant. We already compute recorded vote counts, rebellion counts, voting summaries, and party breakdowns from raw Parliament Votes API data. Only unique value is EDMs (Early Day Motions), which should come from the Parliament Questions API if wanted. API kept as fallback reference.
+- **Public Whip** (publicwhip.org.uk) — dropped for v1: provides historical rebellion/attendance back to 1992, but we compute current stats ourselves. Revisit for v2 if users request historical depth. Bulk XML kept as fallback reference.
+- **TheyWorkForYou API** — obsolete: we already scrape TWFY at build time for debate transcripts (build_debates.py). The API's remaining value (issue-based voting positions) conflicts with our neutral methodology stance. TWFY API kept as fallback reference for future use.
 
 ## Progress
 
@@ -280,8 +290,8 @@ Phases execute in numeric order: 1 â†’ 2 â†’ 3 â†’ 4 â†’ 5 �
 | 5. Divisions & Voting Stats | 5/5 | Complete | 2026-08-18 |
 | 6. Follow MPs & Notifications | 3/3 | Complete | 2026-08-18 |
 | 7. Bill Tracking | 2/2 | Complete | 2026-08-18 |
-| 8. Activity Feed | 0/3 | Not started | - |
-| 9. Interests & Income | 0/1 | Not started | - |
+| 8. Activity Feed | 3/3 | Complete | 2026-08-18 |
+| 9. Interests & Income | 4/4 | Complete | 2026-08-20 |
 | 10. Polish & Release | 6/9 | 10-03â†’10-08 executed | - |
-| 11. API Enrichment | 0/5 | Not started | - |
+| 11. Build-time Data Enrichment | 0/7 | Not started | - |
 
