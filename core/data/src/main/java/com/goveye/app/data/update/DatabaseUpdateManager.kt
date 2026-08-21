@@ -219,7 +219,7 @@ class DatabaseUpdateManager @Inject constructor(
      * Instead of downloading a single pre-merged seed DB, this approach:
      * 1. Lets Room create the empty goveye.db with all tables + FTS triggers
      * 2. Closes Room
-     * 3. Downloads all 7 per-API .db files to cacheDir (with combined progress)
+     * 3. Downloads all per-API .db files to cacheDir (with combined progress)
      * 4. Opens goveye.db with raw SQLite, ATTACHes each per-API DB, and
      *    INSERT OR REPLACE into the corresponding tables
      * 5. VACUUMs to minimize size
@@ -231,7 +231,7 @@ class DatabaseUpdateManager @Inject constructor(
      * Checks for metered connection first (Pitfall 4) — returns
      * [DatabaseUpdateState.NeedsWifi] if on mobile data.
      *
-     * @param onProgress Callback receiving download progress as 0f..1f across all 7 downloads.
+     * @param onProgress Callback receiving download progress as 0f..1f across all stream downloads.
      * @return [DatabaseUpdateState.UpToDate] on success, [DatabaseUpdateState.Failed]
      *         or [DatabaseUpdateState.NeedsWifi] on error.
      */
@@ -297,7 +297,7 @@ class DatabaseUpdateManager @Inject constructor(
                                             totalRead += bytesRead
                                             if (contentLength > 0) {
                                                 perStreamProgress[index] = totalRead.toFloat() / contentLength
-                                                totalProgress = perStreamProgress.sum() / 7f
+                                                totalProgress = perStreamProgress.sum() / streamTags.size.toFloat()
                                                 onProgress(totalProgress)
                                             }
                                         }
@@ -370,8 +370,8 @@ class DatabaseUpdateManager @Inject constructor(
                     }
 
                     for (table in tables) {
-                        // mps_fts is auto-populated by FTS4 triggers — skip direct insert
-                        if (table == "mps_fts") continue
+                        // FTS4 tables are auto-populated by triggers — skip direct insert
+                        if (table == "mps_fts" || table.endsWith("_fts4")) continue
 
                         if (houseFilter != null && table == "divisions") {
                             // Delete votes for this house's divisions first (FK-like),
@@ -411,9 +411,23 @@ class DatabaseUpdateManager @Inject constructor(
                         } else {
                             // Wipe existing data then copy fresh data
                             mergedDb.execSQL("DELETE FROM $table")
-                            mergedDb.execSQL(
-                                "INSERT OR REPLACE INTO $table SELECT * FROM $schemaAlias.$table"
-                            )
+                            if (table == "historical_members") {
+                                // Explicit column list — per-API DB may have different column
+                                // order after ALTER TABLE migrations (e.g. photo appended at end)
+                                mergedDb.execSQL(
+                                    "INSERT OR REPLACE INTO historical_members " +
+                                        "(twfyPersonId, parliamentMemberId, displayName, alternateNames, " +
+                                        "party, house, startDate, endDate, constituency, isCurrent, " +
+                                        "photo, lastUpdated) " +
+                                        "SELECT twfyPersonId, parliamentMemberId, displayName, alternateNames, " +
+                                        "party, house, startDate, endDate, constituency, isCurrent, " +
+                                        "photo, lastUpdated FROM $schemaAlias.historical_members"
+                                )
+                            } else {
+                                mergedDb.execSQL(
+                                    "INSERT OR REPLACE INTO $table SELECT * FROM $schemaAlias.$table"
+                                )
+                            }
                         }
                         val count = mergedDb.rawQuery("SELECT COUNT(*) FROM $table", null).use {
                             if (it.moveToFirst()) it.getInt(0) else -1
