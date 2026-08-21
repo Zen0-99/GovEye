@@ -30,6 +30,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.goveye.app.data.local.entity.HistoricalMemberEntity
+import com.goveye.app.data.local.entity.MpEntity
 import com.goveye.app.domain.model.DebateSpeech
 import com.goveye.app.ui.components.ConfigureSearchBar
 import com.goveye.app.ui.components.MpAvatar
@@ -99,7 +101,8 @@ fun TranscriptScreen(
         items(state.speeches, key = { it.speechGid }) { speech ->
             SpeechCard(
                 speech = speech,
-                speakerInfo = state.speakerInfo[speech.memberId],
+                historicalMember = state.historicalMembers[speech.twfyPersonId],
+                mpInfo = if (speech.memberId > 0) state.mpInfo[speech.memberId] else null,
                 onNavigateToProfile = onNavigateToProfile
             )
         }
@@ -109,7 +112,8 @@ fun TranscriptScreen(
 @Composable
 private fun SpeechCard(
     speech: DebateSpeech,
-    speakerInfo: com.goveye.app.data.local.entity.MpEntity?,
+    historicalMember: HistoricalMemberEntity?,
+    mpInfo: MpEntity?,
     onNavigateToProfile: (Int) -> Unit
 ) {
     // Procedural blocks (no speaker) — render as a centered, muted note
@@ -131,6 +135,7 @@ private fun SpeechCard(
     }
 
     val isIntervention = speech.isIntervention
+    val isCurrentMp = speech.memberId > 0 && mpInfo != null
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -151,16 +156,17 @@ private fun SpeechCard(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                if (speech.memberId > 0 && speakerInfo != null) {
+                if (isCurrentMp && mpInfo != null) {
+                    // Current sitting MP — show avatar with photo
                     MpAvatar(
-                        thumbnailUrl = speakerInfo.thumbnailUrl,
-                        displayName = speakerInfo.nameDisplayAs,
-                        partyColorHex = speakerInfo.partyBackgroundColour,
+                        thumbnailUrl = mpInfo.thumbnailUrl,
+                        displayName = mpInfo.nameDisplayAs,
+                        partyColorHex = mpInfo.partyBackgroundColour,
                         size = 36.dp,
                         modifier = Modifier.clickable { onNavigateToProfile(speech.memberId) }
                     )
                 } else {
-                    // Unmatched speaker — show initials circle
+                    // Former MP / Lord / unmatched — show initials circle
                     Box(
                         modifier = Modifier
                             .size(36.dp)
@@ -181,23 +187,41 @@ private fun SpeechCard(
                         text = speech.speakerName,
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,
-                        color = if (speech.memberId > 0) {
+                        color = if (isCurrentMp) {
                             MaterialTheme.colorScheme.primary
                         } else {
                             MaterialTheme.colorScheme.onSurface
                         },
-                        modifier = if (speech.memberId > 0) {
+                        modifier = if (isCurrentMp) {
                             Modifier.clickable { onNavigateToProfile(speech.memberId) }
                         } else {
                             Modifier
                         }
                     )
-                    if (speakerInfo != null) {
+                    // Party line: prefer MP table (has full party name + color),
+                    // fall back to historical_members (has party slug only)
+                    if (mpInfo != null) {
                         Text(
-                            text = speakerInfo.partyName,
+                            text = mpInfo.partyName,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                    } else if (historicalMember != null) {
+                        val party = historicalMember.party
+                        if (!party.isNullOrBlank()) {
+                            Text(
+                                text = party.replace("-", " ").replaceFirstChar { it.uppercase() },
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        } else if (speech.speakerPosition.isNotBlank()) {
+                            Text(
+                                text = speech.speakerPosition,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1
+                            )
+                        }
                     } else if (speech.speakerPosition.isNotBlank()) {
                         Text(
                             text = speech.speakerPosition,

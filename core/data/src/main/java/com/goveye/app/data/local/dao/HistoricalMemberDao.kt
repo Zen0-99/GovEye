@@ -9,6 +9,9 @@ interface HistoricalMemberDao {
     @Query("SELECT * FROM historical_members WHERE twfyPersonId = :twfyPersonId")
     suspend fun getByTwfyPersonId(twfyPersonId: Int): HistoricalMemberEntity?
 
+    @Query("SELECT * FROM historical_members WHERE twfyPersonId IN (:twfyPersonIds)")
+    suspend fun getByTwfyPersonIds(twfyPersonIds: List<Int>): List<HistoricalMemberEntity>
+
     @Query("SELECT * FROM historical_members WHERE parliamentMemberId = :parliamentMemberId")
     suspend fun getByParliamentMemberId(parliamentMemberId: Int): HistoricalMemberEntity?
 

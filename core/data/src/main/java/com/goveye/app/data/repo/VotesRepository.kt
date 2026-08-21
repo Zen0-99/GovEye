@@ -206,6 +206,7 @@ class VotesRepository @Inject constructor(
         divisionId = divisionId,
         speakerName = speakerName,
         memberId = memberId,
+        twfyPersonId = twfyPersonId,
         speakerPosition = speakerPosition,
         speechText = speechText,
         speechOrder = speechOrder,

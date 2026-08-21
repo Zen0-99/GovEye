@@ -10,6 +10,9 @@ class HistoricalMemberRepository @Inject constructor(private val historicalMembe
     suspend fun getByTwfyPersonId(twfyPersonId: Int): HistoricalMemberEntity? =
         historicalMemberDao.getByTwfyPersonId(twfyPersonId)
 
+    suspend fun getByTwfyPersonIds(twfyPersonIds: List<Int>): List<HistoricalMemberEntity> =
+        historicalMemberDao.getByTwfyPersonIds(twfyPersonIds)
+
     suspend fun getByParliamentMemberId(parliamentMemberId: Int): HistoricalMemberEntity? =
         historicalMemberDao.getByParliamentMemberId(parliamentMemberId)
 
