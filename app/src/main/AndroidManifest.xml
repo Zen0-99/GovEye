@@ -37,7 +37,7 @@
             </intent-filter>
 
             <!-- Deep link intent filters for goveye:// scheme (D-21) -->
-            <intent-filter android:autoVerify="true">
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
 
                 <category android:name="android.intent.category.DEFAULT" />
@@ -45,7 +45,7 @@
 
                 <data android:scheme="goveye" android:host="mp" />
             </intent-filter>
-            <intent-filter android:autoVerify="true">
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
 
                 <category android:name="android.intent.category.DEFAULT" />
@@ -53,7 +53,7 @@
 
                 <data android:scheme="goveye" android:host="division" />
             </intent-filter>
-            <intent-filter android:autoVerify="true">
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
 
                 <category android:name="android.intent.category.DEFAULT" />
