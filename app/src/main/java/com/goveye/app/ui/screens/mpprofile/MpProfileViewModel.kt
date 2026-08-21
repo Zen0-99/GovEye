@@ -155,7 +155,7 @@ class ProfileViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(samePartyMps = entities.map { it.toDomainMp() })
             }
 
-            // 6. Votes + rebellion stats — all queries in one batch
+            // 6. Votes + rebellion stats — fast path using SQL aggregation
             try {
                 val house = mp?.house ?: 1
                 val allDates = votesRepository.getAllDivisionDates(house)
@@ -164,12 +164,13 @@ class ProfileViewModel @Inject constructor(
 
                 val partyName = mp?.party?.name
                 val rebellionStats = if (votes.isNotEmpty() && partyName != null) {
-                    val memberVotesResult = votesRepository.observeMemberVoting(memberId).first()
-                    val memberVotes = memberVotesResult.data
+                    // Fast rebellion calculation: single SQL GROUP BY query
+                    // returns ~200 rows instead of loading 130k+ vote entities.
+                    // Reuse the MP's votes already loaded above — no second query.
+                    val memberVotes = votesRepository.getMemberVotes(memberId)
                     val divisionIds = memberVotes.map { it.divisionId }.distinct()
-                    val allVotesByDivision = votesRepository.getAllVotesForDivisions(divisionIds)
-                    _uiState.value = _uiState.value.copy(allVotesByDivision = allVotesByDivision)
-                    RebellionCalculator.compute(memberVotes, allVotesByDivision, partyName)
+                    val partyVoteCounts = votesRepository.getPartyVoteCounts(divisionIds, partyName)
+                    RebellionCalculator.computeAggregated(memberVotes, partyVoteCounts)
                 } else {
                     null
                 }
@@ -179,6 +180,10 @@ class ProfileViewModel @Inject constructor(
                     memberVotes = votes,
                     memberPartyName = partyName,
                     rebellionStats = rebellionStats
+                )
+                android.util.Log.i(
+                    "GovEye/Profile",
+                    "Rebellion stats computed: ${rebellionStats?.rebellionCount ?: 0} rebellions in ${rebellionStats?.totalDivisionsVoted ?: 0} divisions"
                 )
             } catch (e: Exception) {
                 android.util.Log.e("GovEye/Profile", "Failed to load votes for MP $memberId", e)

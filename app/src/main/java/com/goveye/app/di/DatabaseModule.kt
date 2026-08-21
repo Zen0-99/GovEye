@@ -14,13 +14,13 @@ import com.goveye.app.data.local.dao.DivisionDao
 import com.goveye.app.data.local.dao.ExpenseDao
 import com.goveye.app.data.local.dao.FollowDao
 import com.goveye.app.data.local.dao.HansardDao
-import com.goveye.app.data.local.dao.HistoricalMemberDao
 import com.goveye.app.data.local.dao.InterestDao
 import com.goveye.app.data.local.dao.ManifestoDao
 import com.goveye.app.data.local.dao.MpDao
 import com.goveye.app.data.local.dao.MpLinkDao
-import com.goveye.app.data.local.dao.MpNotificationPreferenceDao
+import com.goveye.app.data.local.dao.HistoricalMemberDao
 import com.goveye.app.data.local.dao.PartyStatsDao
+import com.goveye.app.data.local.dao.MpNotificationPreferenceDao
 import com.goveye.app.data.local.dao.RecessDateDao
 import com.goveye.app.data.local.dao.SearchDao
 import com.goveye.app.data.mapper.HansardMapper
@@ -33,13 +33,13 @@ import com.goveye.app.data.repo.ExpensesRepository
 import com.goveye.app.data.repo.FeedRepository
 import com.goveye.app.data.repo.FollowRepository
 import com.goveye.app.data.repo.HansardRepository
-import com.goveye.app.data.repo.HistoricalMemberRepository
 import com.goveye.app.data.repo.InterestsRepository
 import com.goveye.app.data.repo.ManifestoRepository
 import com.goveye.app.data.repo.MembersRepository
 import com.goveye.app.data.repo.MpLinksRepository
-import com.goveye.app.data.repo.NotificationPreferenceRepository
+import com.goveye.app.data.repo.HistoricalMemberRepository
 import com.goveye.app.data.repo.PartyStatsRepository
+import com.goveye.app.data.repo.NotificationPreferenceRepository
 import com.goveye.app.data.repo.StatsRepository
 import com.goveye.app.data.repo.VotesRepository
 import dagger.Module
@@ -126,7 +126,8 @@ object DatabaseModule {
     fun providePartyStatsDao(database: BundledDatabase): PartyStatsDao = database.partyStatsDao()
 
     @Provides
-    fun provideHistoricalMemberDao(database: BundledDatabase): HistoricalMemberDao = database.historicalMemberDao()
+    fun provideHistoricalMemberDao(database: BundledDatabase): HistoricalMemberDao =
+        database.historicalMemberDao()
 
     @Provides
     fun provideDatabaseUpdateDao(database: BundledDatabase): DatabaseUpdateDao = database.databaseUpdateDao()
@@ -161,8 +162,9 @@ object DatabaseModule {
         mpDao: MpDao,
         searchDao: SearchDao,
         membersApi: com.goveye.app.data.api.MembersApi,
-        memberMapper: MemberMapper
-    ): MembersRepository = MembersRepository(mpDao, searchDao, membersApi, memberMapper)
+        memberMapper: MemberMapper,
+        historicalMemberDao: com.goveye.app.data.local.dao.HistoricalMemberDao
+    ): MembersRepository = MembersRepository(mpDao, searchDao, membersApi, memberMapper, historicalMemberDao)
 
     @Provides
     @Singleton
@@ -216,13 +218,13 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun providePartyStatsRepository(partyStatsDao: PartyStatsDao): PartyStatsRepository =
-        PartyStatsRepository(partyStatsDao)
+    fun providePartyStatsRepository(partyStatsDao: PartyStatsDao): PartyStatsRepository = PartyStatsRepository(partyStatsDao)
 
     @Provides
     @Singleton
-    fun provideHistoricalMemberRepository(historicalMemberDao: HistoricalMemberDao): HistoricalMemberRepository =
-        HistoricalMemberRepository(historicalMemberDao)
+    fun provideHistoricalMemberRepository(
+        historicalMemberDao: HistoricalMemberDao
+    ): HistoricalMemberRepository = HistoricalMemberRepository(historicalMemberDao)
 
     @Provides
     @Singleton

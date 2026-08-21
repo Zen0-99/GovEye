@@ -79,7 +79,8 @@ fun PartyMembersTab(
                             thumbnailUrl = mp.thumbnailUrl,
                             displayName = mp.nameDisplayAs ?: mp.nameListAs,
                             partyColorHex = mp.partyBackgroundColour,
-                            size = 40.dp
+                            size = 40.dp,
+                            borderWidth = 2.dp
                         )
                         Column(modifier = Modifier.weight(1f)) {
                             Text(

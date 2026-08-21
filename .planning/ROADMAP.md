@@ -17,6 +17,7 @@ GovEye is a free, open-source Android app that makes UK Parliament as followable
 - [x] **Phase 9: Interests & Income** - Register of Members' Financial Interests display (completed 2026-08-20)
 - [ ] **Phase 10: Polish & Release** - OPL attribution, notification reliability, Play Store release
 - [ ] **Phase 11: Build-time Data Enrichment** - MNIS biographical data, IPSA expenses, ParlParse social/Wikipedia links, party manifestos with FTS search, Parties tab + PartyView (build-time into bundled DB). Dropped: Ayes & Noes, Public Whip, TWFY (see research/API-ENRICHMENT.md)
+- [ ] **Phase 12: Unified Precomputed Database** - Single post-merge build script (build_precompute.py) produces precomputed stats tables (mp_stats, peer_averages) and fixes N+1 query paths with SQL JOINs. Eliminates 5,500+ runtime DAO calls per profile open. App reads precomputed rows instead of aggregating at runtime.
 
 ## Phase Details
 
@@ -270,6 +271,34 @@ Plans:
 - [ ] 11-06: Parties tab + PartyView screen — Parties tab in directory (tinted cards from partyBackgroundColour, abbreviation badge, seat count, alphabetical sort), PartyView with 4 tabs (Info: name/abbrev/seats/description, Members: reuse Officials paged list filtered by partyId, Stats: vote share + seat history, Manifesto: full text display + FTS search with snippet highlighting), party pill click on MP profile navigates to PartyView
 - [ ] 11-07: Manifesto FTS search UI — top bar search field on Manifesto tab, Room @Fts4 query with snippet() and BM25 ranking, results list with highlighted terms (AnnotatedString + SpanStyle pattern from Odysseus Vault _hlSearch), tap snippet to scroll to full text section, empty state when no matches
 
+### Phase 12: Unified Precomputed Database
+
+**Goal**: Eliminate all runtime aggregation/computation on bundled DB data by precomputing derived stats at build time and fixing N+1 query paths with SQL JOINs. A single post-merge build script (build_precompute.py) reads the merged goveye.db and produces precomputed tables. The app reads precomputed rows instead of iterating 650 MPs or loading 130k+ vote entities.
+**Depends on**: Phase 10 (bundled DB infrastructure), Phase 11 (enrichment data — bio_data, expenses, debate_speeches feed into stats)
+**Requirements**: DATA-01, DATA-02, DATA-03, DATA-04 (precomputed data feeds into bundled DB)
+
+**Success Criteria** (what must be TRUE):
+
+  1. `build_precompute.py` runs after all per-API DBs are merged into goveye.db, produces `mp_stats` and `peer_averages` tables via SQL aggregation (no API calls)
+  2. `mp_stats` table has one row per MP with: questionCount, speechCount, committeeCount, voteParticipationRate, rebellionRate, rebellionCount, totalDivisionsVoted, activityScore, and 5 trait percentiles (rebellion, participation, questions, speeches, committees)
+  3. `peer_averages` table has one row per house with: avgQuestions, avgSpeeches, avgCommittees, avgParticipation, avgRebellion, mpCount
+  4. `StatsRepository` reads from precomputed tables — `getTraitBars()` and `getActivityScore()` become 2 DB queries instead of 5,500+ DAO calls
+  5. `VotesRepository.getMemberVotingWithDivisions()` replaced with SQL JOIN (eliminates N+1 queries)
+  6. `VotesRepository.getPartyBreakdown()` replaced with SQL GROUP BY (eliminates loading 650 vote entities)
+  7. `FollowingViewModel.followedWithVotes` uses batch SQL query instead of N+1 recent vote lookups
+  8. MP profile opens in under 1 second (down from 10+ seconds)
+  9. Fallback: if precomputed tables are empty (old DB), app falls back to current runtime computation path
+  10. No raw tables are dropped from the shipped DB — precomputed tables are additive
+
+**Plans**: 4 plans (tentative — will be detailed when phase is planned)
+
+Plans:
+
+- [ ] 12-01: build_precompute.py — post-merge build script that produces mp_stats + peer_averages tables via SQL aggregation (rebellion rates, question/speech/committee counts, vote participation, activity scores, trait percentiles, peer averages per house)
+- [ ] 12-02: Android schema + DAO + repository rewrite — add MpStatsDao, PeerAveragesDao, rewrite StatsRepository to read precomputed tables, add fallback for old DBs
+- [ ] 12-03: SQL JOIN fixes — replace N+1 queries in VotesRepository (getMemberVotingWithDivisions, getPartyBreakdown, checkIfRebel) and FollowingViewModel (batch recent vote query) with single SQL queries
+- [ ] 12-04: CI integration + validation — add build_precompute.py to build_db.py merge pipeline, verify profile open time under 1 second, verify precomputed stats match runtime computation results
+
 ### Dropped sources (kept in research/API-ENRICHMENT.md as fallback)
 
 - **Ayes & Noes** (ayesandnoes.co.uk) — dropped: 90% redundant. We already compute recorded vote counts, rebellion counts, voting summaries, and party breakdowns from raw Parliament Votes API data. Only unique value is EDMs (Early Day Motions), which should come from the Parliament Questions API if wanted. API kept as fallback reference.
@@ -279,7 +308,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 â†’ 2 â†’ 3 â†’ 4 â†’ 5 â†’ 6 â†’ 7 â†’ 8 â†’ 9 â†’ 10 â†’ 11
+Phases execute in numeric order: 1 â†’ 2 â†’ 3 â†’ 4 â†’ 5 â†’ 6 â†’ 7 â†’ 8 â†’ 9 â†’ 10 â†’ 11 â†’ 12
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -294,4 +323,5 @@ Phases execute in numeric order: 1 â†’ 2 â†’ 3 â†’ 4 â†’ 5 �
 | 9. Interests & Income | 4/4 | Complete | 2026-08-20 |
 | 10. Polish & Release | 6/9 | 10-03â†’10-08 executed | - |
 | 11. Build-time Data Enrichment | 0/7 | Not started | - |
+| 12. Unified Precomputed Database | 0/4 | Not started | - |
 

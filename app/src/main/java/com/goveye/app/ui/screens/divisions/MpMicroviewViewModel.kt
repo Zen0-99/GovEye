@@ -15,7 +15,6 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 data class MpMicroviewUiState(
@@ -130,13 +129,12 @@ class MpMicroviewViewModel @Inject constructor(
                     allDivisionDates = allDates
                 )
 
-                // Compute rebellion stats from the bundled data
+                // Compute rebellion stats — fast path using SQL aggregation
                 if (votes.isNotEmpty() && partyName != null) {
-                    val memberVotesResult = votesRepository.observeMemberVoting(memberId).first()
-                    val memberVotes = memberVotesResult.data
+                    val memberVotes = votesRepository.getMemberVotes(memberId)
                     val divisionIds = memberVotes.map { it.divisionId }.distinct()
-                    val allVotesByDivision = votesRepository.getAllVotesForDivisions(divisionIds)
-                    val stats = RebellionCalculator.compute(memberVotes, allVotesByDivision, partyName)
+                    val partyVoteCounts = votesRepository.getPartyVoteCounts(divisionIds, partyName)
+                    val stats = RebellionCalculator.computeAggregated(memberVotes, partyVoteCounts)
                     _uiState.value = _uiState.value.copy(rebellionStats = stats)
                 }
             } catch (e: Exception) {

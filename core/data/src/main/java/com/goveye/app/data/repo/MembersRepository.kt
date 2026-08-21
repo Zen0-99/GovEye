@@ -5,6 +5,7 @@ import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.map
 import com.goveye.app.data.api.MembersApi
+import com.goveye.app.data.local.dao.HistoricalMemberDao
 import com.goveye.app.data.local.dao.MpDao
 import com.goveye.app.data.local.dao.SearchDao
 import com.goveye.app.data.local.entity.MpEntity
@@ -18,6 +19,8 @@ import com.goveye.app.domain.model.SyncStatus
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 
@@ -26,7 +29,8 @@ class MembersRepository @Inject constructor(
     private val mpDao: MpDao,
     private val searchDao: SearchDao,
     private val membersApi: MembersApi,
-    private val mapper: MemberMapper
+    private val mapper: MemberMapper,
+    private val historicalMemberDao: HistoricalMemberDao
 ) {
 
     suspend fun getMpsByIds(ids: List<Int>): List<MpEntity> = mpDao.getMpsByIds(ids)
@@ -77,6 +81,54 @@ class MembersRepository @Inject constructor(
             }
         }
     }
+
+    /**
+     * Combined search: searches both current MPs (mps_fts) and historical
+     * members (historical_members_fts4). Returns current MPs first, then
+     * historical members that aren't already in the current MP results.
+     * Historical members are mapped to Mp domain objects with isActive=false.
+     */
+    fun searchAllMembersFts(query: String): Flow<List<Mp>> {
+        val sanitized = sanitizeFtsQuery(query)
+        return if (sanitized.isBlank()) {
+            flowOf(emptyList())
+        } else {
+            flow {
+                // Search current MPs (Flow — collect first)
+                val currentMps = searchDao.searchMpsFts(sanitized).first().map { it.toDomain() }
+                // Search historical members (excluding current MPs)
+                val currentIds = currentMps.map { it.id }.toSet()
+                val historical = try {
+                    historicalMemberDao.search(sanitized)
+                        .filter { it.parliamentMemberId != null && it.parliamentMemberId !in currentIds }
+                        .take(50 - currentMps.size)
+                } catch (e: Exception) {
+                    emptyList()
+                }
+                val historicalMps = historical.map { it.toDomainMp() }
+                emit(currentMps + historicalMps)
+            }
+        }
+    }
+
+    /**
+     * Maps a HistoricalMemberEntity to an Mp domain object.
+     * Uses parliamentMemberId as the id (for navigation to profile).
+     * isActive is false for historical members (they're former MPs).
+     */
+    private fun com.goveye.app.data.local.entity.HistoricalMemberEntity.toDomainMp(): Mp = Mp(
+        id = parliamentMemberId ?: -twfyPersonId,
+        nameListAs = displayName,
+        nameDisplayAs = displayName,
+        nameFullTitle = null,
+        gender = null,
+        party = party?.let { com.goveye.app.domain.model.Party(0, it, it, "#808080", "#FFFFFF") },
+        constituency = constituency?.let { com.goveye.app.domain.model.Constituency(0, it) },
+        house = house,
+        membershipStartDate = startDate,
+        isActive = isCurrent == 1,
+        thumbnailUrl = null
+    )
 
     /**
      * Sanitizes user input for FTS4 MATCH query.

@@ -25,6 +25,13 @@ data class RebellionInstance(
 )
 
 /**
+ * Pre-aggregated party vote counts for a single division.
+ * Used by the fast [RebellionCalculator.computeAggregated] overload —
+ * avoids loading all 650 individual vote entities per division.
+ */
+data class PartyVoteSummary(val divisionId: Int, val partyAyes: Int, val partyNoes: Int)
+
+/**
  * Computes rebellion rate using the party-majority methodology.
  *
  * For each division where the MP voted (Aye or No, not NoVoteRecorded):
@@ -81,6 +88,58 @@ object RebellionCalculator {
                         partyMajorityVote = partyMajority,
                         partyAyeCount = partyAyes,
                         partyNoCount = partyNoes
+                    )
+                )
+            }
+        }
+
+        val rate = if (divisionsVoted > 0) {
+            rebellions.size.toFloat() / divisionsVoted
+        } else {
+            0f
+        }
+
+        return RebellionStats(
+            rebellionCount = rebellions.size,
+            totalDivisionsVoted = divisionsVoted,
+            rebellionRate = rate,
+            rebellionInstances = rebellions
+        )
+    }
+
+    /**
+     * Fast overload — uses pre-aggregated party vote counts from a SQL
+     * GROUP BY query instead of loading all individual vote entities.
+     *
+     * @param memberVotes The MP's votes (one per division they participated in)
+     * @param partyVoteCounts Map of divisionId → party aye/no counts (already filtered by party)
+     */
+    fun computeAggregated(
+        memberVotes: List<DivisionVote>,
+        partyVoteCounts: Map<Int, PartyVoteSummary>
+    ): RebellionStats {
+        val rebellions = mutableListOf<RebellionInstance>()
+        var divisionsVoted = 0
+
+        for (memberVote in memberVotes) {
+            if (memberVote.vote == VoteType.NO_VOTE_RECORDED) continue
+            divisionsVoted++
+
+            val counts = partyVoteCounts[memberVote.divisionId] ?: continue
+
+            // Skip ties — no clear party line
+            if (counts.partyAyes == counts.partyNoes) continue
+
+            val partyMajority = if (counts.partyAyes > counts.partyNoes) VoteType.AYE else VoteType.NO
+
+            if (memberVote.vote != partyMajority) {
+                rebellions.add(
+                    RebellionInstance(
+                        divisionId = memberVote.divisionId,
+                        mpVote = memberVote.vote,
+                        partyMajorityVote = partyMajority,
+                        partyAyeCount = counts.partyAyes,
+                        partyNoCount = counts.partyNoes
                     )
                 )
             }

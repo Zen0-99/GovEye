@@ -123,4 +123,32 @@ interface DivisionDao {
         """
     )
     suspend fun getDivisionIdsWithMemberVotes(memberIds: List<Int>): List<Int>
+
+    /**
+     * Aggregated party vote counts per division — used for rebellion rate
+     * computation. Returns one row per division with the party's aye/no counts.
+     * This replaces loading all 650 votes per division (130k+ entities) with
+     * a single SQL GROUP BY that returns ~200 rows.
+     */
+    @Query(
+        """
+        SELECT
+            divisionId AS divisionId,
+            SUM(CASE WHEN vote = 'Aye' THEN 1 ELSE 0 END) AS partyAyes,
+            SUM(CASE WHEN vote = 'No' THEN 1 ELSE 0 END) AS partyNoes
+        FROM division_votes
+        WHERE divisionId IN (:divisionIds)
+            AND partyName = :partyName
+            AND vote != 'NoVoteRecorded'
+            AND vote != 'No Vote Recorded'
+        GROUP BY divisionId
+        """
+    )
+    suspend fun getPartyVoteCounts(divisionIds: List<Int>, partyName: String): List<PartyVoteCount>
 }
+
+/**
+ * Aggregated party vote counts for a single division.
+ * Used by rebellion rate calculation — avoids loading all individual vote entities.
+ */
+data class PartyVoteCount(val divisionId: Int, val partyAyes: Int, val partyNoes: Int)

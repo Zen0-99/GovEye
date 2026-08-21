@@ -1,18 +1,20 @@
 package com.goveye.app.ui.screens.directory
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -20,8 +22,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -46,12 +51,14 @@ fun PartiesTabContent(parties: List<PartySummary>, onNavigateToParty: (Int) -> U
         return
     }
 
-    LazyColumn(
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(2),
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(
             horizontal = MaterialTheme.padding.medium,
             vertical = MaterialTheme.padding.medium
         ),
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small)
     ) {
         items(parties, key = { it.partyId }) { party ->
@@ -65,7 +72,7 @@ fun PartiesTabContent(parties: List<PartySummary>, onNavigateToParty: (Int) -> U
 
 @Composable
 private fun PartyCard(party: PartySummary, onClick: () -> Unit) {
-    val backgroundColor = try {
+    val partyColor = try {
         Color(android.graphics.Color.parseColor(party.partyBackgroundColour))
     } catch (e: Exception) {
         MaterialTheme.colorScheme.surfaceContainer
@@ -73,55 +80,61 @@ private fun PartyCard(party: PartySummary, onClick: () -> Unit) {
     val foregroundColor = try {
         Color(android.graphics.Color.parseColor(party.partyForegroundColour))
     } catch (e: Exception) {
-        if (backgroundColor.luminance() > 0.5f) Color(0xFF1A1A1A) else Color.White
+        if (partyColor.luminance() > 0.5f) Color(0xFF1A1A1A) else Color.White
     }
 
     Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = backgroundColor,
+        shape = RoundedCornerShape(16.dp),
+        color = partyColor.copy(alpha = 0.15f),
         modifier = Modifier
             .fillMaxWidth()
+            .height(140.dp)
             .clickable(onClick = onClick)
     ) {
-        Row(
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(MaterialTheme.padding.medium),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.medium)
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            partyColor.copy(alpha = 0.25f),
+                            partyColor.copy(alpha = 0.08f)
+                        )
+                    )
+                )
         ) {
-            // Party logo (top-left, inline with name)
+            // Party logo superimposed in top-left as a watermark
             partyLogoResId(party.partyId)?.let { resId ->
-                androidx.compose.foundation.Image(
+                Image(
                     painter = painterResource(resId),
                     contentDescription = party.partyName,
-                    modifier = Modifier.size(40.dp)
-                )
-            } ?: Box(
-                modifier = Modifier.size(40.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = party.partyAbbreviation.take(3).uppercase(),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = foregroundColor
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(8.dp)
+                        .size(48.dp)
+                        .alpha(0.7f)
                 )
             }
 
-            Column(modifier = Modifier.weight(1f)) {
+            // Party name + MP count at the bottom
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .padding(MaterialTheme.padding.medium)
+            ) {
                 Text(
                     text = party.partyName,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
-                    color = foregroundColor,
-                    maxLines = 1,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = "${party.seats} MP${if (party.seats != 1) "s" else ""}",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = foregroundColor.copy(alpha = 0.8f)
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }

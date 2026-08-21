@@ -68,21 +68,19 @@ class StatsRepository @Inject constructor(
         if (memberVotes.isEmpty()) return 0f
         val divisionIds = memberVotes.map { it.divisionId }.distinct()
 
-        // Batch the vote loading — loading all votes for 200+ divisions at once
-        // (200 × 650 = 130k+ entities with string fields) causes OOM on 256MB heap.
-        // Process in chunks of 20 divisions to keep memory bounded.
-        val allVotesByDivision = mutableMapOf<Int, List<com.goveye.app.domain.model.DivisionVote>>()
-        val batchSize = 20
-        for (i in divisionIds.indices step batchSize) {
-            val batch = divisionIds.subList(i, minOf(i + batchSize, divisionIds.size))
-            val batchVotes = divisionDao.getVotesForDivisions(batch)
-            batchVotes.groupBy { it.divisionId }.forEach { (divId, votes) ->
-                allVotesByDivision[divId] = votes.map { it.toDomainVote() }
+        // Fast path: single SQL GROUP BY query returns ~200 rows with party
+        // aye/no counts per division. Replaces loading 130k+ vote entities.
+        val partyVoteCounts = divisionDao.getPartyVoteCounts(divisionIds, partyName)
+            .associate {
+                it.divisionId to com.goveye.app.domain.stats.PartyVoteSummary(
+                    divisionId = it.divisionId,
+                    partyAyes = it.partyAyes,
+                    partyNoes = it.partyNoes
+                )
             }
-        }
 
         val domainVotes = memberVotes.map { it.toDomainVote() }
-        val stats = RebellionCalculator.compute(domainVotes, allVotesByDivision, partyName)
+        val stats = RebellionCalculator.computeAggregated(domainVotes, partyVoteCounts)
         return stats.rebellionRate
     }
 

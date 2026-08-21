@@ -2,16 +2,18 @@ package com.goveye.app.ui.screens.party
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -19,6 +21,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.goveye.app.data.local.dao.ManifestoSearchResult
 import com.goveye.app.data.local.entity.PartyManifestoEntity
@@ -47,9 +51,14 @@ fun PartyManifestoTab(
         return
     }
 
+    // Parse the manifesto text into blocks once
+    val blocks = remember(manifesto.manifestoText) {
+        ManifestoParser.parse(manifesto.manifestoText)
+    }
+
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+        contentPadding = PaddingValues(
             horizontal = MaterialTheme.padding.medium,
             vertical = MaterialTheme.padding.medium
         )
@@ -66,22 +75,26 @@ fun PartyManifestoTab(
         }
 
         if (searchQuery.isBlank()) {
-            // Full manifesto text
+            // Title
             item {
                 Text(
                     text = "${manifesto.manifestoYear} Manifesto",
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(bottom = MaterialTheme.padding.small)
+                )
+                Text(
+                    text = "${manifesto.wordCount} words",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = MaterialTheme.padding.medium)
                 )
             }
-            item {
-                Text(
-                    text = manifesto.manifestoText,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+
+            // Render parsed blocks
+            items(blocks.size) { index ->
+                ManifestoBlockRenderer(blocks[index])
             }
         } else if (searchResults.isEmpty()) {
             // Empty state
@@ -117,6 +130,58 @@ fun PartyManifestoTab(
                     fullText = fullManifestoText
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun ManifestoBlockRenderer(block: ManifestoBlock) {
+    when (block) {
+        is ManifestoBlock.Heading -> {
+            Text(
+                text = block.text,
+                style = if (block.level == 1) {
+                    MaterialTheme.typography.titleLarge
+                } else {
+                    MaterialTheme.typography.titleMedium
+                },
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(
+                    top = MaterialTheme.padding.medium,
+                    bottom = MaterialTheme.padding.small
+                )
+            )
+        }
+
+        is ManifestoBlock.Paragraph -> {
+            Text(
+                text = block.text,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(bottom = MaterialTheme.padding.small)
+            )
+        }
+
+        is ManifestoBlock.Bullet -> {
+            Text(
+                text = "•  ${block.text}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(
+                    start = MaterialTheme.padding.medium,
+                    bottom = MaterialTheme.padding.small
+                )
+            )
+        }
+
+        is ManifestoBlock.PageBreak -> {
+            HorizontalDivider(
+                modifier = Modifier.padding(
+                    vertical = MaterialTheme.padding.small
+                ),
+                color = MaterialTheme.colorScheme.outlineVariant
+            )
         }
     }
 }

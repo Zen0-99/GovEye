@@ -51,6 +51,7 @@ import com.goveye.app.ui.utils.partyLogoResId
 import kotlinx.coroutines.launch
 
 enum class PartyTab(val label: String) {
+    INFO("Info"),
     MEMBERS("Members"),
     STATS("Stats"),
     MANIFESTO("Manifesto")
@@ -178,6 +179,11 @@ fun PartyScreen(
                 modifier = Modifier.fillMaxWidth().weight(1f)
             ) { page ->
                 when (PartyTab.entries[page]) {
+                    PartyTab.INFO -> PartyInfoTab(
+                        party = uiState.party,
+                        stats = uiState.stats
+                    )
+
                     PartyTab.MEMBERS -> {
                         val pagedMps = remember(partyId) {
                             viewModel.getPagedMps(partyId)

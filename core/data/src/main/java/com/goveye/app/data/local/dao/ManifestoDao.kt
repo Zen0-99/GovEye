@@ -17,11 +17,11 @@ interface ManifestoDao {
         """
         SELECT pm.partyId as partyId,
                snippet(party_manifestos_fts4, 0, '<b>', '</b>', '...', 32) as snippetText,
-               bm25(party_manifestos_fts4) as searchRank
+               0 as searchRank
         FROM party_manifestos_fts4
         JOIN party_manifestos pm ON pm.rowid = party_manifestos_fts4.rowid
         WHERE party_manifestos_fts4 MATCH :query AND pm.partyId = :partyId
-        ORDER BY searchRank LIMIT 50
+        LIMIT 50
         """
     )
     suspend fun searchManifestoFts4(partyId: Int, query: String): List<ManifestoSearchResult>

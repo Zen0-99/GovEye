@@ -81,6 +81,13 @@ class VotesRepository @Inject constructor(
         }
 
     /**
+     * One-shot: get an MP's votes as domain objects (no Flow wrapper).
+     * Used by rebellion rate calculation where we need the data once.
+     */
+    suspend fun getMemberVotes(memberId: Int): List<DivisionVote> =
+        divisionDao.getVotesForMember(memberId).map { it.toDomain() }
+
+    /**
      * Compute party-level breakdown of Ayes and Noes for a division.
      */
     suspend fun getPartyBreakdown(divisionId: Int): List<PartyBreakdown> {
@@ -125,11 +132,36 @@ class VotesRepository @Inject constructor(
     /**
      * Get all votes for a set of divisions (used for rebellion computation).
      * Returns a map of divisionId → list of all votes in that division.
+     *
+     * WARNING: This does N+1 queries and loads 650 entities per division.
+     * For rebellion rate, use [getPartyVoteCounts] instead — it does a single
+     * SQL GROUP BY and returns ~200 rows instead of 130k+ entities.
      */
     suspend fun getAllVotesForDivisions(divisionIds: List<Int>): Map<Int, List<DivisionVote>> =
         divisionIds.associateWith { id ->
             divisionDao.getVotesForDivision(id).map { it.toDomain() }
         }
+
+    /**
+     * Get pre-aggregated party vote counts for a set of divisions.
+     * Single SQL query with GROUP BY — returns one row per division with
+     * the party's aye/no counts. Used by RebellionCalculator.computeAggregated.
+     *
+     * This replaces getAllVotesForDivisions for rebellion rate computation:
+     * - Before: N+1 queries, 650 entities per division, 130k+ objects in memory
+     * - After: 1 query, ~200 rows, no entity loading
+     */
+    suspend fun getPartyVoteCounts(
+        divisionIds: List<Int>,
+        partyName: String
+    ): Map<Int, com.goveye.app.domain.stats.PartyVoteSummary> = divisionDao.getPartyVoteCounts(divisionIds, partyName)
+        .associate { it.divisionId to it.toDomain() }
+
+    private fun com.goveye.app.data.local.dao.PartyVoteCount.toDomain() = com.goveye.app.domain.stats.PartyVoteSummary(
+        divisionId = divisionId,
+        partyAyes = partyAyes,
+        partyNoes = partyNoes
+    )
 
     /**
      * Get all divisions for a given house (used for attendance calculation).

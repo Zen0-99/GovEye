@@ -86,7 +86,7 @@ class DirectoryViewModel @Inject constructor(
             if (query.isBlank()) {
                 flowOf(emptyList())
             } else {
-                membersRepository.searchMpsFts(query.trim())
+                membersRepository.searchAllMembersFts(query.trim())
             }
         }
         .combine(filterState) { results, filters ->
