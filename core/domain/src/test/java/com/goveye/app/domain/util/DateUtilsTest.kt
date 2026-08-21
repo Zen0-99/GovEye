@@ -1,8 +1,8 @@
 package com.goveye.app.domain.util
 
+import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import java.time.LocalDate
 
 class DateUtilsTest {
 

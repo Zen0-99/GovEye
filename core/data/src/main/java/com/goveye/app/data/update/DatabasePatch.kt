@@ -20,11 +20,8 @@ data class DatabasePatch(
     @SerialName("previousVersion") val previousVersion: Int,
     @SerialName("generatedAt") val generatedAt: String,
     @SerialName("schemaVersion") val schemaVersion: Int,
-    val changes: Map<String, TableChanges> = emptyMap(),
+    val changes: Map<String, TableChanges> = emptyMap()
 )
 
 @Serializable
-data class TableChanges(
-    val upsert: List<JsonObject> = emptyList(),
-    val delete: List<JsonObject> = emptyList(),
-)
+data class TableChanges(val upsert: List<JsonObject> = emptyList(), val delete: List<JsonObject> = emptyList())

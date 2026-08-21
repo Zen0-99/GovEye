@@ -16,7 +16,7 @@ interface SearchDao {
            OR constituencyName LIKE '%' || :query || '%'
         ORDER BY nameListAs
         LIMIT 50
-        """,
+        """
     )
     fun searchMps(query: String): Flow<List<MpEntity>>
 
@@ -31,7 +31,7 @@ interface SearchDao {
         WHERE mps_fts MATCH :query
         ORDER BY mps.nameListAs
         LIMIT 50
-        """,
+        """
     )
     fun searchMpsFts(query: String): Flow<List<MpEntity>>
 }

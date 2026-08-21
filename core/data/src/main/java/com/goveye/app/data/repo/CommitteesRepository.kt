@@ -11,9 +11,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 @Singleton
-class CommitteesRepository @Inject constructor(
-    private val committeeDao: CommitteeDao,
-) {
+class CommitteesRepository @Inject constructor(private val committeeDao: CommitteeDao) {
     fun observeCommitteesForMember(memberId: Int): Flow<RepositoryResult<List<Committee>>> =
         committeeDao.observeCommitteesForMember(memberId).map { entities ->
             if (entities.isEmpty()) {
@@ -21,7 +19,7 @@ class CommitteesRepository @Inject constructor(
             } else {
                 RepositoryResult(
                     entities.map { CommitteeMapper.toDomain(it) },
-                    SyncStatus.FRESH,
+                    SyncStatus.FRESH
                 )
             }
         }

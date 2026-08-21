@@ -7,9 +7,9 @@ import com.goveye.app.domain.model.Division
  * A group of divisions sharing the same date, with a relative date header.
  */
 data class FeedDateGroup(
-    val dateHeader: String,       // "Today", "Yesterday", "20 August 2026"
-    val dateKey: String,          // ISO date "2026-08-20" for grouping
-    val divisions: List<Division>,
+    val dateHeader: String, // "Today", "Yesterday", "20 August 2026"
+    val dateKey: String, // ISO date "2026-08-20" for grouping
+    val divisions: List<Division>
 )
 
 /**
@@ -26,5 +26,5 @@ data class FeedUiState(
     val isLoading: Boolean = true,
     val isEmpty: Boolean = false,
     val isRecessEmpty: Boolean = false,
-    val recentDivisionsForRecess: List<Division> = emptyList(),
+    val recentDivisionsForRecess: List<Division> = emptyList()
 )

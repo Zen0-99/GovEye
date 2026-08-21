@@ -78,7 +78,7 @@ fun MpMicroviewDialog(
     fallbackConstituency: String?,
     onNavigateToFullProfile: (Int) -> Unit,
     onDismiss: () -> Unit,
-    viewModel: MpMicroviewViewModel = hiltViewModel(),
+    viewModel: MpMicroviewViewModel = hiltViewModel()
 ) {
     LaunchedEffect(memberId) {
         viewModel.load(memberId, fallbackName, fallbackPartyName, fallbackPartyColour, fallbackConstituency)
@@ -89,8 +89,8 @@ fun MpMicroviewDialog(
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(
-            usePlatformDefaultWidth = false,
-        ),
+            usePlatformDefaultWidth = false
+        )
     ) {
         Surface(
             modifier = Modifier
@@ -98,10 +98,10 @@ fun MpMicroviewDialog(
                 .fillMaxHeight(0.85f)
                 .padding(horizontal = 24.dp),
             shape = RoundedCornerShape(20.dp),
-            color = MaterialTheme.colorScheme.surface,
+            color = MaterialTheme.colorScheme.surface
         ) {
             Column(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize()
             ) {
                 // Gradient header (compact version of ProfileHeader)
                 val mp = uiState.mp
@@ -119,40 +119,44 @@ fun MpMicroviewDialog(
                                     colors = listOf(
                                         partyColor.copy(alpha = if (isDark) 0.85f else 0.7f),
                                         partyColor.copy(alpha = if (isDark) 0.3f else 0.2f),
-                                        Color.Transparent,
-                                    ),
-                                ),
-                            ),
+                                        Color.Transparent
+                                    )
+                                )
+                            )
                     ) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
                         ) {
                             // Controls row
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 IconButton(onClick = onDismiss, modifier = Modifier.size(40.dp)) {
                                     Icon(
                                         imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                                         contentDescription = "Close",
-                                        tint = headerIconTint,
+                                        tint = headerIconTint
                                     )
                                 }
                                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                     // Follow button
                                     IconButton(
                                         onClick = { viewModel.toggleFollow(memberId) },
-                                        modifier = Modifier.size(40.dp),
+                                        modifier = Modifier.size(40.dp)
                                     ) {
                                         Icon(
-                                            imageVector = if (uiState.isFollowing) Icons.Outlined.PersonRemove else Icons.Outlined.PersonAdd,
+                                            imageVector = if (uiState.isFollowing) {
+                                                Icons.Outlined.PersonRemove
+                                            } else {
+                                                Icons.Outlined.PersonAdd
+                                            },
                                             contentDescription = if (uiState.isFollowing) "Unfollow" else "Follow",
                                             tint = headerIconTint,
-                                            modifier = Modifier.size(20.dp),
+                                            modifier = Modifier.size(20.dp)
                                         )
                                     }
                                     // Full profile button
@@ -161,13 +165,13 @@ fun MpMicroviewDialog(
                                             onDismiss()
                                             onNavigateToFullProfile(memberId)
                                         },
-                                        modifier = Modifier.size(40.dp),
+                                        modifier = Modifier.size(40.dp)
                                     ) {
                                         Icon(
                                             imageVector = Icons.Outlined.Fullscreen,
                                             contentDescription = "View full profile",
                                             tint = headerIconTint,
-                                            modifier = Modifier.size(20.dp),
+                                            modifier = Modifier.size(20.dp)
                                         )
                                     }
                                 }
@@ -179,14 +183,14 @@ fun MpMicroviewDialog(
                                     .fillMaxWidth()
                                     .padding(top = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 MpAvatar(
                                     thumbnailUrl = mp.thumbnailUrl,
                                     displayName = mp.nameDisplayAs,
                                     partyColorHex = mp.party?.backgroundColour,
                                     size = 48.dp,
-                                    borderWidth = 2.dp,
+                                    borderWidth = 2.dp
                                 )
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
@@ -195,25 +199,29 @@ fun MpMicroviewDialog(
                                         color = headerTextColor,
                                         fontWeight = FontWeight.Bold,
                                         maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis,
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                     if (!mp.party?.name.isNullOrBlank()) {
                                         Surface(
                                             shape = RoundedCornerShape(50),
-                                            color = if (isDark) partyColor.copy(alpha = 0.9f) else Color(
-                                                red = partyColor.red * 0.8f,
-                                                green = partyColor.green * 0.8f,
-                                                blue = partyColor.blue * 0.8f,
-                                                alpha = 0.85f,
-                                            ),
-                                            modifier = Modifier.padding(top = 2.dp),
+                                            color = if (isDark) {
+                                                partyColor.copy(alpha = 0.9f)
+                                            } else {
+                                                Color(
+                                                    red = partyColor.red * 0.8f,
+                                                    green = partyColor.green * 0.8f,
+                                                    blue = partyColor.blue * 0.8f,
+                                                    alpha = 0.85f
+                                                )
+                                            },
+                                            modifier = Modifier.padding(top = 2.dp)
                                         ) {
                                             Text(
                                                 text = mp.party?.name ?: "",
                                                 style = MaterialTheme.typography.labelSmall,
                                                 color = if (isDark) Color.White else Color(0xFF1A1A1A),
                                                 fontWeight = FontWeight.Medium,
-                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                                             )
                                         }
                                     }
@@ -229,7 +237,7 @@ fun MpMicroviewDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(200.dp),
-                        contentAlignment = Alignment.Center,
+                        contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator()
                     }
@@ -240,7 +248,7 @@ fun MpMicroviewDialog(
                         allDivisionDates = uiState.allDivisionDates,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .weight(1f),
+                            .weight(1f)
                     )
                 }
             }
@@ -258,17 +266,17 @@ private fun VotesContent(
     memberVotes: List<MemberVoteWithDivision>,
     rebellionStats: com.goveye.app.domain.stats.RebellionStats?,
     allDivisionDates: List<String>,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     if (memberVotes.isEmpty()) {
         Box(
             modifier = modifier,
-            contentAlignment = Alignment.Center,
+            contentAlignment = Alignment.Center
         ) {
             Text(
                 text = "No voting record",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         return
@@ -280,7 +288,8 @@ private fun VotesContent(
         VotingStatsCalculator.computeAttendanceTrend(memberVotes, allDivisionDates)
     }
     val rebellionTrend = remember(rebellionStats, memberVotes) {
-        rebellionStats?.let { VotingStatsCalculator.computeRebellionTrend(it.rebellionInstances, memberVotes) } ?: emptyList()
+        rebellionStats?.let { VotingStatsCalculator.computeRebellionTrend(it.rebellionInstances, memberVotes) }
+            ?: emptyList()
     }
     val voteMapTiles = remember(rebellionStats, memberVotes) {
         rebellionStats?.let { VoteMapCalculator.compute(memberVotes, it.rebellionInstances) } ?: emptyList()
@@ -290,9 +299,9 @@ private fun VotesContent(
         modifier = modifier,
         contentPadding = androidx.compose.foundation.layout.PaddingValues(
             horizontal = 16.dp,
-            vertical = 12.dp,
+            vertical = 12.dp
         ),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         // Charts section — same order as full profile Votes tab
         if (monthlyVoting.isNotEmpty()) {
@@ -315,12 +324,12 @@ private fun VotesContent(
                         legendItems = listOf(
                             "With party" to VoteColors.aye,
                             "Rebel" to VoteColors.no,
-                            "No vote" to MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
-                        ),
+                            "No vote" to MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                        )
                     )
                     VoteMapGrid(
                         tiles = voteMapTiles,
-                        onTileClick = { _, _ -> },
+                        onTileClick = { _, _ -> }
                     )
                 }
             }
@@ -331,7 +340,7 @@ private fun VotesContent(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 // Vote badge
                 val (label, color) = when (voteRecord.vote) {
@@ -343,13 +352,13 @@ private fun VotesContent(
                     modifier = Modifier
                         .size(28.dp)
                         .background(color, RoundedCornerShape(4.dp)),
-                    contentAlignment = Alignment.Center,
+                    contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = label,
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.White,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.Bold
                     )
                 }
                 Text(
@@ -358,7 +367,7 @@ private fun VotesContent(
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f)
                 )
             }
         }

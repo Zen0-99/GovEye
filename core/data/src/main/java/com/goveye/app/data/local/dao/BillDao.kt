@@ -21,7 +21,9 @@ interface BillDao {
     @Query("SELECT * FROM bills WHERE id IN (:ids)")
     suspend fun getBillsByIds(ids: List<Int>): List<BillEntity>
 
-    @Query("SELECT * FROM bills WHERE shortTitle LIKE '%' || :query || '%' OR longTitle LIKE '%' || :query || '%' ORDER BY lastUpdate DESC LIMIT :limit")
+    @Query(
+        "SELECT * FROM bills WHERE shortTitle LIKE '%' || :query || '%' OR longTitle LIKE '%' || :query || '%' ORDER BY lastUpdate DESC LIMIT :limit"
+    )
     suspend fun searchBills(query: String, limit: Int = 50): List<BillEntity>
 
     @Upsert

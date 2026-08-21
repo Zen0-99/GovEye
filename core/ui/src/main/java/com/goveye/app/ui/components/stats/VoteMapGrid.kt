@@ -42,11 +42,7 @@ import kotlin.comparisons.reverseOrder
  * retaining the shrink-to-fit sizing logic.
  */
 @Composable
-fun VoteMapGrid(
-    tiles: List<VoteMapTile>,
-    onTileClick: (Int, Int) -> Unit,
-    modifier: Modifier = Modifier,
-) {
+fun VoteMapGrid(tiles: List<VoteMapTile>, onTileClick: (Int, Int) -> Unit, modifier: Modifier = Modifier) {
     if (tiles.isEmpty()) return
 
     // Extract year from each tile's division date (assumes YYYY-MM-DD format)
@@ -76,7 +72,7 @@ fun VoteMapGrid(
 
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         // Summary stats for the selected year
         VoteMapSummary(tiles = yearTiles)
@@ -94,7 +90,7 @@ fun VoteMapGrid(
                             VoteMapTileView(
                                 tile = tile,
                                 onClick = { onTileClick(tile.divisionId, 1) },
-                                size = tileSize,
+                                size = tileSize
                             )
                         } else {
                             // Empty spacer to keep row alignment
@@ -110,21 +106,22 @@ fun VoteMapGrid(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(
                     onClick = {
                         if (selectedYearIndex < years.size - 1) selectedYearIndex++
                     },
-                    enabled = selectedYearIndex < years.size - 1,
+                    enabled = selectedYearIndex < years.size - 1
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowLeft,
                         contentDescription = "Previous year",
-                        tint = if (selectedYearIndex < years.size - 1)
+                        tint = if (selectedYearIndex < years.size - 1) {
                             MaterialTheme.colorScheme.onSurface
-                        else
-                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                        }
                     )
                 }
                 Text(
@@ -132,21 +129,22 @@ fun VoteMapGrid(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(horizontal = 16.dp),
+                    modifier = Modifier.padding(horizontal = 16.dp)
                 )
                 IconButton(
                     onClick = {
                         if (selectedYearIndex > 0) selectedYearIndex--
                     },
-                    enabled = selectedYearIndex > 0,
+                    enabled = selectedYearIndex > 0
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
                         contentDescription = "Next year",
-                        tint = if (selectedYearIndex > 0)
+                        tint = if (selectedYearIndex > 0) {
                             MaterialTheme.colorScheme.onSurface
-                        else
-                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                        }
                     )
                 }
             }
@@ -163,7 +161,7 @@ private fun VoteMapSummary(tiles: List<VoteMapTile>) {
 
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
         SummaryStat("Total", total, MaterialTheme.colorScheme.onSurface)
         SummaryStat("With party", withParty, com.goveye.app.ui.components.VoteColors.aye)
@@ -179,22 +177,18 @@ private fun SummaryStat(label: String, count: Int, color: Color) {
             text = count.toString(),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = color,
+            color = color
         )
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
 
 @Composable
-private fun VoteMapTileView(
-    tile: VoteMapTile,
-    onClick: () -> Unit,
-    size: androidx.compose.ui.unit.Dp,
-) {
+private fun VoteMapTileView(tile: VoteMapTile, onClick: () -> Unit, size: androidx.compose.ui.unit.Dp) {
     val color = when (tile.voteResult) {
         VoteMapResult.WITH_PARTY -> com.goveye.app.ui.components.VoteColors.aye
         VoteMapResult.REBEL -> com.goveye.app.ui.components.VoteColors.no
@@ -207,6 +201,6 @@ private fun VoteMapTileView(
             .clip(RoundedCornerShape(if (size <= 18.dp) 2.dp else 4.dp))
             .background(color)
             .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
+        contentAlignment = Alignment.Center
     ) {}
 }

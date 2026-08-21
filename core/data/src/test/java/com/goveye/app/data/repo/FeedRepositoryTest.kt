@@ -1,5 +1,6 @@
 package com.goveye.app.data.repo
 
+import androidx.room.Room
 import app.cash.turbine.test
 import com.goveye.app.data.local.BundledDatabase
 import com.goveye.app.data.local.LocalDatabase
@@ -7,7 +8,7 @@ import com.goveye.app.data.local.entity.DivisionEntity
 import com.goveye.app.data.local.entity.DivisionVoteEntity
 import com.goveye.app.data.local.entity.FollowEntity
 import com.goveye.app.data.local.entity.RecessDateEntity
-import androidx.room.Room
+import java.time.LocalDate
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -19,7 +20,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
-import java.time.LocalDate
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -32,16 +32,16 @@ class FeedRepositoryTest {
     fun setUp() {
         bundledDb = Room.inMemoryDatabaseBuilder(
             RuntimeEnvironment.getApplication(),
-            BundledDatabase::class.java,
+            BundledDatabase::class.java
         ).allowMainThreadQueries().build()
         localDb = Room.inMemoryDatabaseBuilder(
             RuntimeEnvironment.getApplication(),
-            LocalDatabase::class.java,
+            LocalDatabase::class.java
         ).allowMainThreadQueries().build()
         repository = FeedRepository(
             bundledDb.divisionDao(),
             localDb.followDao(),
-            bundledDb.recessDateDao(),
+            bundledDb.recessDateDao()
         )
     }
 
@@ -59,7 +59,7 @@ class FeedRepositoryTest {
         ayeCount = 100,
         noCount = 50,
         house = 1,
-        lastUpdated = System.currentTimeMillis(),
+        lastUpdated = System.currentTimeMillis()
     )
 
     private fun vote(divisionId: Int, memberId: Int) = DivisionVoteEntity(
@@ -71,7 +71,7 @@ class FeedRepositoryTest {
         partyColour = "#DC241F",
         constituencyName = "Test",
         isTeller = false,
-        proxyName = null,
+        proxyName = null
     )
 
     @Test
@@ -116,7 +116,7 @@ class FeedRepositoryTest {
     fun `muted follows are excluded from highlight`() = runTest {
         bundledDb.divisionDao().upsertAll(listOf(division(1)))
         localDb.followDao().insert(
-            FollowEntity(memberId = 100, followedAt = System.currentTimeMillis(), isMuted = true),
+            FollowEntity(memberId = 100, followedAt = System.currentTimeMillis(), isMuted = true)
         )
         bundledDb.divisionDao().upsertVotes(listOf(vote(1, 100)))
         repository.observeFeedData().test {
@@ -136,9 +136,9 @@ class FeedRepositoryTest {
                     house = 1,
                     description = "Summer recess",
                     startDate = today.minusDays(7).toString(),
-                    endDate = today.plusDays(7).toString(),
-                ),
-            ),
+                    endDate = today.plusDays(7).toString()
+                )
+            )
         )
         val recess = repository.getCurrentRecess(1)
         assertEquals("Summer recess", recess?.description)
@@ -152,9 +152,9 @@ class FeedRepositoryTest {
                     house = 1,
                     description = "Past recess",
                     startDate = "2026-01-01",
-                    endDate = "2026-01-15",
-                ),
-            ),
+                    endDate = "2026-01-15"
+                )
+            )
         )
         val recess = repository.getCurrentRecess(1)
         assertNull(recess)

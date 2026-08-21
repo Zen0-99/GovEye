@@ -6,20 +6,20 @@ import com.goveye.app.data.local.BundledDatabase
 import com.goveye.app.data.local.LocalDatabase
 import com.goveye.app.data.local.dao.BillDao
 import com.goveye.app.data.local.dao.BillFollowDao
+import com.goveye.app.data.local.dao.CommitteeDao
 import com.goveye.app.data.local.dao.DatabaseUpdateDao
 import com.goveye.app.data.local.dao.DivisionDao
 import com.goveye.app.data.local.dao.FollowDao
 import com.goveye.app.data.local.dao.HansardDao
 import com.goveye.app.data.local.dao.InterestDao
-import com.goveye.app.data.local.dao.CommitteeDao
 import com.goveye.app.data.local.dao.MpDao
 import com.goveye.app.data.local.dao.MpNotificationPreferenceDao
 import com.goveye.app.data.local.dao.RecessDateDao
 import com.goveye.app.data.local.dao.SearchDao
 import com.goveye.app.data.mapper.HansardMapper
 import com.goveye.app.data.mapper.MemberMapper
-import com.goveye.app.data.repo.BillsRepository
 import com.goveye.app.data.repo.BillFollowRepository
+import com.goveye.app.data.repo.BillsRepository
 import com.goveye.app.data.repo.CommitteesRepository
 import com.goveye.app.data.repo.FeedRepository
 import com.goveye.app.data.repo.FollowRepository
@@ -47,7 +47,7 @@ object DatabaseModule {
             .databaseBuilder(
                 context,
                 BundledDatabase::class.java,
-                BundledDatabase.DATABASE_NAME,
+                BundledDatabase.DATABASE_NAME
             ).fallbackToDestructiveMigration(dropAllTables = true)
             .build()
     }
@@ -61,7 +61,7 @@ object DatabaseModule {
             .databaseBuilder(
                 context,
                 LocalDatabase::class.java,
-                LocalDatabase.DATABASE_NAME,
+                LocalDatabase.DATABASE_NAME
             ).fallbackToDestructiveMigration(dropAllTables = true)
             .build()
     }
@@ -93,8 +93,7 @@ object DatabaseModule {
     fun provideRecessDateDao(database: BundledDatabase): RecessDateDao = database.recessDateDao()
 
     @Provides
-    fun provideDatabaseUpdateDao(database: BundledDatabase): DatabaseUpdateDao =
-        database.databaseUpdateDao()
+    fun provideDatabaseUpdateDao(database: BundledDatabase): DatabaseUpdateDao = database.databaseUpdateDao()
 
     // ── User-data DAOs (from LocalDatabase) ────────────────────────────
 
@@ -126,48 +125,41 @@ object DatabaseModule {
         mpDao: MpDao,
         searchDao: SearchDao,
         membersApi: com.goveye.app.data.api.MembersApi,
-        memberMapper: MemberMapper,
+        memberMapper: MemberMapper
     ): MembersRepository = MembersRepository(mpDao, searchDao, membersApi, memberMapper)
 
     @Provides
     @Singleton
-    fun provideCommitteesRepository(
-        committeeDao: CommitteeDao,
-    ): CommitteesRepository = CommitteesRepository(committeeDao)
+    fun provideCommitteesRepository(committeeDao: CommitteeDao): CommitteesRepository =
+        CommitteesRepository(committeeDao)
 
     @Provides
     @Singleton
-    fun provideVotesRepository(
-        divisionDao: DivisionDao,
-    ): VotesRepository = VotesRepository(divisionDao)
+    fun provideVotesRepository(divisionDao: DivisionDao): VotesRepository = VotesRepository(divisionDao)
 
     @Provides
     @Singleton
     fun provideFeedRepository(
         divisionDao: DivisionDao,
         followDao: FollowDao,
-        recessDateDao: RecessDateDao,
+        recessDateDao: RecessDateDao
     ): FeedRepository = FeedRepository(divisionDao, followDao, recessDateDao)
 
     @Provides
     @Singleton
-    fun provideBillsRepository(
-        billDao: BillDao,
-    ): BillsRepository = BillsRepository(billDao)
+    fun provideBillsRepository(billDao: BillDao): BillsRepository = BillsRepository(billDao)
 
     @Provides
     @Singleton
     fun provideHansardRepository(
         hansardDao: HansardDao,
         hansardApi: com.goveye.app.data.api.HansardApi,
-        hansardMapper: HansardMapper,
+        hansardMapper: HansardMapper
     ): HansardRepository = HansardRepository(hansardDao, hansardApi, hansardMapper)
 
     @Provides
     @Singleton
-    fun provideInterestsRepository(
-        interestDao: InterestDao,
-    ): InterestsRepository = InterestsRepository(interestDao)
+    fun provideInterestsRepository(interestDao: InterestDao): InterestsRepository = InterestsRepository(interestDao)
 
     @Provides
     @Singleton
@@ -176,5 +168,6 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideBillFollowRepository(billFollowDao: BillFollowDao): BillFollowRepository = BillFollowRepository(billFollowDao)
+    fun provideBillFollowRepository(billFollowDao: BillFollowDao): BillFollowRepository =
+        BillFollowRepository(billFollowDao)
 }

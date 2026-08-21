@@ -51,7 +51,7 @@ fun BillDetailScreen(
     billId: Int,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: BillDetailViewModel = hiltViewModel(),
+    viewModel: BillDetailViewModel = hiltViewModel()
 ) {
     LaunchedEffect(billId) {
         viewModel.load(billId)
@@ -64,26 +64,26 @@ fun BillDetailScreen(
         config = com.goveye.app.ui.components.SearchBarConfig(
             isVisible = true,
             placeholder = "Bill detail",
-            onBack = onBack,
-        ),
+            onBack = onBack
+        )
     )
 
     if (state.isLoading && state.bill == null) {
         Box(
             modifier = modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center,
+            contentAlignment = Alignment.Center
         ) {
             CircularProgressIndicator()
         }
     } else if (state.bill == null) {
         Box(
             modifier = modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center,
+            contentAlignment = Alignment.Center
         ) {
             Text(
                 text = "Bill not found",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     } else {
@@ -91,14 +91,14 @@ fun BillDetailScreen(
         LazyColumn(
             modifier = modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Title section
             item {
                 BillHeader(
                     bill = bill,
                     isFollowing = state.isFollowing,
-                    onToggleFollow = { viewModel.toggleFollow(bill.id) },
+                    onToggleFollow = { viewModel.toggleFollow(bill.id) }
                 )
             }
 
@@ -122,14 +122,14 @@ fun BillDetailScreen(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(top = 8.dp),
+                        modifier = Modifier.padding(top = 8.dp)
                     )
                 }
                 val currentStageId = bill.currentStage?.stageId
                 items(state.stages, key = { it.stageId }) { stage ->
                     StageTimelineItem(
                         stage = stage,
-                        isCurrent = stage.stageId == currentStageId,
+                        isCurrent = stage.stageId == currentStageId
                     )
                 }
             }
@@ -138,32 +138,28 @@ fun BillDetailScreen(
 }
 
 @Composable
-private fun BillHeader(
-    bill: Bill,
-    isFollowing: Boolean,
-    onToggleFollow: () -> Unit,
-) {
+private fun BillHeader(bill: Bill, isFollowing: Boolean, onToggleFollow: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top,
+            verticalAlignment = Alignment.Top
         ) {
             Text(
                 text = bill.shortTitle,
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f)
             )
             IconButton(onClick = onToggleFollow) {
                 Icon(
                     imageVector = if (isFollowing) Icons.Outlined.PersonRemove else Icons.Outlined.PersonAdd,
                     contentDescription = if (isFollowing) "Unfollow bill" else "Follow bill",
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
         }
@@ -171,11 +167,11 @@ private fun BillHeader(
             Text(
                 text = bill.longTitle!!,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             if (bill.isAct) {
                 StatusChip(text = "Act of Parliament", color = VoteColors.aye)
@@ -186,37 +182,33 @@ private fun BillHeader(
             if (bill.billWithdrawn != null) {
                 StatusChip(
                     text = "Withdrawn",
-                    color = MaterialTheme.colorScheme.outline,
+                    color = MaterialTheme.colorScheme.outline
                 )
             }
             StatusChip(
                 text = "Origin: ${bill.originatingHouse}",
-                color = MaterialTheme.colorScheme.secondaryContainer,
+                color = MaterialTheme.colorScheme.secondaryContainer
             )
             StatusChip(
                 text = "Current: ${bill.currentHouse}",
-                color = MaterialTheme.colorScheme.tertiaryContainer,
+                color = MaterialTheme.colorScheme.tertiaryContainer
             )
         }
     }
 }
 
 @Composable
-private fun StatusChip(
-    text: String,
-    color: Color,
-    modifier: Modifier = Modifier,
-) {
+private fun StatusChip(text: String, color: Color, modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(50),
-        color = color,
+        color = color
     ) {
         Text(
             text = text,
             style = MaterialTheme.typography.labelSmall,
             color = if (color == VoteColors.aye) Color.White else MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
         )
     }
 }
@@ -226,22 +218,22 @@ private fun SummaryCard(summary: String) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
+        color = MaterialTheme.colorScheme.surfaceContainer
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text(
                 text = "Summary",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = MaterialTheme.colorScheme.onSurface
             )
             Text(
                 text = summary,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -259,31 +251,31 @@ private fun CommonsLibraryLink(billShortTitle: String) {
                 context.startActivity(intent)
             },
         shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
+        color = MaterialTheme.colorScheme.surfaceContainer
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Icon(
                 imageVector = Icons.Outlined.MenuBook,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
+                tint = MaterialTheme.colorScheme.primary
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "Commons Library Briefing",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = "Plain-English analysis from the House of Commons Library",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -294,31 +286,32 @@ private fun CommonsLibraryLink(billShortTitle: String) {
 private fun StageTimelineItem(stage: BillStage, isCurrent: Boolean = false) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         // Timeline dot + line
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Box(
                 modifier = Modifier
                     .size(12.dp)
                     .clip(RoundedCornerShape(50))
-                    .background(if (isCurrent) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.primary),
+                    .background(
+                        if (isCurrent) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.primary
+                    )
             )
             // Vertical line
             Box(
                 modifier = Modifier
                     .size(width = 2.dp, height = 32.dp)
-                    .background(MaterialTheme.colorScheme.outlineVariant),
+                    .background(MaterialTheme.colorScheme.outlineVariant)
             )
-
         }
 
         // Stage info
         Column(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             Text(
                 text = stage.description,
@@ -326,18 +319,18 @@ private fun StageTimelineItem(stage: BillStage, isCurrent: Boolean = false) {
                 fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.SemiBold,
                 color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                 maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = stage.house,
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             if (stage.sittingDates.isNotEmpty()) {
                 Text(
                     text = stage.sittingDates.joinToString(", "),
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }

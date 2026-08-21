@@ -20,13 +20,13 @@ data class BillDetailUiState(
     val stages: List<BillStage> = emptyList(),
     val syncStatus: SyncStatus = SyncStatus.EMPTY,
     val isFollowing: Boolean = false,
-    val isLoading: Boolean = true,
+    val isLoading: Boolean = true
 )
 
 @HiltViewModel
 class BillDetailViewModel @Inject constructor(
     private val billsRepository: BillsRepository,
-    private val billFollowRepository: BillFollowRepository,
+    private val billFollowRepository: BillFollowRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(BillDetailUiState())
@@ -44,14 +44,14 @@ class BillDetailViewModel @Inject constructor(
             combine(
                 billsRepository.observeBill(billId),
                 billsRepository.observeBillStages(billId),
-                billFollowRepository.observeIsFollowing(billId),
+                billFollowRepository.observeIsFollowing(billId)
             ) { billResult, stages, isFollowing ->
                 BillDetailUiState(
                     bill = billResult.data,
                     stages = stages,
                     syncStatus = billResult.status,
                     isFollowing = isFollowing,
-                    isLoading = false,
+                    isLoading = false
                 )
             }.collect { _state.value = it }
         }

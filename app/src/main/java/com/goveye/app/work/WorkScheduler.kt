@@ -43,7 +43,7 @@ object WorkScheduler {
         WorkManager.getInstance(context).enqueueUniqueWork(
             VOTE_POLLING_WORK_NAME,
             ExistingWorkPolicy.REPLACE,
-            request,
+            request
         )
     }
 
@@ -63,7 +63,7 @@ object WorkScheduler {
         WorkManager.getInstance(context).enqueueUniqueWork(
             BILL_POLLING_WORK_NAME,
             ExistingWorkPolicy.REPLACE,
-            request,
+            request
         )
     }
 
@@ -85,7 +85,7 @@ object WorkScheduler {
             6,
             TimeUnit.HOURS,
             2,
-            TimeUnit.HOURS,
+            TimeUnit.HOURS
         )
             .setInitialDelay(15, TimeUnit.MINUTES)
             .setConstraints(constraints)
@@ -95,7 +95,7 @@ object WorkScheduler {
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
             DATABASE_UPDATE_WORK_NAME,
             ExistingPeriodicWorkPolicy.KEEP,
-            request,
+            request
         )
     }
 }

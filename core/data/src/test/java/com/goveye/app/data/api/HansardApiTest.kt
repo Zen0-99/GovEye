@@ -84,7 +84,7 @@ class HansardApiTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"TotalContributions":0,"Contributions":[],"SearchTerms":[]}"""),
+                .setBody("""{"TotalContributions":0,"Contributions":[],"SearchTerms":[]}""")
         )
 
         val response = api.search("nothing")

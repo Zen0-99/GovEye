@@ -45,12 +45,7 @@ class DirectoryViewModelFilterTest {
         Dispatchers.resetMain()
     }
 
-    private fun makeMp(
-        id: Int,
-        partyName: String = "Labour",
-        house: Int = 1,
-        isActive: Boolean = true,
-    ): Mp = Mp(
+    private fun makeMp(id: Int, partyName: String = "Labour", house: Int = 1, isActive: Boolean = true): Mp = Mp(
         id = id,
         nameListAs = "Test MP $id",
         nameDisplayAs = "Test $id",
@@ -61,13 +56,13 @@ class DirectoryViewModelFilterTest {
         house = house,
         membershipStartDate = null,
         isActive = isActive,
-        thumbnailUrl = null,
+        thumbnailUrl = null
     )
 
     private fun setupViewModel(
         searchResults: List<Mp> = emptyList(),
         filterState: DirectoryFilterState = DirectoryFilterState(),
-        distinctParties: List<String> = emptyList(),
+        distinctParties: List<String> = emptyList()
     ): DirectoryViewModel {
         every { membersRepository.searchMpsFts(any()) } returns flowOf(searchResults)
         every { membersRepository.observeDistinctParties() } returns flowOf(distinctParties)
@@ -89,7 +84,7 @@ class DirectoryViewModelFilterTest {
         val mps = listOf(
             makeMp(1, partyName = "Labour", house = 1, isActive = true),
             makeMp(2, partyName = "Labour", house = 2, isActive = true),
-            makeMp(3, partyName = "Labour", house = 1, isActive = false),
+            makeMp(3, partyName = "Labour", house = 1, isActive = false)
         )
         val vm = setupViewModel(searchResults = mps)
         vm.updateSearchQuery("Labour")
@@ -105,11 +100,11 @@ class DirectoryViewModelFilterTest {
     fun `house filter lords returns only lords`() = runTest(testDispatcher) {
         val mps = listOf(
             makeMp(1, house = 1, isActive = true),
-            makeMp(2, house = 2, isActive = true),
+            makeMp(2, house = 2, isActive = true)
         )
         val vm = setupViewModel(
             searchResults = mps,
-            filterState = DirectoryFilterState(houseFilter = 2),
+            filterState = DirectoryFilterState(houseFilter = 2)
         )
         vm.updateSearchQuery("Test")
 
@@ -125,11 +120,11 @@ class DirectoryViewModelFilterTest {
     fun `house filter all returns both houses`() = runTest(testDispatcher) {
         val mps = listOf(
             makeMp(1, house = 1, isActive = true),
-            makeMp(2, house = 2, isActive = true),
+            makeMp(2, house = 2, isActive = true)
         )
         val vm = setupViewModel(
             searchResults = mps,
-            filterState = DirectoryFilterState(houseFilter = 0),
+            filterState = DirectoryFilterState(houseFilter = 0)
         )
         vm.updateSearchQuery("Test")
 
@@ -144,11 +139,11 @@ class DirectoryViewModelFilterTest {
     fun `status filter include former returns inactive mps too`() = runTest(testDispatcher) {
         val mps = listOf(
             makeMp(1, isActive = true),
-            makeMp(2, isActive = false),
+            makeMp(2, isActive = false)
         )
         val vm = setupViewModel(
             searchResults = mps,
-            filterState = DirectoryFilterState(currentOnly = false),
+            filterState = DirectoryFilterState(currentOnly = false)
         )
         vm.updateSearchQuery("Test")
 
@@ -164,11 +159,11 @@ class DirectoryViewModelFilterTest {
         val mps = listOf(
             makeMp(1, partyName = "Labour"),
             makeMp(2, partyName = "Conservative"),
-            makeMp(3, partyName = "Labour"),
+            makeMp(3, partyName = "Labour")
         )
         val vm = setupViewModel(
             searchResults = mps,
-            filterState = DirectoryFilterState(includedParties = setOf("Labour")),
+            filterState = DirectoryFilterState(includedParties = setOf("Labour"))
         )
         vm.updateSearchQuery("Test")
 
@@ -185,11 +180,11 @@ class DirectoryViewModelFilterTest {
         val mps = listOf(
             makeMp(1, partyName = "Labour"),
             makeMp(2, partyName = "Conservative"),
-            makeMp(3, partyName = "Labour"),
+            makeMp(3, partyName = "Labour")
         )
         val vm = setupViewModel(
             searchResults = mps,
-            filterState = DirectoryFilterState(excludedParties = setOf("Labour")),
+            filterState = DirectoryFilterState(excludedParties = setOf("Labour"))
         )
         vm.updateSearchQuery("Test")
 
@@ -205,11 +200,11 @@ class DirectoryViewModelFilterTest {
     fun `text search plus party filter exclusive returns empty`() = runTest(testDispatcher) {
         val mps = listOf(
             makeMp(1, partyName = "Green Party"),
-            makeMp(2, partyName = "Green Party"),
+            makeMp(2, partyName = "Green Party")
         )
         val vm = setupViewModel(
             searchResults = mps,
-            filterState = DirectoryFilterState(includedParties = setOf("Labour")),
+            filterState = DirectoryFilterState(includedParties = setOf("Labour"))
         )
         vm.updateSearchQuery("Green")
 
@@ -226,15 +221,15 @@ class DirectoryViewModelFilterTest {
             makeMp(1, partyName = "Labour", house = 1, isActive = true),
             makeMp(2, partyName = "Labour", house = 2, isActive = true),
             makeMp(3, partyName = "Conservative", house = 1, isActive = true),
-            makeMp(4, partyName = "Labour", house = 1, isActive = false),
+            makeMp(4, partyName = "Labour", house = 1, isActive = false)
         )
         val vm = setupViewModel(
             searchResults = mps,
             filterState = DirectoryFilterState(
                 includedParties = setOf("Labour"),
                 houseFilter = 1,
-                currentOnly = true,
-            ),
+                currentOnly = true
+            )
         )
         vm.updateSearchQuery("Test")
 
@@ -274,7 +269,7 @@ class DirectoryViewModelFilterTest {
         val mps = listOf(makeMp(1), makeMp(2))
         val vm = setupViewModel(
             searchResults = mps,
-            filterState = DirectoryFilterState(houseFilter = 1),
+            filterState = DirectoryFilterState(houseFilter = 1)
         )
 
         vm.filterState.test {

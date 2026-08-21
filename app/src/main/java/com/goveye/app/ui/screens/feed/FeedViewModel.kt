@@ -19,27 +19,25 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
-class FeedViewModel @Inject constructor(
-    private val feedRepository: FeedRepository,
-) : ViewModel() {
+class FeedViewModel @Inject constructor(private val feedRepository: FeedRepository) : ViewModel() {
 
-    private val _followingOnly = MutableStateFlow(false)
-    private val _searchQuery = MutableStateFlow("")
-    private val _houseFilter = MutableStateFlow(0)
-    private val _currentRecess = MutableStateFlow<com.goveye.app.data.local.entity.RecessDateEntity?>(null)
+    private val followingOnlyState = MutableStateFlow(false)
+    private val searchQueryState = MutableStateFlow("")
+    private val houseFilterState = MutableStateFlow(0)
+    private val currentRecess = MutableStateFlow<com.goveye.app.data.local.entity.RecessDateEntity?>(null)
 
     init {
         // Fetch recess status on init — re-check would happen if feed data emits empty
         viewModelScope.launch {
-            _currentRecess.value = feedRepository.getCurrentRecess(1)
+            currentRecess.value = feedRepository.getCurrentRecess(1)
         }
     }
 
     val state: StateFlow<FeedUiState> =
         combine(
-            _followingOnly,
-            _searchQuery,
-            _houseFilter,
+            followingOnlyState,
+            searchQueryState,
+            houseFilterState
         ) { followingOnly, query, house ->
             Triple(followingOnly, query, house)
         }.flatMapLatest { (followingOnly, query, house) ->
@@ -48,7 +46,7 @@ class FeedViewModel @Inject constructor(
             } else {
                 feedRepository.observeFeedData()
             }
-            combine(feedFlow, _currentRecess) { feedData, recess ->
+            combine(feedFlow, currentRecess) { feedData, recess ->
                 // Apply house filter
                 val houseFiltered = if (house != 0) {
                     feedData.divisions.filter { it.house == house }
@@ -70,7 +68,7 @@ class FeedViewModel @Inject constructor(
                         FeedDateGroup(
                             dateHeader = DateUtils.formatRelativeDate(dateKey),
                             dateKey = dateKey,
-                            divisions = divisions,
+                            divisions = divisions
                         )
                     }
                 // Determine empty state
@@ -92,26 +90,26 @@ class FeedViewModel @Inject constructor(
                     isLoading = feedData.isLoading,
                     isEmpty = isEmpty,
                     isRecessEmpty = isRecessEmpty,
-                    recentDivisionsForRecess = recentForRecess,
+                    recentDivisionsForRecess = recentForRecess
                 )
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FeedUiState())
 
     fun setFollowingOnly(value: Boolean) {
-        _followingOnly.value = value
+        followingOnlyState.value = value
     }
 
     fun setSearchQuery(query: String) {
-        _searchQuery.value = query
+        searchQueryState.value = query
     }
 
     fun setHouseFilter(house: Int) {
-        _houseFilter.value = house
+        houseFilterState.value = house
     }
 
     fun clearFilters() {
-        _followingOnly.value = false
-        _searchQuery.value = ""
-        _houseFilter.value = 0
+        followingOnlyState.value = false
+        searchQueryState.value = ""
+        houseFilterState.value = 0
     }
 }

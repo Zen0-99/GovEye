@@ -15,7 +15,7 @@ fun parseMutedPartyColor(hex: String?): Color {
             red = raw.red * 0.7f + neutral.red * 0.3f,
             green = raw.green * 0.7f + neutral.green * 0.3f,
             blue = raw.blue * 0.7f + neutral.blue * 0.3f,
-            alpha = 1f,
+            alpha = 1f
         )
     } catch (e: Exception) {
         Color(0xFF757575)

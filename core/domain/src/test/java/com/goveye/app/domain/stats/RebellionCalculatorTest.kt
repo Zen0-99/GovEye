@@ -7,12 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RebellionCalculatorTest {
-    private fun vote(
-        divisionId: Int,
-        memberId: Int,
-        voteType: VoteType,
-        partyName: String = "Labour",
-    ) = DivisionVote(
+    private fun vote(divisionId: Int, memberId: Int, voteType: VoteType, partyName: String = "Labour") = DivisionVote(
         divisionId = divisionId,
         memberId = memberId,
         vote = voteType,
@@ -20,7 +15,7 @@ class RebellionCalculatorTest {
         partyName = partyName,
         partyColour = null,
         constituencyName = null,
-        isTeller = false,
+        isTeller = false
     )
 
     @Test
@@ -31,8 +26,8 @@ class RebellionCalculatorTest {
                 vote(1, 100, VoteType.AYE),
                 vote(1, 101, VoteType.AYE),
                 vote(1, 102, VoteType.AYE),
-                vote(1, 103, VoteType.NO),
-            ),
+                vote(1, 103, VoteType.NO)
+            )
         )
         val stats = RebellionCalculator.compute(memberVotes, allVotes, "Labour")
         assertEquals(0, stats.rebellionCount)
@@ -48,8 +43,8 @@ class RebellionCalculatorTest {
                 vote(1, 100, VoteType.NO),
                 vote(1, 101, VoteType.AYE),
                 vote(1, 102, VoteType.AYE),
-                vote(1, 103, VoteType.AYE),
-            ),
+                vote(1, 103, VoteType.AYE)
+            )
         )
         val stats = RebellionCalculator.compute(memberVotes, allVotes, "Labour")
         assertEquals(1, stats.rebellionCount)
@@ -65,8 +60,8 @@ class RebellionCalculatorTest {
                 vote(1, 100, VoteType.AYE),
                 vote(1, 101, VoteType.AYE),
                 vote(1, 102, VoteType.NO),
-                vote(1, 103, VoteType.NO),
-            ),
+                vote(1, 103, VoteType.NO)
+            )
         )
         val stats = RebellionCalculator.compute(memberVotes, allVotes, "Labour")
         assertEquals(0, stats.rebellionCount)
@@ -80,8 +75,8 @@ class RebellionCalculatorTest {
             1 to listOf(
                 vote(1, 100, VoteType.NO_VOTE_RECORDED),
                 vote(1, 101, VoteType.AYE),
-                vote(1, 102, VoteType.AYE),
-            ),
+                vote(1, 102, VoteType.AYE)
+            )
         )
         val stats = RebellionCalculator.compute(memberVotes, allVotes, "Labour")
         assertEquals(0, stats.rebellionCount)
@@ -100,19 +95,19 @@ class RebellionCalculatorTest {
     fun `All rebellions - 100 percent rebellion rate`() {
         val memberVotes = listOf(
             vote(1, 100, VoteType.NO),
-            vote(2, 100, VoteType.NO),
+            vote(2, 100, VoteType.NO)
         )
         val allVotes = mapOf(
             1 to listOf(
                 vote(1, 100, VoteType.NO),
                 vote(1, 101, VoteType.AYE),
-                vote(1, 102, VoteType.AYE),
+                vote(1, 102, VoteType.AYE)
             ),
             2 to listOf(
                 vote(2, 100, VoteType.NO),
                 vote(2, 101, VoteType.AYE),
-                vote(2, 102, VoteType.AYE),
-            ),
+                vote(2, 102, VoteType.AYE)
+            )
         )
         val stats = RebellionCalculator.compute(memberVotes, allVotes, "Labour")
         assertEquals(2, stats.rebellionCount)
@@ -123,26 +118,26 @@ class RebellionCalculatorTest {
     @Test
     fun `Mixed rebellions and party-line votes`() {
         val memberVotes = listOf(
-            vote(1, 100, VoteType.AYE),  // with party
-            vote(2, 100, VoteType.NO),   // against party
-            vote(3, 100, VoteType.AYE),  // with party
+            vote(1, 100, VoteType.AYE), // with party
+            vote(2, 100, VoteType.NO), // against party
+            vote(3, 100, VoteType.AYE) // with party
         )
         val allVotes = mapOf(
             1 to listOf(
                 vote(1, 100, VoteType.AYE),
                 vote(1, 101, VoteType.AYE),
-                vote(1, 102, VoteType.NO),
+                vote(1, 102, VoteType.NO)
             ),
             2 to listOf(
                 vote(2, 100, VoteType.NO),
                 vote(2, 101, VoteType.AYE),
-                vote(2, 102, VoteType.AYE),
+                vote(2, 102, VoteType.AYE)
             ),
             3 to listOf(
                 vote(3, 100, VoteType.AYE),
                 vote(3, 101, VoteType.AYE),
-                vote(3, 102, VoteType.AYE),
-            ),
+                vote(3, 102, VoteType.AYE)
+            )
         )
         val stats = RebellionCalculator.compute(memberVotes, allVotes, "Labour")
         assertEquals(1, stats.rebellionCount)
@@ -158,8 +153,8 @@ class RebellionCalculatorTest {
                 vote(1, 100, VoteType.NO),
                 vote(1, 101, VoteType.AYE),
                 vote(1, 102, VoteType.AYE),
-                vote(1, 103, VoteType.AYE),
-            ),
+                vote(1, 103, VoteType.AYE)
+            )
         )
         val stats = RebellionCalculator.compute(memberVotes, allVotes, "Labour")
         assertEquals(1, stats.rebellionInstances.size)
@@ -179,8 +174,8 @@ class RebellionCalculatorTest {
                 vote(1, 100, VoteType.NO, "Labour"),
                 vote(1, 101, VoteType.AYE, "Conservative"),
                 vote(1, 102, VoteType.AYE, "Conservative"),
-                vote(1, 103, VoteType.AYE, "Conservative"),
-            ),
+                vote(1, 103, VoteType.AYE, "Conservative")
+            )
         )
         val stats = RebellionCalculator.compute(memberVotes, allVotes, "Labour")
         // Only 1 Labour vote (the MP themselves), so no party majority can be determined

@@ -1,5 +1,6 @@
 package com.goveye.app.data.repo
 
+import androidx.room.Room
 import app.cash.turbine.test
 import com.goveye.app.data.local.BundledDatabase
 import com.goveye.app.data.local.entity.InterestEntity
@@ -14,7 +15,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
-import androidx.room.Room
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -26,7 +26,7 @@ class InterestsRepositoryTest {
     fun setUp() {
         database = Room.inMemoryDatabaseBuilder(
             RuntimeEnvironment.getApplication(),
-            BundledDatabase::class.java,
+            BundledDatabase::class.java
         ).allowMainThreadQueries().build()
         repository = InterestsRepository(database.interestDao())
     }
@@ -41,8 +41,8 @@ class InterestsRepositoryTest {
         database.interestDao().upsertAll(
             listOf(
                 testInterest(id = 1, memberId = 172),
-                testInterest(id = 2, memberId = 172),
-            ),
+                testInterest(id = 2, memberId = 172)
+            )
         )
         repository.observeInterestsForMember(172).test {
             val result = awaitItem()
@@ -68,8 +68,8 @@ class InterestsRepositoryTest {
             listOf(
                 testInterest(id = 1, memberId = 172, publishedDate = "2023-06-01"),
                 testInterest(id = 2, memberId = 172, publishedDate = "2024-03-15"),
-                testInterest(id = 3, memberId = 172, publishedDate = "2024-09-20"),
-            ),
+                testInterest(id = 3, memberId = 172, publishedDate = "2024-09-20")
+            )
         )
         repository.observeInterestsForMemberInRange(172, "2024-01-01", "2024-12-31").test {
             val result = awaitItem()
@@ -85,8 +85,8 @@ class InterestsRepositoryTest {
             listOf(
                 testInterest(id = 1, memberId = 172, publishedDate = "2023-06-01"),
                 testInterest(id = 2, memberId = 172, publishedDate = "2024-03-15"),
-                testInterest(id = 3, memberId = 172, publishedDate = "2024-09-20"),
-            ),
+                testInterest(id = 3, memberId = 172, publishedDate = "2024-09-20")
+            )
         )
         repository.observeInterestsForMemberInRange(172, null, null).test {
             val result = awaitItem()
@@ -100,8 +100,8 @@ class InterestsRepositoryTest {
     fun `date range filter with future from-date returns empty`() = runTest {
         database.interestDao().upsertAll(
             listOf(
-                testInterest(id = 1, memberId = 172, publishedDate = "2024-03-15"),
-            ),
+                testInterest(id = 1, memberId = 172, publishedDate = "2024-03-15")
+            )
         )
         repository.observeInterestsForMemberInRange(172, "2099-01-01", null).test {
             val result = awaitItem()
@@ -120,9 +120,9 @@ class InterestsRepositoryTest {
                     memberId = 172,
                     parsedAmountPence = 500000,
                     currencyCode = "GBP",
-                    bucket = "Employment/Earnings",
-                ),
-            ),
+                    bucket = "Employment/Earnings"
+                )
+            )
         )
         repository.observeInterestsForMember(172).test {
             val result = awaitItem()
@@ -140,8 +140,8 @@ class InterestsRepositoryTest {
         val thirtyDaysAgo = System.currentTimeMillis() - (30 * 24 * 60 * 60 * 1000L)
         database.interestDao().upsertAll(
             listOf(
-                testInterest(id = 1, memberId = 172, lastUpdated = thirtyDaysAgo),
-            ),
+                testInterest(id = 1, memberId = 172, lastUpdated = thirtyDaysAgo)
+            )
         )
         repository.observeInterestsForMember(172).test {
             val result = awaitItem()
@@ -158,7 +158,7 @@ private fun testInterest(
     parsedAmountPence: Long? = null,
     currencyCode: String? = null,
     bucket: String? = null,
-    lastUpdated: Long = System.currentTimeMillis(),
+    lastUpdated: Long = System.currentTimeMillis()
 ) = InterestEntity(
     id = id,
     memberId = memberId,
@@ -173,5 +173,5 @@ private fun testInterest(
     lastUpdated = lastUpdated,
     parsedAmountPence = parsedAmountPence,
     currencyCode = currencyCode,
-    bucket = bucket,
+    bucket = bucket
 )

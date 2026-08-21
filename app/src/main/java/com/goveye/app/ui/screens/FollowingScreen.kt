@@ -61,7 +61,7 @@ import com.goveye.app.ui.theme.padding
 fun FollowingScreen(
     onNavigateToProfile: (Int) -> Unit = {},
     modifier: Modifier = Modifier,
-    viewModel: FollowingViewModel = hiltViewModel(),
+    viewModel: FollowingViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showFilterSheet by remember { mutableStateOf(false) }
@@ -74,15 +74,15 @@ fun FollowingScreen(
             placeholder = "Search followed MPs…",
             onQueryChange = viewModel::updateSearchQuery,
             onFilterClick = { showFilterSheet = true },
-            hasActiveFilters = uiState.filterState.hasActiveFilters,
-        ),
+            hasActiveFilters = uiState.filterState.hasActiveFilters
+        )
     )
 
     when {
         uiState.isLoading -> {
             Box(
                 modifier = modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
+                contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator()
             }
@@ -92,13 +92,13 @@ fun FollowingScreen(
             // Empty state — no followed MPs yet
             Box(
                 modifier = modifier.fillMaxSize().padding(MaterialTheme.padding.large),
-                contentAlignment = Alignment.Center,
+                contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "Following\n\nFollow MPs to track their votes and activity.",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
             }
         }
@@ -107,12 +107,12 @@ fun FollowingScreen(
             // No results (from search or filters)
             Box(
                 modifier = modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
+                contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "No followed MPs match your filters",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -123,16 +123,16 @@ fun FollowingScreen(
                     LazyColumn(
                         modifier = modifier.fillMaxSize(),
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(
                             items = uiState.followedMps,
-                            key = { it.memberId },
+                            key = { it.memberId }
                         ) { followedMp ->
                             FollowedMpCard(
                                 followedMp = followedMp,
                                 onClick = { onNavigateToProfile(followedMp.memberId) },
-                                onUnfollow = { viewModel.unfollow(followedMp.memberId) },
+                                onUnfollow = { viewModel.unfollow(followedMp.memberId) }
                             )
                         }
                     }
@@ -144,15 +144,15 @@ fun FollowingScreen(
                         modifier = modifier.fillMaxSize(),
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         gridItems(
                             items = uiState.followedMps,
-                            key = { it.memberId },
+                            key = { it.memberId }
                         ) { followedMp ->
                             FollowedMpGridCard(
                                 followedMp = followedMp,
-                                onClick = { onNavigateToProfile(followedMp.memberId) },
+                                onClick = { onNavigateToProfile(followedMp.memberId) }
                             )
                         }
                     }
@@ -173,7 +173,7 @@ fun FollowingScreen(
             onCurrentOnlyChange = viewModel::setCurrentOnly,
             onViewModeChange = viewModel::setViewMode,
             onClearFilters = viewModel::clearFilters,
-            onDismiss = { showFilterSheet = false },
+            onDismiss = { showFilterSheet = false }
         )
     }
 }
@@ -183,7 +183,7 @@ private fun FollowedMpCard(
     followedMp: FollowedMpUi,
     onClick: () -> Unit,
     onUnfollow: () -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
@@ -192,32 +192,32 @@ private fun FollowedMpCard(
             .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
+        color = MaterialTheme.colorScheme.surfaceContainer
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             MpAvatar(
                 thumbnailUrl = followedMp.thumbnailUrl,
                 displayName = followedMp.displayName,
                 partyColorHex = followedMp.partyBackgroundColour,
                 size = 48.dp,
-                borderWidth = 1.dp,
+                borderWidth = 1.dp
             )
 
             Column(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f)
             ) {
                 Text(
                     text = followedMp.displayName,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    overflow = TextOverflow.Ellipsis
                 )
                 // Party abbreviation · Constituency (directory style)
                 Text(
@@ -225,14 +225,14 @@ private fun FollowedMpCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    overflow = TextOverflow.Ellipsis
                 )
                 // Recent vote info
                 if (followedMp.recentVoteType != null && followedMp.recentDivisionTitle != null) {
                     Row(
                         modifier = Modifier.padding(top = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         VoteBadge(voteType = followedMp.recentVoteType)
                         Text(
@@ -240,7 +240,7 @@ private fun FollowedMpCard(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -252,19 +252,19 @@ private fun FollowedMpCard(
                     Text(
                         text = "···",
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 DropdownMenu(
                     expanded = showMenu,
-                    onDismissRequest = { showMenu = false },
+                    onDismissRequest = { showMenu = false }
                 ) {
                     DropdownMenuItem(
                         text = { Text("Unfollow") },
                         onClick = {
                             showMenu = false
                             onUnfollow()
-                        },
+                        }
                     )
                 }
             }
@@ -288,13 +288,13 @@ private fun VoteBadge(voteType: String) {
             .size(28.dp)
             .clip(RoundedCornerShape(4.dp))
             .background(color),
-        contentAlignment = Alignment.Center,
+        contentAlignment = Alignment.Center
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
             color = Color.White,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.Bold
         )
     }
 }
@@ -303,11 +303,7 @@ private fun VoteBadge(voteType: String) {
  * Grid card for followed MPs — compact version without overflow menu.
  */
 @Composable
-private fun FollowedMpGridCard(
-    followedMp: FollowedMpUi,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+private fun FollowedMpGridCard(followedMp: FollowedMpUi, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val partyColor = com.goveye.app.ui.theme.parsePartyColor(followedMp.partyBackgroundColour)
 
     Surface(
@@ -315,24 +311,24 @@ private fun FollowedMpGridCard(
             .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
-        color = partyColor.copy(alpha = 0.08f),
+        color = partyColor.copy(alpha = 0.08f)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 MpAvatar(
                     thumbnailUrl = followedMp.thumbnailUrl,
                     displayName = followedMp.displayName,
                     partyColorHex = followedMp.partyBackgroundColour,
                     size = 40.dp,
-                    borderWidth = 1.dp,
+                    borderWidth = 1.dp
                 )
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -340,14 +336,14 @@ private fun FollowedMpGridCard(
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                        overflow = TextOverflow.Ellipsis
                     )
                     Text(
                         text = "${followedMp.partyAbbreviation} · ${followedMp.constituencyName}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
@@ -355,7 +351,7 @@ private fun FollowedMpGridCard(
             if (followedMp.recentVoteType != null && followedMp.recentDivisionTitle != null) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     VoteBadge(voteType = followedMp.recentVoteType)
                     Text(
@@ -363,7 +359,7 @@ private fun FollowedMpGridCard(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }

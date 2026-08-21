@@ -15,20 +15,17 @@ import androidx.compose.ui.unit.dp
  * Uses surface color so it visually separates from cards while sticky.
  */
 @Composable
-fun FeedDateHeader(
-    dateHeader: String,
-    modifier: Modifier = Modifier,
-) {
+fun FeedDateHeader(dateHeader: String, modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface,
+        color = MaterialTheme.colorScheme.surface
     ) {
         Text(
             text = dateHeader,
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         )
     }
 }

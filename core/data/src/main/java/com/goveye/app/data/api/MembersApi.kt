@@ -16,7 +16,7 @@ interface MembersApi {
         @Query("House") house: Int = 1,
         @Query("IsCurrentMember") isCurrentMember: Boolean = true,
         @Query("itemsPerPage") itemsPerPage: Int = 20,
-        @Query("skip") skip: Int = 0,
+        @Query("skip") skip: Int = 0
     ): MemberSearchResponse
 
     @GET("Members/Search")
@@ -24,7 +24,7 @@ interface MembersApi {
         @Query("Name") name: String,
         @Query("House") house: Int = 1,
         @Query("IsCurrentMember") isCurrentMember: Boolean = true,
-        @Query("take") take: Int = 50,
+        @Query("take") take: Int = 50
     ): MemberSearchResponse
 
     @GET("Members/{id}")

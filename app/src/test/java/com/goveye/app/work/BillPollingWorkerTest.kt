@@ -34,7 +34,11 @@ class BillPollingWorkerTest {
     private val billFollowRepository = mockk<BillFollowRepository>(relaxed = true)
     private val notificationHelper = mockk<NotificationHelper>(relaxed = true)
     private val databasePreferences = mockk<DatabasePreferences>(relaxed = true)
-    private val json = Json { ignoreUnknownKeys = true; coerceInputValues = true; explicitNulls = false }
+    private val json = Json {
+        ignoreUnknownKeys = true
+        coerceInputValues = true
+        explicitNulls = false
+    }
 
     private val stagesSerializer = MapSerializer(Int.serializer(), String.serializer())
 
@@ -61,7 +65,7 @@ class BillPollingWorkerTest {
         billFollowRepository,
         notificationHelper,
         databasePreferences,
-        json,
+        json
     )
 
     private fun makeBill(id: Int, stage: String) = BillEntity(
@@ -78,7 +82,7 @@ class BillPollingWorkerTest {
         billTypeId = 1,
         currentStageDescription = stage,
         currentStageAbbreviation = null,
-        lastUpdated = System.currentTimeMillis(),
+        lastUpdated = System.currentTimeMillis()
     )
 
     @Test

@@ -10,9 +10,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -26,10 +30,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.only
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -70,13 +70,11 @@ data class DivisionDetailState(
     val division: Division? = null,
     val votes: List<DivisionVote> = emptyList(),
     val partyBreakdown: List<PartyBreakdown> = emptyList(),
-    val isLoading: Boolean = false,
+    val isLoading: Boolean = false
 )
 
 @HiltViewModel
-class DivisionDetailViewModel @Inject constructor(
-    private val votesRepository: VotesRepository,
-) : ViewModel() {
+class DivisionDetailViewModel @Inject constructor(private val votesRepository: VotesRepository) : ViewModel() {
 
     private val _state = MutableStateFlow(DivisionDetailState(isLoading = true))
     val state: StateFlow<DivisionDetailState> = _state.asStateFlow()
@@ -104,7 +102,7 @@ class DivisionDetailViewModel @Inject constructor(
                     division = division,
                     votes = votes,
                     partyBreakdown = breakdown,
-                    isLoading = false,
+                    isLoading = false
                 )
             }
         }
@@ -120,7 +118,7 @@ class DivisionDetailViewModel @Inject constructor(
                     val breakdown = votesRepository.getPartyBreakdown(divisionId)
                     _state.value = current.copy(
                         votes = votes,
-                        partyBreakdown = breakdown,
+                        partyBreakdown = breakdown
                     )
                 }
             }
@@ -136,7 +134,7 @@ fun DivisionDetailScreen(
     onBack: () -> Unit,
     onNavigateToProfile: (Int) -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: DivisionDetailViewModel = hiltViewModel(),
+    viewModel: DivisionDetailViewModel = hiltViewModel()
 ) {
     LaunchedEffect(divisionId) {
         viewModel.load(divisionId, house)
@@ -176,31 +174,31 @@ fun DivisionDetailScreen(
                 com.goveye.app.ui.components.SearchSegment(
                     label = "All (${ayeCount + noCount})",
                     isSelected = voteFilter == VoteFilter.ALL,
-                    onClick = { voteFilter = VoteFilter.ALL },
+                    onClick = { voteFilter = VoteFilter.ALL }
                 ),
                 com.goveye.app.ui.components.SearchSegment(
                     label = "Ayes ($ayeCount)",
                     isSelected = voteFilter == VoteFilter.AYE,
-                    onClick = { voteFilter = VoteFilter.AYE },
+                    onClick = { voteFilter = VoteFilter.AYE }
                 ),
                 com.goveye.app.ui.components.SearchSegment(
                     label = "Noes ($noCount)",
                     isSelected = voteFilter == VoteFilter.NO,
-                    onClick = { voteFilter = VoteFilter.NO },
-                ),
-            ),
-        ),
+                    onClick = { voteFilter = VoteFilter.NO }
+                )
+            )
+        )
     )
 
     Scaffold(
         modifier = modifier,
-        contentWindowInsets = WindowInsets.navigationBars.only(WindowInsetsSides.Horizontal),
+        contentWindowInsets = WindowInsets.navigationBars.only(WindowInsetsSides.Horizontal)
     ) { innerPadding ->
         if (state.isLoading) {
             Row(
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
                 horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 CircularProgressIndicator()
             }
@@ -209,11 +207,11 @@ fun DivisionDetailScreen(
             if (division == null) {
                 Box(
                     modifier = Modifier.fillMaxSize().padding(innerPadding),
-                    contentAlignment = Alignment.Center,
+                    contentAlignment = Alignment.Center
                 ) {
                     Text(
                         "Division not found",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             } else {
@@ -226,12 +224,12 @@ fun DivisionDetailScreen(
                             name = vote.memberName,
                             partyName = vote.partyName,
                             partyColour = vote.partyColour,
-                            constituency = vote.constituencyName,
+                            constituency = vote.constituencyName
                         )
                     },
                     searchQuery = searchQuery,
                     voteFilter = voteFilter,
-                    modifier = Modifier.fillMaxSize().padding(innerPadding),
+                    modifier = Modifier.fillMaxSize().padding(innerPadding)
                 )
             }
         }
@@ -254,7 +252,7 @@ fun DivisionDetailScreen(
             onDismiss = {
                 microviewMemberId = null
                 microviewFallback = null
-            },
+            }
         )
     }
 }
@@ -264,7 +262,7 @@ private data class MicroviewFallback(
     val name: String,
     val partyName: String?,
     val partyColour: String?,
-    val constituency: String?,
+    val constituency: String?
 )
 
 @Composable
@@ -274,7 +272,7 @@ private fun DivisionDetailContent(
     onNavigateToProfile: (DivisionVote) -> Unit,
     searchQuery: String,
     voteFilter: VoteFilter,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     var breakdownExpanded by remember { mutableStateOf(true) }
 
@@ -284,7 +282,7 @@ private fun DivisionDetailContent(
     LazyColumn(
         modifier = modifier,
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Header card (always visible — contains the main result bar)
         item { DivisionHeaderCard(division = division) }
@@ -297,13 +295,13 @@ private fun DivisionDetailContent(
                 SectionHeader(
                     title = "Party Breakdown",
                     expanded = breakdownExpanded,
-                    onToggle = { breakdownExpanded = !breakdownExpanded },
+                    onToggle = { breakdownExpanded = !breakdownExpanded }
                 )
             }
             if (breakdownExpanded) {
                 items(
                     state.partyBreakdown.sortedByDescending { it.ayeCount + it.noCount },
-                    key = { it.partyName },
+                    key = { it.partyName }
                 ) { party ->
                     PartyBreakdownBar(party = party)
                 }
@@ -323,7 +321,7 @@ private fun DivisionDetailContent(
             } else {
                 voters.filter {
                     it.memberName.contains(searchQuery, ignoreCase = true) ||
-                    it.constituencyName?.contains(searchQuery, ignoreCase = true) == true
+                        it.constituencyName?.contains(searchQuery, ignoreCase = true) == true
                 }
             }
 
@@ -331,14 +329,14 @@ private fun DivisionDetailContent(
             val groupedByParty = filtered.groupBy { it.partyName ?: "Unknown" }
 
             groupedByParty.forEach { (partyName, partyVoters) ->
-                item(key = "header-$partyName-${voteFilter}") {
+                item(key = "header-$partyName-$voteFilter") {
                     PartyGroupHeader(
                         partyName = partyName,
                         count = partyVoters.size,
-                        partyColour = partyVoters.firstOrNull()?.partyColour,
+                        partyColour = partyVoters.firstOrNull()?.partyColour
                     )
                 }
-                items(partyVoters, key = { "${voteFilter}-${it.memberId}" }) { vote ->
+                items(partyVoters, key = { "$voteFilter-${it.memberId}" }) { vote ->
                     VoterRow(vote = vote, onClick = { onNavigateToProfile(vote) })
                 }
             }
@@ -346,13 +344,14 @@ private fun DivisionDetailContent(
             if (filtered.isEmpty()) {
                 item {
                     Text(
-                        text = if (searchQuery.isNotBlank())
+                        text = if (searchQuery.isNotBlank()) {
                             "No voters match \"$searchQuery\""
-                        else
-                            "No voters in this category",
+                        } else {
+                            "No voters in this category"
+                        },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(16.dp),
+                        modifier = Modifier.padding(16.dp)
                     )
                 }
             }
@@ -367,31 +366,31 @@ private fun DivisionHeaderCard(division: Division) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
+        color = MaterialTheme.colorScheme.surfaceContainer
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
                 text = division.title,
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Bold
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
                     text = formatDivisionDate(division.date),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     text = if (division.house == 2) "Lords" else "Commons",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             // Result bar with numbers inside
@@ -400,7 +399,7 @@ private fun DivisionHeaderCard(division: Division) {
                 ResultBarWithNumbers(
                     ayeCount = division.ayeCount,
                     noCount = division.noCount,
-                    barHeight = 32.dp,
+                    barHeight = 32.dp
                 )
             }
             // TheyWorkForYou external link — opens browser search for this division.
@@ -414,22 +413,22 @@ private fun DivisionHeaderCard(division: Division) {
                 onClick = {
                     val intent = android.content.Intent(
                         android.content.Intent.ACTION_VIEW,
-                        android.net.Uri.parse(twfyUrl),
+                        android.net.Uri.parse(twfyUrl)
                     )
                     intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
                     context.startActivity(intent)
                 },
-                modifier = Modifier.align(Alignment.End),
+                modifier = Modifier.align(Alignment.End)
             ) {
                 androidx.compose.material3.Icon(
                     imageVector = Icons.Outlined.Search,
                     contentDescription = "View on TheyWorkForYou",
-                    modifier = Modifier.size(16.dp),
+                    modifier = Modifier.size(16.dp)
                 )
                 androidx.compose.foundation.layout.Spacer(modifier = Modifier.size(4.dp))
                 Text(
                     text = "View on TheyWorkForYou",
-                    style = MaterialTheme.typography.labelMedium,
+                    style = MaterialTheme.typography.labelMedium
                 )
             }
         }
@@ -437,11 +436,7 @@ private fun DivisionHeaderCard(division: Division) {
 }
 
 @Composable
-private fun ResultBarWithNumbers(
-    ayeCount: Int,
-    noCount: Int,
-    barHeight: androidx.compose.ui.unit.Dp,
-) {
+private fun ResultBarWithNumbers(ayeCount: Int, noCount: Int, barHeight: androidx.compose.ui.unit.Dp) {
     val total = ayeCount + noCount
     if (total == 0) return
     val ayeFraction = ayeCount.toFloat() / total
@@ -451,7 +446,7 @@ private fun ResultBarWithNumbers(
         modifier = Modifier
             .fillMaxWidth()
             .height(barHeight)
-            .clip(RoundedCornerShape(8.dp)),
+            .clip(RoundedCornerShape(8.dp))
     ) {
         if (ayeFraction > 0f) {
             Box(
@@ -459,13 +454,13 @@ private fun ResultBarWithNumbers(
                     .weight(ayeFraction)
                     .background(AyeColor)
                     .fillMaxSize(),
-                contentAlignment = Alignment.Center,
+                contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = ayeCount.toString(),
                     style = MaterialTheme.typography.labelMedium,
                     color = Color.White,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.Bold
                 )
             }
         }
@@ -475,13 +470,13 @@ private fun ResultBarWithNumbers(
                     .weight(noFraction)
                     .background(NoColor)
                     .fillMaxSize(),
-                contentAlignment = Alignment.Center,
+                contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = noCount.toString(),
                     style = MaterialTheme.typography.labelMedium,
                     color = Color.White,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.Bold
                 )
             }
         }
@@ -489,29 +484,25 @@ private fun ResultBarWithNumbers(
 }
 
 @Composable
-private fun SectionHeader(
-    title: String,
-    expanded: Boolean,
-    onToggle: () -> Unit,
-) {
+private fun SectionHeader(title: String, expanded: Boolean, onToggle: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onToggle)
             .padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = title,
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = MaterialTheme.colorScheme.onSurface
         )
         Icon(
             imageVector = if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
             contentDescription = if (expanded) "Collapse" else "Expand",
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -529,12 +520,12 @@ private fun PartyBreakdownBar(party: PartyBreakdown) {
 
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         // Party name + total
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
                 text = party.partyName,
@@ -542,12 +533,12 @@ private fun PartyBreakdownBar(party: PartyBreakdown) {
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f)
             )
             Text(
                 text = "$total",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         // Bar with numbers inside
@@ -555,7 +546,7 @@ private fun PartyBreakdownBar(party: PartyBreakdown) {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(20.dp)
-                .clip(RoundedCornerShape(4.dp)),
+                .clip(RoundedCornerShape(4.dp))
         ) {
             if (ayeFraction > 0f) {
                 Box(
@@ -563,14 +554,14 @@ private fun PartyBreakdownBar(party: PartyBreakdown) {
                         .weight(ayeFraction)
                         .background(AyeColor)
                         .fillMaxSize(),
-                    contentAlignment = Alignment.Center,
+                    contentAlignment = Alignment.Center
                 ) {
                     if (ayeFraction > 0.15f) {
                         Text(
                             text = party.ayeCount.toString(),
                             style = MaterialTheme.typography.labelSmall,
                             color = Color.White,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
@@ -581,14 +572,14 @@ private fun PartyBreakdownBar(party: PartyBreakdown) {
                         .weight(noFraction)
                         .background(NoColor)
                         .fillMaxSize(),
-                    contentAlignment = Alignment.Center,
+                    contentAlignment = Alignment.Center
                 ) {
                     if (noFraction > 0.15f) {
                         Text(
                             text = party.noCount.toString(),
                             style = MaterialTheme.typography.labelSmall,
                             color = Color.White,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
@@ -598,11 +589,7 @@ private fun PartyBreakdownBar(party: PartyBreakdown) {
 }
 
 @Composable
-private fun PartyGroupHeader(
-    partyName: String,
-    count: Int,
-    partyColour: String?,
-) {
+private fun PartyGroupHeader(partyName: String, count: Int, partyColour: String?) {
     val fallback = MaterialTheme.colorScheme.onSurfaceVariant
     val color = remember(partyColour) {
         try {
@@ -616,19 +603,19 @@ private fun PartyGroupHeader(
             .fillMaxWidth()
             .padding(top = 12.dp, bottom = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
                 .size(10.dp)
                 .clip(RoundedCornerShape(2.dp))
-                .background(color),
+                .background(color)
         )
         Text(
             text = "$partyName ($count)",
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }
@@ -641,7 +628,7 @@ private fun VoterRow(vote: DivisionVote, onClick: () -> Unit) {
             .clickable(onClick = onClick)
             .padding(vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         // Vote indicator — rounded square showing Aye/No
         VoteBadge(vote = vote.vote)
@@ -651,7 +638,7 @@ private fun VoterRow(vote: DivisionVote, onClick: () -> Unit) {
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.weight(1f),
             maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+            overflow = TextOverflow.Ellipsis
         )
         val constituency = vote.constituencyName
         if (!constituency.isNullOrBlank()) {
@@ -660,7 +647,7 @@ private fun VoterRow(vote: DivisionVote, onClick: () -> Unit) {
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
@@ -684,23 +671,21 @@ private fun VoteBadge(vote: VoteType) {
             .size(28.dp)
             .clip(RoundedCornerShape(4.dp))
             .background(color),
-        contentAlignment = Alignment.Center,
+        contentAlignment = Alignment.Center
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
             color = Color.White,
             fontWeight = FontWeight.Bold,
-            maxLines = 1,
+            maxLines = 1
         )
     }
 }
 
-private fun formatDivisionDate(dateString: String): String {
-    return try {
-        val parts = dateString.split("T").first().split("-")
-        "${parts[2]}/${parts[1]}/${parts[0]}"
-    } catch (e: Exception) {
-        dateString
-    }
+private fun formatDivisionDate(dateString: String): String = try {
+    val parts = dateString.split("T").first().split("-")
+    "${parts[2]}/${parts[1]}/${parts[0]}"
+} catch (e: Exception) {
+    dateString
 }

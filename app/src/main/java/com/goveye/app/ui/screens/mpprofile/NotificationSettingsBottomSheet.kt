@@ -48,43 +48,43 @@ fun NotificationSettingsBottomSheet(
     onMasterToggle: (Boolean) -> Unit,
     onVotesToggle: (Boolean) -> Unit,
     onSpeechesToggle: (Boolean) -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = MaterialTheme.colorScheme.surface
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             // Master toggle in a rounded rectangle section
             Surface(
                 shape = RoundedCornerShape(12.dp),
                 color = MaterialTheme.colorScheme.surfaceContainer,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 14.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         text = "Notifications enabled",
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Switch(
                         checked = notificationsEnabled,
-                        onCheckedChange = onMasterToggle,
+                        onCheckedChange = onMasterToggle
                     )
                 }
             }
@@ -96,14 +96,14 @@ fun NotificationSettingsBottomSheet(
                 icon = Icons.Outlined.HowToVote,
                 label = "Votes",
                 checked = votesEnabled,
-                onCheckedChange = onVotesToggle,
+                onCheckedChange = onVotesToggle
             )
 
             NotificationTypeRow(
                 icon = Icons.Outlined.RecordVoiceOver,
                 label = "Speeches",
                 checked = speechesEnabled,
-                onCheckedChange = onSpeechesToggle,
+                onCheckedChange = onSpeechesToggle
             )
 
             Spacer(modifier = Modifier.padding(bottom = 16.dp))
@@ -116,34 +116,34 @@ private fun NotificationTypeRow(
     icon: ImageVector,
     label: String,
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
+    onCheckedChange: (Boolean) -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(24.dp)
             )
             Text(
                 text = label,
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
         Checkbox(
             checked = checked,
-            onCheckedChange = onCheckedChange,
+            onCheckedChange = onCheckedChange
         )
     }
 }

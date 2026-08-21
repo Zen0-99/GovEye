@@ -22,11 +22,7 @@ import com.goveye.app.ui.theme.padding
 import com.goveye.app.ui.theme.parsePartyColor
 
 @Composable
-fun MpGridCard(
-    mp: Mp,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+fun MpGridCard(mp: Mp, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val partyColor = parsePartyColor(mp.party?.backgroundColour)
 
     Surface(
@@ -34,44 +30,44 @@ fun MpGridCard(
             .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
-        color = partyColor.copy(alpha = 0.08f),
+        color = partyColor.copy(alpha = 0.08f)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(MaterialTheme.padding.small),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small)
         ) {
             MpAvatar(
                 thumbnailUrl = mp.thumbnailUrl,
                 displayName = mp.nameDisplayAs,
                 partyColorHex = mp.party?.backgroundColour,
                 size = 48.dp,
-                borderWidth = 2.dp,
+                borderWidth = 2.dp
             )
             Column(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f)
             ) {
                 Text(
                     text = mp.nameDisplayAs,
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = mp.party?.abbreviation ?: "",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
+                    maxLines = 1
                 )
                 Text(
                     text = mp.constituency?.name ?: "",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }

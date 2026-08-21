@@ -21,10 +21,7 @@ import androidx.compose.ui.unit.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ActivityScoreMethodologyScreen(
-    onBack: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+fun ActivityScoreMethodologyScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -33,22 +30,22 @@ fun ActivityScoreMethodologyScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
                     }
-                },
+                }
             )
         },
-        modifier = modifier,
+        modifier = modifier
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
+                .padding(16.dp)
         ) {
             Text(
                 text = "Parliamentary Activity Score",
                 style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Bold
             )
             Text(
                 text = """
@@ -70,7 +67,7 @@ Trait bars show the MP's percentile rank compared to other MPs in the same house
 Data sources: UK Parliament Commons/Lords Votes API, Hansard API, Committees API.
                 """.trimIndent(),
                 style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(top = 16.dp),
+                modifier = Modifier.padding(top = 16.dp)
             )
         }
     }

@@ -39,7 +39,7 @@ data class FollowedMpUi(
     val recentDivisionTitle: String?,
     val recentDivisionId: Int?,
     val recentDivisionHouse: Int?,
-    val recentVoteDate: String?,
+    val recentVoteDate: String?
 )
 
 data class FollowingUiState(
@@ -48,7 +48,7 @@ data class FollowingUiState(
     val filterState: DirectoryFilterState = DirectoryFilterState(),
     val distinctParties: List<String> = emptyList(),
     val viewMode: DirectoryViewMode = DirectoryViewMode.LIST,
-    val isLoading: Boolean = true,
+    val isLoading: Boolean = true
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -56,7 +56,7 @@ data class FollowingUiState(
 class FollowingViewModel @Inject constructor(
     private val followRepository: FollowRepository,
     private val divisionDao: DivisionDao,
-    private val directoryPreferences: DirectoryPreferences,
+    private val directoryPreferences: DirectoryPreferences
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
@@ -65,7 +65,7 @@ class FollowingViewModel @Inject constructor(
     private val _filterState = MutableStateFlow(DirectoryFilterState())
     val filterState: StateFlow<DirectoryFilterState> = _filterState.asStateFlow()
 
-    private val _isLoading = MutableStateFlow(true)
+    private val isLoading = MutableStateFlow(true)
 
     private val viewModeFlow = directoryPreferences.viewMode
 
@@ -83,7 +83,7 @@ class FollowingViewModel @Inject constructor(
             _searchQuery,
             _filterState,
             viewModeFlow,
-            _isLoading,
+            isLoading
         ) { followed, query, filter, viewMode, loading ->
             // Extract distinct parties from the full list (before filtering)
             val distinctParties = followed
@@ -116,16 +116,16 @@ class FollowingViewModel @Inject constructor(
                 filterState = filter,
                 distinctParties = distinctParties,
                 viewMode = viewMode,
-                isLoading = loading && followed.isEmpty(),
+                isLoading = loading && followed.isEmpty()
             )
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
-            initialValue = FollowingUiState(),
+            initialValue = FollowingUiState()
         )
 
     init {
-        viewModelScope.launch { _isLoading.value = false }
+        viewModelScope.launch { isLoading.value = false }
     }
 
     fun updateSearchQuery(query: String) {
@@ -141,15 +141,17 @@ class FollowingViewModel @Inject constructor(
         val newExcluded = current.excludedParties.toMutableSet()
         when (state) {
             PartyFilterState.DISABLED -> newIncluded.add(party)
+
             PartyFilterState.INCLUDED -> {
                 newIncluded.remove(party)
                 newExcluded.add(party)
             }
+
             PartyFilterState.EXCLUDED -> newExcluded.remove(party)
         }
         _filterState.value = current.copy(
             includedParties = newIncluded,
-            excludedParties = newExcluded,
+            excludedParties = newExcluded
         )
     }
 
@@ -175,21 +177,20 @@ class FollowingViewModel @Inject constructor(
         viewModelScope.launch { followRepository.unfollow(memberId) }
     }
 
-    private fun FollowedMpWithDetail.toUi(recentVote: MemberRecentVote?): FollowedMpUi =
-        FollowedMpUi(
-            memberId = memberId,
-            displayName = nameDisplayAs,
-            thumbnailUrl = thumbnailUrl,
-            partyName = partyName,
-            partyAbbreviation = partyAbbreviation,
-            partyBackgroundColour = partyBackgroundColour,
-            constituencyName = constituencyName,
-            house = house,
-            isActive = true, // Followed MPs are always active (we only follow active MPs)
-            recentVoteType = recentVote?.vote,
-            recentDivisionTitle = recentVote?.title,
-            recentDivisionId = recentVote?.divisionId,
-            recentDivisionHouse = recentVote?.house,
-            recentVoteDate = recentVote?.date,
-        )
+    private fun FollowedMpWithDetail.toUi(recentVote: MemberRecentVote?): FollowedMpUi = FollowedMpUi(
+        memberId = memberId,
+        displayName = nameDisplayAs,
+        thumbnailUrl = thumbnailUrl,
+        partyName = partyName,
+        partyAbbreviation = partyAbbreviation,
+        partyBackgroundColour = partyBackgroundColour,
+        constituencyName = constituencyName,
+        house = house,
+        isActive = true, // Followed MPs are always active (we only follow active MPs)
+        recentVoteType = recentVote?.vote,
+        recentDivisionTitle = recentVote?.title,
+        recentDivisionId = recentVote?.divisionId,
+        recentDivisionHouse = recentVote?.house,
+        recentVoteDate = recentVote?.date
+    )
 }

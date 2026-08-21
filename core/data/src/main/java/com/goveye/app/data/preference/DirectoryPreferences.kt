@@ -13,13 +13,14 @@ import kotlinx.coroutines.flow.map
 enum class DirectoryViewMode { LIST, GRID }
 
 @Singleton
-class DirectoryPreferences @Inject constructor(
-    @Named("theme") private val dataStore: DataStore<Preferences>,
-) {
+class DirectoryPreferences @Inject constructor(@Named("theme") private val dataStore: DataStore<Preferences>) {
     val viewMode: Flow<DirectoryViewMode> =
         dataStore.data.map { preferences ->
-            if (preferences[VIEW_MODE_KEY] == true) DirectoryViewMode.GRID
-            else DirectoryViewMode.LIST
+            if (preferences[VIEW_MODE_KEY] == true) {
+                DirectoryViewMode.GRID
+            } else {
+                DirectoryViewMode.LIST
+            }
         }
 
     suspend fun setViewMode(mode: DirectoryViewMode) {

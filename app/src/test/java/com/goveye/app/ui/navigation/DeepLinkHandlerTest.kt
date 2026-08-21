@@ -14,8 +14,7 @@ import org.robolectric.annotation.Config
 @Config(sdk = [34])
 class DeepLinkHandlerTest {
 
-    private fun makeIntent(uri: String): Intent =
-        Intent(Intent.ACTION_VIEW, Uri.parse(uri))
+    private fun makeIntent(uri: String): Intent = Intent(Intent.ACTION_VIEW, Uri.parse(uri))
 
     @Test
     fun `parses mp deep link with memberId`() {

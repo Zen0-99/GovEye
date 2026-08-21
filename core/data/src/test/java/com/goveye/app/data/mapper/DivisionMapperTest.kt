@@ -19,7 +19,7 @@ class DivisionMapperTest {
                 title = "Test Division",
                 ayeCount = 330,
                 noCount = 109,
-                isDeferred = true,
+                isDeferred = true
             )
 
         val division = DivisionMapper.toDomain(dto)
@@ -39,7 +39,7 @@ class DivisionMapperTest {
                 name = "John Whittingdale",
                 party = "Conservative",
                 partyColour = "0063ba",
-                memberFrom = "Maldon",
+                memberFrom = "Maldon"
             )
 
         val vote = DivisionMapper.toDomain(dto, divisionId = 2409, vote = VoteType.AYE)
@@ -61,8 +61,8 @@ class DivisionMapperTest {
                     PublishedDivisionDto(
                         divisionId = 2406,
                         date = "2026-07-13",
-                        title = "Test",
-                    ),
+                        title = "Test"
+                    )
             )
 
         val vote = DivisionMapper.toDomain(dto)
@@ -76,7 +76,7 @@ class DivisionMapperTest {
         val dto =
             MemberVoteDto(
                 memberId = 172,
-                publishedDivision = null,
+                publishedDivision = null
             )
 
         val vote = DivisionMapper.toDomain(dto)
@@ -89,7 +89,7 @@ class DivisionMapperTest {
         val dtos =
             listOf(
                 DivisionDto(divisionId = 1, date = "2026-01-01", title = "A"),
-                DivisionDto(divisionId = 2, date = "2026-01-02", title = "B"),
+                DivisionDto(divisionId = 2, date = "2026-01-02", title = "B")
             )
 
         val divisions = DivisionMapper.toDomainList(dtos)

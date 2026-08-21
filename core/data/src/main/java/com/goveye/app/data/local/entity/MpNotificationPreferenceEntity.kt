@@ -19,7 +19,7 @@ import androidx.room.PrimaryKey
 data class MpNotificationPreferenceEntity(
     @PrimaryKey val memberId: Int,
     val votesEnabled: Boolean = false,
-    val speechesEnabled: Boolean = false,
+    val speechesEnabled: Boolean = false
 ) {
     /** Master toggle — true when any notification type is enabled. */
     val notificationsEnabled: Boolean

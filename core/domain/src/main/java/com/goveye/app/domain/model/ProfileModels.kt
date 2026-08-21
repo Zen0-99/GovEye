@@ -8,7 +8,7 @@ data class BiographyExperience(
     val startMonth: Int?,
     val startYear: Int?,
     val endMonth: Int?,
-    val endYear: Int?,
+    val endYear: Int?
 ) {
     val dateRangeText: String
         get() = buildString {
@@ -29,7 +29,7 @@ data class BiographyItem(
     val name: String?,
     val startDate: String?,
     val endDate: String?,
-    val isCurrent: Boolean,
+    val isCurrent: Boolean
 )
 
 data class Committee(
@@ -39,7 +39,7 @@ data class Committee(
     val categoryName: String?,
     val startDate: String?,
     val endDate: String?,
-    val isActive: Boolean,
+    val isActive: Boolean
 )
 
 data class Contact(
@@ -55,7 +55,7 @@ data class Contact(
     val phone: String?,
     val email: String?,
     val website: String?,
-    val openingHours: String? = null,
+    val openingHours: String? = null
 ) {
     val formattedAddress: String
         get() = listOf(line1, line2, line3, line4, line5, postcode)

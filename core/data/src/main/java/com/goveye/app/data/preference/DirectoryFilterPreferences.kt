@@ -13,9 +13,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 @Singleton
-class DirectoryFilterPreferences @Inject constructor(
-    @Named("theme") private val dataStore: DataStore<Preferences>,
-) {
+class DirectoryFilterPreferences @Inject constructor(@Named("theme") private val dataStore: DataStore<Preferences>) {
     // Party filter — tri-state per party (included / excluded / disabled)
     // Stored as two sets: included parties and excluded parties.
     val includedParties: Flow<Set<String>> =
@@ -26,11 +24,11 @@ class DirectoryFilterPreferences @Inject constructor(
 
     // House filter — single-select, stored as Int (0 = all, 1 = Commons, 2 = Lords)
     val houseFilter: Flow<Int> =
-        dataStore.data.map { it[HOUSE_KEY] ?: 0 }  // default: all
+        dataStore.data.map { it[HOUSE_KEY] ?: 0 } // default: all
 
     // Status filter — single-select, stored as Boolean (true = current only)
     val currentOnly: Flow<Boolean> =
-        dataStore.data.map { it[CURRENT_ONLY_KEY] ?: false }  // default: include former
+        dataStore.data.map { it[CURRENT_ONLY_KEY] ?: false } // default: include former
 
     suspend fun setIncludedParties(parties: Set<String>) {
         dataStore.edit { it[INCLUDED_PARTIES_KEY] = parties }

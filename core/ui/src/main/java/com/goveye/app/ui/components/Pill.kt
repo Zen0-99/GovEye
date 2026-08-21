@@ -21,23 +21,23 @@ fun Pill(
     modifier: Modifier = Modifier,
     color: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     contentColor: Color = MaterialTheme.colorScheme.onSurface,
-    style: TextStyle = LocalTextStyle.current,
+    style: TextStyle = LocalTextStyle.current
 ) {
     Surface(
         modifier = modifier.padding(start = 4.dp),
         shape = MaterialTheme.shapes.extraLarge,
         color = color,
-        contentColor = contentColor,
+        contentColor = contentColor
     ) {
         Box(
             modifier = Modifier.padding(6.dp, 1.dp),
-            contentAlignment = Alignment.Center,
+            contentAlignment = Alignment.Center
         ) {
             Text(
                 text = text,
                 maxLines = 1,
                 style = style,
-                textAlign = TextAlign.Center,
+                textAlign = TextAlign.Center
             )
         }
     }
@@ -49,13 +49,13 @@ fun Pill(
     modifier: Modifier = Modifier,
     color: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     contentColor: Color = MaterialTheme.colorScheme.onSurface,
-    fontSize: TextUnit = LocalTextStyle.current.fontSize,
+    fontSize: TextUnit = LocalTextStyle.current.fontSize
 ) {
     Pill(
         text = text,
         modifier = modifier,
         color = color,
         contentColor = contentColor,
-        style = MaterialTheme.typography.bodyMedium.copy(fontSize = fontSize),
+        style = MaterialTheme.typography.bodyMedium.copy(fontSize = fontSize)
     )
 }

@@ -14,5 +14,5 @@ data class DivisionEntity(
     val ayeCount: Int,
     val noCount: Int,
     val house: Int = 1,
-    val lastUpdated: Long,
+    val lastUpdated: Long
 )

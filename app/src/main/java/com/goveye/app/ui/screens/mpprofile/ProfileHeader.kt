@@ -45,7 +45,7 @@ fun ProfileHeader(
     notificationsEnabled: Boolean = false,
     onFollowClick: () -> Unit = {},
     onNotificationClick: () -> Unit = {},
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     val partyColor = parsePartyColor(mp.party?.backgroundColour)
     // Derive dark/light from the actual theme surface, not isSystemInDarkTheme().
@@ -73,7 +73,7 @@ fun ProfileHeader(
             red = partyColor.red * 0.8f,
             green = partyColor.green * 0.8f,
             blue = partyColor.blue * 0.8f,
-            alpha = 0.85f,
+            alpha = 0.85f
         )
     }
     // Pill text: white if the pill color is dark enough, else dark
@@ -88,55 +88,59 @@ fun ProfileHeader(
                     colors = listOf(
                         partyColor.copy(alpha = if (isDark) 0.85f else 0.7f),
                         partyColor.copy(alpha = if (isDark) 0.3f else 0.2f),
-                        Color.Transparent,
-                    ),
-                ),
-            ),
+                        Color.Transparent
+                    )
+                )
+            )
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = statusBarPadding)
                 .padding(horizontal = MaterialTheme.padding.medium)
-                .padding(top = 4.dp, bottom = MaterialTheme.padding.small),
+                .padding(top = 4.dp, bottom = MaterialTheme.padding.small)
         ) {
             // Controls row — back arrow left, follow/notification right
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(
                     onClick = onBack,
-                    modifier = Modifier.size(48.dp),
+                    modifier = Modifier.size(48.dp)
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                         contentDescription = "Back",
-                        tint = headerIconTint,
+                        tint = headerIconTint
                     )
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     IconButton(
                         onClick = onNotificationClick,
-                        modifier = Modifier.size(48.dp),
+                        modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
-                            imageVector = if (notificationsEnabled) Icons.Outlined.NotificationsActive else Icons.Outlined.Notifications,
+                            imageVector = if (notificationsEnabled) {
+                                Icons.Outlined.NotificationsActive
+                            } else {
+                                Icons.Outlined.Notifications
+                            },
                             contentDescription = "Notification settings",
                             tint = headerIconTint,
-                            modifier = Modifier.size(22.dp),
+                            modifier = Modifier.size(22.dp)
                         )
                     }
                     IconButton(
                         onClick = onFollowClick,
-                        modifier = Modifier.size(48.dp),
+                        modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
                             imageVector = if (isFollowing) Icons.Outlined.PersonRemove else Icons.Outlined.PersonAdd,
                             contentDescription = if (isFollowing) "Unfollow" else "Follow",
                             tint = headerIconTint,
-                            modifier = Modifier.size(22.dp),
+                            modifier = Modifier.size(22.dp)
                         )
                     }
                 }
@@ -148,14 +152,14 @@ fun ProfileHeader(
                     .fillMaxWidth()
                     .padding(top = MaterialTheme.padding.small),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.medium),
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.medium)
             ) {
                 MpAvatar(
                     thumbnailUrl = mp.thumbnailUrl,
                     displayName = mp.nameDisplayAs,
                     partyColorHex = mp.party?.backgroundColour,
                     size = 60.dp,
-                    borderWidth = 2.dp,
+                    borderWidth = 2.dp
                 )
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -164,19 +168,19 @@ fun ProfileHeader(
                         color = headerTextColor,
                         fontWeight = FontWeight.Bold,
                         maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
+                        overflow = TextOverflow.Ellipsis
                     )
                     Surface(
                         shape = RoundedCornerShape(50),
                         color = pillColor,
-                        modifier = Modifier.padding(top = 4.dp),
+                        modifier = Modifier.padding(top = 4.dp)
                     ) {
                         Text(
                             text = mp.party?.name ?: "",
                             style = MaterialTheme.typography.labelSmall,
                             color = pillTextColor,
                             fontWeight = FontWeight.Medium,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                         )
                     }
                 }

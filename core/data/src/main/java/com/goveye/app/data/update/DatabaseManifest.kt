@@ -22,5 +22,5 @@ data class DatabaseManifest(
     @SerialName("dbHash") val dbHash: String,
     @SerialName("dbSize") val dbSize: Long,
     @SerialName("patchHash") val patchHash: String,
-    @SerialName("patchSize") val patchSize: Long,
+    @SerialName("patchSize") val patchSize: Long
 )

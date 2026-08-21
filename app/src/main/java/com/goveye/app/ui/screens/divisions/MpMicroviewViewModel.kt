@@ -24,7 +24,7 @@ data class MpMicroviewUiState(
     val rebellionStats: RebellionStats? = null,
     val allDivisionDates: List<String> = emptyList(),
     val isFollowing: Boolean = false,
-    val isLoading: Boolean = true,
+    val isLoading: Boolean = true
 )
 
 /**
@@ -42,13 +42,19 @@ class MpMicroviewViewModel @Inject constructor(
     private val membersRepository: MembersRepository,
     private val votesRepository: VotesRepository,
     private val followRepository: FollowRepository,
-    private val mpDao: MpDao,
+    private val mpDao: MpDao
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MpMicroviewUiState())
     val uiState: StateFlow<MpMicroviewUiState> = _uiState.asStateFlow()
 
-    fun load(memberId: Int, fallbackName: String, fallbackPartyName: String?, fallbackPartyColour: String?, fallbackConstituency: String?) {
+    fun load(
+        memberId: Int,
+        fallbackName: String,
+        fallbackPartyName: String?,
+        fallbackPartyColour: String?,
+        fallbackConstituency: String?
+    ) {
         viewModelScope.launch {
             // 1. Try to load from bundled DB first (all 650 MPs are in the DB)
             val mpEntity = mpDao.getMp(memberId)
@@ -60,14 +66,20 @@ class MpMicroviewViewModel @Inject constructor(
                     nameFullTitle = mpEntity.nameFullTitle,
                     gender = mpEntity.gender,
                     party = com.goveye.app.domain.model.Party(
-                        mpEntity.partyId, mpEntity.partyName, mpEntity.partyAbbreviation,
-                        mpEntity.partyBackgroundColour, mpEntity.partyForegroundColour,
+                        mpEntity.partyId,
+                        mpEntity.partyName,
+                        mpEntity.partyAbbreviation,
+                        mpEntity.partyBackgroundColour,
+                        mpEntity.partyForegroundColour
                     ),
-                    constituency = com.goveye.app.domain.model.Constituency(mpEntity.constituencyId, mpEntity.constituencyName),
+                    constituency = com.goveye.app.domain.model.Constituency(
+                        mpEntity.constituencyId,
+                        mpEntity.constituencyName
+                    ),
                     house = mpEntity.house,
                     membershipStartDate = mpEntity.membershipStartDate,
                     isActive = mpEntity.isActive,
-                    thumbnailUrl = mpEntity.thumbnailUrl,
+                    thumbnailUrl = mpEntity.thumbnailUrl
                 )
                 _uiState.value = _uiState.value.copy(mp = mp, isLoading = false)
                 loadVotesAndFollow(memberId, mpEntity.house, mpEntity.partyName)
@@ -90,7 +102,7 @@ class MpMicroviewViewModel @Inject constructor(
                     house = 1,
                     membershipStartDate = null,
                     isActive = true,
-                    thumbnailUrl = null,
+                    thumbnailUrl = null
                 )
                 _uiState.value = _uiState.value.copy(mp = fallbackMp, isLoading = false)
                 // Still load votes with fallback house + party
@@ -115,7 +127,7 @@ class MpMicroviewViewModel @Inject constructor(
                 val votes = votesRepository.getMemberVotingWithDivisions(memberId)
                 _uiState.value = _uiState.value.copy(
                     memberVotes = votes,
-                    allDivisionDates = allDates,
+                    allDivisionDates = allDates
                 )
 
                 // Compute rebellion stats from the bundled data

@@ -7,7 +7,7 @@ data class TraitBar(
     val label: String,
     val percentile: Int, // 0-100
     val mpValue: Float,
-    val peerAverage: Float,
+    val peerAverage: Float
 )
 
 /**
@@ -39,42 +39,39 @@ object TraitBarCalculator {
         peerQuestionCounts: List<Int>,
         peerSpeechCounts: List<Int>,
         peerCommitteeCounts: List<Int>,
-        peerAverages: PeerAverages,
-    ): List<TraitBar> {
-        return listOf(
-            TraitBar(
-                label = "Rebellion",
-                percentile = PercentileCalculator.computePercentile(rebellionRate, peerRebellionRates),
-                mpValue = rebellionRate * 100,
-                peerAverage = (peerRebellionRates.averageOrNull() ?: 0f) * 100,
-            ),
-            TraitBar(
-                label = "Participation",
-                percentile = PercentileCalculator.computePercentile(participationRate, peerParticipationRates),
-                mpValue = participationRate * 100,
-                peerAverage = (peerParticipationRates.averageOrNull() ?: 0f) * 100,
-            ),
-            TraitBar(
-                label = "Questions",
-                percentile = PercentileCalculator.computePercentile(questionCount, peerQuestionCounts),
-                mpValue = questionCount.toFloat(),
-                peerAverage = peerAverages.averageQuestions,
-            ),
-            TraitBar(
-                label = "Speeches",
-                percentile = PercentileCalculator.computePercentile(speechCount, peerSpeechCounts),
-                mpValue = speechCount.toFloat(),
-                peerAverage = peerAverages.averageSpeeches,
-            ),
-            TraitBar(
-                label = "Committees",
-                percentile = PercentileCalculator.computePercentile(committeeCount, peerCommitteeCounts),
-                mpValue = committeeCount.toFloat(),
-                peerAverage = peerAverages.averageCommittees,
-            ),
+        peerAverages: PeerAverages
+    ): List<TraitBar> = listOf(
+        TraitBar(
+            label = "Rebellion",
+            percentile = PercentileCalculator.computePercentile(rebellionRate, peerRebellionRates),
+            mpValue = rebellionRate * 100,
+            peerAverage = (peerRebellionRates.averageOrNull() ?: 0f) * 100
+        ),
+        TraitBar(
+            label = "Participation",
+            percentile = PercentileCalculator.computePercentile(participationRate, peerParticipationRates),
+            mpValue = participationRate * 100,
+            peerAverage = (peerParticipationRates.averageOrNull() ?: 0f) * 100
+        ),
+        TraitBar(
+            label = "Questions",
+            percentile = PercentileCalculator.computePercentile(questionCount, peerQuestionCounts),
+            mpValue = questionCount.toFloat(),
+            peerAverage = peerAverages.averageQuestions
+        ),
+        TraitBar(
+            label = "Speeches",
+            percentile = PercentileCalculator.computePercentile(speechCount, peerSpeechCounts),
+            mpValue = speechCount.toFloat(),
+            peerAverage = peerAverages.averageSpeeches
+        ),
+        TraitBar(
+            label = "Committees",
+            percentile = PercentileCalculator.computePercentile(committeeCount, peerCommitteeCounts),
+            mpValue = committeeCount.toFloat(),
+            peerAverage = peerAverages.averageCommittees
         )
-    }
+    )
 
-    private fun List<Float>.averageOrNull(): Float? =
-        if (isEmpty()) null else average().toFloat()
+    private fun List<Float>.averageOrNull(): Float? = if (isEmpty()) null else average().toFloat()
 }

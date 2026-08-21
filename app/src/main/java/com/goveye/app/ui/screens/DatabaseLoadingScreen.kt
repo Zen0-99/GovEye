@@ -46,26 +46,26 @@ fun DatabaseLoadingScreen(
     state: DatabaseUpdateState,
     onDownloadNow: () -> Unit = {},
     onWaitForWifi: () -> Unit = {},
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     var showWifiDialog by remember { mutableStateOf(state is DatabaseUpdateState.NeedsWifi) }
 
     Box(
         modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
+        contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(32.dp),
+                .padding(32.dp)
         ) {
             // App name as placeholder logo
             Text(
                 text = "GovEye",
                 style = MaterialTheme.typography.headlineLarge,
-                color = MaterialTheme.colorScheme.primary,
+                color = MaterialTheme.colorScheme.primary
             )
 
             Spacer(Modifier.height(24.dp))
@@ -76,23 +76,27 @@ fun DatabaseLoadingScreen(
                     if (state.isFullDb && state.progress > 0f) {
                         LinearProgressIndicator(
                             progress = { state.progress },
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth()
                         )
                     } else {
                         LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                     }
                 }
+
                 is DatabaseUpdateState.NeedsPatches -> {
                     // Patches are tiny (5-50KB each, up to 5 = max 250KB) — indeterminate
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 }
+
                 is DatabaseUpdateState.Applying -> {
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 }
+
                 is DatabaseUpdateState.NeedsFullDownload,
                 is DatabaseUpdateState.NeedsWifi -> {
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 }
+
                 else -> {
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 }
@@ -110,6 +114,7 @@ fun DatabaseLoadingScreen(
                         "Downloading updates..."
                     }
                 }
+
                 is DatabaseUpdateState.NeedsPatches -> {
                     if (state.patches.isNotEmpty()) {
                         "Applying updates..."
@@ -117,17 +122,22 @@ fun DatabaseLoadingScreen(
                         "Checking for updates..."
                     }
                 }
+
                 is DatabaseUpdateState.Applying -> "Applying updates..."
+
                 is DatabaseUpdateState.NeedsFullDownload -> "Preparing download..."
+
                 is DatabaseUpdateState.NeedsWifi -> "Waiting for Wi-Fi..."
+
                 is DatabaseUpdateState.Failed -> "Download failed: ${state.message}"
+
                 else -> "Almost ready..."
             }
             Text(
                 text = statusText,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
+                textAlign = TextAlign.Center
             )
 
             // Data size hint for full DB downloads
@@ -138,7 +148,7 @@ fun DatabaseLoadingScreen(
                 Text(
                     text = "~160MB",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -170,7 +180,7 @@ fun DatabaseLoadingScreen(
                 }) {
                     Text("Wait for Wi-Fi")
                 }
-            },
+            }
         )
     }
 }

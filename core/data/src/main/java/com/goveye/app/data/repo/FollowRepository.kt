@@ -4,16 +4,13 @@ import com.goveye.app.data.local.dao.FollowDao
 import com.goveye.app.data.local.dao.MpDao
 import com.goveye.app.data.local.entity.FollowEntity
 import com.goveye.app.data.local.entity.FollowedMpWithDetail
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 @Singleton
-class FollowRepository @Inject constructor(
-    private val followDao: FollowDao,
-    private val mpDao: MpDao,
-) {
+class FollowRepository @Inject constructor(private val followDao: FollowDao, private val mpDao: MpDao) {
     fun observeFollowedMps(): Flow<List<Int>> = followDao.observeFollowedMemberIds()
 
     /**
@@ -46,7 +43,7 @@ class FollowRepository @Inject constructor(
                     partyBackgroundColour = mp.partyBackgroundColour,
                     partyForegroundColour = mp.partyForegroundColour,
                     constituencyName = mp.constituencyName,
-                    house = mp.house,
+                    house = mp.house
                 )
             }
         }

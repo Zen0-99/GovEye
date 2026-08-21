@@ -11,5 +11,5 @@ data class MemberRecentVote(
     val house: Int,
     val title: String,
     val date: String,
-    val vote: String,
+    val vote: String
 )

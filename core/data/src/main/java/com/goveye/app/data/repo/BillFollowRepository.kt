@@ -7,9 +7,7 @@ import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 
 @Singleton
-class BillFollowRepository @Inject constructor(
-    private val billFollowDao: BillFollowDao,
-) {
+class BillFollowRepository @Inject constructor(private val billFollowDao: BillFollowDao) {
     fun observeFollowedBillIds(): Flow<List<Int>> = billFollowDao.observeFollowedBillIds()
 
     fun observeIsFollowing(billId: Int): Flow<Boolean> = billFollowDao.observeIsFollowing(billId)

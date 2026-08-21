@@ -31,8 +31,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -57,8 +57,8 @@ import androidx.paging.compose.itemKey
 import com.goveye.app.data.preference.DirectoryViewMode
 import com.goveye.app.ui.components.FloatingSearchBar
 import com.goveye.app.ui.components.TabTextWithBadge
-import com.goveye.app.ui.screens.divisions.DivisionsTabContent
 import com.goveye.app.ui.screens.bills.BillsTabContent
+import com.goveye.app.ui.screens.divisions.DivisionsTabContent
 import com.goveye.app.ui.theme.padding
 import kotlinx.coroutines.launch
 
@@ -67,7 +67,7 @@ private enum class DirectoryTab(val title: String) {
     PARTIES("Parties"),
     BILLS("Bills"),
     DIVISIONS("Divisions"),
-    DEBATES("Debates"),
+    DEBATES("Debates")
 }
 
 @Composable
@@ -76,7 +76,7 @@ fun DirectoryScreen(
     onNavigateToDivision: (Int, Int) -> Unit = { _, _ -> },
     onNavigateToBill: (Int) -> Unit = {},
     modifier: Modifier = Modifier,
-    viewModel: DirectoryViewModel = hiltViewModel(),
+    viewModel: DirectoryViewModel = hiltViewModel()
 ) {
     val viewMode by viewModel.viewMode.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
@@ -92,7 +92,7 @@ fun DirectoryScreen(
     var savedTabIndex by rememberSaveable { mutableStateOf(0) }
     val pagerState = rememberPagerState(
         initialPage = savedTabIndex,
-        pageCount = { DirectoryTab.entries.size },
+        pageCount = { DirectoryTab.entries.size }
     )
     val coroutineScope = rememberCoroutineScope()
 
@@ -117,8 +117,8 @@ fun DirectoryScreen(
             placeholder = searchPlaceholder,
             onQueryChange = viewModel::updateSearchQuery,
             onFilterClick = { showFilterSheet = true },
-            hasActiveFilters = filterState.hasActiveFilters,
-        ),
+            hasActiveFilters = filterState.hasActiveFilters
+        )
     )
 
     Column(modifier = modifier.fillMaxSize()) {
@@ -129,7 +129,7 @@ fun DirectoryScreen(
             selectedTabIndex = pagerState.currentPage,
             containerColor = MaterialTheme.colorScheme.surface,
             contentColor = MaterialTheme.colorScheme.onSurface,
-            edgePadding = 16.dp,
+            edgePadding = 16.dp
         ) {
             DirectoryTab.entries.forEachIndexed { index, tab ->
                 Tab(
@@ -142,9 +142,9 @@ fun DirectoryScreen(
                     text = {
                         TabTextWithBadge(
                             text = tab.title,
-                            badgeCount = tabCounts[index],
+                            badgeCount = tabCounts[index]
                         )
-                    },
+                    }
                 )
             }
         }
@@ -152,7 +152,7 @@ fun DirectoryScreen(
         // Pager — each tab has its own content
         HorizontalPager(
             state = pagerState,
-            modifier = Modifier.fillMaxSize().weight(1f),
+            modifier = Modifier.fillMaxSize().weight(1f)
         ) { page ->
             when (DirectoryTab.entries[page]) {
                 DirectoryTab.OFFICIALS -> OfficialsTabContent(
@@ -162,22 +162,26 @@ fun DirectoryScreen(
                     searchResults = searchResults,
                     filteredMps = filteredMps,
                     hasActiveFilters = filterState.hasActiveFilters,
-                    onNavigateToProfile = onNavigateToProfile,
+                    onNavigateToProfile = onNavigateToProfile
                 )
+
                 DirectoryTab.PARTIES -> PlaceholderTabContent("Parties")
+
                 DirectoryTab.BILLS -> BillsTabContent(
                     onNavigateToBill = onNavigateToBill,
-                    searchQuery = searchQuery,
+                    searchQuery = searchQuery
                 )
+
                 DirectoryTab.DIVISIONS -> DivisionsTabContent(
                     onNavigateToDivision = onNavigateToDivision,
                     houseFilter = filterState.houseFilter,
-                    searchQuery = searchQuery,
+                    searchQuery = searchQuery
                 )
+
                 DirectoryTab.DEBATES -> DivisionsTabContent(
                     onNavigateToDivision = onNavigateToDivision,
                     houseFilter = filterState.houseFilter,
-                    searchQuery = searchQuery,
+                    searchQuery = searchQuery
                 )
             }
         }
@@ -201,7 +205,7 @@ fun DirectoryScreen(
             onCurrentOnlyChange = viewModel::setCurrentOnly,
             onViewModeChange = viewModel::setViewMode,
             onClearFilters = viewModel::clearFilters,
-            onDismiss = { showFilterSheet = false },
+            onDismiss = { showFilterSheet = false }
         )
     }
 }
@@ -218,30 +222,30 @@ private fun OfficialsTabContent(
     searchResults: List<com.goveye.app.domain.model.Mp>,
     filteredMps: List<com.goveye.app.domain.model.Mp>,
     hasActiveFilters: Boolean,
-    onNavigateToProfile: (Int) -> Unit,
+    onNavigateToProfile: (Int) -> Unit
 ) {
     // Priority: search results > filtered browsing > paged browsing
     if (searchQuery.isNotBlank()) {
         if (searchResults.isEmpty()) {
             Box(
                 modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
+                contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "No MPs found for \"$searchQuery\"",
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         } else {
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize()
             ) {
                 items(searchResults, key = { it.id }) { mp ->
                     MpListRow(
                         mp = mp,
-                        onClick = { onNavigateToProfile(mp.id) },
+                        onClick = { onNavigateToProfile(mp.id) }
                     )
                 }
             }
@@ -253,13 +257,13 @@ private fun OfficialsTabContent(
         if (filteredMps.isEmpty()) {
             Box(
                 modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
+                contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "No MPs match these filters",
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         } else {
@@ -269,26 +273,27 @@ private fun OfficialsTabContent(
                         items(filteredMps, key = { it.id }) { mp ->
                             MpListRow(
                                 mp = mp,
-                                onClick = { onNavigateToProfile(mp.id) },
+                                onClick = { onNavigateToProfile(mp.id) }
                             )
                         }
                     }
                 }
+
                 DirectoryViewMode.GRID -> {
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(2),
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(
                             horizontal = MaterialTheme.padding.medium,
-                            vertical = MaterialTheme.padding.small,
+                            vertical = MaterialTheme.padding.small
                         ),
                         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
-                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
+                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small)
                     ) {
                         items(filteredMps, key = { it.id }) { mp ->
                             MpGridCard(
                                 mp = mp,
-                                onClick = { onNavigateToProfile(mp.id) },
+                                onClick = { onNavigateToProfile(mp.id) }
                             )
                         }
                     }
@@ -301,42 +306,45 @@ private fun OfficialsTabContent(
             refreshState is androidx.paging.LoadState.Loading -> {
                 Box(
                     modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
+                    contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator()
                 }
             }
+
             refreshState is androidx.paging.LoadState.Error -> {
                 Box(
                     modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
+                    contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = "Couldn't load MPs",
                             style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
                             text = "Check your connection and try again",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
             }
+
             refreshState is androidx.paging.LoadState.NotLoading && lazyPagingItems.itemCount == 0 -> {
                 Box(
                     modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
+                    contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "No MPs found",
                         style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
+
             else -> {
                 when (viewMode) {
                     DirectoryViewMode.LIST -> {
@@ -344,39 +352,40 @@ private fun OfficialsTabContent(
                             items(
                                 count = lazyPagingItems.itemCount,
                                 key = lazyPagingItems.itemKey { it.id },
-                                contentType = { "mp_row" },
+                                contentType = { "mp_row" }
                             ) { index ->
                                 val mp = lazyPagingItems[index]
                                 if (mp != null) {
                                     MpListRow(
                                         mp = mp,
-                                        onClick = { onNavigateToProfile(mp.id) },
+                                        onClick = { onNavigateToProfile(mp.id) }
                                     )
                                 }
                             }
                         }
                     }
+
                     DirectoryViewMode.GRID -> {
                         LazyVerticalGrid(
                             columns = GridCells.Fixed(2),
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(
                                 horizontal = MaterialTheme.padding.medium,
-                                vertical = MaterialTheme.padding.small,
+                                vertical = MaterialTheme.padding.small
                             ),
                             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
-                            verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
+                            verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small)
                         ) {
                             items(
                                 count = lazyPagingItems.itemCount,
                                 key = lazyPagingItems.itemKey { it.id },
-                                contentType = { "mp_grid" },
+                                contentType = { "mp_grid" }
                             ) { index ->
                                 val mp = lazyPagingItems[index]
                                 if (mp != null) {
                                     MpGridCard(
                                         mp = mp,
-                                        onClick = { onNavigateToProfile(mp.id) },
+                                        onClick = { onNavigateToProfile(mp.id) }
                                     )
                                 }
                             }
@@ -395,13 +404,13 @@ private fun OfficialsTabContent(
 private fun PlaceholderTabContent(label: String) {
     Box(
         modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
+        contentAlignment = Alignment.Center
     ) {
         Text(
             text = "$label\n\nComing soon.",
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }

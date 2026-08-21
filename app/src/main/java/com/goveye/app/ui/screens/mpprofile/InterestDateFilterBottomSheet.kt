@@ -42,7 +42,7 @@ fun InterestDateFilterBottomSheet(
     onFromDateChange: (String?) -> Unit,
     onToDateChange: (String?) -> Unit,
     onClear: () -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showFromPicker by remember { mutableStateOf(false) }
@@ -52,24 +52,24 @@ fun InterestDateFilterBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surface,
-        dragHandle = null,
+        dragHandle = null
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(max = 700.dp),
+                .heightIn(max = 700.dp)
         ) {
             LazyColumn(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp)
             ) {
                 item {
                     Text(
                         text = "Date Range",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
 
@@ -77,7 +77,7 @@ fun InterestDateFilterBottomSheet(
                     DateSelectorRow(
                         label = "From date",
                         date = fromDate,
-                        onClick = { showFromPicker = true },
+                        onClick = { showFromPicker = true }
                     )
                 }
 
@@ -85,7 +85,7 @@ fun InterestDateFilterBottomSheet(
                     DateSelectorRow(
                         label = "To date",
                         date = toDate,
-                        onClick = { showToPicker = true },
+                        onClick = { showToPicker = true }
                     )
                 }
             }
@@ -95,7 +95,7 @@ fun InterestDateFilterBottomSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                shape = RoundedCornerShape(24.dp),
+                shape = RoundedCornerShape(24.dp)
             ) {
                 Text(text = "Clear filters")
             }
@@ -109,7 +109,7 @@ fun InterestDateFilterBottomSheet(
                 onFromDateChange(dateStr)
                 showFromPicker = false
             },
-            onDismiss = { showFromPicker = false },
+            onDismiss = { showFromPicker = false }
         )
     }
 
@@ -120,17 +120,13 @@ fun InterestDateFilterBottomSheet(
                 onToDateChange(dateStr)
                 showToPicker = false
             },
-            onDismiss = { showToPicker = false },
+            onDismiss = { showToPicker = false }
         )
     }
 }
 
 @Composable
-private fun DateSelectorRow(
-    label: String,
-    date: String?,
-    onClick: () -> Unit,
-) {
+private fun DateSelectorRow(label: String, date: String?, onClick: () -> Unit) {
     val displayText = date?.let {
         runCatching {
             LocalDate.parse(it).format(DateTimeFormatter.ofPattern("d MMM yyyy"))
@@ -142,12 +138,12 @@ private fun DateSelectorRow(
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .padding(vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = MaterialTheme.colorScheme.onSurface
         )
         Text(
             text = displayText,
@@ -157,18 +153,14 @@ private fun DateSelectorRow(
             } else {
                 MaterialTheme.colorScheme.onSurfaceVariant
             },
-            fontWeight = if (date != null) FontWeight.Medium else FontWeight.Normal,
+            fontWeight = if (date != null) FontWeight.Medium else FontWeight.Normal
         )
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DatePickerModal(
-    initialDate: String?,
-    onConfirm: (String?) -> Unit,
-    onDismiss: () -> Unit,
-) {
+private fun DatePickerModal(initialDate: String?, onConfirm: (String?) -> Unit, onDismiss: () -> Unit) {
     val initialMillis = initialDate?.let {
         runCatching {
             LocalDate.parse(it).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
@@ -190,7 +182,7 @@ private fun DatePickerModal(
                             .toString()
                     }
                     onConfirm(dateStr)
-                },
+                }
             ) {
                 Text("OK")
             }
@@ -199,7 +191,7 @@ private fun DatePickerModal(
             TextButton(onClick = onDismiss) {
                 Text("Cancel")
             }
-        },
+        }
     ) {
         DatePicker(state = datePickerState)
     }

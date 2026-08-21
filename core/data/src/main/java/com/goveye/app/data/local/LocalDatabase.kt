@@ -28,10 +28,10 @@ import com.goveye.app.data.local.entity.MpNotificationPreferenceEntity
     entities = [
         FollowEntity::class,
         BillFollowEntity::class,
-        MpNotificationPreferenceEntity::class,
+        MpNotificationPreferenceEntity::class
     ],
     version = 1,
-    exportSchema = true,
+    exportSchema = true
 )
 abstract class LocalDatabase : RoomDatabase() {
     abstract fun followDao(): FollowDao

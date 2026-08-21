@@ -42,7 +42,7 @@ fun FeedDivisionCard(
     division: Division,
     hasFollowedVotes: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     val cardColor = if (hasFollowedVotes) {
         MaterialTheme.colorScheme.primary.copy(alpha = 0.05f)
@@ -54,7 +54,7 @@ fun FeedDivisionCard(
             .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
-        color = cardColor,
+        color = cardColor
     ) {
         Row(modifier = Modifier.fillMaxWidth()) {
             // Left edge strip for followed-MP highlight
@@ -63,62 +63,62 @@ fun FeedDivisionCard(
                     modifier = Modifier
                         .width(4.dp)
                         .height(72.dp)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
                 )
             }
             Column(
                 modifier = Modifier
                     .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
                     text = division.title,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
                     maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = formatDivisionDate(division.date),
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
                             text = if (division.house == 2) "Lords" else "Commons",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = "${division.ayeCount}",
                             style = MaterialTheme.typography.labelMedium,
                             color = AyeColor,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = "·",
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
                             text = "${division.noCount}",
                             style = MaterialTheme.typography.labelMedium,
                             color = NoColor,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
@@ -128,11 +128,9 @@ fun FeedDivisionCard(
     }
 }
 
-private fun formatDivisionDate(dateString: String): String {
-    return try {
-        val parts = dateString.split("T").first().split("-")
-        "${parts[2]}/${parts[1]}/${parts[0]}"
-    } catch (e: Exception) {
-        dateString
-    }
+private fun formatDivisionDate(dateString: String): String = try {
+    val parts = dateString.split("T").first().split("-")
+    "${parts[2]}/${parts[1]}/${parts[0]}"
+} catch (e: Exception) {
+    dateString
 }

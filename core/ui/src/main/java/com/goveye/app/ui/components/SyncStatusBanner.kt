@@ -11,10 +11,7 @@ import com.goveye.app.domain.model.SyncStatus
 import com.goveye.app.ui.theme.padding
 
 @Composable
-fun SyncStatusBanner(
-    status: SyncStatus,
-    modifier: Modifier = Modifier,
-) {
+fun SyncStatusBanner(status: SyncStatus, modifier: Modifier = Modifier) {
     val message = when (status) {
         SyncStatus.FRESH -> null
         SyncStatus.STALE -> "Updating..."
@@ -31,7 +28,7 @@ fun SyncStatusBanner(
             textAlign = TextAlign.Center,
             modifier = modifier
                 .fillMaxWidth()
-                .padding(vertical = MaterialTheme.padding.extraSmall),
+                .padding(vertical = MaterialTheme.padding.extraSmall)
         )
     }
 }

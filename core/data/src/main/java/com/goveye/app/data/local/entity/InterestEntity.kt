@@ -18,5 +18,5 @@ data class InterestEntity(
     val lastUpdated: Long,
     val parsedAmountPence: Long? = null,
     val currencyCode: String? = null,
-    val bucket: String? = null,
+    val bucket: String? = null
 )

@@ -41,8 +41,8 @@ fun SettingsScreen(themeViewModel: ThemeViewModel, modifier: Modifier = Modifier
     com.goveye.app.ui.components.ConfigureSearchBar(
         config = com.goveye.app.ui.components.SearchBarConfig(
             isVisible = true,
-            placeholder = "Search settings…",
-        ),
+            placeholder = "Search settings…"
+        )
     )
     val themeMode by themeViewModel.themeMode.collectAsStateWithLifecycle()
     val isAmoled by themeViewModel.isAmoled.collectAsStateWithLifecycle()

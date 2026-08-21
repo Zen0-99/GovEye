@@ -24,10 +24,14 @@ interface MpDao {
     @Query("SELECT * FROM mps WHERE id IN (:ids)")
     suspend fun getMpsByIds(ids: List<Int>): List<MpEntity>
 
-    @Query("SELECT * FROM mps WHERE partyId = :partyId AND id != :excludeId AND isActive = 1 ORDER BY nameListAs LIMIT :limit")
+    @Query(
+        "SELECT * FROM mps WHERE partyId = :partyId AND id != :excludeId AND isActive = 1 ORDER BY nameListAs LIMIT :limit"
+    )
     suspend fun getMpsByParty(partyId: Int, excludeId: Int, limit: Int = 8): List<MpEntity>
 
-    @Query("SELECT * FROM mps WHERE nameListAs LIKE '%' || :query || '%' OR nameDisplayAs LIKE '%' || :query || '%' OR constituencyName LIKE '%' || :query || '%' ORDER BY nameListAs LIMIT 50")
+    @Query(
+        "SELECT * FROM mps WHERE nameListAs LIKE '%' || :query || '%' OR nameDisplayAs LIKE '%' || :query || '%' OR constituencyName LIKE '%' || :query || '%' ORDER BY nameListAs LIMIT 50"
+    )
     suspend fun searchMpsLocal(query: String): List<MpEntity>
 
     @Upsert

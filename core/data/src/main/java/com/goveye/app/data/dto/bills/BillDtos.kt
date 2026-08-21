@@ -3,9 +3,7 @@ package com.goveye.app.data.dto.bills
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class BillListResponse(
-    val items: List<BillDto> = emptyList(),
-)
+data class BillListResponse(val items: List<BillDto> = emptyList())
 
 @Serializable
 data class BillDto(
@@ -22,7 +20,7 @@ data class BillDto(
     val billTypeId: Int? = null,
     val introducedSessionId: Int? = null,
     val currentStage: BillStageDto? = null,
-    val sponsors: List<BillSponsorDto> = emptyList(),
+    val sponsors: List<BillSponsorDto> = emptyList()
 )
 
 @Serializable
@@ -34,7 +32,7 @@ data class BillStageDto(
     val abbreviation: String? = null,
     val house: String,
     val stageSittings: List<StageSittingDto> = emptyList(),
-    val sortOrder: Int = 0,
+    val sortOrder: Int = 0
 )
 
 @Serializable
@@ -43,14 +41,14 @@ data class StageSittingDto(
     val stageId: Int? = null,
     val billStageId: Int? = null,
     val billId: Int? = null,
-    val date: String? = null,
+    val date: String? = null
 )
 
 @Serializable
 data class BillSponsorDto(
     val member: BillSponsorMemberDto? = null,
     val organisation: String? = null,
-    val sortOrder: Int = 0,
+    val sortOrder: Int = 0
 )
 
 @Serializable
@@ -61,12 +59,12 @@ data class BillSponsorMemberDto(
     val partyColour: String? = null,
     val house: String? = null,
     val memberPhoto: String? = null,
-    val memberFrom: String? = null,
+    val memberFrom: String? = null
 )
 
 @Serializable
 data class BillStagesResponse(
     val items: List<BillStageDto> = emptyList(),
     val totalResults: Int = 0,
-    val itemsPerPage: Int = 0,
+    val itemsPerPage: Int = 0
 )

@@ -27,10 +27,7 @@ import com.goveye.app.ui.theme.padding
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun CommitteeChipsSection(
-    committees: List<Committee>,
-    modifier: Modifier = Modifier,
-) {
+fun CommitteeChipsSection(committees: List<Committee>, modifier: Modifier = Modifier) {
     if (committees.isEmpty()) return
 
     val activeCommittees = committees.filter { it.isActive }
@@ -42,25 +39,25 @@ fun CommitteeChipsSection(
             .fillMaxWidth()
             .padding(horizontal = MaterialTheme.padding.large, vertical = MaterialTheme.padding.small),
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
+        color = MaterialTheme.colorScheme.surfaceContainer
     ) {
         Column(
-            modifier = Modifier.padding(MaterialTheme.padding.medium),
+            modifier = Modifier.padding(MaterialTheme.padding.medium)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = "Committees",
                     style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = "${activeCommittees.size} active",
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -68,12 +65,12 @@ fun CommitteeChipsSection(
             FlowRow(
                 modifier = Modifier.padding(top = MaterialTheme.padding.small),
                 horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
-                verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small)
             ) {
                 visibleCommittees.forEach { committee ->
                     AssistChip(
                         onClick = { /* Future: committee detail screen */ },
-                        label = { Text(committee.name, maxLines = 1) },
+                        label = { Text(committee.name, maxLines = 1) }
                     )
                 }
             }
@@ -81,14 +78,14 @@ fun CommitteeChipsSection(
             if (!expanded && activeCommittees.size > 3) {
                 TextButton(
                     onClick = { expanded = true },
-                    modifier = Modifier.padding(top = MaterialTheme.padding.extraSmall),
+                    modifier = Modifier.padding(top = MaterialTheme.padding.extraSmall)
                 ) {
                     Text("Show all ${committees.size}")
                 }
             } else if (expanded) {
                 TextButton(
                     onClick = { expanded = false },
-                    modifier = Modifier.padding(top = MaterialTheme.padding.extraSmall),
+                    modifier = Modifier.padding(top = MaterialTheme.padding.extraSmall)
                 ) {
                     Text("Show less")
                 }

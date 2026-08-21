@@ -7,5 +7,5 @@ data class HansardContribution(
     val contributionText: String,
     val sittingDate: String,
     val house: String,
-    val debateSection: String,
+    val debateSection: String
 )

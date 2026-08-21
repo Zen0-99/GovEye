@@ -17,9 +17,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 @Singleton
-class VotesRepository @Inject constructor(
-    private val divisionDao: DivisionDao,
-) {
+class VotesRepository @Inject constructor(private val divisionDao: DivisionDao) {
     fun observeDivisions(limit: Int = 200): Flow<RepositoryResult<List<Division>>> =
         divisionDao.observeDivisions(limit).map { entities ->
             if (entities.isEmpty()) {
@@ -55,14 +53,13 @@ class VotesRepository @Inject constructor(
             }
         }
 
-    fun observeDivision(id: Int): Flow<RepositoryResult<Division?>> =
-        divisionDao.observeDivision(id).map { entity ->
-            if (entity == null) {
-                RepositoryResult(null, SyncStatus.EMPTY)
-            } else {
-                RepositoryResult(entity.toDomain(), SyncStatus.FRESH)
-            }
+    fun observeDivision(id: Int): Flow<RepositoryResult<Division?>> = divisionDao.observeDivision(id).map { entity ->
+        if (entity == null) {
+            RepositoryResult(null, SyncStatus.EMPTY)
+        } else {
+            RepositoryResult(entity.toDomain(), SyncStatus.FRESH)
         }
+    }
 
     fun observeVotesForDivision(divisionId: Int): Flow<RepositoryResult<List<DivisionVote>>> =
         divisionDao.observeVotesForDivision(divisionId).map { entities ->
@@ -90,7 +87,7 @@ class VotesRepository @Inject constructor(
                 partyColour = partyVotes.firstOrNull()?.partyColour ?: "",
                 ayeCount = partyVotes.count { it.vote == VoteType.AYE.name },
                 noCount = partyVotes.count { it.vote == VoteType.NO.name },
-                totalMembers = partyVotes.size,
+                totalMembers = partyVotes.size
             )
         }.sortedByDescending { it.totalMembers }
     }
@@ -113,7 +110,7 @@ class VotesRepository @Inject constructor(
                 ayeCount = division.ayeCount,
                 noCount = division.noCount,
                 vote = VoteType.valueOf(voteEntity.vote),
-                isTeller = voteEntity.isTeller,
+                isTeller = voteEntity.isTeller
             )
         }.sortedByDescending { it.divisionDate }
     }
@@ -122,11 +119,10 @@ class VotesRepository @Inject constructor(
      * Get all votes for a set of divisions (used for rebellion computation).
      * Returns a map of divisionId → list of all votes in that division.
      */
-    suspend fun getAllVotesForDivisions(divisionIds: List<Int>): Map<Int, List<DivisionVote>> {
-        return divisionIds.associateWith { id ->
+    suspend fun getAllVotesForDivisions(divisionIds: List<Int>): Map<Int, List<DivisionVote>> =
+        divisionIds.associateWith { id ->
             divisionDao.getVotesForDivision(id).map { it.toDomain() }
         }
-    }
 
     /**
      * Get all divisions for a given house (used for attendance calculation).
@@ -162,27 +158,25 @@ class VotesRepository @Inject constructor(
     private suspend fun getVotesForDivisionSync(divisionId: Int): List<DivisionVoteEntity> =
         divisionDao.observeVotesForDivision(divisionId).first()
 
-    private fun DivisionEntity.toDomain(): Division =
-        Division(
-            id = id,
-            title = title,
-            date = date,
-            number = number,
-            ayeCount = ayeCount,
-            noCount = noCount,
-            isDeferred = isDeferred,
-            house = house,
-        )
+    private fun DivisionEntity.toDomain(): Division = Division(
+        id = id,
+        title = title,
+        date = date,
+        number = number,
+        ayeCount = ayeCount,
+        noCount = noCount,
+        isDeferred = isDeferred,
+        house = house
+    )
 
-    private fun DivisionVoteEntity.toDomain(): DivisionVote =
-        DivisionVote(
-            divisionId = divisionId,
-            memberId = memberId,
-            vote = VoteType.valueOf(vote),
-            memberName = memberName,
-            partyName = partyName,
-            partyColour = partyColour,
-            constituencyName = constituencyName,
-            isTeller = isTeller,
-        )
+    private fun DivisionVoteEntity.toDomain(): DivisionVote = DivisionVote(
+        divisionId = divisionId,
+        memberId = memberId,
+        vote = VoteType.valueOf(vote),
+        memberName = memberName,
+        partyName = partyName,
+        partyColour = partyColour,
+        constituencyName = constituencyName,
+        isTeller = isTeller
+    )
 }

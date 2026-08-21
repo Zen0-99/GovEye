@@ -20,42 +20,40 @@ data class BillBrowseUiState(
     val searchQuery: String = "",
     val searchResults: List<Bill> = emptyList(),
     val syncStatus: SyncStatus = SyncStatus.EMPTY,
-    val isLoading: Boolean = true,
+    val isLoading: Boolean = true
 )
 
 @HiltViewModel
-class BillBrowseViewModel @Inject constructor(
-    private val billsRepository: BillsRepository,
-) : ViewModel() {
+class BillBrowseViewModel @Inject constructor(private val billsRepository: BillsRepository) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
-    private val _searchResults = MutableStateFlow<List<Bill>>(emptyList())
+    private val searchResultsState = MutableStateFlow<List<Bill>>(emptyList())
 
     val state: StateFlow<BillBrowseUiState> =
         combine(
             billsRepository.observeBills(limit = 100),
             _searchQuery,
-            _searchResults,
+            searchResultsState
         ) { result, query, searchResults ->
             BillBrowseUiState(
                 bills = result.data,
                 searchQuery = query,
                 searchResults = searchResults,
                 syncStatus = result.status,
-                isLoading = false,
+                isLoading = false
             )
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
-            initialValue = BillBrowseUiState(),
+            initialValue = BillBrowseUiState()
         )
 
     fun setSearchQuery(query: String) {
         _searchQuery.value = query
         viewModelScope.launch {
-            _searchResults.value = if (query.isBlank()) {
+            searchResultsState.value = if (query.isBlank()) {
                 emptyList()
             } else {
                 billsRepository.searchBills(query)

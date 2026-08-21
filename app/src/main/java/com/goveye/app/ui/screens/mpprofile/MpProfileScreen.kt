@@ -1,5 +1,10 @@
 package com.goveye.app.ui.screens.mpprofile
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -50,28 +55,22 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
-import android.Manifest
-import android.content.pm.PackageManager
-import android.os.Build
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlinx.coroutines.launch
 import com.goveye.app.domain.model.MemberVoteWithDivision
 import com.goveye.app.domain.model.VoteType
 import com.goveye.app.domain.stats.RebellionStats
 import com.goveye.app.domain.stats.VoteMapCalculator
 import com.goveye.app.domain.stats.VotingStatsCalculator
-
 import com.goveye.app.ui.components.charts.AttendanceLineChart
 import com.goveye.app.ui.components.charts.RebellionLineChart
 import com.goveye.app.ui.components.charts.VotingBarChart
 import com.goveye.app.ui.theme.LocalPartyAccent
-import com.goveye.app.ui.theme.partyAccentColorScheme
 import com.goveye.app.ui.theme.padding
 import com.goveye.app.ui.theme.parsePartyColor
+import com.goveye.app.ui.theme.partyAccentColorScheme
+import kotlinx.coroutines.launch
 
 private enum class ProfileTab(val title: String) {
     PROFILE("Profile"),
@@ -79,7 +78,7 @@ private enum class ProfileTab(val title: String) {
     COMMITTEES("Committees"),
     VOTES("Votes"),
     ACTIVITY("Activity"),
-    INTERESTS("Interests"),
+    INTERESTS("Interests")
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -91,7 +90,7 @@ fun ProfileScreen(
     onNavigateToDivision: (Int, Int) -> Unit = { _, _ -> },
     onNavigateToInterestBucket: (Int, String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
-    viewModel: ProfileViewModel = hiltViewModel(),
+    viewModel: ProfileViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -100,7 +99,7 @@ fun ProfileScreen(
     // POST_NOTIFICATIONS permission launcher (Android 13+) — requested when
     // user enables any notification type
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
+        contract = ActivityResultContracts.RequestPermission()
     ) { granted ->
         // If permission denied, the prefs are still saved but notifications
         // won't show. The NotificationHelper silently skips on SecurityException.
@@ -117,19 +116,19 @@ fun ProfileScreen(
 
     Scaffold(
         modifier = modifier,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { innerPadding ->
         if (uiState.isLoading && uiState.mp == null) {
             Box(
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
-                contentAlignment = Alignment.Center,
+                contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator()
             }
         } else if (uiState.mp == null) {
             Box(
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
-                contentAlignment = Alignment.Center,
+                contentAlignment = Alignment.Center
             ) {
                 Text("MP not found", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -144,7 +143,7 @@ fun ProfileScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(innerPadding),
+                            .padding(innerPadding)
                     ) {
                         Column(modifier = Modifier.fillMaxSize()) {
                             // Fixed header — does not scroll
@@ -154,7 +153,7 @@ fun ProfileScreen(
                                 isFollowing = uiState.isFollowing,
                                 notificationsEnabled = uiState.notificationsEnabled,
                                 onFollowClick = { viewModel.toggleFollow(memberId) },
-                                onNotificationClick = { showNotificationSheet = true },
+                                onNotificationClick = { showNotificationSheet = true }
                             )
 
                             // Fixed tabs — selected text uses onSurface (theme-adaptive),
@@ -162,139 +161,147 @@ fun ProfileScreen(
                             TabRow(
                                 selectedTabIndex = pagerState.currentPage,
                                 containerColor = MaterialTheme.colorScheme.surface,
-                                contentColor = MaterialTheme.colorScheme.onSurface,
+                                contentColor = MaterialTheme.colorScheme.onSurface
                             ) {
                                 ProfileTab.entries.forEachIndexed { index, tab ->
                                     Tab(
                                         selected = pagerState.currentPage == index,
                                         onClick = {
-                                    coroutineScope.launch { pagerState.animateScrollToPage(index) }
-                                },
-                                text = {
-                                    Text(
-                                        text = tab.title,
-                                        color = if (pagerState.currentPage == index)
-                                            MaterialTheme.colorScheme.onSurface
-                                        else
-                                            MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                },
-                                selectedContentColor = MaterialTheme.colorScheme.onSurface,
-                                unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-
-                    // Pager — each page has its own scrollable LazyColumn
-                    HorizontalPager(
-                        state = pagerState,
-                        modifier = Modifier.fillMaxWidth().weight(1f),
-                    ) { page ->
-                        when (ProfileTab.entries[page]) {
-                            ProfileTab.PROFILE -> ProfileTabContent(
-                                mp = mp,
-                                synopsis = uiState.synopsis,
-                                contacts = uiState.contacts,
-                                samePartyMps = uiState.samePartyMps,
-                                committeePeerMps = uiState.committeePeerMps,
-                                onNavigateToProfile = onNavigateToProfile,
-                            )
-                            ProfileTab.CAREER -> CareerTabContent(
-                                experiences = uiState.experiences,
-                            )
-                            ProfileTab.COMMITTEES -> CommitteesTabContent(
-                                committees = uiState.committees,
-                            )
-                            ProfileTab.VOTES -> VotesTabContent(
-                                memberVotes = uiState.memberVotes,
-                                rebellionStats = uiState.rebellionStats,
-                                allDivisionDates = uiState.allDivisionDates,
-                                onNavigateToDivision = { divisionId, house ->
-                                    onNavigateToDivision(divisionId, house)
-                                },
-                            )
-                            ProfileTab.ACTIVITY -> ActivityTabContent(
-                                memberVotes = uiState.memberVotes,
-                                rebellionStats = uiState.rebellionStats,
-                                allVotesByDivision = uiState.allVotesByDivision,
-                                memberPartyName = uiState.memberPartyName,
-                                onNavigateToDivision = { divisionId, house ->
-                                    onNavigateToDivision(divisionId, house)
-                                },
-                            )
-                            ProfileTab.INTERESTS -> InterestsTabContent(
-                                memberId = memberId,
-                                interests = uiState.interests,
-                                onNavigateToBucketDetail = { bucketLabel ->
-                                    onNavigateToInterestBucket(memberId, bucketLabel)
-                                },
-                            )
-                        }
-                    }
-                }
-
-                // Animated collapsed header — fades in when scrolled
-                AnimatedVisibility(
-                    visible = isCollapsed,
-                    enter = fadeIn(),
-                    exit = fadeOut(),
-                    modifier = Modifier.align(Alignment.TopCenter),
-                ) {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        color = MaterialTheme.colorScheme.surface,
-                        shadowElevation = 3.dp,
-                    ) {
-                        TopAppBar(
-                            title = { Text(mp.nameDisplayAs) },
-                            navigationIcon = {
-                                IconButton(onClick = onBack) {
-                                    Icon(
-                                        Icons.AutoMirrored.Outlined.ArrowBack,
-                                        contentDescription = "Back",
+                                            coroutineScope.launch { pagerState.animateScrollToPage(index) }
+                                        },
+                                        text = {
+                                            Text(
+                                                text = tab.title,
+                                                color = if (pagerState.currentPage == index) {
+                                                    MaterialTheme.colorScheme.onSurface
+                                                } else {
+                                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                                }
+                                            )
+                                        },
+                                        selectedContentColor = MaterialTheme.colorScheme.onSurface,
+                                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
-                            },
-                            colors = TopAppBarDefaults.topAppBarColors(
-                                containerColor = Color.Transparent,
-                            ),
-                        )
+                            }
+
+                            // Pager — each page has its own scrollable LazyColumn
+                            HorizontalPager(
+                                state = pagerState,
+                                modifier = Modifier.fillMaxWidth().weight(1f)
+                            ) { page ->
+                                when (ProfileTab.entries[page]) {
+                                    ProfileTab.PROFILE -> ProfileTabContent(
+                                        mp = mp,
+                                        synopsis = uiState.synopsis,
+                                        contacts = uiState.contacts,
+                                        samePartyMps = uiState.samePartyMps,
+                                        committeePeerMps = uiState.committeePeerMps,
+                                        onNavigateToProfile = onNavigateToProfile
+                                    )
+
+                                    ProfileTab.CAREER -> CareerTabContent(
+                                        experiences = uiState.experiences
+                                    )
+
+                                    ProfileTab.COMMITTEES -> CommitteesTabContent(
+                                        committees = uiState.committees
+                                    )
+
+                                    ProfileTab.VOTES -> VotesTabContent(
+                                        memberVotes = uiState.memberVotes,
+                                        rebellionStats = uiState.rebellionStats,
+                                        allDivisionDates = uiState.allDivisionDates,
+                                        onNavigateToDivision = { divisionId, house ->
+                                            onNavigateToDivision(divisionId, house)
+                                        }
+                                    )
+
+                                    ProfileTab.ACTIVITY -> ActivityTabContent(
+                                        memberVotes = uiState.memberVotes,
+                                        rebellionStats = uiState.rebellionStats,
+                                        allVotesByDivision = uiState.allVotesByDivision,
+                                        memberPartyName = uiState.memberPartyName,
+                                        onNavigateToDivision = { divisionId, house ->
+                                            onNavigateToDivision(divisionId, house)
+                                        }
+                                    )
+
+                                    ProfileTab.INTERESTS -> InterestsTabContent(
+                                        memberId = memberId,
+                                        interests = uiState.interests,
+                                        onNavigateToBucketDetail = { bucketLabel ->
+                                            onNavigateToInterestBucket(memberId, bucketLabel)
+                                        }
+                                    )
+                                }
+                            }
+                        }
+
+                        // Animated collapsed header — fades in when scrolled
+                        AnimatedVisibility(
+                            visible = isCollapsed,
+                            enter = fadeIn(),
+                            exit = fadeOut(),
+                            modifier = Modifier.align(Alignment.TopCenter)
+                        ) {
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                color = MaterialTheme.colorScheme.surface,
+                                shadowElevation = 3.dp
+                            ) {
+                                TopAppBar(
+                                    title = { Text(mp.nameDisplayAs) },
+                                    navigationIcon = {
+                                        IconButton(onClick = onBack) {
+                                            Icon(
+                                                Icons.AutoMirrored.Outlined.ArrowBack,
+                                                contentDescription = "Back"
+                                            )
+                                        }
+                                    },
+                                    colors = TopAppBarDefaults.topAppBarColors(
+                                        containerColor = Color.Transparent
+                                    )
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
-        }
-    }
 
-    // Notification settings bottom sheet (FotMob-style)
-    if (showNotificationSheet) {
-        NotificationSettingsBottomSheet(
-            notificationsEnabled = uiState.notificationsEnabled,
-            votesEnabled = uiState.votesNotificationsEnabled,
-            speechesEnabled = uiState.speechesNotificationsEnabled,
-            onMasterToggle = { enabled ->
-                // Request POST_NOTIFICATIONS when turning on (Android 13+)
-                if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-                ) {
-                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                }
-                viewModel.setNotificationsEnabled(memberId, enabled)
-            },
-            onVotesToggle = { enabled ->
-                if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-                ) {
-                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                }
-                viewModel.setVotesNotificationsEnabled(memberId, enabled)
-            },
-            onSpeechesToggle = { enabled ->
-                viewModel.setSpeechesNotificationsEnabled(memberId, enabled)
-            },
-            onDismiss = { showNotificationSheet = false },
-        )
-    }
+        // Notification settings bottom sheet (FotMob-style)
+        if (showNotificationSheet) {
+            NotificationSettingsBottomSheet(
+                notificationsEnabled = uiState.notificationsEnabled,
+                votesEnabled = uiState.votesNotificationsEnabled,
+                speechesEnabled = uiState.speechesNotificationsEnabled,
+                onMasterToggle = { enabled ->
+                    // Request POST_NOTIFICATIONS when turning on (Android 13+)
+                    if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+                        PackageManager.PERMISSION_GRANTED
+                    ) {
+                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                    viewModel.setNotificationsEnabled(memberId, enabled)
+                },
+                onVotesToggle = { enabled ->
+                    if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+                        PackageManager.PERMISSION_GRANTED
+                    ) {
+                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                    viewModel.setVotesNotificationsEnabled(memberId, enabled)
+                },
+                onSpeechesToggle = { enabled ->
+                    viewModel.setSpeechesNotificationsEnabled(memberId, enabled)
+                },
+                onDismiss = { showNotificationSheet = false }
+            )
+        }
     }
 }
 
@@ -305,15 +312,15 @@ private fun ProfileTabContent(
     contacts: List<com.goveye.app.domain.model.Contact>,
     samePartyMps: List<com.goveye.app.domain.model.Mp>,
     committeePeerMps: List<com.goveye.app.domain.model.Mp>,
-    onNavigateToProfile: (Int) -> Unit,
+    onNavigateToProfile: (Int) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 20.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 20.dp)
     ) {
         item {
             ProfileStatsCard(
-                mp = mp,
+                mp = mp
             )
         }
         // Activity score strip
@@ -323,31 +330,27 @@ private fun ProfileTabContent(
             RelatedMpsSection(
                 samePartyMps = samePartyMps,
                 committeePeerMps = committeePeerMps,
-                onNavigateToProfile = onNavigateToProfile,
+                onNavigateToProfile = onNavigateToProfile
             )
         }
     }
 }
 
 @Composable
-private fun CareerTabContent(
-    experiences: List<com.goveye.app.domain.model.BiographyExperience>,
-) {
+private fun CareerTabContent(experiences: List<com.goveye.app.domain.model.BiographyExperience>) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 20.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 20.dp)
     ) {
         item { CareerTimelineSection(experiences = experiences) }
     }
 }
 
 @Composable
-private fun CommitteesTabContent(
-    committees: List<com.goveye.app.domain.model.Committee>,
-) {
+private fun CommitteesTabContent(committees: List<com.goveye.app.domain.model.Committee>) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 20.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 20.dp)
     ) {
         item { CommitteeChipsSection(committees = committees) }
     }
@@ -358,7 +361,7 @@ private fun VotesTabContent(
     memberVotes: List<MemberVoteWithDivision>,
     rebellionStats: RebellionStats?,
     allDivisionDates: List<String>,
-    onNavigateToDivision: (Int, Int) -> Unit,
+    onNavigateToDivision: (Int, Int) -> Unit
 ) {
     // Compute chart data
     val monthlyVoting = remember(memberVotes) { VotingStatsCalculator.computeMonthlyVoting(memberVotes) }
@@ -366,7 +369,8 @@ private fun VotesTabContent(
         VotingStatsCalculator.computeAttendanceTrend(memberVotes, allDivisionDates)
     }
     val rebellionTrend = remember(rebellionStats, memberVotes) {
-        rebellionStats?.let { VotingStatsCalculator.computeRebellionTrend(it.rebellionInstances, memberVotes) } ?: emptyList()
+        rebellionStats?.let { VotingStatsCalculator.computeRebellionTrend(it.rebellionInstances, memberVotes) }
+            ?: emptyList()
     }
     val voteMapTiles = remember(rebellionStats, memberVotes) {
         rebellionStats?.let { VoteMapCalculator.compute(memberVotes, it.rebellionInstances) } ?: emptyList()
@@ -376,16 +380,16 @@ private fun VotesTabContent(
         modifier = Modifier.fillMaxSize(),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(
             horizontal = 16.dp,
-            vertical = 16.dp,
+            vertical = 16.dp
         ),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         // Summary header
         if (memberVotes.isNotEmpty()) {
             item {
                 VotesSummaryCard(
                     totalVotes = memberVotes.size,
-                    rebellionStats = rebellionStats,
+                    rebellionStats = rebellionStats
                 )
             }
         }
@@ -418,12 +422,12 @@ private fun VotesTabContent(
                         legendItems = listOf(
                             "With party" to com.goveye.app.ui.components.VoteColors.aye,
                             "Rebel" to com.goveye.app.ui.components.VoteColors.no,
-                            "No vote" to MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
-                        ),
+                            "No vote" to MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                        )
                     )
                     com.goveye.app.ui.components.stats.VoteMapGrid(
                         tiles = voteMapTiles,
-                        onTileClick = onNavigateToDivision,
+                        onTileClick = onNavigateToDivision
                     )
                 }
             }
@@ -434,11 +438,11 @@ private fun VotesTabContent(
                 com.goveye.app.ui.components.charts.ChartCard {
                     Box(
                         modifier = Modifier.fillMaxWidth().padding(32.dp),
-                        contentAlignment = Alignment.Center,
+                        contentAlignment = Alignment.Center
                     ) {
                         Text(
                             "No voting data available yet.",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -451,14 +455,14 @@ private fun VotesTabContent(
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+                    modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
                 )
             }
             items(memberVotes, key = { it.divisionId }) { vote ->
                 VoteRecordRow(
                     vote = vote,
                     isRebel = rebellionStats?.rebellionInstances?.any { it.divisionId == vote.divisionId } == true,
-                    onClick = { onNavigateToDivision(vote.divisionId, vote.house) },
+                    onClick = { onNavigateToDivision(vote.divisionId, vote.house) }
                 )
             }
         }
@@ -466,37 +470,34 @@ private fun VotesTabContent(
 }
 
 @Composable
-private fun VotesSummaryCard(
-    totalVotes: Int,
-    rebellionStats: RebellionStats?,
-) {
+private fun VotesSummaryCard(totalVotes: Int, rebellionStats: RebellionStats?) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.surfaceContainer)
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(
             text = "Voting Record",
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.Bold
         )
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column {
                 Text(
                     text = "Total Votes",
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     text = totalVotes.toString(),
                     style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.Bold
                 )
             }
             if (rebellionStats != null) {
@@ -504,7 +505,7 @@ private fun VotesSummaryCard(
                     Text(
                         text = "Rebellion Rate",
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
                         text = "${(rebellionStats.rebellionRate * 100).toInt()}%",
@@ -514,19 +515,19 @@ private fun VotesSummaryCard(
                             MaterialTheme.colorScheme.error
                         } else {
                             MaterialTheme.colorScheme.primary
-                        },
+                        }
                     )
                 }
                 Column {
                     Text(
                         text = "Rebellions",
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
                         text = "${rebellionStats.rebellionCount}/${rebellionStats.totalDivisionsVoted}",
                         style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
@@ -535,11 +536,7 @@ private fun VotesSummaryCard(
 }
 
 @Composable
-private fun VoteRecordRow(
-    vote: MemberVoteWithDivision,
-    isRebel: Boolean,
-    onClick: () -> Unit,
-) {
+private fun VoteRecordRow(vote: MemberVoteWithDivision, isRebel: Boolean, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -548,7 +545,7 @@ private fun VoteRecordRow(
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         // Vote badge — theme-aware Aye (teal) / No (orange) colors
         val ayeColor = com.goveye.app.ui.components.VoteColors.aye
@@ -560,13 +557,13 @@ private fun VoteRecordRow(
                 .background(
                     if (vote.vote == VoteType.AYE) ayeColor else noColor
                 ),
-            contentAlignment = Alignment.Center,
+            contentAlignment = Alignment.Center
         ) {
             Text(
                 text = if (vote.vote == VoteType.AYE) "Aye" else "No",
                 style = MaterialTheme.typography.labelSmall,
                 color = androidx.compose.ui.graphics.Color.White,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Bold
             )
         }
         Column(modifier = Modifier.weight(1f)) {
@@ -574,12 +571,12 @@ private fun VoteRecordRow(
                 text = vote.divisionTitle,
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = formatDivisionDate(vote.divisionDate),
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         if (isRebel) {
@@ -587,17 +584,15 @@ private fun VoteRecordRow(
                 text = "Rebel",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.error,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Bold
             )
         }
     }
 }
 
-private fun formatDivisionDate(dateString: String): String {
-    return try {
-        val parts = dateString.split("T").first().split("-")
-        "${parts[2]}/${parts[1]}/${parts[0]}"
-    } catch (e: Exception) {
-        dateString
-    }
+private fun formatDivisionDate(dateString: String): String = try {
+    val parts = dateString.split("T").first().split("-")
+    "${parts[2]}/${parts[1]}/${parts[0]}"
+} catch (e: Exception) {
+    dateString
 }

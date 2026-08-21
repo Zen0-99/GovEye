@@ -6,10 +6,10 @@ import com.goveye.app.data.local.dao.MpDao
 import com.goveye.app.data.local.entity.MpEntity
 import com.goveye.app.data.repo.CommitteesRepository
 import com.goveye.app.data.repo.FollowRepository
+import com.goveye.app.data.repo.InterestsRepository
 import com.goveye.app.data.repo.MembersRepository
 import com.goveye.app.data.repo.NotificationPreferenceRepository
 import com.goveye.app.data.repo.VotesRepository
-import com.goveye.app.data.repo.InterestsRepository
 import com.goveye.app.domain.model.BiographyExperience
 import com.goveye.app.domain.model.Committee
 import com.goveye.app.domain.model.Contact
@@ -25,8 +25,8 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 data class ProfileUiState(
@@ -48,7 +48,7 @@ data class ProfileUiState(
     val votesNotificationsEnabled: Boolean = false,
     val speechesNotificationsEnabled: Boolean = false,
     val syncStatus: SyncStatus = SyncStatus.EMPTY,
-    val isLoading: Boolean = true,
+    val isLoading: Boolean = true
 )
 
 @HiltViewModel
@@ -59,7 +59,7 @@ class ProfileViewModel @Inject constructor(
     private val followRepository: FollowRepository,
     private val notificationPrefRepository: NotificationPreferenceRepository,
     private val mpDao: MpDao,
-    private val interestsRepository: InterestsRepository,
+    private val interestsRepository: InterestsRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -71,7 +71,7 @@ class ProfileViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(
                     mp = result.data,
                     syncStatus = result.status,
-                    isLoading = false,
+                    isLoading = false
                 )
                 result.data?.let { mp ->
                     loadSamePartyMps(memberId, mp.party?.id)
@@ -92,7 +92,7 @@ class ProfileViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(
                     notificationsEnabled = pref.notificationsEnabled,
                     votesNotificationsEnabled = pref.votesEnabled,
-                    speechesNotificationsEnabled = pref.speechesEnabled,
+                    speechesNotificationsEnabled = pref.speechesEnabled
                 )
             }
         }
@@ -214,21 +214,23 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
-    private fun MpEntity.toDomainMp(): Mp =
-        Mp(
-            id = id,
-            nameListAs = nameListAs,
-            nameDisplayAs = nameDisplayAs,
-            nameFullTitle = nameFullTitle,
-            gender = gender,
-            party = com.goveye.app.domain.model.Party(
-                partyId, partyName, partyAbbreviation,
-                partyBackgroundColour, partyForegroundColour,
-            ),
-            constituency = com.goveye.app.domain.model.Constituency(constituencyId, constituencyName),
-            house = house,
-            membershipStartDate = membershipStartDate,
-            isActive = isActive,
-            thumbnailUrl = thumbnailUrl,
-        )
+    private fun MpEntity.toDomainMp(): Mp = Mp(
+        id = id,
+        nameListAs = nameListAs,
+        nameDisplayAs = nameDisplayAs,
+        nameFullTitle = nameFullTitle,
+        gender = gender,
+        party = com.goveye.app.domain.model.Party(
+            partyId,
+            partyName,
+            partyAbbreviation,
+            partyBackgroundColour,
+            partyForegroundColour
+        ),
+        constituency = com.goveye.app.domain.model.Constituency(constituencyId, constituencyName),
+        house = house,
+        membershipStartDate = membershipStartDate,
+        isActive = isActive,
+        thumbnailUrl = thumbnailUrl
+    )
 }

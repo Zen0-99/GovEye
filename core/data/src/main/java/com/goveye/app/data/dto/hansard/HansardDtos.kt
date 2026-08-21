@@ -12,7 +12,7 @@ data class HansardSearchResponse(
     @SerialName("TotalDebates") val totalDebates: Int = 0,
     @SerialName("TotalDivisions") val totalDivisions: Int = 0,
     @SerialName("SearchTerms") val searchTerms: List<String> = emptyList(),
-    @SerialName("Contributions") val contributions: List<HansardContributionDto> = emptyList(),
+    @SerialName("Contributions") val contributions: List<HansardContributionDto> = emptyList()
 )
 
 @Serializable
@@ -25,5 +25,5 @@ data class HansardContributionDto(
     @SerialName("House") val house: String,
     @SerialName("DebateSection") val debateSection: String,
     @SerialName("ItemId") val itemId: Long = 0,
-    @SerialName("DebateSectionId") val debateSectionId: Long = 0,
+    @SerialName("DebateSectionId") val debateSectionId: Long = 0
 )

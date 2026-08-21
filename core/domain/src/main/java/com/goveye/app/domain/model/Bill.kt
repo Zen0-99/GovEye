@@ -10,7 +10,7 @@ data class Bill(
     val isAct: Boolean,
     val isDefeated: Boolean = false,
     val billWithdrawn: String? = null,
-    val currentStage: BillStage?,
+    val currentStage: BillStage?
 )
 
 data class BillStage(
@@ -19,5 +19,5 @@ data class BillStage(
     val abbreviation: String,
     val house: String,
     val sortOrder: Int,
-    val sittingDates: List<String>,
+    val sittingDates: List<String>
 )

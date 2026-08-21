@@ -5,5 +5,5 @@ enum class SyncStatus {
     STALE,
     OFFLINE,
     ERROR,
-    EMPTY,
+    EMPTY
 }

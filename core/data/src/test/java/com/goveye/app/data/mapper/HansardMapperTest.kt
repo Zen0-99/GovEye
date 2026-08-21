@@ -15,7 +15,7 @@ class HansardMapperTest {
                 sittingDate = "2026-07-23",
                 house = "Commons",
                 debateSection = "Test Debate",
-                itemId = 12345,
+                itemId = 12345
             )
 
         val domain = HansardMapper.toDomain(dto)
@@ -30,8 +30,22 @@ class HansardMapperTest {
     fun `maps contribution list`() {
         val dtos =
             listOf(
-                HansardContributionDto(memberName = "A", memberId = 1, contributionText = "x", sittingDate = "2026-01-01", house = "Commons", debateSection = "D"),
-                HansardContributionDto(memberName = "B", memberId = 2, contributionText = "y", sittingDate = "2026-01-02", house = "Lords", debateSection = "E"),
+                HansardContributionDto(
+                    memberName = "A",
+                    memberId = 1,
+                    contributionText = "x",
+                    sittingDate = "2026-01-01",
+                    house = "Commons",
+                    debateSection = "D"
+                ),
+                HansardContributionDto(
+                    memberName = "B",
+                    memberId = 2,
+                    contributionText = "y",
+                    sittingDate = "2026-01-02",
+                    house = "Lords",
+                    debateSection = "E"
+                )
             )
 
         val result = HansardMapper.toDomainList(dtos)

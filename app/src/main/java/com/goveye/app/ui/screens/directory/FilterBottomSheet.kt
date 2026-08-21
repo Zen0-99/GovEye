@@ -34,7 +34,7 @@ enum class FilterTabType {
     OFFICIALS,
     DIVISIONS,
     FEED,
-    OTHER,
+    OTHER
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -50,7 +50,7 @@ fun FilterBottomSheet(
     onFollowingOnlyChange: (Boolean) -> Unit = {},
     onViewModeChange: (DirectoryViewMode) -> Unit,
     onClearFilters: () -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -58,19 +58,19 @@ fun FilterBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surface,
-        dragHandle = null,
+        dragHandle = null
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(max = 700.dp),
+                .heightIn(max = 700.dp)
         ) {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f, fill = false),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp)
             ) {
                 when (tabType) {
                     FilterTabType.OFFICIALS -> {
@@ -79,7 +79,7 @@ fun FilterBottomSheet(
                             PartyPillRow(
                                 parties = distinctParties,
                                 filterState = filterState,
-                                onPartyToggle = onPartyToggle,
+                                onPartyToggle = onPartyToggle
                             )
                         }
 
@@ -90,10 +90,10 @@ fun FilterBottomSheet(
                                 options = listOf(
                                     "All" to 0,
                                     "Commons" to 1,
-                                    "Lords" to 2,
+                                    "Lords" to 2
                                 ),
                                 selectedValue = filterState.houseFilter,
-                                onValueChange = onHouseChange,
+                                onValueChange = onHouseChange
                             )
                         }
 
@@ -103,10 +103,10 @@ fun FilterBottomSheet(
                             SegmentedPill(
                                 options = listOf(
                                     "All" to false,
-                                    "Current" to true,
+                                    "Current" to true
                                 ),
                                 selectedValue = filterState.currentOnly,
-                                onValueChange = onCurrentOnlyChange,
+                                onValueChange = onCurrentOnlyChange
                             )
                         }
 
@@ -116,10 +116,10 @@ fun FilterBottomSheet(
                             SegmentedPill(
                                 options = listOf(
                                     "List" to DirectoryViewMode.LIST,
-                                    "Grid" to DirectoryViewMode.GRID,
+                                    "Grid" to DirectoryViewMode.GRID
                                 ),
                                 selectedValue = viewMode,
-                                onValueChange = onViewModeChange,
+                                onValueChange = onViewModeChange
                             )
                         }
                     }
@@ -132,10 +132,10 @@ fun FilterBottomSheet(
                                 options = listOf(
                                     "All" to 0,
                                     "Commons" to 1,
-                                    "Lords" to 2,
+                                    "Lords" to 2
                                 ),
                                 selectedValue = filterState.houseFilter,
-                                onValueChange = onHouseChange,
+                                onValueChange = onHouseChange
                             )
                         }
                     }
@@ -147,10 +147,10 @@ fun FilterBottomSheet(
                             SegmentedPill(
                                 options = listOf(
                                     "All" to false,
-                                    "Following" to true,
+                                    "Following" to true
                                 ),
                                 selectedValue = filterState.followingOnly,
-                                onValueChange = onFollowingOnlyChange,
+                                onValueChange = onFollowingOnlyChange
                             )
                         }
                         // House — All / Commons / Lords (same as DIVISIONS)
@@ -160,10 +160,10 @@ fun FilterBottomSheet(
                                 options = listOf(
                                     "All" to 0,
                                     "Commons" to 1,
-                                    "Lords" to 2,
+                                    "Lords" to 2
                                 ),
                                 selectedValue = filterState.houseFilter,
-                                onValueChange = onHouseChange,
+                                onValueChange = onHouseChange
                             )
                         }
                     }
@@ -173,7 +173,7 @@ fun FilterBottomSheet(
                             Text(
                                 text = "No filters available for this tab",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -186,7 +186,7 @@ fun FilterBottomSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                shape = RoundedCornerShape(24.dp),
+                shape = RoundedCornerShape(24.dp)
             ) {
                 Text(text = "Clear filters")
             }
@@ -201,7 +201,7 @@ private fun SectionLabel(text: String) {
         style = MaterialTheme.typography.titleSmall,
         fontWeight = FontWeight.SemiBold,
         color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(bottom = 8.dp),
+        modifier = Modifier.padding(bottom = 8.dp)
     )
 }
 
@@ -213,7 +213,7 @@ private fun <T> SegmentedPill(
     options: List<Pair<String, T>>,
     selectedValue: T,
     onValueChange: (T) -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     val containerShape = RoundedCornerShape(999.dp)
     val segmentShape = RoundedCornerShape(999.dp)
@@ -223,7 +223,7 @@ private fun <T> SegmentedPill(
             .clip(containerShape)
             .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f))
             .padding(3.dp),
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         options.forEach { (label, value) ->
             val isSelected = selectedValue == value
@@ -238,12 +238,12 @@ private fun <T> SegmentedPill(
                             )
                         } else {
                             Modifier
-                        },
+                        }
                     )
                     .clickable { onValueChange(value) }
                     .padding(vertical = 8.dp),
                 horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = label,
@@ -254,7 +254,7 @@ private fun <T> SegmentedPill(
                         MaterialTheme.colorScheme.onSurfaceVariant
                     },
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                    maxLines = 1,
+                    maxLines = 1
                 )
             }
         }
@@ -265,16 +265,12 @@ private fun <T> SegmentedPill(
  * Horizontally scrollable row of party filter pills.
  */
 @Composable
-private fun PartyPillRow(
-    parties: List<String>,
-    filterState: DirectoryFilterState,
-    onPartyToggle: (String) -> Unit,
-) {
+private fun PartyPillRow(parties: List<String>, filterState: DirectoryFilterState, onPartyToggle: (String) -> Unit) {
     if (parties.isEmpty()) {
         Text(
             text = "No parties available",
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         return
     }
@@ -282,7 +278,7 @@ private fun PartyPillRow(
         modifier = Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         parties.forEach { party ->
             val state = filterState.partyState(party)
@@ -291,8 +287,10 @@ private fun PartyPillRow(
             val containerColor = when (state) {
                 PartyFilterState.INCLUDED ->
                     MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+
                 PartyFilterState.EXCLUDED ->
                     MaterialTheme.colorScheme.error.copy(alpha = 0.12f)
+
                 PartyFilterState.DISABLED ->
                     MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)
             }
@@ -317,7 +315,7 @@ private fun PartyPillRow(
                     .clip(shape)
                     .background(containerColor)
                     .clickable { onPartyToggle(party) }
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
             )
         }
     }

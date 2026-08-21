@@ -11,7 +11,7 @@ data class Mp(
     val house: Int,
     val membershipStartDate: String?,
     val isActive: Boolean,
-    val thumbnailUrl: String?,
+    val thumbnailUrl: String?
 )
 
 data class Party(
@@ -19,10 +19,7 @@ data class Party(
     val name: String,
     val abbreviation: String,
     val backgroundColour: String,
-    val foregroundColour: String,
+    val foregroundColour: String
 )
 
-data class Constituency(
-    val id: Int,
-    val name: String,
-)
+data class Constituency(val id: Int, val name: String)

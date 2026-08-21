@@ -13,5 +13,5 @@ data class BillStageEntity(
     val sortOrder: Int,
     val sessionId: Int? = null,
     val sittingDates: List<String>,
-    val lastUpdated: Long,
+    val lastUpdated: Long
 )

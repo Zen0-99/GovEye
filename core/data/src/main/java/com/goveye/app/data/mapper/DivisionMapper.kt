@@ -13,29 +13,27 @@ import com.goveye.app.domain.model.VoteType
 object DivisionMapper {
     // --- Commons ---
 
-    fun toDomain(dto: DivisionDto): Division =
-        Division(
-            id = dto.divisionId,
-            title = dto.title,
-            date = dto.date,
-            number = dto.number,
-            ayeCount = dto.ayeCount,
-            noCount = dto.noCount,
-            isDeferred = dto.isDeferred,
-            house = 1,
-        )
+    fun toDomain(dto: DivisionDto): Division = Division(
+        id = dto.divisionId,
+        title = dto.title,
+        date = dto.date,
+        number = dto.number,
+        ayeCount = dto.ayeCount,
+        noCount = dto.noCount,
+        isDeferred = dto.isDeferred,
+        house = 1
+    )
 
-    fun toDomain(dto: VoterDto, divisionId: Int, vote: VoteType): DivisionVote =
-        DivisionVote(
-            divisionId = divisionId,
-            memberId = dto.memberId,
-            vote = vote,
-            memberName = dto.name,
-            partyName = dto.party,
-            partyColour = dto.partyColour,
-            constituencyName = dto.memberFrom,
-            isTeller = false,
-        )
+    fun toDomain(dto: VoterDto, divisionId: Int, vote: VoteType): DivisionVote = DivisionVote(
+        divisionId = divisionId,
+        memberId = dto.memberId,
+        vote = vote,
+        memberName = dto.name,
+        partyName = dto.party,
+        partyColour = dto.partyColour,
+        constituencyName = dto.memberFrom,
+        isTeller = false
+    )
 
     fun toDomain(dto: MemberVoteDto): DivisionVote? {
         val publishedDivision = dto.publishedDivision ?: return null
@@ -53,7 +51,7 @@ object DivisionMapper {
             partyName = null,
             partyColour = null,
             constituencyName = null,
-            isTeller = dto.memberWasTeller,
+            isTeller = dto.memberWasTeller
         )
     }
 
@@ -63,29 +61,27 @@ object DivisionMapper {
     // Lords use Content / Not Content instead of Aye / No.
     // We map Content → AYE, Not Content → NO for unified handling.
 
-    fun toDomain(dto: LordsDivisionDto): Division =
-        Division(
-            id = dto.divisionId,
-            title = dto.title,
-            date = dto.date,
-            number = dto.number,
-            ayeCount = dto.memberContentCount,
-            noCount = dto.memberNotContentCount,
-            isDeferred = false,
-            house = 2,
-        )
+    fun toDomain(dto: LordsDivisionDto): Division = Division(
+        id = dto.divisionId,
+        title = dto.title,
+        date = dto.date,
+        number = dto.number,
+        ayeCount = dto.memberContentCount,
+        noCount = dto.memberNotContentCount,
+        isDeferred = false,
+        house = 2
+    )
 
-    fun toDomain(dto: LordsVoterDto, divisionId: Int, vote: VoteType): DivisionVote =
-        DivisionVote(
-            divisionId = divisionId,
-            memberId = dto.memberId,
-            vote = vote,
-            memberName = dto.name,
-            partyName = dto.party,
-            partyColour = dto.partyColour,
-            constituencyName = dto.memberFrom,
-            isTeller = false,
-        )
+    fun toDomain(dto: LordsVoterDto, divisionId: Int, vote: VoteType): DivisionVote = DivisionVote(
+        divisionId = divisionId,
+        memberId = dto.memberId,
+        vote = vote,
+        memberName = dto.name,
+        partyName = dto.party,
+        partyColour = dto.partyColour,
+        constituencyName = dto.memberFrom,
+        isTeller = false
+    )
 
     fun toDomain(dto: LordsMemberVoteDto): DivisionVote? {
         val publishedDivision = dto.publishedDivision ?: return null
@@ -103,7 +99,7 @@ object DivisionMapper {
             partyName = null,
             partyColour = null,
             constituencyName = null,
-            isTeller = dto.memberWasTeller,
+            isTeller = dto.memberWasTeller
         )
     }
 

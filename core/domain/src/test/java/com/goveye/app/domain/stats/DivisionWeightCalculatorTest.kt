@@ -12,7 +12,7 @@ class DivisionWeightCalculatorTest {
         val weight = DivisionWeightCalculator.compute(
             mpVote = VoteType.AYE,
             isRebellion = false,
-            divisionCloseness = 0.0,
+            divisionCloseness = 0.0
         )
         assertEquals(3.0, weight.score, 0.001)
     }
@@ -22,7 +22,7 @@ class DivisionWeightCalculatorTest {
         val weight = DivisionWeightCalculator.compute(
             mpVote = VoteType.AYE,
             isRebellion = false,
-            divisionCloseness = 1.0,
+            divisionCloseness = 1.0
         )
         assertEquals(6.0, weight.score, 0.001)
     }
@@ -32,7 +32,7 @@ class DivisionWeightCalculatorTest {
         val weight = DivisionWeightCalculator.compute(
             mpVote = VoteType.NO,
             isRebellion = true,
-            divisionCloseness = 1.0,
+            divisionCloseness = 1.0
         )
         assertEquals(10.0, weight.score, 0.001)
     }
@@ -42,7 +42,7 @@ class DivisionWeightCalculatorTest {
         val weight = DivisionWeightCalculator.compute(
             mpVote = VoteType.NO,
             isRebellion = true,
-            divisionCloseness = 0.0,
+            divisionCloseness = 0.0
         )
         assertEquals(7.0, weight.score, 0.001)
     }
@@ -52,7 +52,7 @@ class DivisionWeightCalculatorTest {
         val weight = DivisionWeightCalculator.compute(
             mpVote = VoteType.NO_VOTE_RECORDED,
             isRebellion = false,
-            divisionCloseness = 0.5,
+            divisionCloseness = 0.5
         )
         assertEquals(0.0, weight.score, 0.001)
     }
@@ -62,7 +62,7 @@ class DivisionWeightCalculatorTest {
         val weight = DivisionWeightCalculator.compute(
             mpVote = VoteType.AYE,
             isRebellion = true,
-            divisionCloseness = 1.0,
+            divisionCloseness = 1.0
         )
         assertTrue(weight.score <= 10.0)
     }
@@ -72,12 +72,12 @@ class DivisionWeightCalculatorTest {
         val rebellionWeight = DivisionWeightCalculator.compute(
             mpVote = VoteType.NO,
             isRebellion = true,
-            divisionCloseness = 0.5,
+            divisionCloseness = 0.5
         )
         val nonRebellionWeight = DivisionWeightCalculator.compute(
             mpVote = VoteType.AYE,
             isRebellion = false,
-            divisionCloseness = 0.5,
+            divisionCloseness = 0.5
         )
         assertTrue(rebellionWeight.score > nonRebellionWeight.score)
     }
@@ -87,7 +87,7 @@ class DivisionWeightCalculatorTest {
         val weight = DivisionWeightCalculator.compute(
             mpVote = VoteType.NO,
             isRebellion = true,
-            divisionCloseness = 0.5,
+            divisionCloseness = 0.5
         )
         assertTrue(weight.isRebellion)
         assertEquals(VoteType.NO, weight.voteType)

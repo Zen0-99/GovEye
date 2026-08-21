@@ -3,8 +3,8 @@ package com.goveye.app.notifications
 import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import com.goveye.app.ui.navigation.DeepLinkNavigator
 import com.goveye.app.ui.navigation.BillDetailRoute
+import com.goveye.app.ui.navigation.DeepLinkNavigator
 import com.goveye.app.ui.navigation.DivisionDetailRoute
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject

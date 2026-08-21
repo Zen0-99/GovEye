@@ -34,10 +34,7 @@ import com.goveye.app.ui.theme.padding
 enum class CareerViewMode { TIMELINE, TABLE }
 
 @Composable
-fun CareerTimelineSection(
-    experiences: List<BiographyExperience>,
-    modifier: Modifier = Modifier,
-) {
+fun CareerTimelineSection(experiences: List<BiographyExperience>, modifier: Modifier = Modifier) {
     if (experiences.isEmpty()) return
 
     var viewMode by remember { mutableStateOf(CareerViewMode.TIMELINE) }
@@ -45,27 +42,36 @@ fun CareerTimelineSection(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = MaterialTheme.padding.large, vertical = MaterialTheme.padding.medium),
+            .padding(horizontal = MaterialTheme.padding.large, vertical = MaterialTheme.padding.medium)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = "Political Career",
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = MaterialTheme.colorScheme.onSurface
             )
             IconButton(onClick = {
-                viewMode = if (viewMode == CareerViewMode.TIMELINE) CareerViewMode.TABLE
-                else CareerViewMode.TIMELINE
+                viewMode = if (viewMode == CareerViewMode.TIMELINE) {
+                    CareerViewMode.TABLE
+                } else {
+                    CareerViewMode.TIMELINE
+                }
             }) {
                 Icon(
-                    imageVector = if (viewMode == CareerViewMode.TIMELINE) Icons.Outlined.ViewList
-                    else Icons.Outlined.Timeline,
-                    contentDescription = if (viewMode == CareerViewMode.TIMELINE) "Table view"
-                    else "Timeline view",
+                    imageVector = if (viewMode == CareerViewMode.TIMELINE) {
+                        Icons.Outlined.ViewList
+                    } else {
+                        Icons.Outlined.Timeline
+                    },
+                    contentDescription = if (viewMode == CareerViewMode.TIMELINE) {
+                        "Table view"
+                    } else {
+                        "Timeline view"
+                    }
                 )
             }
         }
@@ -84,12 +90,12 @@ private fun TimelineView(experiences: List<BiographyExperience>) {
 
     Column(
         modifier = Modifier.padding(top = MaterialTheme.padding.medium),
-        verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.medium),
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.medium)
     ) {
         experiences.forEach { experience ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.medium),
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.medium)
             ) {
                 Box(
                     modifier = Modifier
@@ -101,10 +107,10 @@ private fun TimelineView(experiences: List<BiographyExperience>) {
                                 color = lineColor,
                                 start = Offset(size.width / 2, size.height),
                                 end = Offset(size.width / 2, size.height + 40.dp.toPx()),
-                                strokeWidth = 2.dp.toPx(),
+                                strokeWidth = 2.dp.toPx()
                             )
                         },
-                    contentAlignment = Alignment.Center,
+                    contentAlignment = Alignment.Center
                 ) {}
 
                 Column(modifier = Modifier.weight(1f)) {
@@ -112,19 +118,19 @@ private fun TimelineView(experiences: List<BiographyExperience>) {
                         text = experience.title ?: "Unknown role",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     experience.organisation?.let { org ->
                         Text(
                             text = org,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Text(
                         text = experience.dateRangeText,
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -136,31 +142,31 @@ private fun TimelineView(experiences: List<BiographyExperience>) {
 private fun TableView(experiences: List<BiographyExperience>) {
     Column(
         modifier = Modifier.padding(top = MaterialTheme.padding.medium),
-        verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small)
     ) {
         experiences.forEach { experience ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = experience.title ?: "Unknown role",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     experience.organisation?.let { org ->
                         Text(
                             text = org,
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
                 Text(
                     text = experience.dateRangeText,
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             HorizontalDivider()

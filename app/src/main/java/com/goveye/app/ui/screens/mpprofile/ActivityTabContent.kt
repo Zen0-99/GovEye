@@ -46,17 +46,17 @@ fun ActivityTabContent(
     @Suppress("UNUSED_PARAMETER") allVotesByDivision: Map<Int, List<com.goveye.app.domain.model.DivisionVote>>,
     @Suppress("UNUSED_PARAMETER") memberPartyName: String?,
     onNavigateToDivision: (Int, Int) -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     if (memberVotes.isEmpty()) {
         Box(
             modifier = modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center,
+            contentAlignment = Alignment.Center
         ) {
             Text(
                 text = "No recent activity",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         return
@@ -67,7 +67,7 @@ fun ActivityTabContent(
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(recentVotes, key = { it.divisionId }) { vote ->
             val isRebellion = isRebellionDivision(vote.divisionId, rebellionStats)
@@ -80,25 +80,20 @@ fun ActivityTabContent(
             val weight = DivisionWeightCalculator.compute(
                 mpVote = vote.vote,
                 isRebellion = isRebellion,
-                divisionCloseness = closeness,
+                divisionCloseness = closeness
             )
             ActivityRow(
                 vote = vote,
                 isRebellion = isRebellion,
                 score = weight.score,
-                onClick = { onNavigateToDivision(vote.divisionId, vote.house) },
+                onClick = { onNavigateToDivision(vote.divisionId, vote.house) }
             )
         }
     }
 }
 
 @Composable
-private fun ActivityRow(
-    vote: MemberVoteWithDivision,
-    isRebellion: Boolean,
-    score: Double,
-    onClick: () -> Unit,
-) {
+private fun ActivityRow(vote: MemberVoteWithDivision, isRebellion: Boolean, score: Double, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -107,7 +102,7 @@ private fun ActivityRow(
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         // Vote badge — Aye (teal) / No (orange), No-vote-recorded shows "—"
         val ayeColor = com.goveye.app.ui.components.VoteColors.aye
@@ -121,9 +116,9 @@ private fun ActivityRow(
                         VoteType.AYE -> ayeColor
                         VoteType.NO -> noColor
                         VoteType.NO_VOTE_RECORDED -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-                    },
+                    }
                 ),
-            contentAlignment = Alignment.Center,
+            contentAlignment = Alignment.Center
         ) {
             Text(
                 text = when (vote.vote) {
@@ -133,7 +128,7 @@ private fun ActivityRow(
                 },
                 style = MaterialTheme.typography.labelSmall,
                 color = Color.White,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Bold
             )
         }
         Column(modifier = Modifier.weight(1f)) {
@@ -141,29 +136,29 @@ private fun ActivityRow(
                 text = vote.divisionTitle,
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis
             )
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = formatActivityDate(vote.divisionDate),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     text = if (vote.house == 2) "Lords" else "Commons",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.Bold
                 )
                 if (isRebellion) {
                     Text(
                         text = "Rebel",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.error,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
@@ -185,28 +180,24 @@ private fun WeightBadge(score: Double, modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(8.dp),
-        color = color.copy(alpha = 0.12f),
+        color = color.copy(alpha = 0.12f)
     ) {
         Text(
             text = String.format("%.1f", score),
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold,
             color = color,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
         )
     }
 }
 
-private fun isRebellionDivision(
-    divisionId: Int,
-    rebellionStats: RebellionStats?,
-): Boolean = rebellionStats?.rebellionInstances?.any { it.divisionId == divisionId } == true
+private fun isRebellionDivision(divisionId: Int, rebellionStats: RebellionStats?): Boolean =
+    rebellionStats?.rebellionInstances?.any { it.divisionId == divisionId } == true
 
-private fun formatActivityDate(dateString: String): String {
-    return try {
-        val parts = dateString.split("T").first().split("-")
-        "${parts[2]}/${parts[1]}/${parts[0]}"
-    } catch (e: Exception) {
-        dateString
-    }
+private fun formatActivityDate(dateString: String): String = try {
+    val parts = dateString.split("T").first().split("-")
+    "${parts[2]}/${parts[1]}/${parts[0]}"
+} catch (e: Exception) {
+    dateString
 }

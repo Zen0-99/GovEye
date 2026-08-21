@@ -6,8 +6,8 @@ import com.goveye.app.data.local.BundledDatabase
 import com.goveye.app.data.local.entity.MpEntity
 import kotlinx.coroutines.test.runTest
 import org.junit.After
-import org.junit.Assert.assertTrue
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -24,7 +24,7 @@ class SearchDaoFtsTest {
     fun setUp() {
         database = Room.inMemoryDatabaseBuilder(
             RuntimeEnvironment.getApplication(),
-            BundledDatabase::class.java,
+            BundledDatabase::class.java
         ).allowMainThreadQueries().build()
     }
 
@@ -41,7 +41,7 @@ class SearchDaoFtsTest {
         partyName: String = "Labour",
         constituencyName: String = "Test Constituency",
         house: Int = 1,
-        isActive: Boolean = true,
+        isActive: Boolean = true
     ): MpEntity = MpEntity(
         id = id,
         nameListAs = nameListAs,
@@ -61,7 +61,7 @@ class SearchDaoFtsTest {
         membershipEndDate = null,
         isActive = isActive,
         thumbnailUrl = null,
-        lastUpdated = System.currentTimeMillis(),
+        lastUpdated = System.currentTimeMillis()
     )
 
     @Test
@@ -77,10 +77,12 @@ class SearchDaoFtsTest {
 
     @Test
     fun `FTS search finds MP by party name`() = runTest {
-        database.mpDao().upsertAll(listOf(
-            makeMp(1, partyName = "Green Party", constituencyName = "Bristol Central"),
-            makeMp(2, partyName = "Labour", constituencyName = "Hackney North"),
-        ))
+        database.mpDao().upsertAll(
+            listOf(
+                makeMp(1, partyName = "Green Party", constituencyName = "Bristol Central"),
+                makeMp(2, partyName = "Labour", constituencyName = "Hackney North")
+            )
+        )
         database.searchDao().searchMpsFts("Green*").test {
             val results = awaitItem()
             assertTrue(results.isNotEmpty())
@@ -91,10 +93,12 @@ class SearchDaoFtsTest {
 
     @Test
     fun `FTS search finds MP by constituency`() = runTest {
-        database.mpDao().upsertAll(listOf(
-            makeMp(1, constituencyName = "Hackney North"),
-            makeMp(2, constituencyName = "Islington South"),
-        ))
+        database.mpDao().upsertAll(
+            listOf(
+                makeMp(1, constituencyName = "Hackney North"),
+                makeMp(2, constituencyName = "Islington South")
+            )
+        )
         database.searchDao().searchMpsFts("Hackney*").test {
             val results = awaitItem()
             assertTrue(results.isNotEmpty())
@@ -105,9 +109,16 @@ class SearchDaoFtsTest {
 
     @Test
     fun `FTS multi-token search matches both tokens`() = runTest {
-        database.mpDao().upsertAll(listOf(
-            makeMp(172, nameListAs = "Abbott, Ms Diane", nameDisplayAs = "Diane Abbott", constituencyName = "Hackney North"),
-        ))
+        database.mpDao().upsertAll(
+            listOf(
+                makeMp(
+                    172,
+                    nameListAs = "Abbott, Ms Diane",
+                    nameDisplayAs = "Diane Abbott",
+                    constituencyName = "Hackney North"
+                )
+            )
+        )
         database.searchDao().searchMpsFts("Diane* Abbott*").test {
             val results = awaitItem()
             assertTrue(results.isNotEmpty())
@@ -128,7 +139,11 @@ class SearchDaoFtsTest {
 
     @Test
     fun `FTS results include full entity data`() = runTest {
-        database.mpDao().upsertAll(listOf(makeMp(172, nameListAs = "Abbott, Ms Diane", partyName = "Labour", constituencyName = "Hackney North")))
+        database.mpDao().upsertAll(
+            listOf(
+                makeMp(172, nameListAs = "Abbott, Ms Diane", partyName = "Labour", constituencyName = "Hackney North")
+            )
+        )
         database.searchDao().searchMpsFts("Abbott*").test {
             val results = awaitItem()
             assertTrue(results.isNotEmpty())
@@ -142,12 +157,14 @@ class SearchDaoFtsTest {
 
     @Test
     fun `distinct parties query returns unique party names`() = runTest {
-        database.mpDao().upsertAll(listOf(
-            makeMp(1, partyName = "Labour"),
-            makeMp(2, partyName = "Labour"),
-            makeMp(3, partyName = "Conservative"),
-            makeMp(4, partyName = "Green Party"),
-        ))
+        database.mpDao().upsertAll(
+            listOf(
+                makeMp(1, partyName = "Labour"),
+                makeMp(2, partyName = "Labour"),
+                makeMp(3, partyName = "Conservative"),
+                makeMp(4, partyName = "Green Party")
+            )
+        )
         database.mpDao().observeDistinctParties().test {
             val parties = awaitItem()
             assertEquals(3, parties.size)
@@ -160,10 +177,12 @@ class SearchDaoFtsTest {
 
     @Test
     fun `distinct parties query filters inactive MPs`() = runTest {
-        database.mpDao().upsertAll(listOf(
-            makeMp(1, partyName = "Labour", isActive = true),
-            makeMp(2, partyName = "Former Party", isActive = false),
-        ))
+        database.mpDao().upsertAll(
+            listOf(
+                makeMp(1, partyName = "Labour", isActive = true),
+                makeMp(2, partyName = "Former Party", isActive = false)
+            )
+        )
         database.mpDao().observeDistinctParties().test {
             val parties = awaitItem()
             assertTrue(parties.contains("Labour"))

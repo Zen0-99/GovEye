@@ -15,7 +15,7 @@ interface CommitteeDao {
         INNER JOIN mp_committee_cross_ref ref ON c.id = ref.committeeId
         WHERE ref.memberId = :memberId
         ORDER BY c.isActive DESC, c.name
-        """,
+        """
     )
     fun observeCommitteesForMember(memberId: Int): Flow<List<CommitteeEntity>>
 
@@ -25,7 +25,7 @@ interface CommitteeDao {
         INNER JOIN mp_committee_cross_ref ref ON c.id = ref.committeeId
         WHERE ref.memberId = :memberId
         ORDER BY c.isActive DESC, c.name
-        """,
+        """
     )
     suspend fun getCommitteesForMember(memberId: Int): List<CommitteeEntity>
 

@@ -31,7 +31,7 @@ interface RecessDateDao {
         AND startDate <= :currentDate
         AND endDate >= :currentDate
         LIMIT 1
-        """,
+        """
     )
     suspend fun getCurrentRecess(house: Int, currentDate: String): RecessDateEntity?
 }

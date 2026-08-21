@@ -54,7 +54,7 @@ class ProfileViewModelTest {
         membershipEndDate = null,
         isActive = true,
         thumbnailUrl = null,
-        lastUpdated = System.currentTimeMillis(),
+        lastUpdated = System.currentTimeMillis()
     )
 
     private fun makeDomainMp(id: Int): Mp = Mp(
@@ -68,17 +68,17 @@ class ProfileViewModelTest {
         house = 1,
         membershipStartDate = "2019-12-12",
         isActive = true,
-        thumbnailUrl = null,
+        thumbnailUrl = null
     )
 
     @Test
     fun `loads MP from repository`() = runTest {
         val mp = makeDomainMp(1)
         every { membersRepository.observeMp(1) } returns flowOf(
-            RepositoryResult(mp, SyncStatus.FRESH),
+            RepositoryResult(mp, SyncStatus.FRESH)
         )
         every { committeesRepository.observeCommitteesForMember(1) } returns flowOf(
-            RepositoryResult(emptyList(), SyncStatus.EMPTY),
+            RepositoryResult(emptyList(), SyncStatus.EMPTY)
         )
         coEvery { membersRepository.getSynopsis(1) } returns "Test bio"
         coEvery { membersRepository.getContact(1) } returns emptyList()
@@ -87,7 +87,16 @@ class ProfileViewModelTest {
         every { followRepository.observeIsFollowing(1) } returns flowOf(false)
         every { notificationPrefRepository.observe(1) } returns flowOf(MpNotificationPreferenceEntity(1))
 
-        val viewModel = ProfileViewModel(membersRepository, committeesRepository, votesRepository, followRepository, notificationPrefRepository, mpDao, interestsRepository)
+        val viewModel =
+            ProfileViewModel(
+                membersRepository,
+                committeesRepository,
+                votesRepository,
+                followRepository,
+                notificationPrefRepository,
+                mpDao,
+                interestsRepository
+            )
         viewModel.loadProfile(1)
 
         viewModel.uiState.test {
@@ -101,10 +110,10 @@ class ProfileViewModelTest {
     @Test
     fun `handles MP not found`() = runTest {
         every { membersRepository.observeMp(999) } returns flowOf(
-            RepositoryResult(null, SyncStatus.EMPTY),
+            RepositoryResult(null, SyncStatus.EMPTY)
         )
         every { committeesRepository.observeCommitteesForMember(999) } returns flowOf(
-            RepositoryResult(emptyList(), SyncStatus.EMPTY),
+            RepositoryResult(emptyList(), SyncStatus.EMPTY)
         )
         coEvery { membersRepository.getSynopsis(999) } returns null
         coEvery { membersRepository.getContact(999) } returns emptyList()
@@ -113,7 +122,16 @@ class ProfileViewModelTest {
         every { followRepository.observeIsFollowing(999) } returns flowOf(false)
         every { notificationPrefRepository.observe(999) } returns flowOf(MpNotificationPreferenceEntity(999))
 
-        val viewModel = ProfileViewModel(membersRepository, committeesRepository, votesRepository, followRepository, notificationPrefRepository, mpDao, interestsRepository)
+        val viewModel =
+            ProfileViewModel(
+                membersRepository,
+                committeesRepository,
+                votesRepository,
+                followRepository,
+                notificationPrefRepository,
+                mpDao,
+                interestsRepository
+            )
         viewModel.loadProfile(999)
 
         viewModel.uiState.test {

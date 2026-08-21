@@ -57,7 +57,7 @@ private val BUCKET_ORDER = listOf(
     "Gifts",
     "Land/Property",
     "Shareholdings",
-    "Other",
+    "Other"
 )
 
 private val BUCKET_ICONS: Map<String, ImageVector> = mapOf(
@@ -66,7 +66,7 @@ private val BUCKET_ICONS: Map<String, ImageVector> = mapOf(
     "Gifts" to Icons.Outlined.CardGiftcard,
     "Land/Property" to Icons.Outlined.RealEstateAgent,
     "Shareholdings" to Icons.Outlined.Home,
-    "Other" to Icons.Outlined.Category,
+    "Other" to Icons.Outlined.Category
 )
 
 @Composable
@@ -74,7 +74,7 @@ fun InterestsTabContent(
     memberId: Int,
     interests: List<Interest>,
     onNavigateToBucketDetail: (String) -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     // --- Date filter state (per-MP, not persisted — D-08) ---
     var fromDate by remember { mutableStateOf<String?>(null) }
@@ -108,12 +108,12 @@ fun InterestsTabContent(
         // --- Empty state (R2) ---
         Box(
             modifier = modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center,
+            contentAlignment = Alignment.Center
         ) {
             Text(
                 text = "No registered interests",
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         return
@@ -124,15 +124,18 @@ fun InterestsTabContent(
         Column(
             modifier = modifier.fillMaxSize().padding(MaterialTheme.padding.medium),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
+            verticalArrangement = Arrangement.Center
         ) {
             Text(
                 text = "No interests match the selected date range",
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             if (fromDate != null || toDate != null) {
-                TextButton(onClick = { fromDate = null; toDate = null }) {
+                TextButton(onClick = {
+                    fromDate = null
+                    toDate = null
+                }) {
                     Text("Clear filter")
                 }
             }
@@ -162,10 +165,10 @@ fun InterestsTabContent(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(
             horizontal = MaterialTheme.padding.medium,
-            vertical = MaterialTheme.padding.medium,
+            vertical = MaterialTheme.padding.medium
         ),
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
-        verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small)
     ) {
         // --- Header: total + monthly navigation ---
         item(span = { GridItemSpan(2) }) {
@@ -178,7 +181,7 @@ fun InterestsTabContent(
                 hasPreviousMonth = selectedMonthIndex > 0,
                 hasNextMonth = selectedMonthIndex < monthsWithData.lastIndex,
                 onPreviousMonth = { if (selectedMonthIndex > 0) selectedMonthIndex-- },
-                onNextMonth = { if (selectedMonthIndex < monthsWithData.lastIndex) selectedMonthIndex++ },
+                onNextMonth = { if (selectedMonthIndex < monthsWithData.lastIndex) selectedMonthIndex++ }
             )
         }
 
@@ -186,17 +189,17 @@ fun InterestsTabContent(
         item(span = { GridItemSpan(2) }) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
+                horizontalArrangement = Arrangement.End
             ) {
                 TextButton(onClick = { showFilterSheet = true }) {
                     Icon(
                         Icons.Outlined.FilterList,
                         contentDescription = "Filter by date",
-                        modifier = Modifier.size(18.dp),
+                        modifier = Modifier.size(18.dp)
                     )
                     Text(
                         text = if (fromDate != null || toDate != null) "Date filter (active)" else "Date filter",
-                        modifier = Modifier.padding(start = 4.dp),
+                        modifier = Modifier.padding(start = 4.dp)
                     )
                 }
             }
@@ -206,7 +209,7 @@ fun InterestsTabContent(
         items(bucketSummaries, key = { it.bucketLabel }) { summary ->
             BucketSummaryCard(
                 summary = summary,
-                onClick = { onNavigateToBucketDetail(summary.bucketLabel) },
+                onClick = { onNavigateToBucketDetail(summary.bucketLabel) }
             )
         }
     }
@@ -218,8 +221,11 @@ fun InterestsTabContent(
             toDate = toDate,
             onFromDateChange = { fromDate = it },
             onToDateChange = { toDate = it },
-            onClear = { fromDate = null; toDate = null },
-            onDismiss = { showFilterSheet = false },
+            onClear = {
+                fromDate = null
+                toDate = null
+            },
+            onDismiss = { showFilterSheet = false }
         )
     }
 }
@@ -234,39 +240,39 @@ private fun InterestsDashboardHeader(
     hasPreviousMonth: Boolean,
     hasNextMonth: Boolean,
     onPreviousMonth: () -> Unit,
-    onNextMonth: () -> Unit,
+    onNextMonth: () -> Unit
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
+        color = MaterialTheme.colorScheme.surfaceContainer
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Total sum
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
                     Text(
                         text = "Total Declared",
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
                         text = formatPence(totalPence),
                         style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.Bold
                     )
                 }
                 Text(
                     text = "$totalEntryCount entries",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -274,22 +280,22 @@ private fun InterestsDashboardHeader(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(
                     onClick = onPreviousMonth,
-                    enabled = hasPreviousMonth,
+                    enabled = hasPreviousMonth
                 ) {
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Previous month")
                 }
                 Text(
                     text = selectedMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy")),
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.SemiBold
                 )
                 IconButton(
                     onClick = onNextMonth,
-                    enabled = hasNextMonth,
+                    enabled = hasNextMonth
                 ) {
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Next month")
                 }
@@ -300,12 +306,12 @@ private fun InterestsDashboardHeader(
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         text = formatPence(currentMonthPence),
                         style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.SemiBold
                     )
                     if (percentChange != null) {
                         val arrow = if (percentChange >= 0) "▲" else "▼"
@@ -315,10 +321,12 @@ private fun InterestsDashboardHeader(
                             MaterialTheme.colorScheme.error
                         }
                         Text(
-                            text = " $arrow ${"%.0f".format(kotlin.math.abs(percentChange))}% vs ${selectedMonth.minusMonths(1).format(DateTimeFormatter.ofPattern("MMM"))}",
+                            text = " $arrow ${"%.0f".format(
+                                kotlin.math.abs(percentChange)
+                            )}% vs ${selectedMonth.minusMonths(1).format(DateTimeFormatter.ofPattern("MMM"))}",
                             style = MaterialTheme.typography.bodyMedium,
                             color = color,
-                            fontWeight = FontWeight.Medium,
+                            fontWeight = FontWeight.Medium
                         )
                     }
                 }
@@ -328,45 +336,42 @@ private fun InterestsDashboardHeader(
 }
 
 @Composable
-private fun BucketSummaryCard(
-    summary: BucketSummary,
-    onClick: () -> Unit,
-) {
+private fun BucketSummaryCard(summary: BucketSummary, onClick: () -> Unit) {
     val icon = BUCKET_ICONS[summary.bucketLabel] ?: Icons.Outlined.Category
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
+        color = MaterialTheme.colorScheme.surfaceContainer
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = summary.bucketLabel,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(28.dp),
+                modifier = Modifier.size(28.dp)
             )
             Text(
                 text = summary.bucketLabel,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
+                maxLines = 1
             )
             if (summary.totalPence > 0) {
                 Text(
                     text = formatPence(summary.totalPence),
                     style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.Bold
                 )
             }
             Text(
                 text = "${summary.entryCount} entries",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -374,11 +379,7 @@ private fun BucketSummaryCard(
 
 // --- Data classes and helper functions ---
 
-private data class BucketSummary(
-    val bucketLabel: String,
-    val totalPence: Long,
-    val entryCount: Int,
-)
+private data class BucketSummary(val bucketLabel: String, val totalPence: Long, val entryCount: Int)
 
 /**
  * Groups interests by their `bucket` field and computes per-bucket totals.
@@ -391,7 +392,7 @@ private fun computeBucketSummaries(interests: List<Interest>): List<BucketSummar
         BucketSummary(
             bucketLabel = bucketLabel,
             totalPence = bucketInterests.sumOf { it.parsedAmountPence ?: 0L },
-            entryCount = bucketInterests.size,
+            entryCount = bucketInterests.size
         )
     }
 
@@ -399,23 +400,20 @@ private fun computeBucketSummaries(interests: List<Interest>): List<BucketSummar
  * Extracts the sorted list of YearMonth values that have at least one interest,
  * based on `publishedDate`.
  */
-private fun extractMonths(interests: List<Interest>): List<YearMonth> =
-    interests.mapNotNull { it.publishedDate }
-        .mapNotNull { runCatching { YearMonth.from(LocalDate.parse(it.substring(0, 10))) }.getOrNull() }
-        .distinct()
-        .sorted()
+private fun extractMonths(interests: List<Interest>): List<YearMonth> = interests.mapNotNull { it.publishedDate }
+    .mapNotNull { runCatching { YearMonth.from(LocalDate.parse(it.substring(0, 10))) }.getOrNull() }
+    .distinct()
+    .sorted()
 
 /**
  * Sums `parsedAmountPence` for interests whose `publishedDate` falls in the given month.
  */
-private fun sumPenceForMonth(interests: List<Interest>, month: YearMonth): Long {
-    return interests.filter { interest ->
-        val date = interest.publishedDate
-        date != null && runCatching {
-            YearMonth.from(LocalDate.parse(date.substring(0, 10)))
-        }.getOrNull() == month
-    }.sumOf { it.parsedAmountPence ?: 0L }
-}
+private fun sumPenceForMonth(interests: List<Interest>, month: YearMonth): Long = interests.filter { interest ->
+    val date = interest.publishedDate
+    date != null && runCatching {
+        YearMonth.from(LocalDate.parse(date.substring(0, 10)))
+    }.getOrNull() == month
+}.sumOf { it.parsedAmountPence ?: 0L }
 
 /**
  * Computes the percentage change from [previous] to [current].

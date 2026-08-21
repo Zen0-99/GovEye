@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import com.goveye.app.domain.stats.AttendanceTrend
 import com.goveye.app.domain.stats.MonthlyVotingData
 import com.goveye.app.domain.stats.RebellionTrend
+import com.goveye.app.ui.components.VoteColors
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.compose.cartesian.axis.VerticalAxis
@@ -39,10 +40,9 @@ import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLine
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
 import com.patrykandpatrick.vico.compose.common.Fill
+import com.patrykandpatrick.vico.compose.common.ProvideVicoTheme
 import com.patrykandpatrick.vico.compose.common.component.rememberLineComponent
 import com.patrykandpatrick.vico.compose.m3.common.rememberM3VicoTheme
-import com.patrykandpatrick.vico.compose.common.ProvideVicoTheme
-import com.goveye.app.ui.components.VoteColors
 
 // Theme-aware vote colors — Aye = teal, No = orange, No-vote = gray
 private val AyeColor @Composable get() = VoteColors.aye
@@ -55,10 +55,7 @@ private val LineColor = Color(0xFF1976D2)
  * Title and legend are on the same row. Animation is disabled.
  */
 @Composable
-fun VotingBarChart(
-    data: List<MonthlyVotingData>,
-    modifier: Modifier = Modifier,
-) {
+fun VotingBarChart(data: List<MonthlyVotingData>, modifier: Modifier = Modifier) {
     if (data.isEmpty()) return
 
     val modelProducer = remember { CartesianChartModelProducer() }
@@ -97,8 +94,8 @@ fun VotingBarChart(
             legendItems = listOf(
                 "Ayes" to AyeColor,
                 "Noes" to NoColor,
-                "No vote" to NoVoteColor,
-            ),
+                "No vote" to NoVoteColor
+            )
         )
         ProvideVicoTheme(theme = rememberM3VicoTheme()) {
             CartesianChartHost(
@@ -107,20 +104,20 @@ fun VotingBarChart(
                         columnProvider = ColumnCartesianLayer.ColumnProvider.series(
                             rememberLineComponent(fill = Fill(AyeColor), thickness = 12.dp),
                             rememberLineComponent(fill = Fill(NoColor), thickness = 12.dp),
-                            rememberLineComponent(fill = Fill(NoVoteColor), thickness = 12.dp),
-                        ),
+                            rememberLineComponent(fill = Fill(NoVoteColor), thickness = 12.dp)
+                        )
                     ),
                     startAxis = VerticalAxis.rememberStart(valueFormatter = startAxisFormatter),
                     bottomAxis = HorizontalAxis.rememberBottom(
-                        valueFormatter = bottomAxisFormatter,
-                    ),
+                        valueFormatter = bottomAxisFormatter
+                    )
                 ),
                 modelProducer = modelProducer,
                 animationSpec = null,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(200.dp)
-                    .padding(8.dp),
+                    .padding(8.dp)
             )
         }
     }
@@ -132,10 +129,7 @@ fun VotingBarChart(
  * Animation is disabled.
  */
 @Composable
-fun AttendanceLineChart(
-    data: List<AttendanceTrend>,
-    modifier: Modifier = Modifier,
-) {
+fun AttendanceLineChart(data: List<AttendanceTrend>, modifier: Modifier = Modifier) {
     if (data.isEmpty()) return
 
     val modelProducer = remember { CartesianChartModelProducer() }
@@ -170,21 +164,21 @@ fun AttendanceLineChart(
                     rememberLineCartesianLayer(
                         lineProvider = LineCartesianLayer.LineProvider.series(
                             LineCartesianLayer.rememberLine(
-                                fill = LineCartesianLayer.LineFill.single(Fill(LineColor)),
-                            ),
-                        ),
+                                fill = LineCartesianLayer.LineFill.single(Fill(LineColor))
+                            )
+                        )
                     ),
                     startAxis = VerticalAxis.rememberStart(valueFormatter = startAxisFormatter),
                     bottomAxis = HorizontalAxis.rememberBottom(
-                        valueFormatter = bottomAxisFormatter,
-                    ),
+                        valueFormatter = bottomAxisFormatter
+                    )
                 ),
                 modelProducer = modelProducer,
                 animationSpec = null,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(160.dp)
-                    .padding(8.dp),
+                    .padding(8.dp)
             )
         }
     }
@@ -196,10 +190,7 @@ fun AttendanceLineChart(
  * Animation is disabled.
  */
 @Composable
-fun RebellionLineChart(
-    data: List<RebellionTrend>,
-    modifier: Modifier = Modifier,
-) {
+fun RebellionLineChart(data: List<RebellionTrend>, modifier: Modifier = Modifier) {
     if (data.isEmpty()) return
 
     val modelProducer = remember { CartesianChartModelProducer() }
@@ -234,21 +225,21 @@ fun RebellionLineChart(
                     rememberLineCartesianLayer(
                         lineProvider = LineCartesianLayer.LineProvider.series(
                             LineCartesianLayer.rememberLine(
-                                fill = LineCartesianLayer.LineFill.single(Fill(NoColor)),
-                            ),
-                        ),
+                                fill = LineCartesianLayer.LineFill.single(Fill(NoColor))
+                            )
+                        )
                     ),
                     startAxis = VerticalAxis.rememberStart(valueFormatter = startAxisFormatter),
                     bottomAxis = HorizontalAxis.rememberBottom(
-                        valueFormatter = bottomAxisFormatter,
-                    ),
+                        valueFormatter = bottomAxisFormatter
+                    )
                 ),
                 modelProducer = modelProducer,
                 animationSpec = null,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(160.dp)
-                    .padding(8.dp),
+                    .padding(8.dp)
             )
         }
     }
@@ -258,17 +249,14 @@ fun RebellionLineChart(
  * Rounded card wrapper for chart sections.
  */
 @Composable
-fun ChartCard(
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit,
-) {
+fun ChartCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
+        color = MaterialTheme.colorScheme.surfaceContainer
     ) {
         Column(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(12.dp)
         ) {
             content()
         }
@@ -285,7 +273,7 @@ fun ChartHeader(title: String) {
         style = MaterialTheme.typography.titleSmall,
         fontWeight = FontWeight.SemiBold,
         color = MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.padding(bottom = 4.dp),
+        modifier = Modifier.padding(bottom = 4.dp)
     )
 }
 
@@ -293,42 +281,39 @@ fun ChartHeader(title: String) {
  * Chart header with title and inline legend on the same row.
  */
 @Composable
-fun ChartHeaderWithLegend(
-    title: String,
-    legendItems: List<Pair<String, Color>>,
-) {
+fun ChartHeaderWithLegend(title: String, legendItems: List<Pair<String, Color>>) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = title,
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = MaterialTheme.colorScheme.onSurface
         )
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             legendItems.forEach { (label, color) ->
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(3.dp),
+                    horizontalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
                     Box(
                         modifier = Modifier
                             .size(8.dp)
                             .clip(RoundedCornerShape(2.dp))
-                            .background(color),
+                            .background(color)
                     )
                     Text(
                         text = label,
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }

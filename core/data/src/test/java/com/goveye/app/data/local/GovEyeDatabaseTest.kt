@@ -30,11 +30,11 @@ class GovEyeDatabaseTest {
     fun setUp() {
         bundledDatabase = Room.inMemoryDatabaseBuilder(
             RuntimeEnvironment.getApplication(),
-            BundledDatabase::class.java,
+            BundledDatabase::class.java
         ).allowMainThreadQueries().build()
         localDatabase = Room.inMemoryDatabaseBuilder(
             RuntimeEnvironment.getApplication(),
-            LocalDatabase::class.java,
+            LocalDatabase::class.java
         ).allowMainThreadQueries().build()
     }
 
@@ -44,28 +44,27 @@ class GovEyeDatabaseTest {
         localDatabase.close()
     }
 
-    private fun makeMp(id: Int): MpEntity =
-        MpEntity(
-            id = id,
-            nameListAs = "Abbott, Ms Diane",
-            nameDisplayAs = "Diane Abbott",
-            nameFullTitle = null,
-            nameAddressAs = null,
-            gender = "F",
-            partyId = 15,
-            partyName = "Labour",
-            partyAbbreviation = "Lab",
-            partyBackgroundColour = "d50000",
-            partyForegroundColour = "ffffff",
-            constituencyId = 4074,
-            constituencyName = "Hackney North",
-            house = 1,
-            membershipStartDate = "1987-06-11",
-            membershipEndDate = null,
-            isActive = true,
-            thumbnailUrl = null,
-            lastUpdated = System.currentTimeMillis(),
-        )
+    private fun makeMp(id: Int): MpEntity = MpEntity(
+        id = id,
+        nameListAs = "Abbott, Ms Diane",
+        nameDisplayAs = "Diane Abbott",
+        nameFullTitle = null,
+        nameAddressAs = null,
+        gender = "F",
+        partyId = 15,
+        partyName = "Labour",
+        partyAbbreviation = "Lab",
+        partyBackgroundColour = "d50000",
+        partyForegroundColour = "ffffff",
+        constituencyId = 4074,
+        constituencyName = "Hackney North",
+        house = 1,
+        membershipStartDate = "1987-06-11",
+        membershipEndDate = null,
+        isActive = true,
+        thumbnailUrl = null,
+        lastUpdated = System.currentTimeMillis()
+    )
 
     @Test
     fun `insert and retrieve MP`() = runTest {
@@ -81,16 +80,22 @@ class GovEyeDatabaseTest {
         bundledDatabase.divisionDao().upsertAll(
             listOf(
                 DivisionEntity(
-                    id = 2409, title = "Test", date = "2026-01-01", isDeferred = false,
-                    ayeCount = 100, noCount = 50, house = 1, lastUpdated = System.currentTimeMillis(),
-                ),
-            ),
+                    id = 2409,
+                    title = "Test",
+                    date = "2026-01-01",
+                    isDeferred = false,
+                    ayeCount = 100,
+                    noCount = 50,
+                    house = 1,
+                    lastUpdated = System.currentTimeMillis()
+                )
+            )
         )
         bundledDatabase.divisionDao().upsertVotes(
             listOf(
                 DivisionVoteEntity(2409, 172, "AYE", "Diane Abbott", "Labour", "d50000", "Hackney", false),
-                DivisionVoteEntity(2409, 39, "NO", "John Whittingdale", "Conservative", "0063ba", "Maldon", false),
-            ),
+                DivisionVoteEntity(2409, 39, "NO", "John Whittingdale", "Conservative", "0063ba", "Maldon", false)
+            )
         )
 
         bundledDatabase.divisionDao().observeVotesForDivision(2409).test {
@@ -105,17 +110,34 @@ class GovEyeDatabaseTest {
         bundledDatabase.billDao().upsertAll(
             listOf(
                 BillEntity(
-                    id = 3973, shortTitle = "Test Bill", currentHouse = "Commons",
-                    originatingHouse = "Commons", lastUpdate = "2025-01-01",
-                    isDefeated = false, isAct = false, lastUpdated = System.currentTimeMillis(),
-                ),
-            ),
+                    id = 3973,
+                    shortTitle = "Test Bill",
+                    currentHouse = "Commons",
+                    originatingHouse = "Commons",
+                    lastUpdate = "2025-01-01",
+                    isDefeated = false,
+                    isAct = false,
+                    lastUpdated = System.currentTimeMillis()
+                )
+            )
         )
         bundledDatabase.billDao().upsertStages(
             listOf(
-                BillStageEntity(3973, 7, "2nd reading", "2R", "Commons", 2, null, listOf("2025-07-11"), System.currentTimeMillis()),
-                BillStageEntity(3973, 6, "1st reading", "1R", "Commons", 1, null, listOf("2025-06-15"), System.currentTimeMillis()),
-            ),
+                BillStageEntity(
+                    3973, 7, "2nd reading", "2R", "Commons", 2, null,
+                    listOf(
+                        "2025-07-11"
+                    ),
+                    System.currentTimeMillis()
+                ),
+                BillStageEntity(
+                    3973, 6, "1st reading", "1R", "Commons", 1, null,
+                    listOf(
+                        "2025-06-15"
+                    ),
+                    System.currentTimeMillis()
+                )
+            )
         )
 
         val bill = bundledDatabase.billDao().getBill(3973)
@@ -156,16 +178,28 @@ class GovEyeDatabaseTest {
         bundledDatabase.billDao().upsertAll(
             listOf(
                 BillEntity(
-                    id = 1, shortTitle = "Test", currentHouse = "Commons",
-                    originatingHouse = "Commons", lastUpdate = "2025-01-01",
-                    isDefeated = false, isAct = false, lastUpdated = System.currentTimeMillis(),
-                ),
-            ),
+                    id = 1,
+                    shortTitle = "Test",
+                    currentHouse = "Commons",
+                    originatingHouse = "Commons",
+                    lastUpdate = "2025-01-01",
+                    isDefeated = false,
+                    isAct = false,
+                    lastUpdated = System.currentTimeMillis()
+                )
+            )
         )
         bundledDatabase.billDao().upsertStages(
             listOf(
-                BillStageEntity(1, 1, "Test", "T", "Commons", 1, null, listOf("2025-07-11", "2025-07-12"), System.currentTimeMillis()),
-            ),
+                BillStageEntity(
+                    1, 1, "Test", "T", "Commons", 1, null,
+                    listOf(
+                        "2025-07-11",
+                        "2025-07-12"
+                    ),
+                    System.currentTimeMillis()
+                )
+            )
         )
 
         bundledDatabase.billDao().observeBillStages(1).test {

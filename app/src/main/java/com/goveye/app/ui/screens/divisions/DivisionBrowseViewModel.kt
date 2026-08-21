@@ -21,22 +21,20 @@ data class DivisionBrowseState(
     val isLoading: Boolean = false,
     val syncStatus: SyncStatus = SyncStatus.EMPTY,
     val searchQuery: String = "",
-    val houseFilter: Int = 0,
+    val houseFilter: Int = 0
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
-class DivisionBrowseViewModel @Inject constructor(
-    private val votesRepository: VotesRepository,
-) : ViewModel() {
+class DivisionBrowseViewModel @Inject constructor(private val votesRepository: VotesRepository) : ViewModel() {
 
-    private val _searchQuery = MutableStateFlow("")
-    private val _houseFilter = MutableStateFlow(0)
+    private val searchQueryState = MutableStateFlow("")
+    private val houseFilterState = MutableStateFlow(0)
 
     val state: StateFlow<DivisionBrowseState> =
         combine(
-            _searchQuery,
-            _houseFilter,
+            searchQueryState,
+            houseFilterState
         ) { query, house ->
             query to house
         }.flatMapLatest { (query, house) ->
@@ -51,20 +49,20 @@ class DivisionBrowseViewModel @Inject constructor(
                     isLoading = false,
                     syncStatus = result.status,
                     searchQuery = query,
-                    houseFilter = house,
+                    houseFilter = house
                 )
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DivisionBrowseState())
 
     fun updateSearchQuery(query: String) {
-        _searchQuery.value = query
+        searchQueryState.value = query
     }
 
     fun setSearchQuery(query: String) {
-        _searchQuery.value = query
+        searchQueryState.value = query
     }
 
     fun setHouseFilter(house: Int) {
-        _houseFilter.value = house
+        houseFilterState.value = house
     }
 }

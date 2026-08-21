@@ -37,8 +37,11 @@ object DeepLinkHandler {
                         DirectoryRoute
                     }
                 }
+
                 "division" -> FeedRoute
+
                 "bill" -> FeedRoute
+
                 else -> null
             }
 

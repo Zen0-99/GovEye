@@ -52,7 +52,7 @@ class DatabaseUpdateWorkerTest {
     private fun createWorker() = DatabaseUpdateWorker(
         context,
         workerParams,
-        databaseUpdateManager,
+        databaseUpdateManager
     )
 
     private fun makePatch(streamName: String): PatchInfo {
@@ -64,16 +64,16 @@ class DatabaseUpdateWorkerTest {
             dbHash = "abc123",
             dbSize = 160000000,
             patchHash = "def456",
-            patchSize = 50000,
+            patchSize = 50000
         )
         val release = GithubReleaseDto(
             assets = listOf(
                 ReleaseAssetDto(
                     name = "patch.json",
                     browserDownloadUrl = "https://example.com/patch.json",
-                    size = 50000,
-                ),
-            ),
+                    size = 50000
+                )
+            )
         )
         return PatchInfo(streamName, manifest, release)
     }

@@ -49,7 +49,7 @@ data class SearchFilterChip(
     val label: String,
     val isSelected: Boolean,
     val onClick: () -> Unit,
-    val leadingDotColor: androidx.compose.ui.graphics.Color? = null,
+    val leadingDotColor: androidx.compose.ui.graphics.Color? = null
 )
 
 /**
@@ -77,7 +77,7 @@ fun FloatingSearchBar(
     segments: List<SearchSegment> = emptyList(),
     isSearchActive: Boolean = false,
     onSearchActiveChange: (Boolean) -> Unit = {},
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val shape = RoundedCornerShape(20.dp)
@@ -87,18 +87,18 @@ fun FloatingSearchBar(
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             // Optional back button (shrinks the search bar)
             if (onBack != null) {
                 IconButton(
                     onClick = onBack,
-                    modifier = Modifier.size(44.dp),
+                    modifier = Modifier.size(44.dp)
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                         contentDescription = "Back",
-                        tint = colorScheme.onSurface,
+                        tint = colorScheme.onSurface
                     )
                 }
             }
@@ -108,7 +108,7 @@ fun FloatingSearchBar(
                     .weight(1f)
                     .clip(shape),
                 shape = shape,
-                color = colorScheme.surfaceContainer,
+                color = colorScheme.surfaceContainer
             ) {
                 Column {
                     Row(
@@ -116,14 +116,14 @@ fun FloatingSearchBar(
                             .fillMaxWidth()
                             .height(48.dp)
                             .padding(horizontal = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         // Left: search icon
                         Icon(
                             imageVector = Icons.Outlined.Search,
                             contentDescription = null,
                             tint = colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(start = 12.dp).size(22.dp),
+                            modifier = Modifier.padding(start = 12.dp).size(22.dp)
                         )
 
                         // Center: text field or hint
@@ -131,14 +131,14 @@ fun FloatingSearchBar(
                             modifier = Modifier
                                 .weight(1f)
                                 .padding(horizontal = 12.dp),
-                            contentAlignment = Alignment.CenterStart,
+                            contentAlignment = Alignment.CenterStart
                         ) {
                             if (query.isEmpty()) {
                                 Text(
                                     text = placeholder,
                                     color = colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                                     style = MaterialTheme.typography.titleMedium,
-                                    maxLines = 1,
+                                    maxLines = 1
                                 )
                             }
                             BasicTextField(
@@ -146,7 +146,7 @@ fun FloatingSearchBar(
                                 onValueChange = onQueryChange,
                                 singleLine = true,
                                 textStyle = MaterialTheme.typography.titleMedium.copy(
-                                    color = colorScheme.onSurface,
+                                    color = colorScheme.onSurface
                                 ),
                                 cursorBrush = SolidColor(colorScheme.primary),
                                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -154,7 +154,7 @@ fun FloatingSearchBar(
                                     .fillMaxWidth()
                                     .onFocusChanged { state ->
                                         onSearchActiveChange(state.isFocused)
-                                    },
+                                    }
                             )
                         }
 
@@ -167,13 +167,13 @@ fun FloatingSearchBar(
                                     onQueryChange("")
                                     focusManager.clearFocus()
                                 },
-                                modifier = Modifier.size(40.dp),
+                                modifier = Modifier.size(40.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Outlined.Close,
                                     contentDescription = "Clear search",
                                     tint = colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(20.dp),
+                                    modifier = Modifier.size(20.dp)
                                 )
                             }
                         }
@@ -182,13 +182,13 @@ fun FloatingSearchBar(
                         if (onFilterClick != null) {
                             IconButton(
                                 onClick = onFilterClick,
-                                modifier = Modifier.size(40.dp),
+                                modifier = Modifier.size(40.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Outlined.FilterList,
                                     contentDescription = "Filter",
                                     tint = if (hasActiveFilters) colorScheme.primary else colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(22.dp),
+                                    modifier = Modifier.size(22.dp)
                                 )
                             }
                         }
@@ -203,12 +203,12 @@ fun FloatingSearchBar(
                             visible = isSearchActive,
                             enter = fadeIn(animationSpec = tween(300)) + expandVertically(
                                 animationSpec = tween(300),
-                                expandFrom = Alignment.Top,
+                                expandFrom = Alignment.Top
                             ),
                             exit = fadeOut(animationSpec = tween(220)) + shrinkVertically(
                                 animationSpec = tween(220),
-                                shrinkTowards = Alignment.Top,
-                            ),
+                                shrinkTowards = Alignment.Top
+                            )
                         ) {
                             Row(
                                 modifier = Modifier
@@ -217,7 +217,7 @@ fun FloatingSearchBar(
                                     .clip(RoundedCornerShape(999.dp))
                                     .background(colorScheme.onSurface.copy(alpha = 0.06f))
                                     .padding(3.dp),
-                                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                horizontalArrangement = Arrangement.spacedBy(2.dp)
                             ) {
                                 segments.forEach { segment ->
                                     val isSelected = segment.isSelected
@@ -230,18 +230,22 @@ fun FloatingSearchBar(
                                                     Modifier.background(colorScheme.primary.copy(alpha = 0.15f))
                                                 } else {
                                                     Modifier
-                                                },
+                                                }
                                             )
                                             .clickable { segment.onClick() }
                                             .padding(vertical = 7.dp),
-                                        contentAlignment = Alignment.Center,
+                                        contentAlignment = Alignment.Center
                                     ) {
                                         Text(
                                             text = segment.label,
                                             style = MaterialTheme.typography.labelLarge,
-                                            color = if (isSelected) colorScheme.primary else colorScheme.onSurfaceVariant,
+                                            color = if (isSelected) {
+                                                colorScheme.primary
+                                            } else {
+                                                colorScheme.onSurfaceVariant
+                                            },
                                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                            maxLines = 1,
+                                            maxLines = 1
                                         )
                                     }
                                 }
@@ -258,7 +262,7 @@ fun FloatingSearchBar(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 filterChips.forEach { chip ->
                     FilterChip(
@@ -271,16 +275,20 @@ fun FloatingSearchBar(
                                     modifier = Modifier
                                         .size(FilterChipDefaults.IconSize)
                                         .clip(RoundedCornerShape(2.dp))
-                                        .background(chip.leadingDotColor),
+                                        .background(chip.leadingDotColor)
                                 )
                             }
-                        } else null,
+                        } else {
+                            null
+                        },
                         colors = if (chip.leadingDotColor != null) {
                             FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = chip.leadingDotColor.copy(alpha = 0.2f),
-                                selectedLabelColor = colorScheme.onSurface,
+                                selectedLabelColor = colorScheme.onSurface
                             )
-                        } else FilterChipDefaults.filterChipColors(),
+                        } else {
+                            FilterChipDefaults.filterChipColors()
+                        }
                     )
                 }
             }

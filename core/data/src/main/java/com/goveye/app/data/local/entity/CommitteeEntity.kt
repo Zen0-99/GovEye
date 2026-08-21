@@ -12,12 +12,8 @@ data class CommitteeEntity(
     val startDate: String? = null,
     val endDate: String? = null,
     val isActive: Boolean,
-    val lastUpdated: Long,
+    val lastUpdated: Long
 )
 
 @Entity(tableName = "mp_committee_cross_ref", primaryKeys = ["memberId", "committeeId"])
-data class MpCommitteeCrossRef(
-    val memberId: Int,
-    val committeeId: Int,
-    val lastUpdated: Long,
-)
+data class MpCommitteeCrossRef(val memberId: Int, val committeeId: Int, val lastUpdated: Long)

@@ -18,5 +18,5 @@ data class BillEntity(
     val billTypeId: Int? = null,
     val currentStageDescription: String? = null,
     val currentStageAbbreviation: String? = null,
-    val lastUpdated: Long,
+    val lastUpdated: Long
 )

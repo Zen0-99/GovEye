@@ -11,11 +11,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
  * A segment in a [SearchBarConfig.segments] segmented control (Miko-style
  * double pill). The selected segment gets a filled pill background.
  */
-data class SearchSegment(
-    val label: String,
-    val isSelected: Boolean,
-    val onClick: () -> Unit,
-)
+data class SearchSegment(val label: String, val isSelected: Boolean, val onClick: () -> Unit)
 
 /**
  * Global search bar state. Screens configure this via [LocalSearchBarState]
@@ -39,7 +35,7 @@ data class SearchBarConfig(
     /** Whether the search bar is actively focused (pills expanded). */
     val isSearchActive: Boolean = false,
     /** Called when the search bar gains/loses focus. */
-    val onSearchActiveChange: (Boolean) -> Unit = {},
+    val onSearchActiveChange: (Boolean) -> Unit = {}
 )
 
 /**
@@ -69,9 +65,7 @@ val LocalSearchBarState = staticCompositionLocalOf<SearchBarStateHolder> {
  * Visibility is controlled route-level in GovEyeApp, not via config.isVisible.
  */
 @Composable
-fun ConfigureSearchBar(
-    config: SearchBarConfig,
-) {
+fun ConfigureSearchBar(config: SearchBarConfig) {
     val holder = LocalSearchBarState.current
     DisposableEffect(config) {
         holder.update(config)

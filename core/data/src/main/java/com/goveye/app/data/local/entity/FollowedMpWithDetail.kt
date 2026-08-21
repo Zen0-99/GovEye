@@ -18,5 +18,5 @@ data class FollowedMpWithDetail(
     val partyBackgroundColour: String,
     val partyForegroundColour: String,
     val constituencyName: String,
-    val house: Int,
+    val house: Int
 )

@@ -23,5 +23,5 @@ data class MpEntity(
     val membershipEndDate: String? = null,
     val isActive: Boolean,
     val thumbnailUrl: String? = null,
-    val lastUpdated: Long,
+    val lastUpdated: Long
 )

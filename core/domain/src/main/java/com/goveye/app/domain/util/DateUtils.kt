@@ -21,17 +21,15 @@ object DateUtils {
      * Handles ISO dates with optional time components (e.g. "2026-08-20T15:30:00").
      * Returns the original string if parsing fails (defensive fallback).
      */
-    fun formatRelativeDate(isoDateString: String): String {
-        return try {
-            val today = LocalDate.now()
-            val givenDate = LocalDate.parse(isoDateString.substring(0, 10))
-            when (givenDate) {
-                today -> "Today"
-                today.minusDays(1) -> "Yesterday"
-                else -> givenDate.format(longDateFormatter)
-            }
-        } catch (e: Exception) {
-            isoDateString
+    fun formatRelativeDate(isoDateString: String): String = try {
+        val today = LocalDate.now()
+        val givenDate = LocalDate.parse(isoDateString.substring(0, 10))
+        when (givenDate) {
+            today -> "Today"
+            today.minusDays(1) -> "Yesterday"
+            else -> givenDate.format(longDateFormatter)
         }
+    } catch (e: Exception) {
+        isoDateString
     }
 }

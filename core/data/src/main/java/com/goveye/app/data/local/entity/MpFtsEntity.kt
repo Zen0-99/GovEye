@@ -18,5 +18,5 @@ data class MpFtsEntity(
     @ColumnInfo(name = "constituencyName")
     val constituencyName: String,
     @ColumnInfo(name = "partyName")
-    val partyName: String,
+    val partyName: String
 )

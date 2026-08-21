@@ -1,11 +1,11 @@
 package com.goveye.app.ui.screens
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
@@ -41,7 +41,7 @@ import com.goveye.app.ui.screens.feed.FeedViewModel
 fun FeedScreen(
     onNavigateToDivision: (Int, Int) -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: FeedViewModel = hiltViewModel(),
+    viewModel: FeedViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var showFilterSheet by remember { mutableStateOf(false) }
@@ -53,8 +53,8 @@ fun FeedScreen(
             query = state.searchQuery,
             onQueryChange = viewModel::setSearchQuery,
             onFilterClick = { showFilterSheet = true },
-            hasActiveFilters = state.followingOnly || state.houseFilter != 0,
-        ),
+            hasActiveFilters = state.followingOnly || state.houseFilter != 0
+        )
     )
 
     Column(modifier = modifier.fillMaxSize()) {
@@ -63,28 +63,32 @@ fun FeedScreen(
                 Row(
                     modifier = Modifier.fillMaxSize(),
                     horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     CircularProgressIndicator()
                 }
             }
+
             state.followingOnly && state.followedMemberIds.isEmpty() -> {
                 FeedNoFollowsEmptyState()
             }
+
             state.isRecessEmpty -> {
                 FeedRecessEmptyState(
                     recessEndDate = state.currentRecess?.endDate ?: "",
                     lastDivisions = state.recentDivisionsForRecess,
-                    onDivisionClick = onNavigateToDivision,
+                    onDivisionClick = onNavigateToDivision
                 )
             }
+
             state.isEmpty && !state.isRecessEmpty -> {
                 FeedNoActivityEmptyState()
             }
+
             else -> {
                 LazyColumn(
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     state.dateGroups.forEach { group ->
                         stickyHeader(key = "header-${group.dateKey}") {
@@ -95,7 +99,7 @@ fun FeedScreen(
                             FeedDivisionCard(
                                 division = division,
                                 hasFollowedVotes = hasFollowed,
-                                onClick = { onNavigateToDivision(division.id, division.house) },
+                                onClick = { onNavigateToDivision(division.id, division.house) }
                             )
                         }
                     }
@@ -108,7 +112,7 @@ fun FeedScreen(
     if (showFilterSheet) {
         val feedFilterState = DirectoryFilterState(
             houseFilter = state.houseFilter,
-            followingOnly = state.followingOnly,
+            followingOnly = state.followingOnly
         )
         FilterBottomSheet(
             distinctParties = emptyList(),
@@ -121,7 +125,7 @@ fun FeedScreen(
             onFollowingOnlyChange = viewModel::setFollowingOnly,
             onViewModeChange = {},
             onClearFilters = viewModel::clearFilters,
-            onDismiss = { showFilterSheet = false },
+            onDismiss = { showFilterSheet = false }
         )
     }
 }

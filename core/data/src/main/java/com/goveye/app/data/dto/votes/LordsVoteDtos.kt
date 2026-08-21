@@ -31,7 +31,7 @@ data class LordsDivisionDto(
     @SerialName("contentTellers") val contentTellers: List<LordsVoterDto>? = null,
     @SerialName("notContentTellers") val notContentTellers: List<LordsVoterDto>? = null,
     @SerialName("contents") val contents: List<LordsVoterDto> = emptyList(),
-    @SerialName("notContents") val notContents: List<LordsVoterDto> = emptyList(),
+    @SerialName("notContents") val notContents: List<LordsVoterDto> = emptyList()
 )
 
 @Serializable
@@ -43,7 +43,7 @@ data class LordsVoterDto(
     @SerialName("party") val party: String? = null,
     @SerialName("partyColour") val partyColour: String? = null,
     @SerialName("partyAbbreviation") val partyAbbreviation: String? = null,
-    @SerialName("partyIsMainParty") val partyIsMainParty: Boolean = true,
+    @SerialName("partyIsMainParty") val partyIsMainParty: Boolean = true
 )
 
 @Serializable
@@ -52,7 +52,7 @@ data class LordsMemberVoteDto(
     @SerialName("memberVotedContent") val memberVotedContent: Boolean = false,
     @SerialName("memberVotedNotContent") val memberVotedNotContent: Boolean = false,
     @SerialName("memberWasTeller") val memberWasTeller: Boolean = false,
-    @SerialName("publishedDivision") val publishedDivision: LordsPublishedDivisionDto? = null,
+    @SerialName("publishedDivision") val publishedDivision: LordsPublishedDivisionDto? = null
 )
 
 @Serializable
@@ -61,5 +61,5 @@ data class LordsPublishedDivisionDto(
     @SerialName("date") val date: String,
     @SerialName("title") val title: String,
     @SerialName("memberContentCount") val memberContentCount: Int = 0,
-    @SerialName("memberNotContentCount") val memberNotContentCount: Int = 0,
+    @SerialName("memberNotContentCount") val memberNotContentCount: Int = 0
 )

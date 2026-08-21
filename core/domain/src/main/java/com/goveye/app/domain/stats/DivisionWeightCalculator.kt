@@ -19,11 +19,7 @@ import com.goveye.app.domain.model.VoteType
  * `divisionCloseness` is computed by the caller as:
  * `1.0 - abs(ayeCount - noCount) / (ayeCount + noCount)` (when total > 0, else 0.0).
  */
-data class DivisionWeight(
-    val score: Double,
-    val isRebellion: Boolean,
-    val voteType: VoteType,
-)
+data class DivisionWeight(val score: Double, val isRebellion: Boolean, val voteType: VoteType)
 
 /**
  * Computes per-division significance on a 0-10 scale.
@@ -35,11 +31,7 @@ object DivisionWeightCalculator {
     private const val REBELLION_BONUS = 4.0
     private const val CLOSENESS_WEIGHT = 3.0
 
-    fun compute(
-        mpVote: VoteType,
-        isRebellion: Boolean,
-        divisionCloseness: Double,
-    ): DivisionWeight {
+    fun compute(mpVote: VoteType, isRebellion: Boolean, divisionCloseness: Double): DivisionWeight {
         val score = if (mpVote == VoteType.NO_VOTE_RECORDED) {
             0.0
         } else {
@@ -51,7 +43,7 @@ object DivisionWeightCalculator {
         return DivisionWeight(
             score = score,
             isRebellion = isRebellion,
-            voteType = mpVote,
+            voteType = mpVote
         )
     }
 }

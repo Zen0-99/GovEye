@@ -14,15 +14,14 @@ data class RecessDateEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val house: Int,
     val description: String,
-    val startDate: String, // ISO format: yyyy-MM-dd
-    val endDate: String,   // ISO format: yyyy-MM-dd
+    // ISO format: yyyy-MM-dd
+    val startDate: String,
+    // ISO format: yyyy-MM-dd
+    val endDate: String
 )
 
 /**
  * Metadata for the recess dates cache — tracks when it was last refreshed.
  */
 @Entity(tableName = "recess_dates_meta", primaryKeys = ["house"])
-data class RecessDatesMetaEntity(
-    val house: Int,
-    val lastRefreshedAt: Long,
-)
+data class RecessDatesMetaEntity(val house: Int, val lastRefreshedAt: Long)

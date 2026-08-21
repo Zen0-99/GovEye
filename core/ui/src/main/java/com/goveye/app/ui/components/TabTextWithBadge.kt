@@ -10,10 +10,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun TabTextWithBadge(
-    text: String,
-    badgeCount: Int? = null,
-) {
+fun TabTextWithBadge(text: String, badgeCount: Int? = null) {
     val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     val pillAlpha = if (isDark) 0.12f else 0.08f
 
@@ -21,13 +18,13 @@ fun TabTextWithBadge(
         Text(
             text = text,
             maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+            overflow = TextOverflow.Ellipsis
         )
         if (badgeCount != null && badgeCount > 0) {
             Pill(
                 text = "$badgeCount",
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = pillAlpha),
-                fontSize = 10.sp,
+                fontSize = 10.sp
             )
         }
     }

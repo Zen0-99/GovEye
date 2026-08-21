@@ -11,9 +11,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 @Singleton
-class InterestsRepository @Inject constructor(
-    private val interestDao: InterestDao,
-) {
+class InterestsRepository @Inject constructor(private val interestDao: InterestDao) {
     fun observeInterestsForMember(memberId: Int): Flow<RepositoryResult<List<Interest>>> =
         interestDao.observeInterestsForMember(memberId).map { entities ->
             if (entities.isEmpty()) {
@@ -26,7 +24,7 @@ class InterestsRepository @Inject constructor(
     fun observeInterestsForMemberInRange(
         memberId: Int,
         fromDate: String?,
-        toDate: String?,
+        toDate: String?
     ): Flow<RepositoryResult<List<Interest>>> =
         interestDao.observeInterestsForMemberInRange(memberId, fromDate, toDate).map { entities ->
             if (entities.isEmpty()) {
@@ -36,18 +34,17 @@ class InterestsRepository @Inject constructor(
             }
         }
 
-    private fun InterestEntity.toDomain(): Interest =
-        Interest(
-            id = id,
-            memberId = memberId,
-            summary = summary,
-            categoryName = categoryName,
-            categoryNumber = categoryNumber,
-            registrationDate = registrationDate,
-            publishedDate = publishedDate,
-            fieldsJson = fieldsJson,
-            parsedAmountPence = parsedAmountPence,
-            currencyCode = currencyCode,
-            bucket = bucket,
-        )
+    private fun InterestEntity.toDomain(): Interest = Interest(
+        id = id,
+        memberId = memberId,
+        summary = summary,
+        categoryName = categoryName,
+        categoryNumber = categoryNumber,
+        registrationDate = registrationDate,
+        publishedDate = publishedDate,
+        fieldsJson = fieldsJson,
+        parsedAmountPence = parsedAmountPence,
+        currencyCode = currencyCode,
+        bucket = bucket
+    )
 }

@@ -8,12 +8,10 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
-import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.PersonAdd
@@ -33,6 +31,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
@@ -47,23 +47,23 @@ import com.goveye.app.domain.ThemeMode
 import com.goveye.app.ui.components.FloatingSearchBar
 import com.goveye.app.ui.components.LocalSearchBarState
 import com.goveye.app.ui.components.SearchBarStateHolder
+import com.goveye.app.ui.navigation.BillDetailRoute
 import com.goveye.app.ui.navigation.DeepLinkNavigator
 import com.goveye.app.ui.navigation.DirectoryRoute
+import com.goveye.app.ui.navigation.DivisionDetailRoute
 import com.goveye.app.ui.navigation.FeedRoute
 import com.goveye.app.ui.navigation.FollowingRoute
+import com.goveye.app.ui.navigation.InterestBucketDetailRoute
 import com.goveye.app.ui.navigation.ProfileRoute
 import com.goveye.app.ui.navigation.SettingsRoute
-import com.goveye.app.ui.navigation.BillDetailRoute
-import com.goveye.app.ui.navigation.DivisionDetailRoute
-import com.goveye.app.ui.navigation.InterestBucketDetailRoute
 import com.goveye.app.ui.screens.FeedScreen
 import com.goveye.app.ui.screens.FollowingScreen
 import com.goveye.app.ui.screens.SettingsScreen
-import com.goveye.app.ui.screens.directory.DirectoryScreen
 import com.goveye.app.ui.screens.bills.BillDetailScreen
+import com.goveye.app.ui.screens.directory.DirectoryScreen
 import com.goveye.app.ui.screens.divisions.DivisionDetailScreen
-import com.goveye.app.ui.screens.mpprofile.ProfileScreen
 import com.goveye.app.ui.screens.mpprofile.InterestBucketDetailScreen
+import com.goveye.app.ui.screens.mpprofile.ProfileScreen
 import com.goveye.app.ui.theme.GovEyeTheme
 import com.goveye.app.ui.theme.ThemeViewModel
 
@@ -100,7 +100,7 @@ fun GovEyeApp(deepLinkNavigator: DeepLinkNavigator) {
 private fun GovEyeAppContent(
     themeViewModel: ThemeViewModel,
     deepLinkNavigator: DeepLinkNavigator,
-    searchStateHolder: SearchBarStateHolder,
+    searchStateHolder: SearchBarStateHolder
 ) {
     val searchConfig by searchStateHolder.config
     // Per-tab back stacks (D-20)
@@ -138,24 +138,29 @@ private fun GovEyeAppContent(
                     currentTabIndex = 1
                     directoryBackStack.add(route)
                 }
+
                 is DivisionDetailRoute -> {
                     // Notification deep link — push onto directory back stack
                     // (the most natural entry point for division detail)
                     currentTabIndex = 1
                     directoryBackStack.add(route)
                 }
+
                 is BillDetailRoute -> {
                     // Notification deep link — push onto directory back stack
                     currentTabIndex = 1
                     directoryBackStack.add(route)
                 }
+
                 is InterestBucketDetailRoute -> {
                     currentTabIndex = 1
                     directoryBackStack.add(route)
                 }
+
                 is DirectoryRoute -> {
                     currentTabIndex = 1
                 }
+
                 else -> { }
             }
         }
@@ -176,7 +181,7 @@ private fun GovEyeAppContent(
                             onNavigateToDivision = { divisionId, house ->
                                 currentBackStack.add(DivisionDetailRoute(divisionId, house))
                             },
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier.fillMaxSize()
                         )
                     }
 
@@ -192,7 +197,7 @@ private fun GovEyeAppContent(
                             onNavigateToBill = { billId ->
                                 currentBackStack.add(BillDetailRoute(billId))
                             },
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier.fillMaxSize()
                         )
                     }
 
@@ -210,7 +215,7 @@ private fun GovEyeAppContent(
                             onNavigateToInterestBucket = { targetMemberId, bucketLabel ->
                                 currentBackStack.add(InterestBucketDetailRoute(targetMemberId, bucketLabel))
                             },
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier.fillMaxSize()
                         )
                     }
 
@@ -223,7 +228,7 @@ private fun GovEyeAppContent(
                             onNavigateToProfile = { targetId ->
                                 currentBackStack.add(ProfileRoute(targetId))
                             },
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier.fillMaxSize()
                         )
                     }
 
@@ -232,7 +237,7 @@ private fun GovEyeAppContent(
                         BillDetailScreen(
                             billId = key.billId,
                             onBack = { currentBackStack.removeLastOrNull() },
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier.fillMaxSize()
                         )
                     }
 
@@ -242,7 +247,7 @@ private fun GovEyeAppContent(
                             memberId = key.memberId,
                             bucketLabel = key.bucketLabel,
                             onBack = { currentBackStack.removeLastOrNull() },
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier.fillMaxSize()
                         )
                     }
 
@@ -252,7 +257,7 @@ private fun GovEyeAppContent(
                             onNavigateToProfile = { memberId ->
                                 currentBackStack.add(ProfileRoute(memberId))
                             },
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier.fillMaxSize()
                         )
                     }
 
@@ -287,7 +292,7 @@ private fun GovEyeAppContent(
             AnimatedVisibility(
                 visible = showSearchBar,
                 enter = fadeIn(),
-                exit = fadeOut(),
+                exit = fadeOut()
             ) {
                 FloatingSearchBar(
                     query = searchConfig.query,
@@ -303,7 +308,7 @@ private fun GovEyeAppContent(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = statusBarPadding)
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
                 )
             }
         },
@@ -312,7 +317,7 @@ private fun GovEyeAppContent(
                 visible = showBottomBar,
                 enter = fadeIn(),
                 exit = fadeOut(),
-                modifier = Modifier.clipToBounds(),
+                modifier = Modifier.clipToBounds()
             ) {
                 NavigationBar {
                     NavigationBarItem(

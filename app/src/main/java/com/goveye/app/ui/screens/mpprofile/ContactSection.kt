@@ -28,10 +28,7 @@ import com.goveye.app.domain.model.Contact
 import com.goveye.app.ui.theme.padding
 
 @Composable
-fun ContactSection(
-    contacts: List<Contact>,
-    modifier: Modifier = Modifier,
-) {
+fun ContactSection(contacts: List<Contact>, modifier: Modifier = Modifier) {
     if (contacts.isEmpty()) return
 
     Surface(
@@ -39,21 +36,21 @@ fun ContactSection(
             .fillMaxWidth()
             .padding(horizontal = MaterialTheme.padding.large, vertical = MaterialTheme.padding.small),
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
+        color = MaterialTheme.colorScheme.surfaceContainer
     ) {
         Column(
             modifier = Modifier.padding(MaterialTheme.padding.medium),
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.medium),
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.medium)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = "Contact",
                     style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 contacts.firstNotNullOfOrNull { it.openingHours?.takeIf(String::isNotBlank) }?.let { hours ->
                     Text(
@@ -61,7 +58,7 @@ fun ContactSection(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
@@ -93,12 +90,15 @@ private fun ContactRow(contact: Contact) {
         contact.isWebAddress == true && contact.website != null -> {
             { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(contact.website))) }
         }
+
         contact.email != null -> {
             { context.startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:${contact.email}"))) }
         }
+
         contact.phone != null -> {
             { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${contact.phone}"))) }
         }
+
         else -> null
     }
 
@@ -107,12 +107,12 @@ private fun ContactRow(contact: Contact) {
             .fillMaxWidth()
             .then(if (clickAction != null) Modifier.clickable(onClick = clickAction) else Modifier),
         verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.medium),
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.medium)
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Column {
             val typeText = contact.type
@@ -120,7 +120,7 @@ private fun ContactRow(contact: Contact) {
                 Text(
                     text = typeText,
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             Text(
@@ -128,7 +128,7 @@ private fun ContactRow(contact: Contact) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 3,
-                overflow = TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }

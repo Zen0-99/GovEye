@@ -31,9 +31,7 @@ import kotlinx.coroutines.flow.map
  * versions against manifest versions on startup.
  */
 @Singleton
-class DatabasePreferences @Inject constructor(
-    @Named("database") private val dataStore: DataStore<Preferences>,
-) {
+class DatabasePreferences @Inject constructor(@Named("database") private val dataStore: DataStore<Preferences>) {
     /** Current local mps stream version, or null if never updated. */
     val mpsVersion: Flow<Int?> = dataStore.data.map { it[MPS_VERSION_KEY] }
 

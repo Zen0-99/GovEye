@@ -27,7 +27,7 @@ class MemberMapperTest {
                         name = "Labour",
                         abbreviation = "Lab",
                         backgroundColour = "d50000",
-                        foregroundColour = "ffffff",
+                        foregroundColour = "ffffff"
                     ),
                 gender = "F",
                 latestHouseMembership =
@@ -36,9 +36,9 @@ class MemberMapperTest {
                         membershipFromId = 4074,
                         house = 1,
                         membershipStartDate = "1987-06-11T00:00:00",
-                        membershipStatus = MembershipStatusDto(statusIsActive = true),
+                        membershipStatus = MembershipStatusDto(statusIsActive = true)
                     ),
-                thumbnailUrl = "https://example.com/thumb.jpg",
+                thumbnailUrl = "https://example.com/thumb.jpg"
             )
 
         val mp = MemberMapper.toDomain(dto)
@@ -63,7 +63,7 @@ class MemberMapperTest {
                 nameListAs = "Abbott, Ms Diane",
                 nameDisplayAs = "Diane Abbott",
                 latestParty = null,
-                latestHouseMembership = null,
+                latestHouseMembership = null
             )
 
         val mp = MemberMapper.toDomain(dto)
@@ -79,7 +79,7 @@ class MemberMapperTest {
                 nameListAs = "Abbott, Ms Diane",
                 nameDisplayAs = "Diane Abbott",
                 latestParty = null,
-                latestHouseMembership = null,
+                latestHouseMembership = null
             )
 
         val mp = MemberMapper.toDomain(dto)
@@ -99,17 +99,17 @@ class MemberMapperTest {
                         MemberDto(
                             id = 172,
                             nameListAs = "Abbott, Ms Diane",
-                            nameDisplayAs = "Diane Abbott",
-                        ),
+                            nameDisplayAs = "Diane Abbott"
+                        )
                 ),
                 MemberItem(
                     value =
                         MemberDto(
                             id = 39,
                             nameListAs = "Whittingdale, Sir John",
-                            nameDisplayAs = "John Whittingdale",
-                        ),
-                ),
+                            nameDisplayAs = "John Whittingdale"
+                        )
+                )
             )
 
         val mps = MemberMapper.toDomain(items)

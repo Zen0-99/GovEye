@@ -38,7 +38,7 @@ fun MpAvatar(
     partyColorHex: String?,
     modifier: Modifier = Modifier,
     size: Dp = 40.dp,
-    borderWidth: Dp = 0.dp,
+    borderWidth: Dp = 0.dp
 ) {
     val partyColor = remember(partyColorHex) { parseMutedPartyColor(partyColorHex) }
     val initials = remember(displayName) { deriveInitials(displayName) }
@@ -63,7 +63,7 @@ fun MpAvatar(
             modifier = modifier
                 .then(borderModifier)
                 .size(size)
-                .clip(CircleShape),
+                .clip(CircleShape)
         )
     } else {
         Box(modifier = modifier.then(borderModifier).size(size).clip(CircleShape)) {
@@ -73,20 +73,16 @@ fun MpAvatar(
 }
 
 @Composable
-private fun InitialsAvatar(
-    initials: String,
-    backgroundColor: Color,
-    modifier: Modifier = Modifier,
-) {
+private fun InitialsAvatar(initials: String, backgroundColor: Color, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier.clip(CircleShape).background(backgroundColor),
-        contentAlignment = Alignment.Center,
+        contentAlignment = Alignment.Center
     ) {
         Text(
             text = initials,
             color = Color.White,
             style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.Bold
         )
     }
 }

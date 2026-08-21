@@ -38,7 +38,7 @@ class BillPollingWorker @AssistedInject constructor(
     private val billFollowRepository: BillFollowRepository,
     private val notificationHelper: NotificationHelper,
     private val databasePreferences: DatabasePreferences,
-    private val json: Json,
+    private val json: Json
 ) : CoroutineWorker(appContext, params) {
 
     companion object {
@@ -78,8 +78,8 @@ class BillPollingWorker @AssistedInject constructor(
                         NotificationHelper.BillNotificationData(
                             billId = bill.id,
                             billTitle = bill.shortTitle,
-                            newStage = newStage,
-                        ),
+                            newStage = newStage
+                        )
                     )
                 }
             }

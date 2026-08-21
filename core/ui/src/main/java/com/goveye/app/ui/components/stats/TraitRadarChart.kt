@@ -40,10 +40,7 @@ import kotlin.math.sin
  * The MP's percentile values form a filled polygon.
  */
 @Composable
-fun TraitRadarChart(
-    traitBars: List<TraitBar>,
-    modifier: Modifier = Modifier,
-) {
+fun TraitRadarChart(traitBars: List<TraitBar>, modifier: Modifier = Modifier) {
     if (traitBars.isEmpty()) return
 
     val primaryColor = MaterialTheme.colorScheme.primary
@@ -56,22 +53,22 @@ fun TraitRadarChart(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
+        color = MaterialTheme.colorScheme.surfaceContainer
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(16.dp)
         ) {
             Text(
                 text = "Traits vs Peers",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = MaterialTheme.colorScheme.onSurface
             )
             Text(
                 text = "Percentile rank (0-100) among same-house MPs",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 8.dp),
+                modifier = Modifier.padding(bottom = 8.dp)
             )
 
             val labelTextSize = with(density) { 11.dp.toPx() }
@@ -87,7 +84,7 @@ fun TraitRadarChart(
             Canvas(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(280.dp),
+                    .height(280.dp)
             ) {
                 val centerX = size.width / 2f
                 val centerY = size.height / 2f
@@ -149,7 +146,7 @@ fun TraitRadarChart(
                         traitBars[i].label,
                         labelX,
                         labelY + labelTextSize / 3f,
-                        paint,
+                        paint
                     )
                     // Percentile value below label
                     val valuePaint = android.graphics.Paint(paint).apply {
@@ -161,7 +158,7 @@ fun TraitRadarChart(
                         "${traitBars[i].percentile}%",
                         labelX,
                         labelY + labelTextSize * 1.5f,
-                        valuePaint,
+                        valuePaint
                     )
                 }
             }
@@ -172,7 +169,7 @@ fun TraitRadarChart(
                     .fillMaxWidth()
                     .padding(top = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 LegendDot(color = primaryColor, label = "MP percentile")
                 LegendDot(color = gridColor, label = "25 / 50 / 75 / 100%")
@@ -185,18 +182,18 @@ fun TraitRadarChart(
 private fun LegendDot(color: Color, label: String) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Box(
             modifier = Modifier
                 .size(10.dp)
                 .clip(RoundedCornerShape(2.dp))
-                .background(color),
+                .background(color)
         )
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }

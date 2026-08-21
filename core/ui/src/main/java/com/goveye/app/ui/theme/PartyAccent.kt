@@ -49,10 +49,7 @@ val partyAccent: Color?
  * @param isDark whether the current theme is dark (affects on-colors)
  */
 @Composable
-fun partyAccentColorScheme(
-    accent: Color?,
-    isDark: Boolean,
-): ColorScheme {
+fun partyAccentColorScheme(accent: Color?, isDark: Boolean): ColorScheme {
     val base = MaterialTheme.colorScheme
     if (accent == null) return base
 
@@ -65,13 +62,19 @@ fun partyAccentColorScheme(
         red = accent.red * 0.55f + neutral.red * 0.45f,
         green = accent.green * 0.55f + neutral.green * 0.45f,
         blue = accent.blue * 0.55f + neutral.blue * 0.45f,
-        alpha = 1f,
+        alpha = 1f
     )
 
     // Derive readable on-colors for the softened accent
     val luminance = softenedAccent.red * 0.299f + softenedAccent.green * 0.587f + softenedAccent.blue * 0.114f
     val onAccent = if (luminance > 0.5f) Color(0xFF1A1A1A) else Color.White
-    val accentContainer = if (isDark) softenedAccent.copy(alpha = 0.25f).compositeOver(Color(0xFF1A1A1A)) else softenedAccent.copy(alpha = 0.15f).compositeOver(Color.White)
+    val accentContainer = if (isDark) {
+        softenedAccent.copy(
+            alpha = 0.25f
+        ).compositeOver(Color(0xFF1A1A1A))
+    } else {
+        softenedAccent.copy(alpha = 0.15f).compositeOver(Color.White)
+    }
     val onAccentContainer = if (isDark) softenedAccent.copy(alpha = 0.9f) else softenedAccent.copy(alpha = 0.8f)
 
     // Surface containers are NOT overridden — they stay neutral so rounded
@@ -90,7 +93,7 @@ fun partyAccentColorScheme(
         onTertiary = onAccent,
         tertiaryContainer = accentContainer,
         onTertiaryContainer = onAccentContainer,
-        surfaceTint = softenedAccent,
+        surfaceTint = softenedAccent
     )
 }
 

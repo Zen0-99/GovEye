@@ -56,7 +56,7 @@ class NetworkingTracerTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"id":172,"name":"Abbott, Ms Diane"}"""),
+                .setBody("""{"id":172,"name":"Abbott, Ms Diane"}""")
         )
 
         val response = api.getTest()
@@ -71,7 +71,7 @@ class NetworkingTracerTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"id":172,"name":"Abbott, Ms Diane","unknownField":"ignored"}"""),
+                .setBody("""{"id":172,"name":"Abbott, Ms Diane","unknownField":"ignored"}""")
         )
 
         val response = api.getTest()

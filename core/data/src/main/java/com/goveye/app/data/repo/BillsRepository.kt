@@ -7,15 +7,13 @@ import com.goveye.app.domain.model.Bill
 import com.goveye.app.domain.model.BillStage
 import com.goveye.app.domain.model.RepositoryResult
 import com.goveye.app.domain.model.SyncStatus
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 @Singleton
-class BillsRepository @Inject constructor(
-    private val billDao: BillDao,
-) {
+class BillsRepository @Inject constructor(private val billDao: BillDao) {
     fun observeBills(limit: Int = 50): Flow<RepositoryResult<List<Bill>>> =
         billDao.observeBills(limit).map { entities ->
             if (entities.isEmpty()) {
@@ -25,44 +23,40 @@ class BillsRepository @Inject constructor(
             }
         }
 
-    fun observeBill(id: Int): Flow<RepositoryResult<Bill?>> =
-        billDao.observeBill(id).map { entity ->
-            if (entity == null) {
-                RepositoryResult(null, SyncStatus.EMPTY)
-            } else {
-                RepositoryResult(entity.toDomain(), SyncStatus.FRESH)
-            }
+    fun observeBill(id: Int): Flow<RepositoryResult<Bill?>> = billDao.observeBill(id).map { entity ->
+        if (entity == null) {
+            RepositoryResult(null, SyncStatus.EMPTY)
+        } else {
+            RepositoryResult(entity.toDomain(), SyncStatus.FRESH)
         }
+    }
 
-    fun observeBillStages(billId: Int): Flow<List<BillStage>> =
-        billDao.observeBillStages(billId).map { entities ->
-            entities.map { it.toDomain() }
-        }
+    fun observeBillStages(billId: Int): Flow<List<BillStage>> = billDao.observeBillStages(billId).map { entities ->
+        entities.map { it.toDomain() }
+    }
 
     suspend fun searchBills(query: String, limit: Int = 50): List<Bill> =
         billDao.searchBills(query, limit).map { it.toDomain() }
 
-    private fun BillEntity.toDomain(): Bill =
-        Bill(
-            id = id,
-            shortTitle = shortTitle,
-            longTitle = longTitle,
-            summary = summary,
-            currentHouse = currentHouse,
-            originatingHouse = originatingHouse,
-            isAct = isAct,
-            isDefeated = isDefeated,
-            billWithdrawn = billWithdrawn,
-            currentStage = null,
-        )
+    private fun BillEntity.toDomain(): Bill = Bill(
+        id = id,
+        shortTitle = shortTitle,
+        longTitle = longTitle,
+        summary = summary,
+        currentHouse = currentHouse,
+        originatingHouse = originatingHouse,
+        isAct = isAct,
+        isDefeated = isDefeated,
+        billWithdrawn = billWithdrawn,
+        currentStage = null
+    )
 
-    private fun BillStageEntity.toDomain(): BillStage =
-        BillStage(
-            stageId = stageId,
-            description = description,
-            abbreviation = abbreviation,
-            house = house,
-            sortOrder = sortOrder,
-            sittingDates = sittingDates,
-        )
+    private fun BillStageEntity.toDomain(): BillStage = BillStage(
+        stageId = stageId,
+        description = description,
+        abbreviation = abbreviation,
+        house = house,
+        sortOrder = sortOrder,
+        sittingDates = sittingDates
+    )
 }

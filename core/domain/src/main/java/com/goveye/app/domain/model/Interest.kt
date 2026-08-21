@@ -11,5 +11,5 @@ data class Interest(
     val fieldsJson: String,
     val parsedAmountPence: Long? = null,
     val currencyCode: String? = null,
-    val bucket: String? = null,
+    val bucket: String? = null
 )

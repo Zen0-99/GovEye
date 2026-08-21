@@ -9,11 +9,11 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.graphics.luminance
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -78,7 +78,7 @@ class MainActivity : ComponentActivity() {
                 val darkStyle = SystemBarStyle.dark(Color.TRANSPARENT)
                 enableEdgeToEdge(
                     statusBarStyle = if (surfaceColor.luminance() > 0.5f) lightStyle else darkStyle,
-                    navigationBarStyle = if (isDark) darkStyle else lightStyle,
+                    navigationBarStyle = if (isDark) darkStyle else lightStyle
                 )
             }
 
@@ -104,6 +104,7 @@ class MainActivity : ComponentActivity() {
                             dbState = DatabaseUpdateState.Applying
                             dbState = databaseUpdateManager.applyPatches(patches)
                         }
+
                         is DatabaseUpdateState.NeedsFullDownload -> {
                             // Full DB download needed (stream multiple behind) — show loading screen
                             dbState = DatabaseUpdateState.Downloading(0f, true)
@@ -111,6 +112,7 @@ class MainActivity : ComponentActivity() {
                                 dbState = DatabaseUpdateState.Downloading(progress, true)
                             }
                         }
+
                         else -> { /* UpToDate or Failed — proceed to app */ }
                     }
                 }
@@ -126,6 +128,7 @@ class MainActivity : ComponentActivity() {
                 is DatabaseUpdateState.Checking -> {
                     DatabaseLoadingScreen(state = dbState)
                 }
+
                 else -> {
                     // UpToDate, Failed, or Idle — show the app
                     GovEyeApp(deepLinkNavigator = deepLinkNavigator)

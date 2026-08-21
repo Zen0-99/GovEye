@@ -4,20 +4,20 @@ package com.goveye.app.domain.stats
  * Peer averages for a house (Commons or Lords).
  * Used for normalizing activity score components.
  */
-data class PeerAverages(
-    val averageQuestions: Float,
-    val averageSpeeches: Float,
-    val averageCommittees: Float,
-)
+data class PeerAverages(val averageQuestions: Float, val averageSpeeches: Float, val averageCommittees: Float)
 
 /**
  * Breakdown of the activity score by component.
  */
 data class ScoreBreakdown(
-    val voteParticipationContribution: Int, // 0-40
-    val questionsContribution: Int, // 0-20
-    val speechesContribution: Int, // 0-20
-    val committeesContribution: Int, // 0-20
+    // 0-40
+    val voteParticipationContribution: Int,
+    // 0-20
+    val questionsContribution: Int,
+    // 0-20
+    val speechesContribution: Int,
+    // 0-20
+    val committeesContribution: Int
 )
 
 /**
@@ -35,10 +35,7 @@ data class ScoreBreakdown(
  * This is a transparency tool, not an editorial judgment.
  * A higher score means more recorded activity, not better performance.
  */
-data class ActivityScore(
-    val score: Int,
-    val breakdown: ScoreBreakdown,
-)
+data class ActivityScore(val score: Int, val breakdown: ScoreBreakdown)
 
 /**
  * Computes the parliamentary activity score.
@@ -55,7 +52,7 @@ object ActivityScoreCalculator {
         questionCount: Int,
         speechCount: Int,
         committeeCount: Int,
-        peerAverages: PeerAverages,
+        peerAverages: PeerAverages
     ): ActivityScore {
         val voteContribution = (voteParticipationRate * VOTE_WEIGHT).toInt().coerceIn(0, VOTE_WEIGHT)
         val questionsContribution = normalize(questionCount, peerAverages.averageQuestions, QUESTIONS_WEIGHT)
@@ -70,8 +67,8 @@ object ActivityScoreCalculator {
                 voteParticipationContribution = voteContribution,
                 questionsContribution = questionsContribution,
                 speechesContribution = speechesContribution,
-                committeesContribution = committeesContribution,
-            ),
+                committeesContribution = committeesContribution
+            )
         )
     }
 

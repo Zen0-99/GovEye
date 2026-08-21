@@ -13,5 +13,5 @@ data class NewVote(
     val house: Int,
     val divisionTitle: String,
     val voteType: VoteType,
-    val isRebel: Boolean,
+    val isRebel: Boolean
 )

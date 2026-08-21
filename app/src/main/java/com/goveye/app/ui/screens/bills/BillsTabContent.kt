@@ -36,7 +36,7 @@ fun BillsTabContent(
     onNavigateToBill: (Int) -> Unit,
     searchQuery: String = "",
     modifier: Modifier = Modifier,
-    viewModel: BillBrowseViewModel = hiltViewModel(),
+    viewModel: BillBrowseViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
@@ -56,7 +56,7 @@ fun BillsTabContent(
             state.isLoading && displayBills.isEmpty() -> {
                 Box(
                     modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
+                    contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator()
                 }
@@ -65,12 +65,12 @@ fun BillsTabContent(
             displayBills.isEmpty() -> {
                 Box(
                     modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
+                    contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = if (searchQuery.isNotBlank()) "No bills match \"$searchQuery\"" else "No bills found",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -80,14 +80,14 @@ fun BillsTabContent(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(
                         horizontal = 12.dp,
-                        vertical = MaterialTheme.padding.small,
+                        vertical = MaterialTheme.padding.small
                     ),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(displayBills, key = { it.id }) { bill ->
                         BillCard(
                             bill = bill,
-                            onClick = { onNavigateToBill(bill.id) },
+                            onClick = { onNavigateToBill(bill.id) }
                         )
                     }
                 }
@@ -97,46 +97,42 @@ fun BillsTabContent(
 }
 
 @Composable
-private fun BillCard(
-    bill: Bill,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+private fun BillCard(bill: Bill, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
+        color = MaterialTheme.colorScheme.surfaceContainer
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text(
                 text = bill.shortTitle,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 if (bill.isAct) {
                     BillStatusChip(text = "Act", color = MaterialTheme.colorScheme.primaryContainer)
                 }
                 BillStatusChip(
                     text = bill.currentHouse,
-                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    color = MaterialTheme.colorScheme.secondaryContainer
                 )
                 bill.currentStage?.description?.let { stage ->
                     BillStatusChip(
                         text = stage,
-                        color = MaterialTheme.colorScheme.tertiaryContainer,
+                        color = MaterialTheme.colorScheme.tertiaryContainer
                     )
                 }
             }
@@ -145,21 +141,17 @@ private fun BillCard(
 }
 
 @Composable
-private fun BillStatusChip(
-    text: String,
-    color: androidx.compose.ui.graphics.Color,
-    modifier: Modifier = Modifier,
-) {
+private fun BillStatusChip(text: String, color: androidx.compose.ui.graphics.Color, modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(50),
-        color = color,
+        color = color
     ) {
         Text(
             text = text,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
         )
     }
 }

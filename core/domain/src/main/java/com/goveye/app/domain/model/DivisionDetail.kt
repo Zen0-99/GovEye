@@ -9,18 +9,14 @@ data class PartyBreakdown(
     val partyColour: String,
     val ayeCount: Int,
     val noCount: Int,
-    val totalMembers: Int,
+    val totalMembers: Int
 )
 
 /**
  * Division with full voter lists (Ayes and Noes).
  * Used on the division detail screen.
  */
-data class DivisionWithVotes(
-    val division: Division,
-    val ayes: List<DivisionVote>,
-    val noes: List<DivisionVote>,
-)
+data class DivisionWithVotes(val division: Division, val ayes: List<DivisionVote>, val noes: List<DivisionVote>)
 
 /**
  * A member's vote with the associated division context.
@@ -34,5 +30,5 @@ data class MemberVoteWithDivision(
     val ayeCount: Int,
     val noCount: Int,
     val vote: VoteType,
-    val isTeller: Boolean,
+    val isTeller: Boolean
 )

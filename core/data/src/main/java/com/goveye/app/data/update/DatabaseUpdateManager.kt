@@ -62,7 +62,7 @@ class DatabaseUpdateManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val database: BundledDatabase,
     private val updateDao: DatabaseUpdateDao,
-    @Named("dbDownloadClient") private val dbDownloadClient: OkHttpClient,
+    @Named("dbDownloadClient") private val dbDownloadClient: OkHttpClient
 ) {
     /**
      * Checks whether this is the first app launch (seed DB not yet downloaded).
@@ -117,6 +117,7 @@ class DatabaseUpdateManager @Inject constructor(
                     manifest.version == localVersion -> {
                         // Up to date — no patch needed
                     }
+
                     manifest.previousVersion == localVersion -> {
                         // Exactly 1 behind — patch available
                         val release = releases[index]
@@ -124,6 +125,7 @@ class DatabaseUpdateManager @Inject constructor(
                             patches.add(PatchInfo(streamName, manifest, release))
                         }
                     }
+
                     else -> {
                         // Multiple versions behind — fall back to seed DB (D-10a)
                         return@withContext DatabaseUpdateState.NeedsFullDownload(null)
@@ -173,7 +175,7 @@ class DatabaseUpdateManager @Inject constructor(
                     if (existing != null) {
                         combinedChanges[tableName] = TableChanges(
                             upsert = existing.upsert + changes.upsert,
-                            delete = existing.delete + changes.delete,
+                            delete = existing.delete + changes.delete
                         )
                     } else {
                         combinedChanges[tableName] = changes
@@ -321,16 +323,62 @@ class DatabaseUpdateManager @Inject constructor(
             val upsertList = changes.upsert.map { it.jsonObject }
             when (tableName) {
                 "mps" -> updateDao.upsertMps(upsertList.map { json.decodeFromJsonElement<MpEntity>(it) })
-                "divisions" -> updateDao.upsertDivisions(upsertList.map { json.decodeFromJsonElement<DivisionEntity>(it) })
-                "division_votes" -> updateDao.upsertDivisionVotes(upsertList.map { json.decodeFromJsonElement<DivisionVoteEntity>(it) })
-                "committees" -> updateDao.upsertCommittees(upsertList.map { json.decodeFromJsonElement<CommitteeEntity>(it) })
-                "mp_committee_cross_ref" -> updateDao.upsertMpCommitteeCrossRef(upsertList.map { json.decodeFromJsonElement<MpCommitteeCrossRef>(it) })
+
+                "divisions" -> updateDao.upsertDivisions(
+                    upsertList.map {
+                        json.decodeFromJsonElement<DivisionEntity>(it)
+                    }
+                )
+
+                "division_votes" -> updateDao.upsertDivisionVotes(
+                    upsertList.map {
+                        json.decodeFromJsonElement<DivisionVoteEntity>(it)
+                    }
+                )
+
+                "committees" -> updateDao.upsertCommittees(
+                    upsertList.map {
+                        json.decodeFromJsonElement<CommitteeEntity>(it)
+                    }
+                )
+
+                "mp_committee_cross_ref" -> updateDao.upsertMpCommitteeCrossRef(
+                    upsertList.map {
+                        json.decodeFromJsonElement<MpCommitteeCrossRef>(it)
+                    }
+                )
+
                 "bills" -> updateDao.upsertBills(upsertList.map { json.decodeFromJsonElement<BillEntity>(it) })
-                "bill_stages" -> updateDao.upsertBillStages(upsertList.map { json.decodeFromJsonElement<BillStageEntity>(it) })
-                "hansard_contributions" -> updateDao.upsertHansardContributions(upsertList.map { json.decodeFromJsonElement<HansardContributionEntity>(it) })
-                "interests" -> updateDao.upsertInterests(upsertList.map { json.decodeFromJsonElement<InterestEntity>(it) })
-                "recess_dates" -> updateDao.upsertRecessDates(upsertList.map { json.decodeFromJsonElement<RecessDateEntity>(it) })
-                "recess_dates_meta" -> updateDao.upsertRecessDatesMeta(upsertList.map { json.decodeFromJsonElement<RecessDatesMetaEntity>(it) })
+
+                "bill_stages" -> updateDao.upsertBillStages(
+                    upsertList.map {
+                        json.decodeFromJsonElement<BillStageEntity>(it)
+                    }
+                )
+
+                "hansard_contributions" -> updateDao.upsertHansardContributions(
+                    upsertList.map {
+                        json.decodeFromJsonElement<HansardContributionEntity>(it)
+                    }
+                )
+
+                "interests" -> updateDao.upsertInterests(
+                    upsertList.map {
+                        json.decodeFromJsonElement<InterestEntity>(it)
+                    }
+                )
+
+                "recess_dates" -> updateDao.upsertRecessDates(
+                    upsertList.map {
+                        json.decodeFromJsonElement<RecessDateEntity>(it)
+                    }
+                )
+
+                "recess_dates_meta" -> updateDao.upsertRecessDatesMeta(
+                    upsertList.map {
+                        json.decodeFromJsonElement<RecessDatesMetaEntity>(it)
+                    }
+                )
                 // mps_fts is NOT handled — auto-synced by FTS4 triggers (Pitfall 2)
             }
         }
@@ -340,24 +388,36 @@ class DatabaseUpdateManager @Inject constructor(
             val obj = deleteRow.jsonObject
             when (tableName) {
                 "mps" -> updateDao.deleteMp(obj["id"]!!.jsonPrimitive.intOrNull!!)
+
                 "divisions" -> updateDao.deleteDivision(obj["id"]!!.jsonPrimitive.intOrNull!!)
+
                 "division_votes" -> updateDao.deleteDivisionVote(
                     obj["divisionId"]!!.jsonPrimitive.intOrNull!!,
-                    obj["memberId"]!!.jsonPrimitive.intOrNull!!,
+                    obj["memberId"]!!.jsonPrimitive.intOrNull!!
                 )
+
                 "committees" -> updateDao.deleteCommittee(obj["id"]!!.jsonPrimitive.intOrNull!!)
+
                 "mp_committee_cross_ref" -> updateDao.deleteMpCommitteeCrossRef(
                     obj["memberId"]!!.jsonPrimitive.intOrNull!!,
-                    obj["committeeId"]!!.jsonPrimitive.intOrNull!!,
+                    obj["committeeId"]!!.jsonPrimitive.intOrNull!!
                 )
+
                 "bills" -> updateDao.deleteBill(obj["id"]!!.jsonPrimitive.intOrNull!!)
+
                 "bill_stages" -> updateDao.deleteBillStage(
                     obj["billId"]!!.jsonPrimitive.intOrNull!!,
-                    obj["stageId"]!!.jsonPrimitive.intOrNull!!,
+                    obj["stageId"]!!.jsonPrimitive.intOrNull!!
                 )
-                "hansard_contributions" -> updateDao.deleteHansardContribution(obj["itemId"]!!.jsonPrimitive.longOrNull!!)
+
+                "hansard_contributions" -> updateDao.deleteHansardContribution(
+                    obj["itemId"]!!.jsonPrimitive.longOrNull!!
+                )
+
                 "interests" -> updateDao.deleteInterest(obj["id"]!!.jsonPrimitive.intOrNull!!)
+
                 "recess_dates" -> updateDao.deleteRecessDate(obj["id"]!!.jsonPrimitive.longOrNull!!)
+
                 "recess_dates_meta" -> updateDao.deleteRecessDatesMeta(obj["house"]!!.jsonPrimitive.intOrNull!!)
             }
         }
@@ -378,7 +438,7 @@ class DatabaseUpdateManager @Inject constructor(
         DatabaseUpdateApi.BILLS_TAG to "bills",
         DatabaseUpdateApi.COMMITTEES_TAG to "committees",
         DatabaseUpdateApi.RECESS_TAG to "recess",
-        DatabaseUpdateApi.INTERESTS_TAG to "interests",
+        DatabaseUpdateApi.INTERESTS_TAG to "interests"
     )
 
     private var releases: Array<GithubReleaseDto?> = arrayOfNulls(7)

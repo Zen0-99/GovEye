@@ -10,7 +10,7 @@ data class MonthlyVotingData(
     val month: String, // YYYY-MM or YYYY-Q# or YYYY
     val ayeCount: Int,
     val noCount: Int,
-    val noVoteCount: Int,
+    val noVoteCount: Int
 ) {
     /** Short label for chart X-axis, e.g. "Jul", "Q3", "2024" */
     val monthLabel: String
@@ -26,9 +26,13 @@ data class MonthlyVotingData(
             return try {
                 val parts = month.split("-")
                 val monthNum = parts[1].toIntOrNull() ?: 1
-                listOf("Jan","Feb","Mar","Apr","May","Jun",
-                    "Jul","Aug","Sep","Oct","Nov","Dec").getOrElse(monthNum - 1) { month }
-            } catch (e: Exception) { month }
+                listOf(
+                    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+                ).getOrElse(monthNum - 1) { month }
+            } catch (e: Exception) {
+                month
+            }
         }
 }
 
@@ -37,7 +41,8 @@ data class MonthlyVotingData(
  */
 data class AttendanceTrend(
     val month: String,
-    val attendanceRate: Float, // 0-1
+    // 0-1
+    val attendanceRate: Float
 ) {
     val monthLabel: String
         get() {
@@ -49,9 +54,13 @@ data class AttendanceTrend(
             return try {
                 val parts = month.split("-")
                 val monthNum = parts[1].toIntOrNull() ?: 1
-                listOf("Jan","Feb","Mar","Apr","May","Jun",
-                    "Jul","Aug","Sep","Oct","Nov","Dec").getOrElse(monthNum - 1) { month }
-            } catch (e: Exception) { month }
+                listOf(
+                    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+                ).getOrElse(monthNum - 1) { month }
+            } catch (e: Exception) {
+                month
+            }
         }
 }
 
@@ -60,7 +69,8 @@ data class AttendanceTrend(
  */
 data class RebellionTrend(
     val month: String,
-    val rebellionRate: Float, // 0-1
+    // 0-1
+    val rebellionRate: Float
 ) {
     val monthLabel: String
         get() {
@@ -72,9 +82,13 @@ data class RebellionTrend(
             return try {
                 val parts = month.split("-")
                 val monthNum = parts[1].toIntOrNull() ?: 1
-                listOf("Jan","Feb","Mar","Apr","May","Jun",
-                    "Jul","Aug","Sep","Oct","Nov","Dec").getOrElse(monthNum - 1) { month }
-            } catch (e: Exception) { month }
+                listOf(
+                    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+                ).getOrElse(monthNum - 1) { month }
+            } catch (e: Exception) {
+                month
+            }
         }
 }
 
@@ -102,9 +116,9 @@ object VotingStatsCalculator {
         return year
     }
 
-    private fun countUniqueMonths(votes: List<MemberVoteWithDivision>): Int {
-        return votes.mapNotNull { it.divisionDate.take(7).ifBlank { null } }.distinct().size
-    }
+    private fun countUniqueMonths(votes: List<MemberVoteWithDivision>): Int = votes.mapNotNull {
+        it.divisionDate.take(7).ifBlank { null }
+    }.distinct().size
 
     /**
      * Group votes by period and count Aye/No/NoVote.
@@ -119,7 +133,7 @@ object VotingStatsCalculator {
                     month = period,
                     ayeCount = periodVotes.count { it.vote == VoteType.AYE },
                     noCount = periodVotes.count { it.vote == VoteType.NO },
-                    noVoteCount = periodVotes.count { it.vote == VoteType.NO_VOTE_RECORDED },
+                    noVoteCount = periodVotes.count { it.vote == VoteType.NO_VOTE_RECORDED }
                 )
             }
             .sortedBy { it.month }
@@ -139,7 +153,7 @@ object VotingStatsCalculator {
      */
     fun computeAttendanceTrend(
         votes: List<MemberVoteWithDivision>,
-        allDivisionDates: List<String> = emptyList(),
+        allDivisionDates: List<String> = emptyList()
     ): List<AttendanceTrend> {
         if (allDivisionDates.isEmpty()) {
             // Fallback: old behavior (always 100% since API only returns voted divisions)
@@ -150,7 +164,7 @@ object VotingStatsCalculator {
                     val attended = periodVotes.count { it.vote != VoteType.NO_VOTE_RECORDED }
                     AttendanceTrend(
                         month = period,
-                        attendanceRate = attended.toFloat() / periodVotes.size,
+                        attendanceRate = attended.toFloat() / periodVotes.size
                     )
                 }
                 .sortedBy { it.month }
@@ -178,7 +192,7 @@ object VotingStatsCalculator {
             val attended = attendedByPeriod[period] ?: 0
             AttendanceTrend(
                 month = period,
-                attendanceRate = if (total > 0) attended.toFloat() / total else 0f,
+                attendanceRate = if (total > 0) attended.toFloat() / total else 0f
             )
         }
     }
@@ -190,7 +204,7 @@ object VotingStatsCalculator {
      */
     fun computeRebellionTrend(
         rebellionInstances: List<RebellionInstance>,
-        allVotes: List<MemberVoteWithDivision>,
+        allVotes: List<MemberVoteWithDivision>
     ): List<RebellionTrend> {
         val totalMonths = countUniqueMonths(allVotes)
         val rebellionByPeriod = rebellionInstances.groupBy { instance ->
@@ -206,7 +220,7 @@ object VotingStatsCalculator {
             val total = totalByPeriod[period]?.size ?: 0
             RebellionTrend(
                 month = period,
-                rebellionRate = if (total > 0) rebellions.toFloat() / total else 0f,
+                rebellionRate = if (total > 0) rebellions.toFloat() / total else 0f
             )
         }
     }

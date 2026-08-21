@@ -12,5 +12,5 @@ data class DivisionVoteEntity(
     val partyColour: String,
     val constituencyName: String,
     val isTeller: Boolean = false,
-    val proxyName: String? = null,
+    val proxyName: String? = null
 )

@@ -10,7 +10,7 @@ import com.goveye.app.domain.model.VoteType
 enum class VoteMapResult {
     WITH_PARTY,
     REBEL,
-    NO_VOTE,
+    NO_VOTE
 }
 
 /**
@@ -23,7 +23,7 @@ data class VoteMapTile(
     val mpVote: VoteType,
     val partyLine: VoteType,
     val voteResult: VoteMapResult,
-    val topic: String,
+    val topic: String
 )
 
 /**
@@ -38,7 +38,7 @@ object VoteMapCalculator {
      */
     fun compute(
         memberVotes: List<MemberVoteWithDivision>,
-        rebellionInstances: List<RebellionInstance>,
+        rebellionInstances: List<RebellionInstance>
     ): List<VoteMapTile> {
         val rebellionDivisionIds = rebellionInstances.map { it.divisionId }.toSet()
 
@@ -62,7 +62,7 @@ object VoteMapCalculator {
                     vote.vote
                 },
                 voteResult = result,
-                topic = extractTopic(vote.divisionTitle),
+                topic = extractTopic(vote.divisionTitle)
             )
         }.sortedByDescending { it.divisionDate }
     }

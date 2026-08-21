@@ -26,9 +26,7 @@ import javax.inject.Singleton
  * division title, and rebellion context. Tap opens the division detail screen.
  */
 @Singleton
-class NotificationHelper @Inject constructor(
-    @ApplicationContext private val context: Context,
-) {
+class NotificationHelper @Inject constructor(@ApplicationContext private val context: Context) {
     companion object {
         const val VOTES_CHANNEL_ID = "votes"
         const val SPEECHES_CHANNEL_ID = "speeches"
@@ -56,7 +54,7 @@ class NotificationHelper @Inject constructor(
             val votesChannel = NotificationChannel(
                 VOTES_CHANNEL_ID,
                 VOTES_CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_HIGH,
+                NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = VOTES_CHANNEL_DESC
                 enableVibration(true)
@@ -64,7 +62,7 @@ class NotificationHelper @Inject constructor(
             val speechesChannel = NotificationChannel(
                 SPEECHES_CHANNEL_ID,
                 SPEECHES_CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_DEFAULT,
+                NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
                 description = SPEECHES_CHANNEL_DESC
                 setShowBadge(false)
@@ -72,7 +70,7 @@ class NotificationHelper @Inject constructor(
             val billsChannel = NotificationChannel(
                 BILLS_CHANNEL_ID,
                 BILLS_CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_DEFAULT,
+                NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
                 description = BILLS_CHANNEL_DESC
                 enableVibration(true)
@@ -91,7 +89,7 @@ class NotificationHelper @Inject constructor(
         val divisionHouse: Int,
         val divisionTitle: String,
         val voteLabel: String,
-        val isRebel: Boolean,
+        val isRebel: Boolean
     )
 
     suspend fun showVoteNotification(data: VoteNotificationData) {
@@ -109,7 +107,7 @@ class NotificationHelper @Inject constructor(
         val pendingIntent = buildDivisionPendingIntent(
             data.divisionId,
             data.divisionHouse,
-            data.mpName,
+            data.mpName
         )
 
         val builder = NotificationCompat.Builder(context, VOTES_CHANNEL_ID)
@@ -171,11 +169,7 @@ class NotificationHelper @Inject constructor(
         }
     }
 
-    private fun buildDivisionPendingIntent(
-        divisionId: Int,
-        house: Int,
-        mpName: String,
-    ): PendingIntent {
+    private fun buildDivisionPendingIntent(divisionId: Int, house: Int, mpName: String): PendingIntent {
         val intent = Intent(context, NotificationDeepLinkActivity::class.java).apply {
             putExtra(EXTRA_DIVISION_ID, divisionId)
             putExtra(EXTRA_DIVISION_HOUSE, house)
@@ -187,15 +181,11 @@ class NotificationHelper @Inject constructor(
             context,
             requestCode,
             intent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
     }
 
-    data class BillNotificationData(
-        val billId: Int,
-        val billTitle: String,
-        val newStage: String,
-    )
+    data class BillNotificationData(val billId: Int, val billTitle: String, val newStage: String)
 
     fun showBillStageNotification(data: BillNotificationData) {
         val body = "Moved to ${data.newStage}"
@@ -248,7 +238,7 @@ class NotificationHelper @Inject constructor(
             context,
             billId,
             intent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
     }
 }

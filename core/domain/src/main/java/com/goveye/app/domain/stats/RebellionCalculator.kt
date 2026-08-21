@@ -10,7 +10,7 @@ data class RebellionStats(
     val rebellionCount: Int,
     val totalDivisionsVoted: Int,
     val rebellionRate: Float,
-    val rebellionInstances: List<RebellionInstance>,
+    val rebellionInstances: List<RebellionInstance>
 )
 
 /**
@@ -21,7 +21,7 @@ data class RebellionInstance(
     val mpVote: VoteType,
     val partyMajorityVote: VoteType,
     val partyAyeCount: Int,
-    val partyNoCount: Int,
+    val partyNoCount: Int
 )
 
 /**
@@ -47,7 +47,7 @@ object RebellionCalculator {
     fun compute(
         memberVotes: List<DivisionVote>,
         allVotesByDivision: Map<Int, List<DivisionVote>>,
-        memberPartyName: String,
+        memberPartyName: String
     ): RebellionStats {
         val rebellions = mutableListOf<RebellionInstance>()
         var divisionsVoted = 0
@@ -80,8 +80,8 @@ object RebellionCalculator {
                         mpVote = memberVote.vote,
                         partyMajorityVote = partyMajority,
                         partyAyeCount = partyAyes,
-                        partyNoCount = partyNoes,
-                    ),
+                        partyNoCount = partyNoes
+                    )
                 )
             }
         }
@@ -96,7 +96,7 @@ object RebellionCalculator {
             rebellionCount = rebellions.size,
             totalDivisionsVoted = divisionsVoted,
             rebellionRate = rate,
-            rebellionInstances = rebellions,
+            rebellionInstances = rebellions
         )
     }
 }

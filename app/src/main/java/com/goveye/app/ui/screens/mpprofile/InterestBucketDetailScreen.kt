@@ -45,7 +45,7 @@ fun InterestBucketDetailScreen(
     bucketLabel: String,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: ProfileViewModel = hiltViewModel(),
+    viewModel: ProfileViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -78,19 +78,19 @@ fun InterestBucketDetailScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
                     }
-                },
+                }
             )
-        },
+        }
     ) { innerPadding ->
         if (bucketInterests.isEmpty()) {
             Box(
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
-                contentAlignment = Alignment.Center,
+                contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "No interests in this category",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         } else {
@@ -98,16 +98,16 @@ fun InterestBucketDetailScreen(
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
                 contentPadding = PaddingValues(
                     horizontal = MaterialTheme.padding.medium,
-                    vertical = MaterialTheme.padding.medium,
+                    vertical = MaterialTheme.padding.medium
                 ),
-                verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small)
             ) {
                 groupedByCategory.forEach { (categoryName, entries) ->
                     item {
                         CategoryGroupHeader(
                             categoryName = categoryName,
                             entryCount = entries.size,
-                            totalPence = entries.sumOf { it.parsedAmountPence ?: 0L },
+                            totalPence = entries.sumOf { it.parsedAmountPence ?: 0L }
                         )
                     }
                     items(entries, key = { it.id }) { interest ->
@@ -120,20 +120,16 @@ fun InterestBucketDetailScreen(
 }
 
 @Composable
-private fun CategoryGroupHeader(
-    categoryName: String,
-    entryCount: Int,
-    totalPence: Long,
-) {
+private fun CategoryGroupHeader(categoryName: String, entryCount: Int, totalPence: Long) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
+        color = MaterialTheme.colorScheme.surfaceContainer
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -141,19 +137,19 @@ private fun CategoryGroupHeader(
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = "$entryCount entries",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             if (totalPence > 0) {
                 Text(
                     text = formatPencePublic(totalPence),
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.Bold
                 )
             }
         }
@@ -161,32 +157,30 @@ private fun CategoryGroupHeader(
 }
 
 @Composable
-private fun InterestEntryRow(
-    interest: Interest,
-) {
+private fun InterestEntryRow(interest: Interest) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceContainer)
             .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Text(
             text = interest.summary,
             style = MaterialTheme.typography.bodyMedium,
             maxLines = 4,
-            overflow = TextOverflow.Ellipsis,
+            overflow = TextOverflow.Ellipsis
         )
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
             interest.publishedDate?.let { date ->
                 Text(
                     text = formatDateShort(date),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             interest.parsedAmountPence?.let { pence ->
@@ -194,18 +188,17 @@ private fun InterestEntryRow(
                     text = formatPencePublic(pence),
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
         }
     }
 }
 
-private fun formatDateShort(dateString: String): String =
-    runCatching {
-        val parts = dateString.substring(0, 10).split("-")
-        "${parts[2]}/${parts[1]}/${parts[0]}"
-    }.getOrNull() ?: dateString
+private fun formatDateShort(dateString: String): String = runCatching {
+    val parts = dateString.substring(0, 10).split("-")
+    "${parts[2]}/${parts[1]}/${parts[0]}"
+}.getOrNull() ?: dateString
 
 private fun formatPencePublic(pence: Long): String {
     val pounds = pence / 100.0

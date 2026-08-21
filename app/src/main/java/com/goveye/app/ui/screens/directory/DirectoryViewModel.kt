@@ -30,7 +30,7 @@ import kotlinx.coroutines.launch
 class DirectoryViewModel @Inject constructor(
     private val membersRepository: MembersRepository,
     private val directoryPreferences: DirectoryPreferences,
-    private val directoryFilterPreferences: DirectoryFilterPreferences,
+    private val directoryFilterPreferences: DirectoryFilterPreferences
 ) : ViewModel() {
 
     val viewMode: StateFlow<DirectoryViewMode> =
@@ -48,7 +48,7 @@ class DirectoryViewModel @Inject constructor(
         directoryFilterPreferences.includedParties,
         directoryFilterPreferences.excludedParties,
         directoryFilterPreferences.houseFilter,
-        directoryFilterPreferences.currentOnly,
+        directoryFilterPreferences.currentOnly
     ) { included, excluded, house, currentOnly ->
         DirectoryFilterState(included, excluded, house, currentOnly)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DirectoryFilterState())
@@ -89,7 +89,7 @@ class DirectoryViewModel @Inject constructor(
     // emits an empty list and the UI falls back to pagedMps.
     val filteredMps: Flow<List<Mp>> = combine(
         filterState,
-        membersRepository.observeAllMps(),
+        membersRepository.observeAllMps()
     ) { filters, result ->
         if (!filters.hasActiveFilters) emptyList() else result.data.filter { filters.matches(it) }
     }
@@ -101,11 +101,11 @@ class DirectoryViewModel @Inject constructor(
                 emptyMap()
             } else {
                 mapOf(
-                    0 to results.size,  // OFFICIALS
-                    1 to 0,             // PARTIES
-                    2 to 0,             // BILLS
-                    3 to 0,             // DIVISIONS
-                    4 to 0,             // DEBATES
+                    0 to results.size, // OFFICIALS
+                    1 to 0, // PARTIES
+                    2 to 0, // BILLS
+                    3 to 0, // DIVISIONS
+                    4 to 0 // DEBATES
                 )
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
@@ -129,10 +129,12 @@ class DirectoryViewModel @Inject constructor(
                 PartyFilterState.DISABLED -> {
                     included.add(party)
                 }
+
                 PartyFilterState.INCLUDED -> {
                     included.remove(party)
                     excluded.add(party)
                 }
+
                 PartyFilterState.EXCLUDED -> {
                     excluded.remove(party)
                 }

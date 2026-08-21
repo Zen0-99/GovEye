@@ -17,7 +17,7 @@ data class DivisionDto(
     @SerialName("NoTellers") val noTellers: List<TellerDto>? = null,
     @SerialName("Ayes") val ayes: List<VoterDto> = emptyList(),
     @SerialName("Noes") val noes: List<VoterDto> = emptyList(),
-    @SerialName("NoVoteRecorded") val noVoteRecorded: List<VoterDto> = emptyList(),
+    @SerialName("NoVoteRecorded") val noVoteRecorded: List<VoterDto> = emptyList()
 )
 
 @Serializable
@@ -30,7 +30,7 @@ data class VoterDto(
     @SerialName("PartyAbbreviation") val partyAbbreviation: String? = null,
     @SerialName("MemberFrom") val memberFrom: String? = null,
     @SerialName("ListAs") val listAs: String? = null,
-    @SerialName("ProxyName") val proxyName: String? = null,
+    @SerialName("ProxyName") val proxyName: String? = null
 )
 
 @Serializable
@@ -43,7 +43,7 @@ data class TellerDto(
     @SerialName("PartyAbbreviation") val partyAbbreviation: String? = null,
     @SerialName("MemberFrom") val memberFrom: String? = null,
     @SerialName("ListAs") val listAs: String? = null,
-    @SerialName("ProxyName") val proxyName: String? = null,
+    @SerialName("ProxyName") val proxyName: String? = null
 )
 
 @Serializable
@@ -52,7 +52,7 @@ data class MemberVoteDto(
     @SerialName("MemberVotedAye") val memberVotedAye: Boolean = false,
     @SerialName("MemberVotedNo") val memberVotedNo: Boolean = false,
     @SerialName("MemberWasTeller") val memberWasTeller: Boolean = false,
-    @SerialName("PublishedDivision") val publishedDivision: PublishedDivisionDto? = null,
+    @SerialName("PublishedDivision") val publishedDivision: PublishedDivisionDto? = null
 )
 
 @Serializable
@@ -61,5 +61,5 @@ data class PublishedDivisionDto(
     @SerialName("Date") val date: String,
     @SerialName("Title") val title: String,
     @SerialName("AyeCount") val ayeCount: Int = 0,
-    @SerialName("NoCount") val noCount: Int = 0,
+    @SerialName("NoCount") val noCount: Int = 0
 )

@@ -1,5 +1,6 @@
 package com.goveye.app.data.repo
 
+import androidx.room.Room
 import app.cash.turbine.test
 import com.goveye.app.data.api.MembersApi
 import com.goveye.app.data.local.BundledDatabase
@@ -16,7 +17,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
-import androidx.room.Room
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -29,7 +29,7 @@ class MembersRepositoryTest {
     fun setUp() {
         database = Room.inMemoryDatabaseBuilder(
             RuntimeEnvironment.getApplication(),
-            BundledDatabase::class.java,
+            BundledDatabase::class.java
         ).allowMainThreadQueries().build()
         repository = MembersRepository(database.mpDao(), database.searchDao(), api, MemberMapper)
     }
@@ -39,28 +39,27 @@ class MembersRepositoryTest {
         database.close()
     }
 
-    private fun makeMp(id: Int, lastUpdated: Long): MpEntity =
-        MpEntity(
-            id = id,
-            nameListAs = "Test MP $id",
-            nameDisplayAs = "Test $id",
-            nameFullTitle = null,
-            nameAddressAs = null,
-            gender = null,
-            partyId = 15,
-            partyName = "Labour",
-            partyAbbreviation = "Lab",
-            partyBackgroundColour = "d50000",
-            partyForegroundColour = "ffffff",
-            constituencyId = 4074,
-            constituencyName = "Test Constituency",
-            house = 1,
-            membershipStartDate = null,
-            membershipEndDate = null,
-            isActive = true,
-            thumbnailUrl = null,
-            lastUpdated = lastUpdated,
-        )
+    private fun makeMp(id: Int, lastUpdated: Long): MpEntity = MpEntity(
+        id = id,
+        nameListAs = "Test MP $id",
+        nameDisplayAs = "Test $id",
+        nameFullTitle = null,
+        nameAddressAs = null,
+        gender = null,
+        partyId = 15,
+        partyName = "Labour",
+        partyAbbreviation = "Lab",
+        partyBackgroundColour = "d50000",
+        partyForegroundColour = "ffffff",
+        constituencyId = 4074,
+        constituencyName = "Test Constituency",
+        house = 1,
+        membershipStartDate = null,
+        membershipEndDate = null,
+        isActive = true,
+        thumbnailUrl = null,
+        lastUpdated = lastUpdated
+    )
 
     @Test
     fun `emits FRESH when cache is within TTL`() = runTest {

@@ -29,10 +29,7 @@ import com.goveye.app.domain.stats.TraitBar
  * FotMob-style activity score display — large number with colored background.
  */
 @Composable
-fun ActivityScoreStrip(
-    score: ActivityScore,
-    modifier: Modifier = Modifier,
-) {
+fun ActivityScoreStrip(score: ActivityScore, modifier: Modifier = Modifier) {
     val backgroundColor = when {
         score.score <= 30 -> MaterialTheme.colorScheme.surfaceVariant
         score.score <= 60 -> MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
@@ -51,19 +48,19 @@ fun ActivityScoreStrip(
             .background(backgroundColor)
             .padding(16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Column {
             Text(
                 text = score.score.toString(),
                 style = MaterialTheme.typography.displayMedium,
                 fontWeight = FontWeight.Bold,
-                color = onColor,
+                color = onColor
             )
             Text(
                 text = "Parliamentary Activity Score",
                 style = MaterialTheme.typography.labelMedium,
-                color = onColor.copy(alpha = 0.8f),
+                color = onColor.copy(alpha = 0.8f)
             )
         }
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -76,26 +73,21 @@ fun ActivityScoreStrip(
 }
 
 @Composable
-private fun ScoreBreakdownRow(
-    label: String,
-    value: Int,
-    max: Int,
-    color: androidx.compose.ui.graphics.Color,
-) {
+private fun ScoreBreakdownRow(label: String, value: Int, max: Int, color: androidx.compose.ui.graphics.Color) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            color = color.copy(alpha = 0.8f),
+            color = color.copy(alpha = 0.8f)
         )
         Text(
             text = "$value/$max",
             style = MaterialTheme.typography.labelSmall,
             color = color.copy(alpha = 0.8f),
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.Bold
         )
     }
 }
@@ -104,22 +96,19 @@ private fun ScoreBreakdownRow(
  * FotMob-style trait bars — 5 horizontal bars showing percentile rankings.
  */
 @Composable
-fun TraitBarsSection(
-    traitBars: List<TraitBar>,
-    modifier: Modifier = Modifier,
-) {
+fun TraitBarsSection(traitBars: List<TraitBar>, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surface)
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
             text = "Traits vs Peers",
             style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.Bold
         )
         traitBars.forEach { trait ->
             TraitBarRow(trait = trait)
@@ -132,7 +121,7 @@ private fun TraitBarRow(trait: TraitBar) {
     val animatedPercentile by animateFloatAsState(
         targetValue = trait.percentile.toFloat(),
         animationSpec = tween(durationMillis = 600),
-        label = "trait_${trait.label}",
+        label = "trait_${trait.label}"
     )
     val barColor = if (trait.percentile >= 50) {
         MaterialTheme.colorScheme.primary
@@ -142,21 +131,21 @@ private fun TraitBarRow(trait: TraitBar) {
 
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
                 text = trait.label,
                 style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Medium
             )
             Text(
                 text = "${ordinalSuffix(trait.percentile)}",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         Box(
@@ -164,14 +153,14 @@ private fun TraitBarRow(trait: TraitBar) {
                 .fillMaxWidth()
                 .height(6.dp)
                 .clip(RoundedCornerShape(3.dp))
-                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)),
+                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth(animatedPercentile / 100f)
                     .fillMaxSize()
                     .clip(RoundedCornerShape(3.dp))
-                    .background(barColor),
+                    .background(barColor)
             )
         }
     }

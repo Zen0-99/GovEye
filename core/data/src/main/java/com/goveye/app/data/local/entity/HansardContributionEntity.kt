@@ -13,5 +13,5 @@ data class HansardContributionEntity(
     val house: String,
     val debateSection: String,
     val debateSectionId: Long,
-    val lastUpdated: Long,
+    val lastUpdated: Long
 )

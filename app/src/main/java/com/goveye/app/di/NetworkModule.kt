@@ -62,11 +62,10 @@ object NetworkModule {
     @Provides
     @Singleton
     @Named("hansardClient")
-    fun provideHansardOkHttpClient(okHttpClient: OkHttpClient): OkHttpClient =
-        okHttpClient
-            .newBuilder()
-            .readTimeout(HANSARD_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-            .build()
+    fun provideHansardOkHttpClient(okHttpClient: OkHttpClient): OkHttpClient = okHttpClient
+        .newBuilder()
+        .readTimeout(HANSARD_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        .build()
 
     /**
      * OkHttpClient with a 10-minute timeout for full DB downloads (~160MB).
@@ -76,29 +75,24 @@ object NetworkModule {
     @Provides
     @Singleton
     @Named("dbDownloadClient")
-    fun provideDbDownloadOkHttpClient(okHttpClient: OkHttpClient): OkHttpClient =
-        okHttpClient
-            .newBuilder()
-            .connectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
-            .readTimeout(DB_DOWNLOAD_TIMEOUT_MINUTES, TimeUnit.MINUTES)
-            .writeTimeout(DB_DOWNLOAD_TIMEOUT_MINUTES, TimeUnit.MINUTES)
-            .build()
+    fun provideDbDownloadOkHttpClient(okHttpClient: OkHttpClient): OkHttpClient = okHttpClient
+        .newBuilder()
+        .connectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        .readTimeout(DB_DOWNLOAD_TIMEOUT_MINUTES, TimeUnit.MINUTES)
+        .writeTimeout(DB_DOWNLOAD_TIMEOUT_MINUTES, TimeUnit.MINUTES)
+        .build()
 
     @Provides
     @Singleton
     @Named("membersApi")
-    fun provideMembersRetrofit(
-        okHttpClient: OkHttpClient,
-        json: Json,
-    ): Retrofit = buildRetrofit(MEMBERS_BASE_URL, okHttpClient, json)
+    fun provideMembersRetrofit(okHttpClient: OkHttpClient, json: Json): Retrofit =
+        buildRetrofit(MEMBERS_BASE_URL, okHttpClient, json)
 
     @Provides
     @Singleton
     @Named("hansardApi")
-    fun provideHansardRetrofit(
-        @Named("hansardClient") okHttpClient: OkHttpClient,
-        json: Json,
-    ): Retrofit = buildRetrofit(HANSARD_BASE_URL, okHttpClient, json)
+    fun provideHansardRetrofit(@Named("hansardClient") okHttpClient: OkHttpClient, json: Json): Retrofit =
+        buildRetrofit(HANSARD_BASE_URL, okHttpClient, json)
 
     /**
      * Retrofit for the GitHub Releases API (D-06).
@@ -109,16 +103,10 @@ object NetworkModule {
     @Provides
     @Singleton
     @Named("githubApi")
-    fun provideGithubRetrofit(
-        okHttpClient: OkHttpClient,
-        json: Json,
-    ): Retrofit = buildRetrofit(GITHUB_API_BASE_URL, okHttpClient, json)
+    fun provideGithubRetrofit(okHttpClient: OkHttpClient, json: Json): Retrofit =
+        buildRetrofit(GITHUB_API_BASE_URL, okHttpClient, json)
 
-    private fun buildRetrofit(
-        baseUrl: String,
-        okHttpClient: OkHttpClient,
-        json: Json,
-    ): Retrofit = Retrofit
+    private fun buildRetrofit(baseUrl: String, okHttpClient: OkHttpClient, json: Json): Retrofit = Retrofit
         .Builder()
         .baseUrl(baseUrl)
         .client(okHttpClient)

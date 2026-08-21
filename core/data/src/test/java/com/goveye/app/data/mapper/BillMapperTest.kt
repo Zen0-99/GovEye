@@ -24,8 +24,8 @@ class BillMapperTest {
                         description = "2nd reading",
                         abbreviation = "2R",
                         house = "Commons",
-                        sortOrder = 2,
-                    ),
+                        sortOrder = 2
+                    )
             )
 
         val bill = BillMapper.toDomain(dto)
@@ -45,7 +45,7 @@ class BillMapperTest {
                 currentHouse = "Commons",
                 originatingHouse = "Commons",
                 lastUpdate = "2025-09-16",
-                currentStage = null,
+                currentStage = null
             )
 
         val bill = BillMapper.toDomain(dto)
@@ -66,8 +66,8 @@ class BillMapperTest {
                 stageSittings =
                     listOf(
                         StageSittingDto(date = "2025-07-11"),
-                        StageSittingDto(date = null),
-                    ),
+                        StageSittingDto(date = null)
+                    )
             )
 
         val stage = BillMapper.toDomain(dto)
@@ -80,7 +80,7 @@ class BillMapperTest {
         val dtos =
             listOf(
                 BillStageDto(id = 2, stageId = 7, description = "2nd reading", house = "Commons", sortOrder = 2),
-                BillStageDto(id = 1, stageId = 6, description = "1st reading", house = "Commons", sortOrder = 1),
+                BillStageDto(id = 1, stageId = 6, description = "1st reading", house = "Commons", sortOrder = 1)
             )
 
         val stages = BillMapper.toDomainStages(dtos)
@@ -94,8 +94,20 @@ class BillMapperTest {
     fun `maps bill list`() {
         val dtos =
             listOf(
-                BillDto(billId = 1, shortTitle = "A", currentHouse = "Commons", originatingHouse = "Commons", lastUpdate = "2025-01-01"),
-                BillDto(billId = 2, shortTitle = "B", currentHouse = "Commons", originatingHouse = "Commons", lastUpdate = "2025-01-02"),
+                BillDto(
+                    billId = 1,
+                    shortTitle = "A",
+                    currentHouse = "Commons",
+                    originatingHouse = "Commons",
+                    lastUpdate = "2025-01-01"
+                ),
+                BillDto(
+                    billId = 2,
+                    shortTitle = "B",
+                    currentHouse = "Commons",
+                    originatingHouse = "Commons",
+                    lastUpdate = "2025-01-02"
+                )
             )
 
         val bills = BillMapper.toDomainList(dtos)

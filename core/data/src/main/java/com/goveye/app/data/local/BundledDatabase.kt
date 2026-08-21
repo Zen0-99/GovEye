@@ -53,10 +53,10 @@ import com.goveye.app.data.local.entity.RecessDatesMetaEntity
         RecessDateEntity::class,
         RecessDatesMetaEntity::class,
         HansardContributionEntity::class,
-        InterestEntity::class,
+        InterestEntity::class
     ],
     version = 2,
-    exportSchema = true,
+    exportSchema = true
 )
 @TypeConverters(Converters::class)
 abstract class BundledDatabase : RoomDatabase() {

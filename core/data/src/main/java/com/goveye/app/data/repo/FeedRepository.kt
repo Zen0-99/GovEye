@@ -23,7 +23,7 @@ data class FeedData(
     val followedMemberIds: Set<Int> = emptySet(),
     val divisionsWithFollowedVotes: Set<Int> = emptySet(),
     val currentRecess: RecessDateEntity? = null,
-    val isLoading: Boolean = true,
+    val isLoading: Boolean = true
 )
 
 /**
@@ -44,41 +44,39 @@ data class FeedData(
 class FeedRepository @Inject constructor(
     private val divisionDao: DivisionDao,
     private val followDao: FollowDao,
-    private val recessDateDao: RecessDateDao,
+    private val recessDateDao: RecessDateDao
 ) {
 
     /**
      * Observe the full feed data (all divisions, plus the followed-MP highlight set).
      * The UI layer applies the "Following only" filter on top of this.
      */
-    fun observeFeedData(limit: Int = 200): Flow<FeedData> =
-        combine(
-            divisionDao.observeDivisions(limit),
-            followDao.observeUnmutedMemberIds(),
-        ) { divisionEntities, followedIds ->
-            val divisionIdsWithFollowedVotes = if (followedIds.isEmpty()) {
-                emptySet()
-            } else {
-                divisionDao.getDivisionIdsWithMemberVotes(followedIds).toSet()
-            }
-            FeedData(
-                divisions = divisionEntities.map { it.toDomain() },
-                followedMemberIds = followedIds.toSet(),
-                divisionsWithFollowedVotes = divisionIdsWithFollowedVotes,
-                isLoading = false,
-            )
+    fun observeFeedData(limit: Int = 200): Flow<FeedData> = combine(
+        divisionDao.observeDivisions(limit),
+        followDao.observeUnmutedMemberIds()
+    ) { divisionEntities, followedIds ->
+        val divisionIdsWithFollowedVotes = if (followedIds.isEmpty()) {
+            emptySet()
+        } else {
+            divisionDao.getDivisionIdsWithMemberVotes(followedIds).toSet()
         }
+        FeedData(
+            divisions = divisionEntities.map { it.toDomain() },
+            followedMemberIds = followedIds.toSet(),
+            divisionsWithFollowedVotes = divisionIdsWithFollowedVotes,
+            isLoading = false
+        )
+    }
 
     /**
      * Observe the filtered feed — only divisions where at least one unmuted
      * followed MP voted. Used when the "Following only" filter is ON.
      */
-    fun observeFeedDataFiltered(limit: Int = 200): Flow<FeedData> =
-        observeFeedData(limit).map { feedData ->
-            feedData.copy(
-                divisions = feedData.divisions.filter { it.id in feedData.divisionsWithFollowedVotes },
-            )
-        }
+    fun observeFeedDataFiltered(limit: Int = 200): Flow<FeedData> = observeFeedData(limit).map { feedData ->
+        feedData.copy(
+            divisions = feedData.divisions.filter { it.id in feedData.divisionsWithFollowedVotes }
+        )
+    }
 
     /**
      * Check if Parliament is currently in recess for the given house.
@@ -96,6 +94,6 @@ class FeedRepository @Inject constructor(
         ayeCount = ayeCount,
         noCount = noCount,
         isDeferred = isDeferred,
-        house = house,
+        house = house
     )
 }

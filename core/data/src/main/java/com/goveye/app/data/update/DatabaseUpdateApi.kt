@@ -33,7 +33,7 @@ interface DatabaseUpdateApi {
     suspend fun getReleaseByTag(
         @Path("owner") owner: String = OWNER,
         @Path("repo") repo: String = REPO,
-        @Path("tag") tag: String,
+        @Path("tag") tag: String
     ): GithubReleaseDto
 
     /**
@@ -44,7 +44,7 @@ interface DatabaseUpdateApi {
     @GET("repos/{owner}/{repo}/releases/tags/seed-latest")
     suspend fun getSeedRelease(
         @Path("owner") owner: String = OWNER,
-        @Path("repo") repo: String = REPO,
+        @Path("repo") repo: String = REPO
     ): GithubReleaseDto
 
     companion object {
@@ -63,13 +63,11 @@ interface DatabaseUpdateApi {
 }
 
 @Serializable
-data class GithubReleaseDto(
-    val assets: List<ReleaseAssetDto> = emptyList(),
-)
+data class GithubReleaseDto(val assets: List<ReleaseAssetDto> = emptyList())
 
 @Serializable
 data class ReleaseAssetDto(
     val name: String,
     @SerialName("browser_download_url") val browserDownloadUrl: String,
-    val size: Long = 0,
+    val size: Long = 0
 )

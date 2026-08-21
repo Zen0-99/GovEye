@@ -26,9 +26,9 @@ import androidx.compose.ui.graphics.Color
 internal object SkyColorScheme : BaseColorScheme() {
     // Muted blue accent — 70% gray + 30% soft blue (#5B7FA8)
     // This gives a faint blue hue without being vibrant
-    private val mutedBlueDark = Color(0xFFA8B5C7)   // light blue-gray for dark mode accents
+    private val mutedBlueDark = Color(0xFFA8B5C7) // light blue-gray for dark mode accents
     private val mutedBlueDarkContainer = Color(0xFF2A3548) // darker blue-gray container
-    private val mutedBlueLight = Color(0xFF4A6080)  // medium blue-gray for light mode accents
+    private val mutedBlueLight = Color(0xFF4A6080) // medium blue-gray for light mode accents
     private val mutedBlueLightContainer = Color(0xFFD8E0EC) // light blue-gray container
 
     override val darkScheme: ColorScheme =
@@ -68,7 +68,7 @@ internal object SkyColorScheme : BaseColorScheme() {
             surfaceContainerHigh = Color(0xFF1A2330),
             surfaceContainerHighest = Color(0xFF222B38),
             surfaceBright = Color(0xFF2A3340),
-            surfaceDim = Color(0xFF0A1220),
+            surfaceDim = Color(0xFF0A1220)
         )
 
     override val lightScheme: ColorScheme =
@@ -108,6 +108,6 @@ internal object SkyColorScheme : BaseColorScheme() {
             surfaceContainerHigh = Color(0xFFEBEBEB),
             surfaceContainerHighest = Color(0xFFE5E5E5),
             surfaceBright = Color(0xFFFAFAFA),
-            surfaceDim = Color(0xFFE0E0E0),
+            surfaceDim = Color(0xFFE0E0E0)
         )
 }

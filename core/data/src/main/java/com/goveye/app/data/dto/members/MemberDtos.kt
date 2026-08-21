@@ -3,15 +3,10 @@ package com.goveye.app.data.dto.members
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class MemberSearchResponse(
-    val items: List<MemberItem> = emptyList(),
-)
+data class MemberSearchResponse(val items: List<MemberItem> = emptyList())
 
 @Serializable
-data class MemberItem(
-    val value: MemberDto,
-    val links: List<LinkDto> = emptyList(),
-)
+data class MemberItem(val value: MemberDto, val links: List<LinkDto> = emptyList())
 
 @Serializable
 data class MemberDto(
@@ -23,7 +18,7 @@ data class MemberDto(
     val latestParty: PartyDto? = null,
     val gender: String? = null,
     val latestHouseMembership: HouseMembershipDto? = null,
-    val thumbnailUrl: String? = null,
+    val thumbnailUrl: String? = null
 )
 
 @Serializable
@@ -32,7 +27,7 @@ data class PartyDto(
     val name: String,
     val abbreviation: String,
     val backgroundColour: String,
-    val foregroundColour: String,
+    val foregroundColour: String
 )
 
 @Serializable
@@ -42,40 +37,27 @@ data class HouseMembershipDto(
     val house: Int,
     val membershipStartDate: String? = null,
     val membershipEndDate: String? = null,
-    val membershipStatus: MembershipStatusDto? = null,
+    val membershipStatus: MembershipStatusDto? = null
 )
 
 @Serializable
 data class MembershipStatusDto(
     val statusIsActive: Boolean,
     val statusDescription: String? = null,
-    val startDate: String? = null,
+    val startDate: String? = null
 )
 
 @Serializable
-data class LinkDto(
-    val rel: String? = null,
-    val href: String? = null,
-    val method: String? = null,
-)
+data class LinkDto(val rel: String? = null, val href: String? = null, val method: String? = null)
 
 @Serializable
-data class MemberResponse(
-    val value: MemberDto,
-    val links: List<LinkDto> = emptyList(),
-)
+data class MemberResponse(val value: MemberDto, val links: List<LinkDto> = emptyList())
 
 @Serializable
-data class SynopsisResponse(
-    val value: String? = null,
-    val links: List<LinkDto> = emptyList(),
-)
+data class SynopsisResponse(val value: String? = null, val links: List<LinkDto> = emptyList())
 
 @Serializable
-data class ContactResponse(
-    val value: List<ContactDto> = emptyList(),
-    val links: List<LinkDto> = emptyList(),
-)
+data class ContactResponse(val value: List<ContactDto> = emptyList(), val links: List<LinkDto> = emptyList())
 
 @Serializable
 data class ContactDto(
@@ -92,13 +74,13 @@ data class ContactDto(
     val phone: String? = null,
     val email: String? = null,
     val website: String? = null,
-    val openingHours: String? = null,
+    val openingHours: String? = null
 )
 
 @Serializable
 data class ExperienceResponse(
     val value: List<BiographyExperienceDto> = emptyList(),
-    val links: List<LinkDto> = emptyList(),
+    val links: List<LinkDto> = emptyList()
 )
 
 @Serializable
@@ -111,14 +93,11 @@ data class BiographyExperienceDto(
     val startMonth: Int? = null,
     val startYear: Int? = null,
     val endMonth: Int? = null,
-    val endYear: Int? = null,
+    val endYear: Int? = null
 )
 
 @Serializable
-data class BiographyResponse(
-    val value: List<BiographyItemDto> = emptyList(),
-    val links: List<LinkDto> = emptyList(),
-)
+data class BiographyResponse(val value: List<BiographyItemDto> = emptyList(), val links: List<LinkDto> = emptyList())
 
 @Serializable
 data class BiographyItemDto(
@@ -128,11 +107,8 @@ data class BiographyItemDto(
     val startDate: String? = null,
     val endDate: String? = null,
     val additionalInfo: String? = null,
-    val additionalInfoLink: String? = null,
+    val additionalInfoLink: String? = null
 )
 
 @Serializable
-data class HouseDto(
-    val id: Int,
-    val name: String? = null,
-)
+data class HouseDto(val id: Int, val name: String? = null)

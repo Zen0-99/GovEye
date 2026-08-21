@@ -1,9 +1,9 @@
 package com.goveye.app.data.preference
 
 import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStoreFile
-import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -21,7 +21,7 @@ class DirectoryFilterPreferencesTest {
 
     private fun setUp() {
         dataStore = PreferenceDataStoreFactory.create(
-            produceFile = { RuntimeEnvironment.getApplication().preferencesDataStoreFile("test_filter_prefs") },
+            produceFile = { RuntimeEnvironment.getApplication().preferencesDataStoreFile("test_filter_prefs") }
         )
         preferences = DirectoryFilterPreferences(dataStore)
     }
@@ -31,8 +31,8 @@ class DirectoryFilterPreferencesTest {
         setUp()
         assertEquals(emptySet<String>(), preferences.includedParties.first())
         assertEquals(emptySet<String>(), preferences.excludedParties.first())
-        assertEquals(0, preferences.houseFilter.first())  // all
-        assertEquals(false, preferences.currentOnly.first())  // include former
+        assertEquals(0, preferences.houseFilter.first()) // all
+        assertEquals(false, preferences.currentOnly.first()) // include former
     }
 
     @Test
@@ -52,7 +52,7 @@ class DirectoryFilterPreferencesTest {
     @Test
     fun `write and read back house filter`() = runTest {
         setUp()
-        preferences.setHouseFilter(2)  // Lords
+        preferences.setHouseFilter(2) // Lords
         assertEquals(2, preferences.houseFilter.first())
     }
 

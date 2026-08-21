@@ -24,7 +24,9 @@ interface DivisionDao {
     @Query("SELECT * FROM divisions WHERE title LIKE '%' || :query || '%' ORDER BY date DESC LIMIT :limit")
     fun searchDivisions(query: String, limit: Int = 50): Flow<List<DivisionEntity>>
 
-    @Query("SELECT * FROM divisions WHERE title LIKE '%' || :query || '%' AND house = :house ORDER BY date DESC LIMIT :limit")
+    @Query(
+        "SELECT * FROM divisions WHERE title LIKE '%' || :query || '%' AND house = :house ORDER BY date DESC LIMIT :limit"
+    )
     fun searchDivisionsByHouse(query: String, house: Int, limit: Int = 50): Flow<List<DivisionEntity>>
 
     @Query("SELECT * FROM divisions WHERE id = :id")
@@ -91,7 +93,7 @@ interface DivisionDao {
         WHERE v.memberId = :memberId
         ORDER BY d.date DESC
         LIMIT 1
-        """,
+        """
     )
     suspend fun getRecentVoteForMember(memberId: Int): MemberRecentVote?
 
@@ -109,7 +111,7 @@ interface DivisionDao {
         WHERE v.memberId = :memberId
         ORDER BY d.date DESC
         LIMIT 1
-        """,
+        """
     )
     fun observeRecentVoteForMember(memberId: Int): Flow<MemberRecentVote?>
 
@@ -118,7 +120,7 @@ interface DivisionDao {
         SELECT DISTINCT divisionId FROM division_votes
         WHERE memberId IN (:memberIds)
         ORDER BY divisionId DESC
-        """,
+        """
     )
     suspend fun getDivisionIdsWithMemberVotes(memberIds: List<Int>): List<Int>
 }

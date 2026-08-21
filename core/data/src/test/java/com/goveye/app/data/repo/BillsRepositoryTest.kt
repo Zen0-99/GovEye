@@ -1,5 +1,6 @@
 package com.goveye.app.data.repo
 
+import androidx.room.Room
 import app.cash.turbine.test
 import com.goveye.app.data.local.BundledDatabase
 import com.goveye.app.data.local.entity.BillEntity
@@ -13,7 +14,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
-import androidx.room.Room
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -25,7 +25,7 @@ class BillsRepositoryTest {
     fun setUp() {
         database = Room.inMemoryDatabaseBuilder(
             RuntimeEnvironment.getApplication(),
-            BundledDatabase::class.java,
+            BundledDatabase::class.java
         ).allowMainThreadQueries().build()
         repository = BillsRepository(database.billDao())
     }
@@ -40,11 +40,16 @@ class BillsRepositoryTest {
         database.billDao().upsertAll(
             listOf(
                 BillEntity(
-                    id = 1, shortTitle = "Test Bill", currentHouse = "Commons",
-                    originatingHouse = "Commons", lastUpdate = "2025-01-01",
-                    isDefeated = false, isAct = false, lastUpdated = System.currentTimeMillis(),
-                ),
-            ),
+                    id = 1,
+                    shortTitle = "Test Bill",
+                    currentHouse = "Commons",
+                    originatingHouse = "Commons",
+                    lastUpdate = "2025-01-01",
+                    isDefeated = false,
+                    isAct = false,
+                    lastUpdated = System.currentTimeMillis()
+                )
+            )
         )
         repository.observeBills().test {
             val result = awaitItem()
@@ -69,11 +74,16 @@ class BillsRepositoryTest {
         database.billDao().upsertAll(
             listOf(
                 BillEntity(
-                    id = 1, shortTitle = "Test Bill", currentHouse = "Commons",
-                    originatingHouse = "Commons", lastUpdate = "2025-01-01",
-                    isDefeated = false, isAct = false, lastUpdated = twoHoursAgo,
-                ),
-            ),
+                    id = 1,
+                    shortTitle = "Test Bill",
+                    currentHouse = "Commons",
+                    originatingHouse = "Commons",
+                    lastUpdate = "2025-01-01",
+                    isDefeated = false,
+                    isAct = false,
+                    lastUpdated = twoHoursAgo
+                )
+            )
         )
         repository.observeBills().test {
             val result = awaitItem()

@@ -13,7 +13,9 @@ import javax.inject.Named
 import javax.inject.Singleton
 
 private val Context.themeDataStore: DataStore<Preferences> by preferencesDataStore(name = "theme_preferences")
-private val Context.notificationDataStore: DataStore<Preferences> by preferencesDataStore(name = "notification_preferences")
+private val Context.notificationDataStore: DataStore<Preferences> by preferencesDataStore(
+    name = "notification_preferences"
+)
 private val Context.databaseDataStore: DataStore<Preferences> by preferencesDataStore(name = "database_preferences")
 
 @Module
@@ -27,10 +29,12 @@ object DataStoreModule {
     @Provides
     @Singleton
     @Named("notification")
-    fun provideNotificationDataStore(@ApplicationContext context: Context): DataStore<Preferences> = context.notificationDataStore
+    fun provideNotificationDataStore(@ApplicationContext context: Context): DataStore<Preferences> =
+        context.notificationDataStore
 
     @Provides
     @Singleton
     @Named("database")
-    fun provideDatabaseDataStore(@ApplicationContext context: Context): DataStore<Preferences> = context.databaseDataStore
+    fun provideDatabaseDataStore(@ApplicationContext context: Context): DataStore<Preferences> =
+        context.databaseDataStore
 }

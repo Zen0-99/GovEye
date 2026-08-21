@@ -8,6 +8,6 @@ interface HansardApi {
     @GET("search.json")
     suspend fun search(
         @Query("searchTerm") searchTerm: String,
-        @Query("itemsPerPage") itemsPerPage: Int = 20,
+        @Query("itemsPerPage") itemsPerPage: Int = 20
     ): HansardSearchResponse
 }

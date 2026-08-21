@@ -29,7 +29,7 @@ import dagger.assisted.AssistedInject
 class DatabaseUpdateWorker @AssistedInject constructor(
     @Assisted appContext: Context,
     @Assisted params: WorkerParameters,
-    private val databaseUpdateManager: DatabaseUpdateManager,
+    private val databaseUpdateManager: DatabaseUpdateManager
 ) : CoroutineWorker(appContext, params) {
 
     companion object {
@@ -40,7 +40,12 @@ class DatabaseUpdateWorker @AssistedInject constructor(
         return try {
             when (val state = databaseUpdateManager.checkForUpdates()) {
                 is DatabaseUpdateState.NeedsPatches -> {
-                    Log.i(TAG, "Patches available for ${state.patches.size} streams: ${state.patches.joinToString { it.streamName }}")
+                    Log.i(
+                        TAG,
+                        "Patches available for ${state.patches.size} streams: ${state.patches.joinToString {
+                            it.streamName
+                        }}"
+                    )
                     val result = databaseUpdateManager.applyPatches(state.patches)
                     when (result) {
                         is DatabaseUpdateState.UpToDate -> {
@@ -59,27 +64,33 @@ class DatabaseUpdateWorker @AssistedInject constructor(
                                 WorkScheduler.enqueueBillPollingOneShot(applicationContext)
                             }
                         }
+
                         is DatabaseUpdateState.Failed -> {
                             Log.w(TAG, "Patch application failed: ${result.message}")
                             return Result.retry()
                         }
+
                         else -> { /* unexpected */ }
                     }
                     Result.success()
                 }
+
                 is DatabaseUpdateState.NeedsFullDownload -> {
                     // Full DB downloads are deferred to foreground (Pitfall 4)
                     Log.i(TAG, "Full DB download needed — deferring to foreground")
                     Result.success()
                 }
+
                 is DatabaseUpdateState.UpToDate -> {
                     Log.i(TAG, "All streams up to date")
                     Result.success()
                 }
+
                 is DatabaseUpdateState.Failed -> {
                     Log.w(TAG, "Update check failed: ${state.message}")
                     Result.retry()
                 }
+
                 else -> Result.success()
             }
         } catch (e: Exception) {

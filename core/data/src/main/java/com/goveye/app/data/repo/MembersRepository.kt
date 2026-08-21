@@ -15,49 +15,46 @@ import com.goveye.app.domain.model.Contact
 import com.goveye.app.domain.model.Mp
 import com.goveye.app.domain.model.RepositoryResult
 import com.goveye.app.domain.model.SyncStatus
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
-import javax.inject.Inject
-import javax.inject.Singleton
 
 @Singleton
 class MembersRepository @Inject constructor(
     private val mpDao: MpDao,
     private val searchDao: SearchDao,
     private val membersApi: MembersApi,
-    private val mapper: MemberMapper,
+    private val mapper: MemberMapper
 ) {
-    fun observeAllMps(): Flow<RepositoryResult<List<Mp>>> =
-        mpDao.observeAllMps().map { entities ->
-            if (entities.isEmpty()) {
-                RepositoryResult(emptyList(), SyncStatus.EMPTY)
-            } else {
-                RepositoryResult(entities.map { it.toDomain() }, SyncStatus.FRESH)
-            }
+    fun observeAllMps(): Flow<RepositoryResult<List<Mp>>> = mpDao.observeAllMps().map { entities ->
+        if (entities.isEmpty()) {
+            RepositoryResult(emptyList(), SyncStatus.EMPTY)
+        } else {
+            RepositoryResult(entities.map { it.toDomain() }, SyncStatus.FRESH)
         }
+    }
 
-    fun observeMp(id: Int): Flow<RepositoryResult<Mp?>> =
-        mpDao.observeMp(id).map { entity ->
-            if (entity == null) {
-                RepositoryResult(null, SyncStatus.EMPTY)
-            } else {
-                RepositoryResult(entity.toDomain(), SyncStatus.FRESH)
-            }
+    fun observeMp(id: Int): Flow<RepositoryResult<Mp?>> = mpDao.observeMp(id).map { entity ->
+        if (entity == null) {
+            RepositoryResult(null, SyncStatus.EMPTY)
+        } else {
+            RepositoryResult(entity.toDomain(), SyncStatus.FRESH)
         }
+    }
 
-    fun observePagedMps(): Flow<PagingData<Mp>> =
-        Pager(
-            config = PagingConfig(
-                pageSize = 30,
-                prefetchDistance = 15,
-                initialLoadSize = 60,
-                enablePlaceholders = false,
-            ),
-            pagingSourceFactory = { mpDao.pagingSource() },
-        ).flow.map { pagingData ->
-            pagingData.map { it.toDomain() }
-        }
+    fun observePagedMps(): Flow<PagingData<Mp>> = Pager(
+        config = PagingConfig(
+            pageSize = 30,
+            prefetchDistance = 15,
+            initialLoadSize = 60,
+            enablePlaceholders = false
+        ),
+        pagingSourceFactory = { mpDao.pagingSource() }
+    ).flow.map { pagingData ->
+        pagingData.map { it.toDomain() }
+    }
 
     /**
      * Local-first FTS search using Room's mps_fts table.
@@ -85,10 +82,10 @@ class MembersRepository @Inject constructor(
      */
     private fun sanitizeFtsQuery(input: String): String {
         return input.trim()
-            .replace(Regex("[*\"`]"), "")  // strip FTS special chars
+            .replace(Regex("[*\"`]"), "") // strip FTS special chars
             .split(Regex("\\s+"))
             .filter { it.isNotBlank() }
-            .joinToString(" ") { "$it*" }  // prefix match each token
+            .joinToString(" ") { "$it*" } // prefix match each token
     }
 
     /**
@@ -163,29 +160,33 @@ class MembersRepository @Inject constructor(
         }
     }
 
-    private fun MpEntity.toDomain(): Mp =
-        Mp(
-            id = id,
-            nameListAs = nameListAs,
-            nameDisplayAs = nameDisplayAs,
-            nameFullTitle = nameFullTitle,
-            gender = gender,
-            party = com.goveye.app.domain.model.Party(partyId, partyName, partyAbbreviation, partyBackgroundColour, partyForegroundColour),
-            constituency = com.goveye.app.domain.model.Constituency(constituencyId, constituencyName),
-            house = house,
-            membershipStartDate = membershipStartDate,
-            isActive = isActive,
-            thumbnailUrl = thumbnailUrl,
-        )
+    private fun MpEntity.toDomain(): Mp = Mp(
+        id = id,
+        nameListAs = nameListAs,
+        nameDisplayAs = nameDisplayAs,
+        nameFullTitle = nameFullTitle,
+        gender = gender,
+        party = com.goveye.app.domain.model.Party(
+            partyId,
+            partyName,
+            partyAbbreviation,
+            partyBackgroundColour,
+            partyForegroundColour
+        ),
+        constituency = com.goveye.app.domain.model.Constituency(constituencyId, constituencyName),
+        house = house,
+        membershipStartDate = membershipStartDate,
+        isActive = isActive,
+        thumbnailUrl = thumbnailUrl
+    )
 
-    private fun stripHtml(html: String): String =
-        html
-            .replace(Regex("<[^>]*>"), "")
-            .replace("&amp;", "&")
-            .replace("&lt;", "<")
-            .replace("&gt;", ">")
-            .replace("&quot;", "\"")
-            .replace("&#39;", "'")
-            .replace("&nbsp;", " ")
-            .trim()
+    private fun stripHtml(html: String): String = html
+        .replace(Regex("<[^>]*>"), "")
+        .replace("&amp;", "&")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&quot;", "\"")
+        .replace("&#39;", "'")
+        .replace("&nbsp;", " ")
+        .trim()
 }

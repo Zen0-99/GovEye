@@ -2,8 +2,8 @@ package com.goveye.app.data.update
 
 import android.content.Context
 import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.room.Room
 import com.goveye.app.data.local.BundledDatabase
@@ -11,6 +11,7 @@ import com.goveye.app.data.local.dao.DatabaseUpdateDao
 import com.goveye.app.data.preference.DatabasePreferences
 import io.mockk.coEvery
 import io.mockk.mockk
+import java.io.IOException
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
@@ -19,15 +20,14 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.RecordedRequest
 import org.junit.After
-import org.junit.Assert.assertTrue
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
-import java.io.IOException
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -59,7 +59,7 @@ class DatabaseUpdateManagerTest {
             .allowMainThreadQueries().build()
         updateDao = database.databaseUpdateDao()
         dataStore = PreferenceDataStoreFactory.create(
-            produceFile = { context.preferencesDataStoreFile("test_db_prefs") },
+            produceFile = { context.preferencesDataStoreFile("test_db_prefs") }
         )
         preferences = DatabasePreferences(dataStore)
         okHttpClient = OkHttpClient.Builder().build()
@@ -70,7 +70,7 @@ class DatabaseUpdateManagerTest {
             context = context,
             database = database,
             updateDao = updateDao,
-            dbDownloadClient = okHttpClient,
+            dbDownloadClient = okHttpClient
         )
 
         // Use a Dispatcher so parallel requests get the correct response by path
@@ -105,9 +105,9 @@ class DatabaseUpdateManagerTest {
                 ReleaseAssetDto(
                     name = "manifest.json",
                     browserDownloadUrl = manifestUrl,
-                    size = manifestJson.length.toLong(),
-                ),
-            ),
+                    size = manifestJson.length.toLong()
+                )
+            )
         )
         coEvery { updateApi.getReleaseByTag(tag = tag) } returns release
         responseMap[manifestPath] = manifestJson
@@ -120,10 +120,7 @@ class DatabaseUpdateManagerTest {
         coEvery { updateApi.getReleaseByTag(tag = tag) } throws IOException("Network error")
     }
 
-    private fun manifestJson(
-        version: Int,
-        previousVersion: Int? = null,
-    ): String = """
+    private fun manifestJson(version: Int, previousVersion: Int? = null): String = """
         {
             "version": $version,
             "previousVersion": ${previousVersion ?: "null"},
@@ -143,7 +140,7 @@ class DatabaseUpdateManagerTest {
         DatabaseUpdateApi.BILLS_TAG,
         DatabaseUpdateApi.COMMITTEES_TAG,
         DatabaseUpdateApi.RECESS_TAG,
-        DatabaseUpdateApi.INTERESTS_TAG,
+        DatabaseUpdateApi.INTERESTS_TAG
     )
 
     /**
@@ -184,7 +181,14 @@ class DatabaseUpdateManagerTest {
         // mps is 1 behind, others up to date
         mockReleaseWithManifest(DatabaseUpdateApi.MPS_TAG, manifestJson(version = 6, previousVersion = 5))
         preferences.setMpsVersion(5)
-        for (tag in listOf(DatabaseUpdateApi.COMMONS_VOTES_TAG, DatabaseUpdateApi.LORDS_VOTES_TAG, DatabaseUpdateApi.BILLS_TAG, DatabaseUpdateApi.COMMITTEES_TAG, DatabaseUpdateApi.RECESS_TAG, DatabaseUpdateApi.INTERESTS_TAG)) {
+        for (tag in listOf(
+            DatabaseUpdateApi.COMMONS_VOTES_TAG,
+            DatabaseUpdateApi.LORDS_VOTES_TAG,
+            DatabaseUpdateApi.BILLS_TAG,
+            DatabaseUpdateApi.COMMITTEES_TAG,
+            DatabaseUpdateApi.RECESS_TAG,
+            DatabaseUpdateApi.INTERESTS_TAG
+        )) {
             mockReleaseWithManifest(tag, manifestJson(version = 5, previousVersion = 4))
         }
         preferences.setCommonsVotesVersion(5)
@@ -209,7 +213,13 @@ class DatabaseUpdateManagerTest {
         mockReleaseWithManifest(DatabaseUpdateApi.COMMONS_VOTES_TAG, manifestJson(version = 6, previousVersion = 5))
         preferences.setMpsVersion(5)
         preferences.setCommonsVotesVersion(5)
-        for (tag in listOf(DatabaseUpdateApi.LORDS_VOTES_TAG, DatabaseUpdateApi.BILLS_TAG, DatabaseUpdateApi.COMMITTEES_TAG, DatabaseUpdateApi.RECESS_TAG, DatabaseUpdateApi.INTERESTS_TAG)) {
+        for (tag in listOf(
+            DatabaseUpdateApi.LORDS_VOTES_TAG,
+            DatabaseUpdateApi.BILLS_TAG,
+            DatabaseUpdateApi.COMMITTEES_TAG,
+            DatabaseUpdateApi.RECESS_TAG,
+            DatabaseUpdateApi.INTERESTS_TAG
+        )) {
             mockReleaseWithManifest(tag, manifestJson(version = 5, previousVersion = 4))
         }
         preferences.setLordsVotesVersion(5)
@@ -231,7 +241,14 @@ class DatabaseUpdateManagerTest {
         preferences.setSeedVersion(1)
         // mps fetch fails, others succeed and are up to date
         mockReleaseFailure(DatabaseUpdateApi.MPS_TAG)
-        for (tag in listOf(DatabaseUpdateApi.COMMONS_VOTES_TAG, DatabaseUpdateApi.LORDS_VOTES_TAG, DatabaseUpdateApi.BILLS_TAG, DatabaseUpdateApi.COMMITTEES_TAG, DatabaseUpdateApi.RECESS_TAG, DatabaseUpdateApi.INTERESTS_TAG)) {
+        for (tag in listOf(
+            DatabaseUpdateApi.COMMONS_VOTES_TAG,
+            DatabaseUpdateApi.LORDS_VOTES_TAG,
+            DatabaseUpdateApi.BILLS_TAG,
+            DatabaseUpdateApi.COMMITTEES_TAG,
+            DatabaseUpdateApi.RECESS_TAG,
+            DatabaseUpdateApi.INTERESTS_TAG
+        )) {
             mockReleaseWithManifest(tag, manifestJson(version = 5, previousVersion = 4))
         }
         preferences.setMpsVersion(5)
@@ -253,7 +270,14 @@ class DatabaseUpdateManagerTest {
         // mpsVersion is 3, manifest version is 5, previousVersion is 4 → multiple behind
         mockReleaseWithManifest(DatabaseUpdateApi.MPS_TAG, manifestJson(version = 5, previousVersion = 4))
         preferences.setMpsVersion(3)
-        for (tag in listOf(DatabaseUpdateApi.COMMONS_VOTES_TAG, DatabaseUpdateApi.LORDS_VOTES_TAG, DatabaseUpdateApi.BILLS_TAG, DatabaseUpdateApi.COMMITTEES_TAG, DatabaseUpdateApi.RECESS_TAG, DatabaseUpdateApi.INTERESTS_TAG)) {
+        for (tag in listOf(
+            DatabaseUpdateApi.COMMONS_VOTES_TAG,
+            DatabaseUpdateApi.LORDS_VOTES_TAG,
+            DatabaseUpdateApi.BILLS_TAG,
+            DatabaseUpdateApi.COMMITTEES_TAG,
+            DatabaseUpdateApi.RECESS_TAG,
+            DatabaseUpdateApi.INTERESTS_TAG
+        )) {
             mockReleaseWithManifest(tag, manifestJson(version = 5, previousVersion = 4))
         }
         preferences.setCommonsVotesVersion(5)
@@ -273,7 +297,14 @@ class DatabaseUpdateManagerTest {
         // interests is 1 behind, others up to date
         mockReleaseWithManifest(DatabaseUpdateApi.INTERESTS_TAG, manifestJson(version = 6, previousVersion = 5))
         preferences.setInterestsVersion(5)
-        for (tag in listOf(DatabaseUpdateApi.MPS_TAG, DatabaseUpdateApi.COMMONS_VOTES_TAG, DatabaseUpdateApi.LORDS_VOTES_TAG, DatabaseUpdateApi.BILLS_TAG, DatabaseUpdateApi.COMMITTEES_TAG, DatabaseUpdateApi.RECESS_TAG)) {
+        for (tag in listOf(
+            DatabaseUpdateApi.MPS_TAG,
+            DatabaseUpdateApi.COMMONS_VOTES_TAG,
+            DatabaseUpdateApi.LORDS_VOTES_TAG,
+            DatabaseUpdateApi.BILLS_TAG,
+            DatabaseUpdateApi.COMMITTEES_TAG,
+            DatabaseUpdateApi.RECESS_TAG
+        )) {
             mockReleaseWithManifest(tag, manifestJson(version = 5, previousVersion = 4))
         }
         preferences.setMpsVersion(5)

@@ -7,16 +7,16 @@ import com.goveye.app.data.mapper.HansardMapper
 import com.goveye.app.domain.model.HansardContribution
 import com.goveye.app.domain.model.RepositoryResult
 import com.goveye.app.domain.model.SyncStatus
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 @Singleton
 class HansardRepository @Inject constructor(
     private val hansardDao: HansardDao,
     private val hansardApi: HansardApi,
-    private val mapper: HansardMapper,
+    private val mapper: HansardMapper
 ) {
     fun observeContributionsForMember(memberId: Int): Flow<RepositoryResult<List<HansardContribution>>> =
         hansardDao.observeContributionsForMember(memberId).map { entities ->
@@ -44,7 +44,7 @@ class HansardRepository @Inject constructor(
                         house = dto.house,
                         debateSection = dto.debateSection,
                         debateSectionId = dto.debateSectionId,
-                        lastUpdated = System.currentTimeMillis(),
+                        lastUpdated = System.currentTimeMillis()
                     )
                 }
             if (entities.isNotEmpty()) {
@@ -53,14 +53,13 @@ class HansardRepository @Inject constructor(
         }
     }
 
-    private fun HansardContributionEntity.toDomain(): HansardContribution =
-        HansardContribution(
-            itemId = itemId,
-            memberId = memberId,
-            memberName = memberName,
-            contributionText = contributionText,
-            sittingDate = sittingDate,
-            house = house,
-            debateSection = debateSection,
-        )
+    private fun HansardContributionEntity.toDomain(): HansardContribution = HansardContribution(
+        itemId = itemId,
+        memberId = memberId,
+        memberName = memberName,
+        contributionText = contributionText,
+        sittingDate = sittingDate,
+        house = house,
+        debateSection = debateSection
+    )
 }

@@ -8,7 +8,7 @@ data class Division(
     val ayeCount: Int,
     val noCount: Int,
     val isDeferred: Boolean,
-    val house: Int,
+    val house: Int
 )
 
 data class DivisionVote(
@@ -19,11 +19,11 @@ data class DivisionVote(
     val partyName: String?,
     val partyColour: String?,
     val constituencyName: String?,
-    val isTeller: Boolean,
+    val isTeller: Boolean
 )
 
 enum class VoteType {
     AYE,
     NO,
-    NO_VOTE_RECORDED,
+    NO_VOTE_RECORDED
 }

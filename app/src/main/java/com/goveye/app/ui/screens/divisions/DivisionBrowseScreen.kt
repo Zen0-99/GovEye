@@ -43,7 +43,7 @@ fun DivisionsTabContent(
     houseFilter: Int = 0,
     searchQuery: String = "",
     modifier: Modifier = Modifier,
-    viewModel: DivisionBrowseViewModel = hiltViewModel(),
+    viewModel: DivisionBrowseViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
@@ -66,7 +66,7 @@ fun DivisionsTabContent(
             Row(
                 modifier = Modifier.fillMaxSize(),
                 horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 CircularProgressIndicator()
             }
@@ -74,12 +74,12 @@ fun DivisionsTabContent(
             Row(
                 modifier = Modifier.fillMaxSize(),
                 horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = "No divisions found",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         } else {
@@ -87,14 +87,14 @@ fun DivisionsTabContent(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
                     horizontal = 12.dp,
-                    vertical = MaterialTheme.padding.small,
+                    vertical = MaterialTheme.padding.small
                 ),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(state.divisions, key = { it.id }) { division ->
                     DivisionCard(
                         division = division,
-                        onClick = { onNavigateToDivision(division.id, division.house) },
+                        onClick = { onNavigateToDivision(division.id, division.house) }
                     )
                 }
             }
@@ -103,77 +103,74 @@ fun DivisionsTabContent(
 }
 
 @Composable
-private fun DivisionCard(
-    division: Division,
-    onClick: () -> Unit,
-) {
+private fun DivisionCard(division: Division, onClick: () -> Unit) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
+        color = MaterialTheme.colorScheme.surfaceContainer
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-        Text(
-            text = division.title,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Medium,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-        // Date + house badge inline, then result bar
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // Date + house on the left
+            Text(
+                text = division.title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            // Date + house badge inline, then result bar
             Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = formatDivisionDate(division.date),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = if (division.house == 2) "Lords" else "Commons",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.Bold,
-                )
+                // Date + house on the left
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = formatDivisionDate(division.date),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = if (division.house == 2) "Lords" else "Commons",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                // Aye vs No counts
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "${division.ayeCount}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = AyeColor,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "·",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "${division.noCount}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = NoColor,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
-            // Aye vs No counts
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = "${division.ayeCount}",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = AyeColor,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    text = "·",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = "${division.noCount}",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = NoColor,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-        }
-        // Result bar
-        DivisionResultBar(ayeCount = division.ayeCount, noCount = division.noCount)
+            // Result bar
+            DivisionResultBar(ayeCount = division.ayeCount, noCount = division.noCount)
         }
     }
 }
@@ -190,14 +187,14 @@ fun DivisionResultBar(ayeCount: Int, noCount: Int) {
             .fillMaxWidth()
             .clip(shape)
             .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f))
-            .height(6.dp),
+            .height(6.dp)
     ) {
         if (ayeFraction > 0f) {
             Box(
                 modifier = Modifier
                     .weight(ayeFraction)
                     .background(AyeColor)
-                    .fillMaxSize(),
+                    .fillMaxSize()
             )
         }
         if (noFraction > 0f) {
@@ -205,17 +202,15 @@ fun DivisionResultBar(ayeCount: Int, noCount: Int) {
                 modifier = Modifier
                     .weight(noFraction)
                     .background(NoColor)
-                    .fillMaxSize(),
+                    .fillMaxSize()
             )
         }
     }
 }
 
-private fun formatDivisionDate(dateString: String): String {
-    return try {
-        val parts = dateString.split("T").first().split("-")
-        "${parts[2]}/${parts[1]}/${parts[0]}"
-    } catch (e: Exception) {
-        dateString
-    }
+private fun formatDivisionDate(dateString: String): String = try {
+    val parts = dateString.split("T").first().split("-")
+    "${parts[2]}/${parts[1]}/${parts[0]}"
+} catch (e: Exception) {
+    dateString
 }

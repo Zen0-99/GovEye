@@ -26,37 +26,33 @@ fun RelatedMpsSection(
     samePartyMps: List<Mp>,
     committeePeerMps: List<Mp>,
     onNavigateToProfile: (Int) -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     if (samePartyMps.isEmpty() && committeePeerMps.isEmpty()) return
 
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.medium),
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.medium)
     ) {
         if (samePartyMps.isNotEmpty()) {
             RelatedMpsRow(
                 title = "Same Party Colleagues",
                 mps = samePartyMps,
-                onNavigateToProfile = onNavigateToProfile,
+                onNavigateToProfile = onNavigateToProfile
             )
         }
         if (committeePeerMps.isNotEmpty()) {
             RelatedMpsRow(
                 title = "Committee Peers",
                 mps = committeePeerMps,
-                onNavigateToProfile = onNavigateToProfile,
+                onNavigateToProfile = onNavigateToProfile
             )
         }
     }
 }
 
 @Composable
-private fun RelatedMpsRow(
-    title: String,
-    mps: List<Mp>,
-    onNavigateToProfile: (Int) -> Unit,
-) {
+private fun RelatedMpsRow(title: String, mps: List<Mp>, onNavigateToProfile: (Int) -> Unit) {
     Column {
         Text(
             text = title,
@@ -64,17 +60,17 @@ private fun RelatedMpsRow(
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(
                 horizontal = MaterialTheme.padding.large,
-                vertical = MaterialTheme.padding.small,
-            ),
+                vertical = MaterialTheme.padding.small
+            )
         )
         LazyRow(
             contentPadding = PaddingValues(horizontal = MaterialTheme.padding.large),
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.medium),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.medium)
         ) {
             items(mps, key = { it.id }) { mp ->
                 RelatedMpCard(
                     mp = mp,
-                    onClick = { onNavigateToProfile(mp.id) },
+                    onClick = { onNavigateToProfile(mp.id) }
                 )
             }
         }
@@ -82,22 +78,19 @@ private fun RelatedMpsRow(
 }
 
 @Composable
-private fun RelatedMpCard(
-    mp: Mp,
-    onClick: () -> Unit,
-) {
+private fun RelatedMpCard(mp: Mp, onClick: () -> Unit) {
     Column(
         modifier = Modifier
             .width(80.dp)
             .clickable(onClick = onClick),
-        horizontalAlignment = Alignment.CenterHorizontally,
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         MpAvatar(
             thumbnailUrl = mp.thumbnailUrl,
             displayName = mp.nameDisplayAs,
             partyColorHex = mp.party?.backgroundColour,
             size = 56.dp,
-            borderWidth = 2.dp,
+            borderWidth = 2.dp
         )
         Text(
             text = mp.nameDisplayAs,
@@ -105,7 +98,7 @@ private fun RelatedMpCard(
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = MaterialTheme.padding.extraSmall),
+            modifier = Modifier.padding(top = MaterialTheme.padding.extraSmall)
         )
     }
 }

@@ -20,10 +20,7 @@ import java.time.LocalDate
 import java.time.Period
 
 @Composable
-fun ProfileStatsCard(
-    mp: Mp,
-    modifier: Modifier = Modifier,
-) {
+fun ProfileStatsCard(mp: Mp, modifier: Modifier = Modifier) {
     val yearsInParliament = mp.membershipStartDate?.let { startDate ->
         try {
             val start = LocalDate.parse(startDate.take(10))
@@ -45,19 +42,19 @@ fun ProfileStatsCard(
             .fillMaxWidth()
             .padding(horizontal = MaterialTheme.padding.large, vertical = MaterialTheme.padding.small),
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
+        color = MaterialTheme.colorScheme.surfaceContainer
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(MaterialTheme.padding.medium),
-            horizontalArrangement = Arrangement.SpaceEvenly,
+            horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             stats.forEach { (label, value) ->
                 StatItem(
                     label = label,
                     value = value,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f)
                 )
             }
         }
@@ -65,27 +62,23 @@ fun ProfileStatsCard(
 }
 
 @Composable
-private fun StatItem(
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier,
-) {
+private fun StatItem(label: String, value: String, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier.padding(horizontal = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface,
             maxLines = 2,
-            textAlign = TextAlign.Center,
+            textAlign = TextAlign.Center
         )
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
+            textAlign = TextAlign.Center
         )
     }
 }

@@ -36,7 +36,11 @@ class VotePollingWorkerTest {
     private val notificationHelper = mockk<NotificationHelper>(relaxed = true)
     private val notificationPrefRepository = mockk<NotificationPreferenceRepository>(relaxed = true)
     private val databasePreferences = mockk<DatabasePreferences>(relaxed = true)
-    private val json = Json { ignoreUnknownKeys = true; coerceInputValues = true; explicitNulls = false }
+    private val json = Json {
+        ignoreUnknownKeys = true
+        coerceInputValues = true
+        explicitNulls = false
+    }
 
     private lateinit var context: Context
     private lateinit var workerParams: WorkerParameters
@@ -62,7 +66,7 @@ class VotePollingWorkerTest {
         notificationHelper,
         notificationPrefRepository,
         databasePreferences,
-        json,
+        json
     )
 
     private fun makeDivision(id: Int, house: Int = 1) = DivisionEntity(
@@ -75,7 +79,7 @@ class VotePollingWorkerTest {
         ayeCount = 100,
         noCount = 50,
         house = house,
-        lastUpdated = System.currentTimeMillis(),
+        lastUpdated = System.currentTimeMillis()
     )
 
     private fun makeVote(divisionId: Int, memberId: Int, vote: String = "AYE") = DivisionVoteEntity(
@@ -87,7 +91,7 @@ class VotePollingWorkerTest {
         partyColour = "#0000FF",
         constituencyName = "Test Constituency",
         isTeller = false,
-        proxyName = null,
+        proxyName = null
     )
 
     private fun makeMp(id: Int) = MpEntity(
@@ -109,7 +113,7 @@ class VotePollingWorkerTest {
         membershipEndDate = null,
         isActive = true,
         thumbnailUrl = null,
-        lastUpdated = System.currentTimeMillis(),
+        lastUpdated = System.currentTimeMillis()
     )
 
     @Test

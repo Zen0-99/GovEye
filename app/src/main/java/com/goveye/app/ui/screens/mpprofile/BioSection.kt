@@ -14,10 +14,7 @@ import androidx.compose.ui.unit.dp
 import com.goveye.app.ui.theme.padding
 
 @Composable
-fun BioSection(
-    synopsis: String?,
-    modifier: Modifier = Modifier,
-) {
+fun BioSection(synopsis: String?, modifier: Modifier = Modifier) {
     if (synopsis.isNullOrBlank()) return
 
     Surface(
@@ -25,21 +22,21 @@ fun BioSection(
             .fillMaxWidth()
             .padding(horizontal = MaterialTheme.padding.large, vertical = MaterialTheme.padding.small),
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
+        color = MaterialTheme.colorScheme.surfaceContainer
     ) {
         Column(
             modifier = Modifier.padding(MaterialTheme.padding.medium),
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small)
         ) {
             Text(
                 text = "Biography",
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = MaterialTheme.colorScheme.onSurface
             )
             Text(
                 text = synopsis,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

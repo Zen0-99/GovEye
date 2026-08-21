@@ -54,8 +54,4 @@ sealed interface DatabaseUpdateState {
  * @param manifest The manifest from the per-API release (contains version, patch info).
  * @param release The GitHub release DTO (contains asset download URLs).
  */
-data class PatchInfo(
-    val streamName: String,
-    val manifest: DatabaseManifest,
-    val release: GithubReleaseDto,
-)
+data class PatchInfo(val streamName: String, val manifest: DatabaseManifest, val release: GithubReleaseDto)

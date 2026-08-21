@@ -18,39 +18,35 @@ import com.goveye.app.ui.components.MpAvatar
 import com.goveye.app.ui.theme.padding
 
 @Composable
-fun MpListRow(
-    mp: Mp,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+fun MpListRow(mp: Mp, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .padding(horizontal = MaterialTheme.padding.medium, vertical = MaterialTheme.padding.small),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.medium),
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.medium)
     ) {
         MpAvatar(
             thumbnailUrl = mp.thumbnailUrl,
             displayName = mp.nameDisplayAs,
             partyColorHex = mp.party?.backgroundColour,
             size = 48.dp,
-            borderWidth = 2.dp,
+            borderWidth = 2.dp
         )
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = mp.nameDisplayAs,
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = "${mp.party?.abbreviation ?: ""} · ${mp.constituency?.name ?: ""}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }

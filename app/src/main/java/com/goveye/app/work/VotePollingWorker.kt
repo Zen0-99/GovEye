@@ -39,7 +39,7 @@ class VotePollingWorker @AssistedInject constructor(
     private val notificationHelper: NotificationHelper,
     private val notificationPrefRepository: NotificationPreferenceRepository,
     private val databasePreferences: DatabasePreferences,
-    private val json: Json,
+    private val json: Json
 ) : CoroutineWorker(appContext, params) {
 
     companion object {
@@ -97,8 +97,8 @@ class VotePollingWorker @AssistedInject constructor(
                                 house = division.house,
                                 divisionTitle = division.title,
                                 voteType = voteType,
-                                isRebel = isRebel,
-                            ),
+                                isRebel = isRebel
+                            )
                         )
                     }
                 }
@@ -116,8 +116,8 @@ class VotePollingWorker @AssistedInject constructor(
                                 divisionHouse = vote.house,
                                 divisionTitle = vote.divisionTitle,
                                 voteLabel = vote.voteLabel(),
-                                isRebel = vote.isRebel,
-                            ),
+                                isRebel = vote.isRebel
+                            )
                         )
                     }
                 } else {
