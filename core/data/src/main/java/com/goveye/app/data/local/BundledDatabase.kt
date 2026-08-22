@@ -6,6 +6,7 @@ import androidx.room.TypeConverters
 import com.goveye.app.data.local.dao.BillDao
 import com.goveye.app.data.local.dao.BioDataDao
 import com.goveye.app.data.local.dao.CommitteeDao
+import com.goveye.app.data.local.dao.CouncilDao
 import com.goveye.app.data.local.dao.DatabaseUpdateDao
 import com.goveye.app.data.local.dao.DebateSpeechDao
 import com.goveye.app.data.local.dao.DivisionDao
@@ -14,16 +15,21 @@ import com.goveye.app.data.local.dao.HansardDao
 import com.goveye.app.data.local.dao.HistoricalMemberDao
 import com.goveye.app.data.local.dao.InterestDao
 import com.goveye.app.data.local.dao.ManifestoDao
+import com.goveye.app.data.local.dao.MpContactDao
 import com.goveye.app.data.local.dao.MpDao
+import com.goveye.app.data.local.dao.MpExperienceDao
 import com.goveye.app.data.local.dao.MpLinkDao
 import com.goveye.app.data.local.dao.MpStatsDao
+import com.goveye.app.data.local.dao.MpSynopsisDao
 import com.goveye.app.data.local.dao.PartyStatsDao
+import com.goveye.app.data.local.dao.TagDao
 import com.goveye.app.data.local.dao.RecessDateDao
 import com.goveye.app.data.local.dao.SearchDao
 import com.goveye.app.data.local.entity.BillEntity
 import com.goveye.app.data.local.entity.BillStageEntity
 import com.goveye.app.data.local.entity.BioDataEntity
 import com.goveye.app.data.local.entity.CommitteeEntity
+import com.goveye.app.data.local.entity.CouncilEntity
 import com.goveye.app.data.local.entity.DebateSpeechEntity
 import com.goveye.app.data.local.entity.DivisionEntity
 import com.goveye.app.data.local.entity.DivisionVoteEntity
@@ -33,10 +39,15 @@ import com.goveye.app.data.local.entity.HistoricalMemberEntity
 import com.goveye.app.data.local.entity.HistoricalMemberFts4Entity
 import com.goveye.app.data.local.entity.InterestEntity
 import com.goveye.app.data.local.entity.MpCommitteeCrossRef
+import com.goveye.app.data.local.entity.MpContactEntity
 import com.goveye.app.data.local.entity.MpEntity
+import com.goveye.app.data.local.entity.MpExperienceEntity
 import com.goveye.app.data.local.entity.MpFtsEntity
+import com.goveye.app.data.local.entity.DivisionTagEntity
+import com.goveye.app.data.local.entity.BillTagEntity
 import com.goveye.app.data.local.entity.MpLinkEntity
 import com.goveye.app.data.local.entity.MpStatsEntity
+import com.goveye.app.data.local.entity.MpSynopsisEntity
 import com.goveye.app.data.local.entity.PartyManifestoEntity
 import com.goveye.app.data.local.entity.PartyManifestoFts4Entity
 import com.goveye.app.data.local.entity.PartyStatsEntity
@@ -83,9 +94,15 @@ import com.goveye.app.data.local.entity.RecessDatesMetaEntity
         HistoricalMemberEntity::class,
         HistoricalMemberFts4Entity::class,
         MpStatsEntity::class,
-        PeerAveragesEntity::class
+        PeerAveragesEntity::class,
+        MpSynopsisEntity::class,
+        MpContactEntity::class,
+        MpExperienceEntity::class,
+        DivisionTagEntity::class,
+        BillTagEntity::class,
+        CouncilEntity::class
     ],
-    version = 12,
+    version = 16,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -106,6 +123,11 @@ abstract class BundledDatabase : RoomDatabase() {
     abstract fun partyStatsDao(): PartyStatsDao
     abstract fun historicalMemberDao(): HistoricalMemberDao
     abstract fun mpStatsDao(): MpStatsDao
+    abstract fun mpSynopsisDao(): MpSynopsisDao
+    abstract fun mpContactDao(): MpContactDao
+    abstract fun mpExperienceDao(): MpExperienceDao
+    abstract fun councilDao(): CouncilDao
+    abstract fun tagDao(): TagDao
     abstract fun databaseUpdateDao(): DatabaseUpdateDao
 
     companion object {
