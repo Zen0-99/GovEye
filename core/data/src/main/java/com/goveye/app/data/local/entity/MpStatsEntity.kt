@@ -13,7 +13,7 @@ import androidx.room.PrimaryKey
  * - questionCount, speechCount, committeeCount: COUNT queries
  * - voteParticipationRate: voted divisions / total divisions in house
  * - rebellionRate, rebellionCount, totalDivisionsVoted: party-majority method
- * - activityScore: weighted score (votes 40%, questions 20%, speeches 20%, committees 20%)
+ * - activityScore: weighted score 0.0-10.0 (votes 4.0, questions 2.0, speeches 2.0, committees 2.0)
  * - percentiles: rank-based percentile across same-house peers
  */
 @Entity(tableName = "mp_stats")
@@ -27,7 +27,7 @@ data class MpStatsEntity(
     val rebellionRate: Float,
     val rebellionCount: Int,
     val totalDivisionsVoted: Int,
-    val activityScore: Int,
+    val activityScore: Float,
     val rebellionPercentile: Int,
     val participationPercentile: Int,
     val questionsPercentile: Int,

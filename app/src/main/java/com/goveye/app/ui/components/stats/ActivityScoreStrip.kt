@@ -40,7 +40,7 @@ fun ActivityScoreStrip(score: ActivityScore?, modifier: Modifier = Modifier) {
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "${score.score}",
+                    text = String.format("%.1f", score.score),
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -48,7 +48,7 @@ fun ActivityScoreStrip(score: ActivityScore?, modifier: Modifier = Modifier) {
             }
 
             LinearProgressIndicator(
-                progress = { score.score / 100f },
+                progress = { score.score / 10f },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 8.dp)
@@ -59,20 +59,20 @@ fun ActivityScoreStrip(score: ActivityScore?, modifier: Modifier = Modifier) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                BreakdownItem(label = "Votes", value = score.breakdown.voteParticipationContribution, max = 40)
-                BreakdownItem(label = "Questions", value = score.breakdown.questionsContribution, max = 20)
-                BreakdownItem(label = "Speeches", value = score.breakdown.speechesContribution, max = 20)
-                BreakdownItem(label = "Committees", value = score.breakdown.committeesContribution, max = 20)
+                BreakdownItem(label = "Votes", value = score.breakdown.voteParticipationContribution, max = 4.0f)
+                BreakdownItem(label = "Questions", value = score.breakdown.questionsContribution, max = 2.0f)
+                BreakdownItem(label = "Speeches", value = score.breakdown.speechesContribution, max = 2.0f)
+                BreakdownItem(label = "Committees", value = score.breakdown.committeesContribution, max = 2.0f)
             }
         }
     }
 }
 
 @Composable
-private fun BreakdownItem(label: String, value: Int, max: Int) {
+private fun BreakdownItem(label: String, value: Float, max: Float) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
-            text = "$value/$max",
+            text = "${String.format("%.1f", value)}/${String.format("%.1f", max)}",
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurface

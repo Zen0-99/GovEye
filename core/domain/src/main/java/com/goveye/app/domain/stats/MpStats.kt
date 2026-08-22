@@ -16,7 +16,7 @@ data class MpStats(
     val rebellionRate: Float,
     val rebellionCount: Int,
     val totalDivisionsVoted: Int,
-    val activityScore: Int,
+    val activityScore: Float,
     val rebellionPercentile: Int,
     val participationPercentile: Int,
     val questionsPercentile: Int,

@@ -15,26 +15,27 @@ data class PeerAverages(
 
 /**
  * Breakdown of the activity score by component.
+ * Each component is 0.0–max (e.g. votes 0.0–4.0, questions 0.0–2.0).
  */
 data class ScoreBreakdown(
-    // 0-40
-    val voteParticipationContribution: Int,
-    // 0-20
-    val questionsContribution: Int,
-    // 0-20
-    val speechesContribution: Int,
-    // 0-20
-    val committeesContribution: Int
+    // 0.0-4.0
+    val voteParticipationContribution: Float,
+    // 0.0-2.0
+    val questionsContribution: Float,
+    // 0.0-2.0
+    val speechesContribution: Float,
+    // 0.0-2.0
+    val committeesContribution: Float
 )
 
 /**
- * Mechanical parliamentary activity score (0-100).
+ * Mechanical parliamentary activity score (0.0-10.0).
  *
  * Weights:
- * - Vote participation: 40%
- * - Questions: 20%
- * - Speeches: 20%
- * - Committees: 20%
+ * - Vote participation: 4.0
+ * - Questions: 2.0
+ * - Speeches: 2.0
+ * - Committees: 2.0
  *
  * Each component is normalized relative to the house average.
  * A count of 2× the average = full marks for that component.
@@ -42,17 +43,17 @@ data class ScoreBreakdown(
  * This is a transparency tool, not an editorial judgment.
  * A higher score means more recorded activity, not better performance.
  */
-data class ActivityScore(val score: Int, val breakdown: ScoreBreakdown)
+data class ActivityScore(val score: Float, val breakdown: ScoreBreakdown)
 
 /**
  * Computes the parliamentary activity score.
  * Pure function — no DI, no side effects.
  */
 object ActivityScoreCalculator {
-    private const val VOTE_WEIGHT = 40
-    private const val QUESTIONS_WEIGHT = 20
-    private const val SPEECHES_WEIGHT = 20
-    private const val COMMITTEES_WEIGHT = 20
+    private const val VOTE_WEIGHT = 4.0f
+    private const val QUESTIONS_WEIGHT = 2.0f
+    private const val SPEECHES_WEIGHT = 2.0f
+    private const val COMMITTEES_WEIGHT = 2.0f
 
     fun compute(
         voteParticipationRate: Float,
@@ -61,7 +62,7 @@ object ActivityScoreCalculator {
         committeeCount: Int,
         peerAverages: PeerAverages
     ): ActivityScore {
-        val voteContribution = (voteParticipationRate * VOTE_WEIGHT).toInt().coerceIn(0, VOTE_WEIGHT)
+        val voteContribution = (voteParticipationRate * VOTE_WEIGHT).coerceIn(0f, VOTE_WEIGHT)
         val questionsContribution = normalize(questionCount, peerAverages.averageQuestions, QUESTIONS_WEIGHT)
         val speechesContribution = normalize(speechCount, peerAverages.averageSpeeches, SPEECHES_WEIGHT)
         val committeesContribution = normalize(committeeCount, peerAverages.averageCommittees, COMMITTEES_WEIGHT)
@@ -69,7 +70,7 @@ object ActivityScoreCalculator {
         val total = voteContribution + questionsContribution + speechesContribution + committeesContribution
 
         return ActivityScore(
-            score = total.coerceIn(0, 100),
+            score = total.coerceIn(0f, 10f),
             breakdown = ScoreBreakdown(
                 voteParticipationContribution = voteContribution,
                 questionsContribution = questionsContribution,
@@ -86,9 +87,9 @@ object ActivityScoreCalculator {
      * count = 2× average → 100% of weight
      * Linear interpolation between these points, capped at 100%.
      */
-    private fun normalize(count: Int, average: Float, weight: Int): Int {
-        if (average <= 0f) return if (count > 0) weight else 0
+    private fun normalize(count: Int, average: Float, weight: Float): Float {
+        if (average <= 0f) return if (count > 0) weight else 0f
         val ratio = count.toFloat() / (average * 2f)
-        return (ratio * weight).toInt().coerceIn(0, weight)
+        return (ratio * weight).coerceIn(0f, weight)
     }
 }

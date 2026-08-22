@@ -85,7 +85,7 @@ import com.goveye.app.data.local.entity.RecessDatesMetaEntity
         MpStatsEntity::class,
         PeerAveragesEntity::class
     ],
-    version = 11,
+    version = 12,
     exportSchema = true
 )
 @TypeConverters(Converters::class)

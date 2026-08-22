@@ -26,68 +26,116 @@ import com.goveye.app.domain.stats.ActivityScore
 import com.goveye.app.domain.stats.TraitBar
 
 /**
- * FotMob-style activity score display — large number with colored background.
+ * Activity score display — large centered number with breakdown columns.
+ *
+ * Layout:
+ *   [Votes   /4.0]     [ 5.2 ]     [Questions /2.0]
+ *   [Speeches/2.0]     [ score]     [Committees/2.0]
+ *
+ * Left column: Votes + Speeches (left-aligned)
+ * Center: large score number + label
+ * Right column: Questions + Committees (right-aligned)
  */
 @Composable
 fun ActivityScoreStrip(score: ActivityScore, modifier: Modifier = Modifier) {
-    val backgroundColor = when {
-        score.score <= 30 -> MaterialTheme.colorScheme.surfaceVariant
-        score.score <= 60 -> MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-        else -> MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-    }
-    val onColor = if (score.score <= 30) {
-        MaterialTheme.colorScheme.onSurfaceVariant
-    } else {
-        MaterialTheme.colorScheme.onPrimary
-    }
+    val onColor = MaterialTheme.colorScheme.onSurface
+    val onColorVariant = MaterialTheme.colorScheme.onSurfaceVariant
 
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(backgroundColor)
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
             .padding(16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column {
+        // Left column — Votes + Speeches (left-aligned)
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalAlignment = Alignment.Start
+        ) {
+            ScoreBreakdownEntry("Votes", score.breakdown.voteParticipationContribution, 4.0f, onColor, onColorVariant)
+            ScoreBreakdownEntry("Speeches", score.breakdown.speechesContribution, 2.0f, onColor, onColorVariant)
+        }
+
+        // Center — large score number + label
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             Text(
-                text = score.score.toString(),
+                text = String.format("%.1f", score.score),
                 style = MaterialTheme.typography.displayMedium,
                 fontWeight = FontWeight.Bold,
                 color = onColor
             )
             Text(
-                text = "Parliamentary Activity Score",
-                style = MaterialTheme.typography.labelMedium,
-                color = onColor.copy(alpha = 0.8f)
+                text = "Activity Score",
+                style = MaterialTheme.typography.labelSmall,
+                color = onColorVariant
             )
         }
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            ScoreBreakdownRow("Votes", score.breakdown.voteParticipationContribution, 40, onColor)
-            ScoreBreakdownRow("Questions", score.breakdown.questionsContribution, 20, onColor)
-            ScoreBreakdownRow("Speeches", score.breakdown.speechesContribution, 20, onColor)
-            ScoreBreakdownRow("Committees", score.breakdown.committeesContribution, 20, onColor)
+
+        // Right column — Questions + Committees (right-aligned)
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalAlignment = Alignment.End
+        ) {
+            ScoreBreakdownEntry(
+                "Questions",
+                score.breakdown.questionsContribution,
+                2.0f,
+                onColor,
+                onColorVariant,
+                Alignment.End
+            )
+            ScoreBreakdownEntry(
+                "Committees",
+                score.breakdown.committeesContribution,
+                2.0f,
+                onColor,
+                onColorVariant,
+                Alignment.End
+            )
         }
     }
 }
 
 @Composable
-private fun ScoreBreakdownRow(label: String, value: Int, max: Int, color: androidx.compose.ui.graphics.Color) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
+private fun ScoreBreakdownEntry(
+    label: String,
+    value: Float,
+    max: Float,
+    color: androidx.compose.ui.graphics.Color,
+    variantColor: androidx.compose.ui.graphics.Color,
+    alignment: Alignment.Horizontal = Alignment.Start
+) {
+    Column(
+        horizontalAlignment = alignment,
+        modifier = Modifier.fillMaxWidth()
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            color = color.copy(alpha = 0.8f)
+            color = variantColor,
+            textAlign = when (alignment) {
+                Alignment.End -> androidx.compose.ui.text.style.TextAlign.End
+                else -> androidx.compose.ui.text.style.TextAlign.Start
+            },
+            modifier = Modifier.fillMaxWidth()
         )
         Text(
-            text = "$value/$max",
-            style = MaterialTheme.typography.labelSmall,
-            color = color.copy(alpha = 0.8f),
-            fontWeight = FontWeight.Bold
+            text = "${String.format("%.1f", value)}/${String.format("%.1f", max)}",
+            style = MaterialTheme.typography.labelMedium,
+            color = color,
+            fontWeight = FontWeight.Bold,
+            textAlign = when (alignment) {
+                Alignment.End -> androidx.compose.ui.text.style.TextAlign.End
+                else -> androidx.compose.ui.text.style.TextAlign.Start
+            },
+            modifier = Modifier.fillMaxWidth()
         )
     }
 }
