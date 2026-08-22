@@ -90,7 +90,11 @@ fun ActivityTabContent(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = if (searchQuery.isBlank()) "No recent activity" else "No votes found for \"$searchQuery\"",
+                        text = if (searchQuery.isBlank()) {
+                            "No recent activity"
+                        } else {
+                            "No votes found for \"$searchQuery\""
+                        },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

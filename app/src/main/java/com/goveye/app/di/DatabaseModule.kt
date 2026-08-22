@@ -19,8 +19,8 @@ import com.goveye.app.data.local.dao.InterestDao
 import com.goveye.app.data.local.dao.ManifestoDao
 import com.goveye.app.data.local.dao.MpDao
 import com.goveye.app.data.local.dao.MpLinkDao
-import com.goveye.app.data.local.dao.MpStatsDao
 import com.goveye.app.data.local.dao.MpNotificationPreferenceDao
+import com.goveye.app.data.local.dao.MpStatsDao
 import com.goveye.app.data.local.dao.PartyStatsDao
 import com.goveye.app.data.local.dao.RecessDateDao
 import com.goveye.app.data.local.dao.SearchDao

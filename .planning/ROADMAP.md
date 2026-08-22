@@ -323,5 +323,5 @@ Phases execute in numeric order: 1 â†’ 2 â†’ 3 â†’ 4 â†’ 5 �
 | 9. Interests & Income | 4/4 | Complete | 2026-08-20 |
 | 10. Polish & Release | 6/9 | 10-03â†’10-08 executed | - |
 | 11. Build-time Data Enrichment | 7/7 | Complete (verified in code) | 2026-08-22 |
-| 12. Unified Precomputed Database | 0/4 | Not started | - |
+| 12. Unified Precomputed Database | 4/4 | Complete (build passes) | 2026-08-22 |
 

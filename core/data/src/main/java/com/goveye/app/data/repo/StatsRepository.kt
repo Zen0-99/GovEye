@@ -16,11 +16,11 @@ import com.goveye.app.domain.stats.PeerAverages
 import com.goveye.app.domain.stats.RebellionCalculator
 import com.goveye.app.domain.stats.TraitBar
 import com.goveye.app.domain.stats.TraitBarCalculator
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /**
  * Stats repository with build-time precomputation (Phase 12).
@@ -44,6 +44,7 @@ class StatsRepository @Inject constructor(
     companion object {
         private const val TAG = "GovEye/Stats"
         private const val CACHE_TTL_MS = 5 * 60 * 1000L // 5 minutes
+
         // Approximation: typical rebellion rate across all MPs is ~5%.
         // Used for peer rebellion rates in fallback mode to avoid 650 × full-vote-fetch.
         private const val TYPICAL_REBELLION_RATE = 0.05f
@@ -207,18 +208,23 @@ class StatsRepository @Inject constructor(
 
         val values = when (metric) {
             "rebellionRate" -> mps.map { TYPICAL_REBELLION_RATE }
+
             "participationRate" -> mps.map { mp ->
                 getVoteParticipationRate(mp.id, house)
             }
+
             "questionCount" -> mps.map { mp ->
                 getQuestionCount(mp.id).toFloat()
             }
+
             "speechCount" -> mps.map { mp ->
                 getSpeechCount(mp.id).toFloat()
             }
+
             "committeeCount" -> mps.map { mp ->
                 getCommitteeCount(mp.id).toFloat()
             }
+
             else -> emptyList()
         }
 
@@ -250,7 +256,11 @@ class StatsRepository @Inject constructor(
         val committeeCount = getCommitteeCount(memberId)
         val peerAverages = getPeerAverages(house)
         return ActivityScoreCalculator.compute(
-            voteParticipationRate, questionCount, speechCount, committeeCount, peerAverages
+            voteParticipationRate,
+            questionCount,
+            speechCount,
+            committeeCount,
+            peerAverages
         )
     }
 
@@ -319,8 +329,8 @@ class StatsRepository @Inject constructor(
 
     // --- Helpers ---
 
-    private suspend fun getActiveMps(house: Int): List<MpEntity> {
-        return mpDao.observeAllMps().first().filter { it.house == house }
+    private suspend fun getActiveMps(house: Int): List<MpEntity> = mpDao.observeAllMps().first().filter {
+        it.house == house
     }
 
     private fun DivisionVoteEntity.toDomainVote(): com.goveye.app.domain.model.DivisionVote {
