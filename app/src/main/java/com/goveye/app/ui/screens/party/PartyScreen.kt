@@ -139,6 +139,7 @@ fun PartyScreen(
             // Gradient header — same pattern as ProfileContentHeader
             PartyContentHeader(
                 partyName = party.partyName,
+                partyAbbreviation = party.partyAbbreviation,
                 seats = party.seats,
                 partyColor = partyColor,
                 partyId = party.partyId,
@@ -219,6 +220,7 @@ fun PartyScreen(
 @Composable
 private fun PartyContentHeader(
     partyName: String,
+    partyAbbreviation: String,
     seats: Int,
     partyColor: Color,
     partyId: Int,
@@ -278,7 +280,11 @@ private fun PartyContentHeader(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = partyName,
+                    text = if (partyAbbreviation.isNotBlank()) {
+                        "$partyName ($partyAbbreviation)"
+                    } else {
+                        partyName
+                    },
                     style = MaterialTheme.typography.titleLarge,
                     color = headerTextColor,
                     fontWeight = FontWeight.Bold,

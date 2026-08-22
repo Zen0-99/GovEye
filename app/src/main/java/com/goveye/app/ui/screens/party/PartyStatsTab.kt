@@ -13,25 +13,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.goveye.app.data.local.dao.PartySummary
 import com.goveye.app.data.local.entity.PartyStatsEntity
 import com.goveye.app.ui.theme.padding
 
 @Composable
-fun PartyStatsTab(party: PartySummary?, stats: PartyStatsEntity?, modifier: Modifier = Modifier) {
+fun PartyStatsTab(
+    party: com.goveye.app.data.local.dao.PartySummary?,
+    stats: PartyStatsEntity?,
+    modifier: Modifier = Modifier
+) {
     Column(
         modifier = modifier.fillMaxWidth().padding(MaterialTheme.padding.medium),
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small)
     ) {
-        party?.let {
-            StatCard("Seats in Parliament", "${it.seats} / 650")
-            val seatProgress = it.seats.toFloat() / 650f
-            LinearProgressIndicator(
-                progress = { seatProgress },
-                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
-            )
-        }
-
         stats?.lastElectionVoteShare?.let { voteShare ->
             StatCard("Vote Share at Last Election", "${String.format("%.1f", voteShare * 100)}%")
             LinearProgressIndicator(

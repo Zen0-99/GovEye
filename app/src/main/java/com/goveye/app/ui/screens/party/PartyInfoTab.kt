@@ -22,21 +22,19 @@ fun PartyInfoTab(party: PartySummary?, stats: PartyStatsEntity?, modifier: Modif
         modifier = modifier.fillMaxWidth().padding(MaterialTheme.padding.medium),
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small)
     ) {
-        if (party != null) {
-            InfoCard("Party Name", party.partyName)
-            InfoCard("Abbreviation", party.partyAbbreviation)
-            InfoCard("Seats", "${party.seats} MPs")
-        }
-
+        // Description at the top — the most useful info
         stats?.description?.let {
             InfoCard("Description", it)
         }
+
         stats?.foundedYear?.let {
             InfoCard("Founded", it)
         }
+
         stats?.leaderName?.let {
             InfoCard("Leader", it)
         }
+
         stats?.lastElectionYear?.let {
             InfoCard("Last Election", it.toString())
         }
