@@ -1,0 +1,112 @@
+name: Update Member Details
+
+on:
+  schedule:
+    - cron: '0 8 * * 1'  # Weekly, Monday 8am UTC (after bio-data update)
+  workflow_dispatch:      # Manual trigger for seed builds and testing
+
+permissions:
+  contents: write  # Required by softprops/action-gh-release@v3
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30  # 650 MPs × 3 endpoints × 0.2s delay ≈ 6-7 min
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Download mps.db (needed for MP IDs)
+        run: |
+          gh release download mps-latest --pattern mps.db --output mps.db || echo "No mps.db found"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Restore seed checkpoint
+        id: restore_checkpoint
+        if: steps.download_prev.outputs.has_previous != 'true'
+        uses: actions/cache@v4
+        with:
+          path: member_details.db
+          key: member-details-seed-${{ hashFiles('schemas/bundled_schema.json') }}-${{ github.run_id }}
+          restore-keys: |
+            member-details-seed-${{ hashFiles('schemas/bundled_schema.json') }}-
+
+      - name: Download previous DB and manifest
+        id: download_prev
+        run: |
+          gh release download member-details-latest \
+            --pattern member_details.db --output prev_member_details.db || echo "No previous DB (first run)"
+          gh release download member-details-latest \
+            --pattern manifest.json --output prev_manifest.json || echo "No previous manifest (first run)"
+          if [ -f prev_member_details.db ]; then
+            echo "has_previous=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_previous=false" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Member Details database (seed mode)
+        if: steps.download_prev.outputs.has_previous != 'true'
+        run: |
+          python build_member_details.py --output member_details.db --schema schemas/bundled_schema.json --mode seed --mps-db mps.db --checkpoint-db member_details.db
+
+      - name: Build Member Details database (delta mode)
+        if: steps.download_prev.outputs.has_previous == 'true'
+        run: |
+          python build_member_details.py --output member_details.db --schema schemas/bundled_schema.json --mode delta --previous-db prev_member_details.db --mps-db mps.db
+
+      - name: Save seed checkpoint
+        if: steps.download_prev.outputs.has_previous != 'true' && always()
+        uses: actions/cache@v4
+        with:
+          path: member_details.db
+          key: member-details-seed-${{ hashFiles('schemas/bundled_schema.json') }}-${{ github.run_id }}
+
+      - name: Generate diff patch
+        if: steps.download_prev.outputs.has_previous == 'true'
+        run: |
+          python diff_db.py --new member_details.db --previous prev_member_details.db --schema schemas/bundled_schema.json --output patch.json --tables mp_synopsis mp_contacts mp_experience
+
+      - name: Generate diff patch (first run)
+        if: steps.download_prev.outputs.has_previous != 'true'
+        run: |
+          python diff_db.py --new member_details.db --schema schemas/bundled_schema.json --output patch.json --tables mp_synopsis mp_contacts mp_experience
+
+      - name: Generate manifest
+        if: steps.download_prev.outputs.has_previous == 'true'
+        run: |
+          python manifest.py --db member_details.db --patch patch.json --output manifest.json --schema schemas/bundled_schema.json --previous-manifest prev_manifest.json
+
+      - name: Generate manifest (first run)
+        if: steps.download_prev.outputs.has_previous != 'true'
+        run: |
+          python manifest.py --db member_details.db --patch patch.json --output manifest.json --schema schemas/bundled_schema.json
+
+      - name: Publish to GitHub Releases
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: member-details-latest
+          name: Member Details Latest
+          body: |
+            MP synopsis, contacts, and experience data update for GovEye (weekly).
+
+            - **member_details.db**: Per-API SQLite database (mp_synopsis, mp_contacts, mp_experience tables)
+            - **patch.json**: Incremental diff patch
+            - **manifest.json**: Version, SHA-256 hashes, and file sizes
+
+            See manifest.json for the current version number and file hashes.
+          files: |
+            member_details.db
+            patch.json
+            manifest.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -116,7 +116,7 @@ fun InterestsTabContent(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "No registered interests",
+                text = "No registered financial interests",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -154,7 +154,7 @@ fun InterestsTabContent(
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = "No interests match the selected date range",
+                text = "No entries match the selected date range",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -232,7 +232,10 @@ fun InterestsTabContent(
             }
         }
 
-        // --- Bucket summary cards (2-column grid) ---
+        // --- Income section (registered interests) ---
+        item(span = { GridItemSpan(2) }) {
+            IncomeSectionHeader()
+        }
         items(bucketSummaries, key = { it.bucketLabel }) { summary ->
             BucketSummaryCard(
                 summary = summary,
@@ -240,7 +243,7 @@ fun InterestsTabContent(
             )
         }
 
-        // --- MP Expenses section (IPSA) ---
+        // --- Expenses section (IPSA) ---
         if (expenseBucketTotals.isNotEmpty()) {
             item(span = { GridItemSpan(2) }) {
                 ExpenseSectionHeader()
@@ -375,16 +378,17 @@ private fun InterestsDashboardHeader(
 @Composable
 private fun BucketSummaryCard(summary: BucketSummary, onClick: () -> Unit) {
     val icon = BUCKET_ICONS[summary.bucketLabel] ?: Icons.Outlined.Category
+    val formattedAmount = formatPence(summary.totalPence)
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surfaceContainer
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.padding(MaterialTheme.padding.medium),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
                 imageVector = icon,
@@ -393,21 +397,15 @@ private fun BucketSummaryCard(summary: BucketSummary, onClick: () -> Unit) {
                 modifier = Modifier.size(28.dp)
             )
             Text(
-                text = summary.bucketLabel,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1
+                text = formattedAmount,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(top = 4.dp)
             )
-            if (summary.totalPence > 0) {
-                Text(
-                    text = formatPence(summary.totalPence),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
-            }
             Text(
-                text = "${summary.entryCount} entries",
-                style = MaterialTheme.typography.bodySmall,
+                text = summary.bucketLabel,
+                style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -471,9 +469,23 @@ private val EXPENSE_BUCKET_ICONS: Map<String, ImageVector> = mapOf(
 )
 
 @Composable
+private fun IncomeSectionHeader() {
+    Text(
+        text = "Income",
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.padding(
+            top = MaterialTheme.padding.large,
+            bottom = MaterialTheme.padding.small
+        )
+    )
+}
+
+@Composable
 private fun ExpenseSectionHeader() {
     Text(
-        text = "MP Expenses (IPSA)",
+        text = "Expenses",
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.onSurface,

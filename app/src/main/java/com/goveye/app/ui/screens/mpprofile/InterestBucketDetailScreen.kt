@@ -74,7 +74,7 @@ fun InterestBucketDetailScreen(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "No interests in this category",
+                text = "No entries in this category",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

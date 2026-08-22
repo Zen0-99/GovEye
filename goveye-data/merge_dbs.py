@@ -43,12 +43,24 @@ PER_API_TABLES = {
     "committees_db": ["committees", "mp_committee_cross_ref"],
     "recess_db": ["recess_dates", "recess_dates_meta"],
     "interests_db": ["interests"],
+    "party_stats_db": ["party_stats"],
+    "bio_data_db": ["bio_data"],
+    "expenses_db": ["expenses"],
+    "mp_links_db": ["mp_links"],
+    "manifestos_db": ["party_manifestos"],
+    "historical_members_db": ["historical_members"],
+    "debates_db": ["debate_speeches"],
+    "member_details_db": ["mp_synopsis", "mp_contacts", "mp_experience"],
+    "hansard_db": ["hansard_contributions"],
 }
 
 
 def merge_dbs(output_path, schema_path, mps_db=None, commons_votes_db=None,
               lords_votes_db=None, bills_db=None, committees_db=None,
-              recess_db=None, interests_db=None):
+              recess_db=None, interests_db=None, party_stats_db=None,
+              bio_data_db=None, expenses_db=None, mp_links_db=None,
+              manifestos_db=None, historical_members_db=None, debates_db=None,
+              member_details_db=None, hansard_db=None):
     """Merge per-API DBs into a single goveye.db.
 
     Args:
@@ -61,6 +73,7 @@ def merge_dbs(output_path, schema_path, mps_db=None, commons_votes_db=None,
         committees_db: Path to committees.db (or None).
         recess_db: Path to recess.db (or None).
         interests_db: Path to interests.db (or None).
+        party_stats_db: Path to party_stats.db (or None).
     """
     schema = schema_module.load_schema(schema_path)
     all_table_names = schema_module.get_table_names(schema)
@@ -84,6 +97,15 @@ def merge_dbs(output_path, schema_path, mps_db=None, commons_votes_db=None,
         "committees_db": committees_db,
         "recess_db": recess_db,
         "interests_db": interests_db,
+        "party_stats_db": party_stats_db,
+        "bio_data_db": bio_data_db,
+        "expenses_db": expenses_db,
+        "mp_links_db": mp_links_db,
+        "manifestos_db": manifestos_db,
+        "historical_members_db": historical_members_db,
+        "debates_db": debates_db,
+        "member_details_db": member_details_db,
+        "hansard_db": hansard_db,
     }
 
     for arg_name, db_path in source_dbs.items():
@@ -130,6 +152,41 @@ def merge_dbs(output_path, schema_path, mps_db=None, commons_votes_db=None,
 
         src_conn.close()
 
+    # --- Post-merge: copy former PM placeholder MPs from interests DB ---
+    # The merged interests DB may contain placeholder MP records for former
+    # PMs (negative IDs) that aren't in mps.db. Copy them so the app can
+    # display their financial interests.
+    if interests_db and os.path.exists(interests_db):
+        src_conn = sqlite3.connect(interests_db)
+        src_cursor = src_conn.cursor()
+        # Find MPs in the interests DB that don't exist in the destination
+        src_cursor.execute("SELECT id FROM mps")
+        src_mp_ids = {row[0] for row in src_cursor.fetchall()}
+        if src_mp_ids:
+            # Check which ones are missing from destination
+            placeholders = ",".join("?" * len(src_mp_ids))
+            cur = conn.cursor()
+            cur.execute(
+                f"SELECT id FROM mps WHERE id IN ({placeholders})",
+                list(src_mp_ids),
+            )
+            existing_ids = {row[0] for row in cur.fetchall()}
+            missing_ids = src_mp_ids - existing_ids
+            if missing_ids:
+                logger.info("Copying %d placeholder MP records from interests DB", len(missing_ids))
+                for mp_id in missing_ids:
+                    src_cursor.execute("SELECT * FROM mps WHERE id = ?", (mp_id,))
+                    row = src_cursor.fetchone()
+                    if row:
+                        columns = [desc[0] for desc in src_cursor.description]
+                        col_list = ", ".join(columns)
+                        placeholders = ", ".join("?" * len(columns))
+                        conn.execute(
+                            f"INSERT OR IGNORE INTO mps ({col_list}) VALUES ({placeholders})",
+                            row,
+                        )
+        src_conn.close()
+
     conn.commit()
     conn.close()
     logger.info("Merge complete: %s", output_path)
@@ -148,6 +205,15 @@ def main():
     parser.add_argument("--committees-db", default=None, help="Path to committees.db")
     parser.add_argument("--recess-db", default=None, help="Path to recess.db")
     parser.add_argument("--interests-db", default=None, help="Path to interests.db")
+    parser.add_argument("--party-stats-db", default=None, help="Path to party_stats.db")
+    parser.add_argument("--bio-data-db", default=None, help="Path to bio_data.db")
+    parser.add_argument("--expenses-db", default=None, help="Path to expenses.db")
+    parser.add_argument("--mp-links-db", default=None, help="Path to mp_links.db")
+    parser.add_argument("--manifestos-db", default=None, help="Path to manifestos.db")
+    parser.add_argument("--historical-members-db", default=None, help="Path to historical_members.db")
+    parser.add_argument("--debates-db", default=None, help="Path to debates.db")
+    parser.add_argument("--member-details-db", default=None, help="Path to member_details.db")
+    parser.add_argument("--hansard-db", default=None, help="Path to hansard.db")
     args = parser.parse_args()
 
     merge_dbs(
@@ -159,6 +225,15 @@ def main():
         committees_db=args.committees_db,
         recess_db=args.recess_db,
         interests_db=args.interests_db,
+        party_stats_db=args.party_stats_db,
+        bio_data_db=args.bio_data_db,
+        expenses_db=args.expenses_db,
+        mp_links_db=args.mp_links_db,
+        manifestos_db=args.manifestos_db,
+        historical_members_db=args.historical_members_db,
+        debates_db=args.debates_db,
+        member_details_db=args.member_details_db,
+        hansard_db=args.hansard_db,
     )
 
 

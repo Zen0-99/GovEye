@@ -77,7 +77,7 @@ private enum class ProfileTab(val title: String) {
     COMMITTEES("Committees"),
     STATS("Stats"),
     ACTIVITY("Activity"),
-    INTERESTS("Interests")
+    INTERESTS("Finances")
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -126,6 +126,7 @@ fun ProfileScreen(
         config = com.goveye.app.ui.components.DetailTopBarConfig(
             title = "",
             onBack = onBack,
+            accentColor = if (mp != null) partyColor else null,
             iconTint = if (mp != null) headerIconTint else null,
             actions = if (mp != null) {
                 listOf(
@@ -218,11 +219,14 @@ fun ProfileScreen(
                         }
                     }
 
-                    // Pager — each page has its own scrollable LazyColumn
+                    // Pager — each page has its own scrollable LazyColumn.
+                    // Only compose the current page — no offscreen pre-composition.
+                    // This prevents adjacent tabs from doing work during navigation transitions.
                     HorizontalPager(
                         state = pagerState,
                         modifier = Modifier.fillMaxWidth().weight(1f)
                     ) { page ->
+                        if (page != pagerState.currentPage) return@HorizontalPager
                         when (ProfileTab.entries[page]) {
                             ProfileTab.PROFILE -> ProfileTabContent(
                                 mp = mp,
@@ -232,7 +236,6 @@ fun ProfileScreen(
                                 committeePeerMps = uiState.committeePeerMps,
                                 bioData = uiState.bioData,
                                 mpLinks = uiState.mpLinks,
-                                activityScore = uiState.activityScore,
                                 traitBars = uiState.traitBars,
                                 onNavigateToProfile = onNavigateToProfile
                             )
@@ -427,7 +430,6 @@ private fun ProfileTabContent(
     committeePeerMps: List<com.goveye.app.domain.model.Mp>,
     bioData: com.goveye.app.data.local.entity.BioDataEntity? = null,
     mpLinks: com.goveye.app.data.local.entity.MpLinkEntity? = null,
-    activityScore: com.goveye.app.domain.stats.ActivityScore? = null,
     @Suppress("UNUSED_PARAMETER") traitBars: List<com.goveye.app.domain.stats.TraitBar> = emptyList(),
     onNavigateToProfile: (Int) -> Unit
 ) {
@@ -440,14 +442,6 @@ private fun ProfileTabContent(
                 mp = mp,
                 bioData = bioData
             )
-        }
-        // Activity score strip (trait radar moved to Stats tab)
-        if (activityScore != null) {
-            item {
-                com.goveye.app.ui.components.stats.ActivityScoreStrip(
-                    score = activityScore
-                )
-            }
         }
         item { BioSection(synopsis = synopsis) }
         item { SocialLinksRow(links = mpLinks) }
