@@ -383,7 +383,7 @@ private fun DivisionHeaderCard(division: Division, speechCount: Int = 0, onNavig
     // TWFY division page). Falls back to the TWFY division page URL if not
     // available (e.g. older DB without the column populated).
     val context = androidx.compose.ui.platform.LocalContext.current
-    val twfyUrl = division.twfyDebateUrl ?: run {
+    val twfyUrl = division.twfyDebateUrl?.takeIf { it.isNotBlank() } ?: run {
         val dateOnly = division.date.substringBefore('T')
         if (division.number != null) {
             val houseName = if (division.house == 2) "lords" else "commons"
