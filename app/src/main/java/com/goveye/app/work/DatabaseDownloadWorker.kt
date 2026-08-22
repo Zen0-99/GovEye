@@ -2,6 +2,7 @@ package com.goveye.app.work
 
 import android.content.Context
 import android.content.pm.ServiceInfo
+import android.os.Process
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.hilt.work.HiltWorker
@@ -31,7 +32,7 @@ import kotlinx.coroutines.delay
  * - Progress reported via [setProgress] so the UI can observe [WorkInfo]
  * - 500ms delay after setForeground to let the promotion take effect
  *
- * @see DatabaseUpdateManager.downloadAndMergePerApiDbs
+ * @see DatabaseUpdateManager.downloadSeedDb
  */
 @HiltWorker
 class DatabaseDownloadWorker @AssistedInject constructor(
@@ -60,6 +61,14 @@ class DatabaseDownloadWorker @AssistedInject constructor(
     override suspend fun doWork(): Result {
         Log.i(TAG, "doWork started — promoting to foreground service")
 
+        // Guard: if the seed was already downloaded (e.g. process was killed
+        // after a successful download and WorkManager retried this worker),
+        // return success immediately without re-downloading.
+        if (!databaseUpdateManager.isFirstLaunch()) {
+            Log.i(TAG, "Seed already installed — skipping download")
+            return Result.success()
+        }
+
         // Create the download notification channel (idempotent)
         notificationHelper.createChannels()
 
@@ -74,7 +83,7 @@ class DatabaseDownloadWorker @AssistedInject constructor(
 
         var lastNotificationUpdate = 0f
 
-        val result = databaseUpdateManager.downloadAndMergePerApiDbs { progress ->
+        val result = databaseUpdateManager.downloadSeedDb { progress ->
             Log.d(TAG, "Download progress: ${(progress * 100).toInt()}%")
 
             // Report progress to WorkInfo for UI observation
@@ -89,8 +98,15 @@ class DatabaseDownloadWorker @AssistedInject constructor(
 
         return when (result) {
             is DatabaseUpdateState.UpToDate -> {
-                Log.i(TAG, "Download and merge complete")
+                Log.i(TAG, "Download and merge complete — restarting process for fresh Room")
                 updateForegroundNotification(1f, "Download complete")
+                // Give WorkManager a moment to persist the success state,
+                // then kill the process so Android restarts the Activity
+                // with a fresh Room instance. Without this, the InvalidationTracker
+                // is broken from database.close() during the download and Flow
+                // queries never emit — all screens show empty data.
+                delay(500)
+                Process.killProcess(Process.myPid())
                 Result.success()
             }
 
