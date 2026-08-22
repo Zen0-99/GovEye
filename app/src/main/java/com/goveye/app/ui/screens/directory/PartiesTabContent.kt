@@ -96,19 +96,18 @@ private fun PartyCard(party: PartySummary, onClick: () -> Unit) {
                     )
                 )
         ) {
-            // Gigantic logo — positioned at bottom-start, oversized so it clips
-            // the left and bottom edges of the card. The right and top of the
-            // logo are fully visible. Wakely puzzle-card style.
+            // Gigantic logo — positioned at bottom-end, oversized so it clips
+            // the right and bottom edges of the card. Wakely puzzle-card style.
             partyLogoResId(party.partyId)?.let { resId ->
                 Image(
                     painter = painterResource(resId),
                     contentDescription = party.partyName,
                     contentScale = ContentScale.Fit,
                     modifier = Modifier
-                        .align(Alignment.BottomStart)
+                        .align(Alignment.BottomEnd)
                         .size(130.dp)
                         .offset(
-                            x = (-20).dp, // clip left edge
+                            x = 20.dp, // clip right edge
                             y = (-20).dp // clip bottom edge
                         )
                 )
