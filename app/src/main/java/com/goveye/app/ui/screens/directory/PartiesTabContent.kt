@@ -24,10 +24,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -80,7 +78,7 @@ private fun PartyCard(party: PartySummary, onClick: () -> Unit) {
 
     Surface(
         shape = RoundedCornerShape(16.dp),
-        color = partyColor.copy(alpha = 0.25f),
+        color = partyColor.copy(alpha = 0.5f),
         modifier = Modifier
             .fillMaxWidth()
             .height(140.dp)
@@ -92,29 +90,23 @@ private fun PartyCard(party: PartySummary, onClick: () -> Unit) {
                 .background(
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            partyColor.copy(alpha = 0.35f),
-                            partyColor.copy(alpha = 0.12f)
+                            partyColor.copy(alpha = 0.6f),
+                            partyColor.copy(alpha = 0.25f)
                         )
                     )
                 )
         ) {
-            // Logo — positioned at bottom-end, slightly clipping the edges.
-            // Monochrome white tint so all logos have a unified look on the
-            // party-colored card background.
+            // Logo — positioned at bottom-end, fully visible (no right-edge clip).
             partyLogoResId(party.partyId)?.let { resId ->
                 Image(
                     painter = painterResource(resId),
                     contentDescription = party.partyName,
                     contentScale = ContentScale.Fit,
-                    colorFilter = ColorFilter.tint(
-                        MaterialTheme.colorScheme.onSurface,
-                        BlendMode.SrcIn
-                    ),
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
-                        .size(90.dp)
+                        .size(110.dp)
                         .offset(
-                            x = 10.dp,
+                            x = (-5).dp,
                             y = 10.dp
                         )
                 )
