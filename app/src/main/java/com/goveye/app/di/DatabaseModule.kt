@@ -17,10 +17,13 @@ import com.goveye.app.data.local.dao.HansardDao
 import com.goveye.app.data.local.dao.HistoricalMemberDao
 import com.goveye.app.data.local.dao.InterestDao
 import com.goveye.app.data.local.dao.ManifestoDao
+import com.goveye.app.data.local.dao.MpContactDao
 import com.goveye.app.data.local.dao.MpDao
+import com.goveye.app.data.local.dao.MpExperienceDao
 import com.goveye.app.data.local.dao.MpLinkDao
 import com.goveye.app.data.local.dao.MpNotificationPreferenceDao
 import com.goveye.app.data.local.dao.MpStatsDao
+import com.goveye.app.data.local.dao.MpSynopsisDao
 import com.goveye.app.data.local.dao.PartyStatsDao
 import com.goveye.app.data.local.dao.RecessDateDao
 import com.goveye.app.data.local.dao.SearchDao
@@ -133,6 +136,15 @@ object DatabaseModule {
     fun provideMpStatsDao(database: BundledDatabase): MpStatsDao = database.mpStatsDao()
 
     @Provides
+    fun provideMpSynopsisDao(database: BundledDatabase): MpSynopsisDao = database.mpSynopsisDao()
+
+    @Provides
+    fun provideMpContactDao(database: BundledDatabase): MpContactDao = database.mpContactDao()
+
+    @Provides
+    fun provideMpExperienceDao(database: BundledDatabase): MpExperienceDao = database.mpExperienceDao()
+
+    @Provides
     fun provideDatabaseUpdateDao(database: BundledDatabase): DatabaseUpdateDao = database.databaseUpdateDao()
 
     // ── User-data DAOs (from LocalDatabase) ────────────────────────────
@@ -166,8 +178,11 @@ object DatabaseModule {
         searchDao: SearchDao,
         membersApi: com.goveye.app.data.api.MembersApi,
         memberMapper: MemberMapper,
-        historicalMemberDao: com.goveye.app.data.local.dao.HistoricalMemberDao
-    ): MembersRepository = MembersRepository(mpDao, searchDao, membersApi, memberMapper, historicalMemberDao)
+        historicalMemberDao: com.goveye.app.data.local.dao.HistoricalMemberDao,
+        mpSynopsisDao: com.goveye.app.data.local.dao.MpSynopsisDao,
+        mpContactDao: com.goveye.app.data.local.dao.MpContactDao,
+        mpExperienceDao: com.goveye.app.data.local.dao.MpExperienceDao
+    ): MembersRepository = MembersRepository(mpDao, searchDao, membersApi, memberMapper, historicalMemberDao, mpSynopsisDao, mpContactDao, mpExperienceDao)
 
     @Provides
     @Singleton
@@ -237,7 +252,7 @@ object DatabaseModule {
         debateSpeechDao: DebateSpeechDao,
         hansardDao: HansardDao,
         mpDao: MpDao,
-        mpStatsDao: MpStatsDao
+        mpStatsDao: com.goveye.app.data.local.dao.MpStatsDao
     ): StatsRepository = StatsRepository(divisionDao, committeeDao, debateSpeechDao, hansardDao, mpDao, mpStatsDao)
 
     @Provides

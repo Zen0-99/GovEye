@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
@@ -36,7 +37,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -47,7 +51,6 @@ import androidx.navigation3.runtime.rememberDecoratedNavEntries
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
-import com.goveye.app.ui.components.DetailTopBar
 import com.goveye.app.ui.components.FloatingSearchBar
 import com.goveye.app.ui.components.LocalSearchBarState
 import com.goveye.app.ui.components.SearchBarStateHolder
@@ -186,8 +189,12 @@ private fun GovEyeAppContent(
     // doesn't render content behind the search bar. SideEffect updates
     // with the actual height after the first composition.
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val navBarBottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     var topBarHeight by remember { mutableStateOf(statusBarPadding) }
-    var bottomBarHeight by remember { mutableStateOf(0.dp) }
+    // Initialize to standard M3 NavigationBar height (80dp) + system inset
+    // so tab root screens pad correctly on the first frame. Updated by
+    // onSizeChanged after the bar is measured.
+    var bottomBarHeight by remember { mutableStateOf(80.dp + navBarBottomInset) }
 
     val entries =
         rememberDecoratedNavEntries(currentBackStack, decorators) { key ->
@@ -342,12 +349,21 @@ private fun GovEyeAppContent(
         }
 
     // Determine which top bar mode to show:
-    // - Profile and interest bucket screens use the detail top bar
-    //   (Miko-style shared toolbar with title + back button)
-    // - All other screens use the floating search bar
+    // - Detail screens (profile, party, interest bucket) show back button
+    //   and action icons alongside the search bar
+    // - All other screens show just the search bar (full width)
     val currentRoute = currentBackStack.lastOrNull()
     val isDetailTopBar =
         currentRoute is ProfileRoute || currentRoute is InterestBucketDetailRoute || currentRoute is PartyRoute
+
+    // Merge search config and detail config for the unified top bar.
+    // On detail screens, the back button and action icons come from
+    // detailConfig. On list screens, they come from searchConfig (if any).
+    val detailConfig = searchStateHolder.detailConfig.value
+    val topBarOnBack = if (isDetailTopBar) detailConfig.onBack else searchConfig.onBack
+    val topBarActions = if (isDetailTopBar) detailConfig.actions else emptyList()
+    val topBarIconTint = if (isDetailTopBar) detailConfig.iconTint else null
+    val topBarAccentColor = if (isDetailTopBar) detailConfig.accentColor else null
 
     // Bottom bar is only shown on tab root screens — not on detail screens
     // pushed onto a tab's back stack.
@@ -358,118 +374,127 @@ private fun GovEyeAppContent(
 
     Scaffold(
         contentWindowInsets = WindowInsets.navigationBars.only(WindowInsetsSides.Horizontal),
-        bottomBar = {
-            if (isTabRoot) {
-                GovEyeBottomBar(currentTabIndex) {
-                    Log.i("GovEye/Nav", "Tab selected: $it (was $currentTabIndex)")
-                    currentTabIndex = it
-                }
-            }
-        },
+        // No bottomBar slot — the nav bar is an overlay in the content Box.
+        // This is the Miko pattern: the nav bar is not part of the Scaffold
+        // layout, so showing/hiding it doesn't resize the content area.
+        // Detail screens slide in at full height and cover where the bar was.
         topBar = {
-            // Miko-style shared top bar — swaps between the floating search
-            // bar (list screens) and the detail top bar (profile/bucket
-            // screens). Instant swap (no animation) to avoid competing with
-            // the NavDisplay content transition.
-            androidx.compose.animation.AnimatedContent(
-                targetState = isDetailTopBar,
-                transitionSpec = {
-                    fadeIn(animationSpec = tween(0)) togetherWith
-                        fadeOut(animationSpec = tween(0))
-                },
-                label = "topBar"
-            ) { showDetail ->
-                if (showDetail) {
-                    DetailTopBar(
-                        config = searchStateHolder.detailConfig.value,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                } else {
-                    FloatingSearchBar(
-                        query = searchConfig.query,
-                        onQueryChange = searchConfig.onQueryChange,
-                        onFilterClick = searchConfig.onFilterClick,
-                        hasActiveFilters = searchConfig.hasActiveFilters,
-                        placeholder = searchConfig.placeholder,
-                        filterChips = searchConfig.filterChips,
-                        onBack = searchConfig.onBack,
-                        segments = searchConfig.segments,
-                        isSearchActive = searchConfig.isSearchActive,
-                        onSearchActiveChange = searchConfig.onSearchActiveChange,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = statusBarPadding)
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
-                    )
-                }
-            }
+            // Unified top bar — the FloatingSearchBar is always rendered
+            // in the same tree position so it persists (not rebuilt) across
+            // navigation. On detail screens, back button and action icons
+            // appear alongside it, causing the search bar to morph width
+            // via AnimatedVisibility expand/shrink.
+            FloatingSearchBar(
+                query = searchConfig.query,
+                onQueryChange = searchConfig.onQueryChange,
+                onFilterClick = searchConfig.onFilterClick,
+                hasActiveFilters = searchConfig.hasActiveFilters,
+                placeholder = searchConfig.placeholder,
+                filterChips = searchConfig.filterChips,
+                onBack = topBarOnBack,
+                segments = searchConfig.segments,
+                isSearchActive = searchConfig.isSearchActive,
+                onSearchActiveChange = searchConfig.onSearchActiveChange,
+                actions = topBarActions,
+                iconTint = topBarIconTint,
+                accentColor = topBarAccentColor,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = statusBarPadding)
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
+            )
         }
     ) { innerPadding ->
-        // Capture the top bar height so we can pass it to tab screens (which
-        // need to pad content below the search bar) and to the profile screen
-        // (which needs to pad its header content below the transparent detail
-        // top bar while letting the gradient extend behind it).
+        // Capture the top bar height so we can pass it to tab screens.
         SideEffect {
             topBarHeight = innerPadding.calculateTopPadding()
-            bottomBarHeight = innerPadding.calculateBottomPadding()
         }
-        NavDisplay(
-            entries = entries,
-            onBack = { currentBackStack.removeLastOrNull() },
-            // No top padding — each screen handles its own top padding via
-            // topBarHeight. This lets the profile screen's gradient extend
-            // behind the transparent detail top bar (Miko-style).
-            modifier = Modifier.fillMaxSize(),
-            // Miko-style transitions: crossfade + subtle 20% horizontal slide.
-            // Push: new screen fades in from right 20%, old fades out sliding left 20%.
-            // Pop: old screen fades out sliding right 20%, new fades in from left 20%.
-            // Duration: 150ms push, 100ms pop — snappy, minimal overlap window.
-            transitionSpec = {
-                (
-                    fadeIn(animationSpec = tween(150)) + slideInHorizontally(
-                        animationSpec = tween(150),
-                        initialOffsetX = { it / 5 }
-                    )
-                    ) togetherWith (
-                    fadeOut(animationSpec = tween(150)) + slideOutHorizontally(
-                        animationSpec = tween(150),
-                        targetOffsetX = { -it / 5 }
-                    )
-                    )
-            },
-            popTransitionSpec = {
-                (
-                    fadeIn(animationSpec = tween(100)) + slideInHorizontally(
-                        animationSpec = tween(100),
-                        initialOffsetX = { -it / 5 }
-                    )
-                    ) togetherWith (
-                    fadeOut(animationSpec = tween(100)) + slideOutHorizontally(
-                        animationSpec = tween(100),
-                        targetOffsetX = { it / 5 }
-                    )
-                    )
-            },
-            predictivePopTransitionSpec = { _ ->
-                (
-                    fadeIn(animationSpec = tween(100)) + slideInHorizontally(
-                        animationSpec = tween(100),
-                        initialOffsetX = { -it / 5 }
-                    )
-                    ) togetherWith (
-                    fadeOut(animationSpec = tween(100)) + slideOutHorizontally(
-                        animationSpec = tween(100),
-                        targetOffsetX = { it / 5 }
-                    )
-                    )
+        val density = LocalDensity.current
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = innerPadding.calculateTopPadding())
+        ) {
+            // NavDisplay fills the full height — no bottom padding from
+            // Scaffold. Detail screens cover the nav bar area entirely.
+            // Tab root screens pad their own content by bottomBarHeight.
+            NavDisplay(
+                entries = entries,
+                onBack = { currentBackStack.removeLastOrNull() },
+                modifier = Modifier.fillMaxSize(),
+                // Miko-style transitions: crossfade + subtle 20% horizontal slide.
+                transitionSpec = {
+                    (
+                        fadeIn(animationSpec = tween(150)) + slideInHorizontally(
+                            animationSpec = tween(150),
+                            initialOffsetX = { it / 5 }
+                        )
+                        ) togetherWith (
+                        fadeOut(animationSpec = tween(150)) + slideOutHorizontally(
+                            animationSpec = tween(150),
+                            targetOffsetX = { -it / 5 }
+                        )
+                        )
+                },
+                popTransitionSpec = {
+                    (
+                        fadeIn(animationSpec = tween(100)) + slideInHorizontally(
+                            animationSpec = tween(100),
+                            initialOffsetX = { -it / 5 }
+                        )
+                        ) togetherWith (
+                        fadeOut(animationSpec = tween(100)) + slideOutHorizontally(
+                            animationSpec = tween(100),
+                            targetOffsetX = { it / 5 }
+                        )
+                        )
+                },
+                predictivePopTransitionSpec = { _ ->
+                    (
+                        fadeIn(animationSpec = tween(100)) + slideInHorizontally(
+                            animationSpec = tween(100),
+                            initialOffsetX = { -it / 5 }
+                        )
+                        ) togetherWith (
+                        fadeOut(animationSpec = tween(100)) + slideOutHorizontally(
+                            animationSpec = tween(100),
+                            targetOffsetX = { it / 5 }
+                        )
+                        )
+                }
+            )
+
+            // Bottom bar as overlay — only on tab root screens.
+            // Rendered on top of NavDisplay so it's visible above tab content.
+            // Detail screens fill the full height and cover this area, so
+            // the bar is simply not seen — no layout jump, no animation needed.
+            if (isTabRoot) {
+                GovEyeBottomBar(
+                    currentTabIndex = currentTabIndex,
+                    onTabSelected = {
+                        Log.i("GovEye/Nav", "Tab selected: $it (was $currentTabIndex)")
+                        currentTabIndex = it
+                    },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .onSizeChanged { size ->
+                            bottomBarHeight = with(density) { size.height.toDp() }
+                        }
+                )
             }
-        )
+        }
     }
 }
 
 @Composable
-private fun GovEyeBottomBar(currentTabIndex: Int, onTabSelected: (Int) -> Unit) {
-    NavigationBar {
+private fun GovEyeBottomBar(
+    currentTabIndex: Int,
+    onTabSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    NavigationBar(
+        modifier = modifier
+    ) {
         NavigationBarItem(
             selected = currentTabIndex == 0,
             onClick = { onTabSelected(0) },
