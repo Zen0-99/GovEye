@@ -33,7 +33,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.goveye.app.data.local.dao.PartySummary
 import com.goveye.app.ui.theme.padding
-import com.goveye.app.ui.theme.parseMutedPartyColor
+import com.goveye.app.ui.theme.parsePartyColor
 import com.goveye.app.ui.utils.partyLogoResId
 
 @Composable
@@ -73,12 +73,12 @@ fun PartiesTabContent(parties: List<PartySummary>, onNavigateToParty: (Int) -> U
 
 @Composable
 private fun PartyCard(party: PartySummary, onClick: () -> Unit) {
-    // Muted party color — the same desaturated variant used in gradients/pills
-    val mutedColor = parseMutedPartyColor(party.partyBackgroundColour)
+    // Raw party color — closer to the original party colour
+    val partyColor = parsePartyColor(party.partyBackgroundColour)
 
     Surface(
         shape = RoundedCornerShape(16.dp),
-        color = mutedColor.copy(alpha = 0.15f),
+        color = partyColor.copy(alpha = 0.25f),
         modifier = Modifier
             .fillMaxWidth()
             .height(140.dp)
@@ -90,8 +90,8 @@ private fun PartyCard(party: PartySummary, onClick: () -> Unit) {
                 .background(
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            mutedColor.copy(alpha = 0.25f),
-                            mutedColor.copy(alpha = 0.08f)
+                            partyColor.copy(alpha = 0.35f),
+                            partyColor.copy(alpha = 0.12f)
                         )
                     )
                 )
@@ -107,8 +107,8 @@ private fun PartyCard(party: PartySummary, onClick: () -> Unit) {
                         .align(Alignment.BottomEnd)
                         .size(130.dp)
                         .offset(
-                            x = 20.dp, // clip right edge
-                            y = (-20).dp // clip bottom edge
+                            x = 45.dp, // clip right edge heavily
+                            y = (-45).dp // clip bottom edge heavily
                         )
                 )
             }
