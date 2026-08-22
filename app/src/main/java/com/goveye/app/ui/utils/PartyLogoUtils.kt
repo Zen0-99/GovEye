@@ -3,60 +3,43 @@ package com.goveye.app.ui.utils
 import com.goveye.app.R
 
 /**
- * Maps party IDs to drawable resource IDs for party logos.
+ * Maps MNIS party IDs to drawable resource IDs for party logos.
  * Returns null if no logo exists — callers should fall back to abbreviation text.
+ *
+ * Party IDs are from the UK Parliament MNIS API:
+ * https://github.com/ukparliament/ontologies/blob/master/meta/relational/mnis/general-election/backups/parties/mnis.csv
  */
 fun partyLogoResId(partyId: Int): Int? = when (partyId) {
+    // Alliance Party of Northern Ireland
     1 -> R.drawable.party_logo_1
 
-    // Alliance
+    // Conservative Party
     4 -> R.drawable.party_logo_4
 
-    // Conservative
+    // Democratic Unionist Party (DUP)
     7 -> R.drawable.party_logo_7
 
-    // DUP
-    8 -> R.drawable.party_logo_8
-
-    // Independent
+    // Labour Party
     15 -> R.drawable.party_logo_15
 
-    // Labour
+    // Liberal Democrats
     17 -> R.drawable.party_logo_17
 
-    // Liberal Democrats
+    // Plaid Cymru
     22 -> R.drawable.party_logo_22
 
-    // Plaid Cymru
+    // Scottish National Party (SNP)
     29 -> R.drawable.party_logo_29
 
-    // SNP
-    30 -> R.drawable.party_logo_30
-
-    // Sinn Féin
+    // Social Democratic & Labour Party (SDLP)
     31 -> R.drawable.party_logo_31
 
-    // SDLP
-    38 -> R.drawable.party_logo_38
-
-    // UUP
+    // Green Party
     44 -> R.drawable.party_logo_44
 
-    // Green
-    47 -> R.drawable.party_logo_47
-
-    // Speaker
-    158 -> R.drawable.party_logo_158
-
-    // TUV
+    // Reform UK
     1036 -> R.drawable.party_logo_1036
 
-    // Reform UK
-    1115 -> R.drawable.party_logo_1115
-
-    // Your Party
-    1117 -> R.drawable.party_logo_1117
-
-    // Restore Britain
+    // No logo available — fall back to abbreviation text
     else -> null
 }

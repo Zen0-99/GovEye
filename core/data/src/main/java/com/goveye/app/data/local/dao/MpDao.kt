@@ -22,6 +22,7 @@ interface MpDao {
         """SELECT partyId, partyName, partyAbbreviation, partyBackgroundColour,
            partyForegroundColour, COUNT(*) as seats
            FROM mps WHERE isActive = 1 AND partyId IS NOT NULL AND partyId > 0
+           AND partyId != 47
            GROUP BY partyId ORDER BY seats DESC"""
     )
     suspend fun getActiveParties(): List<PartySummary>
