@@ -62,7 +62,13 @@ data class ProfileUiState(
     val votesNotificationsEnabled: Boolean = false,
     val speechesNotificationsEnabled: Boolean = false,
     val syncStatus: SyncStatus = SyncStatus.EMPTY,
-    val isLoading: Boolean = true
+    val isLoading: Boolean = true,
+    // Activity tab — paginated voting with search
+    val activityVotes: List<MemberVoteWithDivision> = emptyList(),
+    val activitySearchQuery: String = "",
+    val activityIsLoadingMore: Boolean = false,
+    val activityHasMore: Boolean = true,
+    val activityTotalCount: Int = 0
 )
 
 @HiltViewModel
@@ -214,6 +220,9 @@ class ProfileViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(expenseBucketTotals = bucketTotals)
             } catch (e: Exception) {
             }
+
+            // 9. Load first page of activity votes
+            loadActivityVotes(memberId)
         }
     }
 
@@ -277,6 +286,64 @@ class ProfileViewModel @Inject constructor(
      */
     fun refresh(memberId: Int) {
         // No-op — DB is pre-populated and updated via patches (D-09, D-10a)
+    }
+
+    // --- Activity tab — paginated voting with search ---
+
+    private val activityPageSize = 30
+
+    /**
+     * Load the first page of activity votes. Called when the Activity tab is first shown.
+     * If a search query is active, searches by division title; otherwise loads most recent.
+     */
+    fun loadActivityVotes(memberId: Int) {
+        viewModelScope.launch {
+            val query = _uiState.value.activitySearchQuery
+            val (votes, total) = if (query.isBlank()) {
+                votesRepository.getPagedMemberVoting(memberId, activityPageSize, 0) to
+                    votesRepository.countVotesForMember(memberId)
+            } else {
+                votesRepository.searchPagedMemberVoting(memberId, query, activityPageSize, 0) to
+                    votesRepository.countSearchVotesForMember(memberId, query)
+            }
+            _uiState.value = _uiState.value.copy(
+                activityVotes = votes,
+                activityTotalCount = total,
+                activityHasMore = votes.size < total,
+                activityIsLoadingMore = false
+            )
+        }
+    }
+
+    /**
+     * Load the next page of activity votes (infinite scroll).
+     */
+    fun loadMoreActivityVotes(memberId: Int) {
+        val state = _uiState.value
+        if (state.activityIsLoadingMore || !state.activityHasMore) return
+        _uiState.value = state.copy(activityIsLoadingMore = true)
+        viewModelScope.launch {
+            val offset = state.activityVotes.size
+            val query = state.activitySearchQuery
+            val more = if (query.isBlank()) {
+                votesRepository.getPagedMemberVoting(memberId, activityPageSize, offset)
+            } else {
+                votesRepository.searchPagedMemberVoting(memberId, query, activityPageSize, offset)
+            }
+            _uiState.value = _uiState.value.copy(
+                activityVotes = state.activityVotes + more,
+                activityHasMore = (offset + more.size) < state.activityTotalCount,
+                activityIsLoadingMore = false
+            )
+        }
+    }
+
+    /**
+     * Update the activity search query and reload from page 0.
+     */
+    fun updateActivitySearchQuery(memberId: Int, query: String) {
+        _uiState.value = _uiState.value.copy(activitySearchQuery = query)
+        loadActivityVotes(memberId)
     }
 
     fun toggleFollow(memberId: Int) {

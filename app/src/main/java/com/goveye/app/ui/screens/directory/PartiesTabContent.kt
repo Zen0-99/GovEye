@@ -22,10 +22,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -33,6 +32,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.goveye.app.data.local.dao.PartySummary
 import com.goveye.app.ui.theme.padding
+import com.goveye.app.ui.theme.parseMutedPartyColor
 import com.goveye.app.ui.utils.partyLogoResId
 
 @Composable
@@ -72,20 +72,12 @@ fun PartiesTabContent(parties: List<PartySummary>, onNavigateToParty: (Int) -> U
 
 @Composable
 private fun PartyCard(party: PartySummary, onClick: () -> Unit) {
-    val partyColor = try {
-        Color(android.graphics.Color.parseColor(party.partyBackgroundColour))
-    } catch (e: Exception) {
-        MaterialTheme.colorScheme.surfaceContainer
-    }
-    val foregroundColor = try {
-        Color(android.graphics.Color.parseColor(party.partyForegroundColour))
-    } catch (e: Exception) {
-        if (partyColor.luminance() > 0.5f) Color(0xFF1A1A1A) else Color.White
-    }
+    // Muted party color — the same desaturated variant used in gradients/pills
+    val mutedColor = parseMutedPartyColor(party.partyBackgroundColour)
 
     Surface(
         shape = RoundedCornerShape(16.dp),
-        color = partyColor.copy(alpha = 0.15f),
+        color = mutedColor.copy(alpha = 0.15f),
         modifier = Modifier
             .fillMaxWidth()
             .height(140.dp)
@@ -93,33 +85,38 @@ private fun PartyCard(party: PartySummary, onClick: () -> Unit) {
     ) {
         Box(
             modifier = Modifier
+                .fillMaxSize()
                 .background(
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            partyColor.copy(alpha = 0.25f),
-                            partyColor.copy(alpha = 0.08f)
+                            mutedColor.copy(alpha = 0.25f),
+                            mutedColor.copy(alpha = 0.08f)
                         )
                     )
                 )
         ) {
-            // Party logo superimposed in top-left as a watermark
+            // Gigantic logo — positioned at bottom-start, oversized so it clips
+            // the left and bottom edges of the card. The right and top of the
+            // logo are fully visible. Wakely puzzle-card style.
             partyLogoResId(party.partyId)?.let { resId ->
                 Image(
                     painter = painterResource(resId),
                     contentDescription = party.partyName,
                     contentScale = ContentScale.Fit,
                     modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(8.dp)
-                        .size(48.dp)
-                        .alpha(0.7f)
+                        .align(Alignment.BottomStart)
+                        .size(130.dp)
+                        .padding(
+                            start = (-20).dp, // clip left edge
+                            bottom = (-20).dp // clip bottom edge
+                        )
                 )
             }
 
-            // Party name + MP count at the bottom
+            // Party name + MP count at the top-left, above the logo
             Column(
                 modifier = Modifier
-                    .align(Alignment.BottomStart)
+                    .align(Alignment.TopStart)
                     .fillMaxWidth()
                     .padding(MaterialTheme.padding.medium)
             ) {

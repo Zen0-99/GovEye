@@ -4,7 +4,14 @@ package com.goveye.app.domain.stats
  * Peer averages for a house (Commons or Lords).
  * Used for normalizing activity score components.
  */
-data class PeerAverages(val averageQuestions: Float, val averageSpeeches: Float, val averageCommittees: Float)
+data class PeerAverages(
+    val averageQuestions: Float,
+    val averageSpeeches: Float,
+    val averageCommittees: Float,
+    val averageParticipation: Float = 0f,
+    val averageRebellion: Float = 0f,
+    val mpCount: Int = 0
+)
 
 /**
  * Breakdown of the activity score by component.

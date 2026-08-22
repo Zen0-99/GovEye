@@ -71,9 +71,17 @@ class FollowingViewModel @Inject constructor(
 
     private val followedWithVotes = followRepository.observeFollowedMpsWithDetails()
         .mapLatest { followed ->
+            // Batch query: single SQL call for all recent votes, replacing N+1
+            // per-member getRecentVoteForMember calls.
+            val memberIds = followed.map { it.memberId }
+            val recentVotesByMember: Map<Int, MemberRecentVote> =
+                if (memberIds.isEmpty()) {
+                    emptyMap()
+                } else {
+                    divisionDao.getRecentVotesForMembers(memberIds).associateBy { it.memberId }
+                }
             followed.map { detail ->
-                val recentVote = divisionDao.getRecentVoteForMember(detail.memberId)
-                detail.toUi(recentVote)
+                detail.toUi(recentVotesByMember[detail.memberId])
             }
         }
 

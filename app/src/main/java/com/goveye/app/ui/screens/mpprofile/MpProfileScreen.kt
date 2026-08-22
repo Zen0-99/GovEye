@@ -75,7 +75,7 @@ private enum class ProfileTab(val title: String) {
     PROFILE("Profile"),
     CAREER("Career"),
     COMMITTEES("Committees"),
-    VOTES("Votes"),
+    STATS("Stats"),
     ACTIVITY("Activity"),
     INTERESTS("Interests")
 }
@@ -245,20 +245,32 @@ fun ProfileScreen(
                                 committees = uiState.committees
                             )
 
-                            ProfileTab.VOTES -> VotesTabContent(
+                            ProfileTab.STATS -> ProfileStatsTabContent(
                                 memberVotes = uiState.memberVotes,
                                 rebellionStats = uiState.rebellionStats,
                                 allDivisionDates = uiState.allDivisionDates,
+                                activityScore = uiState.activityScore,
+                                traitBars = uiState.traitBars,
                                 onNavigateToDivision = { divisionId, house ->
                                     onNavigateToDivision(divisionId, house)
                                 }
                             )
 
                             ProfileTab.ACTIVITY -> ActivityTabContent(
-                                memberVotes = uiState.memberVotes,
+                                memberVotes = uiState.activityVotes,
                                 rebellionStats = uiState.rebellionStats,
                                 allVotesByDivision = uiState.allVotesByDivision,
                                 memberPartyName = uiState.memberPartyName,
+                                searchQuery = uiState.activitySearchQuery,
+                                isLoadingMore = uiState.activityIsLoadingMore,
+                                hasMore = uiState.activityHasMore,
+                                totalCount = uiState.activityTotalCount,
+                                onSearchQueryChange = { query ->
+                                    viewModel.updateActivitySearchQuery(memberId, query)
+                                },
+                                onLoadMore = {
+                                    viewModel.loadMoreActivityVotes(memberId)
+                                },
                                 onNavigateToDivision = { divisionId, house ->
                                     onNavigateToDivision(divisionId, house)
                                 }
@@ -416,7 +428,7 @@ private fun ProfileTabContent(
     bioData: com.goveye.app.data.local.entity.BioDataEntity? = null,
     mpLinks: com.goveye.app.data.local.entity.MpLinkEntity? = null,
     activityScore: com.goveye.app.domain.stats.ActivityScore? = null,
-    traitBars: List<com.goveye.app.domain.stats.TraitBar> = emptyList(),
+    @Suppress("UNUSED_PARAMETER") traitBars: List<com.goveye.app.domain.stats.TraitBar> = emptyList(),
     onNavigateToProfile: (Int) -> Unit
 ) {
     LazyColumn(
@@ -429,7 +441,7 @@ private fun ProfileTabContent(
                 bioData = bioData
             )
         }
-        // Activity score + trait radar
+        // Activity score strip (trait radar moved to Stats tab)
         if (activityScore != null) {
             item {
                 com.goveye.app.ui.components.stats.ActivityScoreStrip(
@@ -437,14 +449,6 @@ private fun ProfileTabContent(
                 )
             }
         }
-        if (traitBars.isNotEmpty()) {
-            item {
-                com.goveye.app.ui.components.stats.TraitRadarChart(
-                    traitBars = traitBars
-                )
-            }
-        }
-        // Activity score strip
         item { BioSection(synopsis = synopsis) }
         item { SocialLinksRow(links = mpLinks) }
         item { ContactSection(contacts = contacts) }
@@ -479,10 +483,12 @@ private fun CommitteesTabContent(committees: List<com.goveye.app.domain.model.Co
 }
 
 @Composable
-private fun VotesTabContent(
+private fun ProfileStatsTabContent(
     memberVotes: List<MemberVoteWithDivision>,
     rebellionStats: RebellionStats?,
     allDivisionDates: List<String>,
+    activityScore: com.goveye.app.domain.stats.ActivityScore?,
+    traitBars: List<com.goveye.app.domain.stats.TraitBar>,
     onNavigateToDivision: (Int, Int) -> Unit
 ) {
     // Compute chart data
@@ -506,6 +512,24 @@ private fun VotesTabContent(
         ),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        // Activity score strip
+        if (activityScore != null) {
+            item {
+                com.goveye.app.ui.components.stats.ActivityScoreStrip(
+                    score = activityScore
+                )
+            }
+        }
+
+        // Trait radar chart
+        if (traitBars.isNotEmpty()) {
+            item {
+                com.goveye.app.ui.components.stats.TraitRadarChart(
+                    traitBars = traitBars
+                )
+            }
+        }
+
         // Summary header
         if (memberVotes.isNotEmpty()) {
             item {
@@ -569,25 +593,8 @@ private fun VotesTabContent(
                     }
                 }
             }
-        } else {
-            // Voting history section header — plain text, no card wrapper
-            item {
-                Text(
-                    text = "Voting History",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
-                )
-            }
-            items(memberVotes, key = { it.divisionId }) { vote ->
-                VoteRecordRow(
-                    vote = vote,
-                    isRebel = rebellionStats?.rebellionInstances?.any { it.divisionId == vote.divisionId } == true,
-                    onClick = { onNavigateToDivision(vote.divisionId, vote.house) }
-                )
-            }
         }
+        // Voting history removed — see Activity tab for vote-by-vote list
     }
 }
 

@@ -2,6 +2,8 @@ package com.goveye.app.data.repo
 
 import com.goveye.app.data.local.dao.DebateSpeechDao
 import com.goveye.app.data.local.dao.DivisionDao
+import com.goveye.app.data.local.dao.MemberVoteWithDivisionRow
+import com.goveye.app.data.local.dao.PartyBreakdownRow
 import com.goveye.app.data.local.entity.DebateSpeechEntity
 import com.goveye.app.data.local.entity.DivisionEntity
 import com.goveye.app.data.local.entity.DivisionVoteEntity
@@ -16,7 +18,6 @@ import com.goveye.app.domain.model.VoteType
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 @Singleton
@@ -89,44 +90,66 @@ class VotesRepository @Inject constructor(
 
     /**
      * Compute party-level breakdown of Ayes and Noes for a division.
+     * Uses a single SQL GROUP BY query — replaces loading 650 vote entities
+     * and grouping in Kotlin.
      */
-    suspend fun getPartyBreakdown(divisionId: Int): List<PartyBreakdown> {
-        val voteList = getVotesForDivisionSync(divisionId)
-        val byParty = voteList.groupBy { it.partyName }
-        return byParty.map { (party, partyVotes) ->
-            PartyBreakdown(
-                partyName = party,
-                partyColour = partyVotes.firstOrNull()?.partyColour ?: "",
-                ayeCount = partyVotes.count { it.vote == VoteType.AYE.name },
-                noCount = partyVotes.count { it.vote == VoteType.NO.name },
-                totalMembers = partyVotes.size
-            )
-        }.sortedByDescending { it.totalMembers }
-    }
+    suspend fun getPartyBreakdown(divisionId: Int): List<PartyBreakdown> =
+        divisionDao.getPartyBreakdownForDivision(divisionId).map { it.toDomain() }
+
+    private fun PartyBreakdownRow.toDomain() = PartyBreakdown(
+        partyName = partyName,
+        partyColour = partyColour,
+        ayeCount = ayeCount,
+        noCount = noCount,
+        totalMembers = totalMembers
+    )
 
     /**
      * Get a member's voting record with division context.
+     * Uses a single SQL JOIN — replaces N+1 queries (1 + N where N is the
+     * number of divisions the MP voted in, ~200 for active MPs).
      * Returns a list of [MemberVoteWithDivision] sorted by date descending.
      */
-    suspend fun getMemberVotingWithDivisions(memberId: Int): List<MemberVoteWithDivision> {
-        val votes = divisionDao.getVotesForMember(memberId)
-        val divisionIds = votes.map { it.divisionId }.distinct()
-        val divisions = divisionIds.associateWith { divisionDao.getDivision(it) }
-        return votes.mapNotNull { voteEntity ->
-            val division = divisions[voteEntity.divisionId] ?: return@mapNotNull null
-            val voteType = runCatching { VoteType.valueOf(voteEntity.vote) }.getOrNull()
-                ?: return@mapNotNull null
-            MemberVoteWithDivision(
-                divisionId = division.id,
-                divisionTitle = division.title,
-                divisionDate = division.date,
-                house = division.house,
-                ayeCount = division.ayeCount,
-                noCount = division.noCount,
-                vote = voteType,
-                isTeller = voteEntity.isTeller
-            )
-        }.sortedByDescending { it.divisionDate }
+    suspend fun getMemberVotingWithDivisions(memberId: Int): List<MemberVoteWithDivision> =
+        divisionDao.getAllMemberVoting(memberId).mapNotNull { it.toDomain() }
+
+    /**
+     * Get a page of a member's voting record with division context.
+     * Uses a single SQL JOIN with LIMIT/OFFSET — no N+1 queries.
+     */
+    suspend fun getPagedMemberVoting(memberId: Int, limit: Int, offset: Int): List<MemberVoteWithDivision> =
+        divisionDao.getPagedMemberVoting(memberId, limit, offset)
+            .mapNotNull { it.toDomain() }
+
+    /**
+     * Search a member's voting record by division title.
+     * Returns a page of results with LIMIT/OFFSET.
+     */
+    suspend fun searchPagedMemberVoting(
+        memberId: Int,
+        query: String,
+        limit: Int,
+        offset: Int
+    ): List<MemberVoteWithDivision> = divisionDao.searchPagedMemberVoting(memberId, query, limit, offset)
+        .mapNotNull { it.toDomain() }
+
+    suspend fun countVotesForMember(memberId: Int): Int = divisionDao.countVotesForMember(memberId)
+
+    suspend fun countSearchVotesForMember(memberId: Int, query: String): Int =
+        divisionDao.countSearchVotesForMember(memberId, query)
+
+    private fun MemberVoteWithDivisionRow.toDomain(): MemberVoteWithDivision? {
+        val voteType = runCatching { VoteType.valueOf(vote) }.getOrNull() ?: return null
+        return MemberVoteWithDivision(
+            divisionId = divisionId,
+            divisionTitle = divisionTitle,
+            divisionDate = divisionDate,
+            house = house,
+            ayeCount = ayeCount,
+            noCount = noCount,
+            vote = voteType,
+            isTeller = isTeller
+        )
     }
 
     /**
@@ -193,9 +216,6 @@ class VotesRepository @Inject constructor(
      */
     suspend fun getVotesForDivision(divisionId: Int): List<DivisionVote> =
         divisionDao.getVotesForDivision(divisionId).map { it.toDomain() }
-
-    private suspend fun getVotesForDivisionSync(divisionId: Int): List<DivisionVoteEntity> =
-        divisionDao.observeVotesForDivision(divisionId).first()
 
     private fun DivisionEntity.toDomain(): Division = Division(
         id = id,

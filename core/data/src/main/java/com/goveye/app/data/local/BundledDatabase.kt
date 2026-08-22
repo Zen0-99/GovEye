@@ -16,6 +16,7 @@ import com.goveye.app.data.local.dao.InterestDao
 import com.goveye.app.data.local.dao.ManifestoDao
 import com.goveye.app.data.local.dao.MpDao
 import com.goveye.app.data.local.dao.MpLinkDao
+import com.goveye.app.data.local.dao.MpStatsDao
 import com.goveye.app.data.local.dao.PartyStatsDao
 import com.goveye.app.data.local.dao.RecessDateDao
 import com.goveye.app.data.local.dao.SearchDao
@@ -35,9 +36,11 @@ import com.goveye.app.data.local.entity.MpCommitteeCrossRef
 import com.goveye.app.data.local.entity.MpEntity
 import com.goveye.app.data.local.entity.MpFtsEntity
 import com.goveye.app.data.local.entity.MpLinkEntity
+import com.goveye.app.data.local.entity.MpStatsEntity
 import com.goveye.app.data.local.entity.PartyManifestoEntity
 import com.goveye.app.data.local.entity.PartyManifestoFts4Entity
 import com.goveye.app.data.local.entity.PartyStatsEntity
+import com.goveye.app.data.local.entity.PeerAveragesEntity
 import com.goveye.app.data.local.entity.RecessDateEntity
 import com.goveye.app.data.local.entity.RecessDatesMetaEntity
 
@@ -78,9 +81,11 @@ import com.goveye.app.data.local.entity.RecessDatesMetaEntity
         PartyManifestoFts4Entity::class,
         PartyStatsEntity::class,
         HistoricalMemberEntity::class,
-        HistoricalMemberFts4Entity::class
+        HistoricalMemberFts4Entity::class,
+        MpStatsEntity::class,
+        PeerAveragesEntity::class
     ],
-    version = 10,
+    version = 11,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -100,6 +105,7 @@ abstract class BundledDatabase : RoomDatabase() {
     abstract fun manifestoDao(): ManifestoDao
     abstract fun partyStatsDao(): PartyStatsDao
     abstract fun historicalMemberDao(): HistoricalMemberDao
+    abstract fun mpStatsDao(): MpStatsDao
     abstract fun databaseUpdateDao(): DatabaseUpdateDao
 
     companion object {

@@ -16,6 +16,7 @@ import com.goveye.app.domain.model.Contact
 import com.goveye.app.domain.model.Mp
 import com.goveye.app.domain.model.RepositoryResult
 import com.goveye.app.domain.model.SyncStatus
+import com.goveye.app.domain.search.FtsQuerySanitizer
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
@@ -72,13 +73,9 @@ class MembersRepository @Inject constructor(
      * to each token for prefix matching. Empty/blank queries return an empty Flow.
      */
     fun searchMpsFts(query: String): Flow<List<Mp>> {
-        val sanitized = sanitizeFtsQuery(query)
-        return if (sanitized.isBlank()) {
-            flowOf(emptyList())
-        } else {
-            searchDao.searchMpsFts(sanitized).map { entities ->
-                entities.map { it.toDomain() }
-            }
+        val sanitized = FtsQuerySanitizer.sanitize(query) ?: return flowOf(emptyList())
+        return searchDao.searchMpsFts(sanitized).map { entities ->
+            entities.map { it.toDomain() }
         }
     }
 
@@ -89,25 +86,21 @@ class MembersRepository @Inject constructor(
      * Historical members are mapped to Mp domain objects with isActive=false.
      */
     fun searchAllMembersFts(query: String): Flow<List<Mp>> {
-        val sanitized = sanitizeFtsQuery(query)
-        return if (sanitized.isBlank()) {
-            flowOf(emptyList())
-        } else {
-            flow {
-                // Search current MPs (Flow — collect first)
-                val currentMps = searchDao.searchMpsFts(sanitized).first().map { it.toDomain() }
-                // Search historical members (excluding current MPs)
-                val currentIds = currentMps.map { it.id }.toSet()
-                val historical = try {
-                    historicalMemberDao.search(sanitized)
-                        .filter { it.parliamentMemberId != null && it.parliamentMemberId !in currentIds }
-                        .take(50 - currentMps.size)
-                } catch (e: Exception) {
-                    emptyList()
-                }
-                val historicalMps = historical.map { it.toDomainMp() }
-                emit(currentMps + historicalMps)
+        val sanitized = FtsQuerySanitizer.sanitize(query) ?: return flowOf(emptyList())
+        return flow {
+            // Search current MPs (Flow — collect first)
+            val currentMps = searchDao.searchMpsFts(sanitized).first().map { it.toDomain() }
+            // Search historical members (excluding current MPs)
+            val currentIds = currentMps.map { it.id }.toSet()
+            val historical = try {
+                historicalMemberDao.search(sanitized)
+                    .filter { it.parliamentMemberId != null && it.parliamentMemberId !in currentIds }
+                    .take(50 - currentMps.size)
+            } catch (e: Exception) {
+                emptyList()
             }
+            val historicalMps = historical.map { it.toDomainMp() }
+            emit(currentMps + historicalMps)
         }
     }
 
@@ -129,19 +122,6 @@ class MembersRepository @Inject constructor(
         isActive = isCurrent == 1,
         thumbnailUrl = null
     )
-
-    /**
-     * Sanitizes user input for FTS4 MATCH query.
-     * Strategy A (RESEARCH.md §1.5): strip FTS special chars, prefix-match each token.
-     * "Green Party" → "Green* Party*"
-     */
-    private fun sanitizeFtsQuery(input: String): String {
-        return input.trim()
-            .replace(Regex("[*\"`]"), "") // strip FTS special chars
-            .split(Regex("\\s+"))
-            .filter { it.isNotBlank() }
-            .joinToString(" ") { "$it*" } // prefix match each token
-    }
 
     /**
      * Distinct party names from active MPs — for the filter bottom sheet's Party section.

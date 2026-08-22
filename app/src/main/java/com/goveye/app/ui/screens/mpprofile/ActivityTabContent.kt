@@ -14,11 +14,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,12 +34,11 @@ import com.goveye.app.domain.stats.DivisionWeightCalculator
 import com.goveye.app.domain.stats.RebellionStats
 
 /**
- * Per-MP recent activity timeline with per-event weight badges (D-08).
+ * Per-MP activity timeline with search and pagination.
  *
- * Shows up to 20 most recent divisions for the MP, each with a numeric weight
- * badge (0-10 scale) computed by [DivisionWeightCalculator]. The badge is
- * color-coded green (>= 7.0), yellow (>= 4.0), or red (< 4.0), following the
- * FotMob "match rating" pattern.
+ * Shows the member's voting activity with per-event weight badges (D-08).
+ * Votes are loaded in pages (30 at a time) via [onLoadMore] for infinite scroll.
+ * A search bar filters by division title via [onSearchQueryChange].
  */
 @Composable
 fun ActivityTabContent(
@@ -45,49 +46,102 @@ fun ActivityTabContent(
     rebellionStats: RebellionStats?,
     @Suppress("UNUSED_PARAMETER") allVotesByDivision: Map<Int, List<com.goveye.app.domain.model.DivisionVote>>,
     @Suppress("UNUSED_PARAMETER") memberPartyName: String?,
+    searchQuery: String,
+    isLoadingMore: Boolean,
+    hasMore: Boolean,
+    totalCount: Int,
+    onSearchQueryChange: (String) -> Unit,
+    onLoadMore: () -> Unit,
     onNavigateToDivision: (Int, Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    if (memberVotes.isEmpty()) {
-        Box(
-            modifier = modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "No recent activity",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        return
-    }
-
-    val recentVotes = remember(memberVotes) { memberVotes.take(20) }
-
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(recentVotes, key = { it.divisionId }) { vote ->
-            val isRebellion = isRebellionDivision(vote.divisionId, rebellionStats)
-            val total = vote.ayeCount + vote.noCount
-            val closeness = if (total > 0) {
-                1.0 - kotlin.math.abs(vote.ayeCount - vote.noCount).toDouble() / total
-            } else {
-                0.0
+        // Search bar
+        item {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = onSearchQueryChange,
+                placeholder = { Text("Search votes…") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+        }
+
+        // Result count
+        if (totalCount > 0) {
+            item {
+                Text(
+                    text = "$totalCount vote${if (totalCount != 1) "s" else ""}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
             }
-            val weight = DivisionWeightCalculator.compute(
-                mpVote = vote.vote,
-                isRebellion = isRebellion,
-                divisionCloseness = closeness
-            )
-            ActivityRow(
-                vote = vote,
-                isRebellion = isRebellion,
-                score = weight.score,
-                onClick = { onNavigateToDivision(vote.divisionId, vote.house) }
-            )
+        }
+
+        if (memberVotes.isEmpty() && !isLoadingMore) {
+            item {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (searchQuery.isBlank()) "No recent activity" else "No votes found for \"$searchQuery\"",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        } else {
+            items(memberVotes, key = { it.divisionId }) { vote ->
+                val isRebellion = isRebellionDivision(vote.divisionId, rebellionStats)
+                val total = vote.ayeCount + vote.noCount
+                val closeness = if (total > 0) {
+                    1.0 - kotlin.math.abs(vote.ayeCount - vote.noCount).toDouble() / total
+                } else {
+                    0.0
+                }
+                val weight = DivisionWeightCalculator.compute(
+                    mpVote = vote.vote,
+                    isRebellion = isRebellion,
+                    divisionCloseness = closeness
+                )
+                ActivityRow(
+                    vote = vote,
+                    isRebellion = isRebellion,
+                    score = weight.score,
+                    onClick = { onNavigateToDivision(vote.divisionId, vote.house) }
+                )
+            }
+
+            // Load more trigger + loading indicator
+            if (hasMore) {
+                item {
+                    LaunchedEffect(memberVotes.size) {
+                        onLoadMore()
+                    }
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                    }
+                }
+            } else if (memberVotes.isNotEmpty()) {
+                item {
+                    Text(
+                        text = "End of activity",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
+            }
         }
     }
 }
