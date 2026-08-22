@@ -31,12 +31,15 @@ class NotificationHelper @Inject constructor(@ApplicationContext private val con
         const val VOTES_CHANNEL_ID = "votes"
         const val SPEECHES_CHANNEL_ID = "speeches"
         const val BILLS_CHANNEL_ID = "bills"
+        const val DOWNLOAD_CHANNEL_ID = "download"
         const val VOTES_CHANNEL_NAME = "Vote Notifications"
         const val SPEECHES_CHANNEL_NAME = "Speech Notifications"
         const val BILLS_CHANNEL_NAME = "Bill Notifications"
+        const val DOWNLOAD_CHANNEL_NAME = "Data Download"
         const val VOTES_CHANNEL_DESC = "Notifications when followed MPs vote"
         const val SPEECHES_CHANNEL_DESC = "Notifications when followed MPs speak (coming soon)"
         const val BILLS_CHANNEL_DESC = "Notifications when followed bills change stage"
+        const val DOWNLOAD_CHANNEL_DESC = "Foreground service notification during database download"
 
         const val EXTRA_DIVISION_ID = "division_id"
         const val EXTRA_DIVISION_HOUSE = "division_house"
@@ -75,10 +78,21 @@ class NotificationHelper @Inject constructor(@ApplicationContext private val con
                 description = BILLS_CHANNEL_DESC
                 enableVibration(true)
             }
+            val downloadChannel = NotificationChannel(
+                DOWNLOAD_CHANNEL_ID,
+                DOWNLOAD_CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = DOWNLOAD_CHANNEL_DESC
+                setSound(null, null)
+                enableVibration(false)
+                setShowBadge(false)
+            }
             val nm = context.getSystemService(NotificationManager::class.java)
             nm.createNotificationChannel(votesChannel)
             nm.createNotificationChannel(speechesChannel)
             nm.createNotificationChannel(billsChannel)
+            nm.createNotificationChannel(downloadChannel)
         }
     }
 

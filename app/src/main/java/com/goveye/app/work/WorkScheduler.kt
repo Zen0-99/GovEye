@@ -24,6 +24,7 @@ object WorkScheduler {
     const val VOTE_POLLING_WORK_NAME = "vote-polling"
     const val BILL_POLLING_WORK_NAME = "bill-polling"
     const val DATABASE_UPDATE_WORK_NAME = "database-update"
+    const val DATABASE_DOWNLOAD_WORK_NAME = "database-download"
 
     /**
      * Enqueue VotePollingWorker as one-shot work (triggered after a votes patch).
@@ -95,6 +96,35 @@ object WorkScheduler {
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
             DATABASE_UPDATE_WORK_NAME,
             ExistingPeriodicWorkPolicy.KEEP,
+            request
+        )
+    }
+
+    /**
+     * Enqueue DatabaseDownloadWorker as one-time work for the first-launch
+     * DB download. Uses [ExistingWorkPolicy.KEEP] so that if the work is
+     * already running (e.g. Activity recreated after minimization), the
+     * in-progress download is not cancelled. If the previous work has
+     * reached a terminal state (FAILED/SUCCEEDED), a new request is enqueued.
+     *
+     * The worker promotes itself to a foreground service via setForeground()
+     * so the download continues even when the app is minimized.
+     *
+     * @param context Android context.
+     */
+    fun enqueueDatabaseDownload(context: Context) {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        val request = OneTimeWorkRequestBuilder<DatabaseDownloadWorker>()
+            .setConstraints(constraints)
+            .addTag(DATABASE_DOWNLOAD_WORK_NAME)
+            .build()
+
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            DATABASE_DOWNLOAD_WORK_NAME,
+            ExistingWorkPolicy.KEEP,
             request
         )
     }

@@ -17,6 +17,8 @@ import androidx.compose.runtime.setValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
 import com.goveye.app.data.update.DatabaseUpdateManager
 import com.goveye.app.data.update.DatabaseUpdateState
 import com.goveye.app.domain.ThemeMode
@@ -26,6 +28,8 @@ import com.goveye.app.ui.navigation.DeepLinkNavigator
 import com.goveye.app.ui.screens.DatabaseLoadingScreen
 import com.goveye.app.ui.theme.GovEyeTheme
 import com.goveye.app.ui.theme.ThemeViewModel
+import com.goveye.app.work.DatabaseDownloadWorker
+import com.goveye.app.work.WorkScheduler
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
@@ -112,14 +116,61 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(retryCount) {
                     val isFirstLaunch = databaseUpdateManager.isFirstLaunch()
                     if (isFirstLaunch) {
-                        Log.i(TAG, "First launch — downloading per-API DBs")
-                        dbState = DatabaseUpdateState.NeedsFullDownload(null)
+                        Log.i(TAG, "First launch — enqueuing DatabaseDownloadWorker")
                         dbState = DatabaseUpdateState.Downloading(0f, true)
-                        val downloadResult = databaseUpdateManager.downloadAndMergePerApiDbs { progress ->
-                            dbState = DatabaseUpdateState.Downloading(progress, true)
+
+                        // Enqueue the foreground-service worker. KEEP policy
+                        // means if the work is already running (e.g. Activity
+                        // recreated after minimization), the in-progress
+                        // download is not cancelled.
+                        WorkScheduler.enqueueDatabaseDownload(this@MainActivity)
+
+                        // Observe the worker's progress until it reaches a
+                        // terminal state. The download runs in a foreground
+                        // service, so it continues even if the app is
+                        // minimized — this observation just picks up the
+                        // current state when the UI is visible.
+                        val workInfoFlow = WorkManager.getInstance(this@MainActivity)
+                            .getWorkInfosForUniqueWorkFlow(DatabaseDownloadWorker.WORK_NAME)
+
+                        workInfoFlow.collect { workInfos ->
+                            val workInfo = workInfos.firstOrNull() ?: return@collect
+                            when (workInfo.state) {
+                                WorkInfo.State.ENQUEUED -> {
+                                    dbState = DatabaseUpdateState.Downloading(0f, true)
+                                }
+
+                                WorkInfo.State.RUNNING -> {
+                                    val progress = workInfo.progress
+                                        .getFloat(DatabaseDownloadWorker.KEY_PROGRESS, 0f)
+                                    dbState = DatabaseUpdateState.Downloading(progress, true)
+                                }
+
+                                WorkInfo.State.SUCCEEDED -> {
+                                    Log.i(TAG, "Download worker succeeded")
+                                    dbState = DatabaseUpdateState.UpToDate
+                                }
+
+                                WorkInfo.State.FAILED -> {
+                                    val reason = workInfo.outputData.getString("reason")
+                                    Log.w(TAG, "Download worker failed: reason=$reason")
+                                    dbState = when (reason) {
+                                        "needs_wifi" -> DatabaseUpdateState.NeedsWifi
+
+                                        else -> DatabaseUpdateState.Failed(
+                                            workInfo.outputData.getString("message")
+                                                ?: "Download failed"
+                                        )
+                                    }
+                                }
+
+                                WorkInfo.State.CANCELLED -> {
+                                    dbState = DatabaseUpdateState.Failed("Download cancelled")
+                                }
+
+                                else -> { /* BLOCKED — ignore */ }
+                            }
                         }
-                        Log.i(TAG, "Download result: $downloadResult")
-                        dbState = downloadResult
                     } else {
                         // Subsequent launch — check for updates silently in the
                         // background. The app is already visible (UpToDate), so
@@ -133,7 +184,7 @@ class MainActivity : ComponentActivity() {
 
                             is DatabaseUpdateState.NeedsFullDownload -> {
                                 Log.i(TAG, "Full download needed (stream multiple behind)")
-                                databaseUpdateManager.downloadAndMergePerApiDbs { }
+                                WorkScheduler.enqueueDatabaseDownload(this@MainActivity)
                             }
 
                             else -> { /* UpToDate or Failed — nothing to do */ }
