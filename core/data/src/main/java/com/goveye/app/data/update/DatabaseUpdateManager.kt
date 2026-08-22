@@ -1,7 +1,6 @@
 package com.goveye.app.data.update
 
 import android.content.Context
-import android.database.sqlite.SQLiteDatabase
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.util.Log
@@ -73,13 +72,20 @@ class DatabaseUpdateManager @Inject constructor(
     @Named("dbDownloadClient") private val dbDownloadClient: OkHttpClient
 ) {
     /**
-     * Checks whether this is the first app launch (seed DB not yet downloaded).
+     * Checks whether this is the first app launch (seed DB not yet downloaded)
+     * OR the seed DB is outdated (seedVersion < [CURRENT_SEED_VERSION]).
      *
-     * Returns true if [DatabasePreferences.seedVersion] is null OR the DB file
-     * does not exist at Room's expected path.
+     * Returns true if [DatabasePreferences.seedVersion] is null, is less than
+     * [CURRENT_SEED_VERSION], OR the DB file does not exist at Room's
+     * expected path.
      */
     suspend fun isFirstLaunch(): Boolean {
-        if (preferences.seedVersion.first() == null) return true
+        val current = preferences.seedVersion.first()
+        if (current == null) return true
+        if (current < CURRENT_SEED_VERSION) {
+            Log.i(TAG, "Seed DB outdated (v$current < v$CURRENT_SEED_VERSION) — re-downloading")
+            return true
+        }
         return !context.getDatabasePath(BundledDatabase.DATABASE_NAME).exists()
     }
 
@@ -107,8 +113,9 @@ class DatabaseUpdateManager @Inject constructor(
      */
     suspend fun checkForUpdates(): DatabaseUpdateState = withContext(Dispatchers.IO) {
         return@withContext try {
-            // First launch — seed DB not yet downloaded
-            if (preferences.seedVersion.first() == null) {
+            // First launch or outdated seed — need full download
+            val seedVer = preferences.seedVersion.first()
+            if (seedVer == null || seedVer < CURRENT_SEED_VERSION) {
                 return@withContext DatabaseUpdateState.NeedsFullDownload(null)
             }
 
@@ -129,6 +136,16 @@ class DatabaseUpdateManager @Inject constructor(
                 val localVersion = getLocalVersion(streamName)
 
                 when {
+                    // Local version null — stream was never tracked (new stream
+                    // or version key was missing from a prior first-launch).
+                    // Skip it so it doesn't block patches for other streams.
+                    // The data may already be in the DB from the first-launch
+                    // merge — it's just untracked. On the next full download,
+                    // the version will be set properly.
+                    localVersion == null -> {
+                        Log.w(TAG, "Stream $streamName has no local version — skipping (untracked)")
+                    }
+
                     manifest.version == localVersion -> {
                         // Up to date — no patch needed
                     }
@@ -213,258 +230,107 @@ class DatabaseUpdateManager @Inject constructor(
     }
 
     /**
-     * Downloads all 7 per-API .db files and merges them on-device into goveye.db
-     * for first launch.
+     * Downloads the pre-built seed DB (goveye.db) from the seed-latest
+     * GitHub release for first launch.
      *
-     * Instead of downloading a single pre-merged seed DB, this approach:
-     * 1. Lets Room create the empty goveye.db with all tables + FTS triggers
-     * 2. Closes Room
-     * 3. Downloads all per-API .db files to cacheDir (with combined progress)
-     * 4. Opens goveye.db with raw SQLite, ATTACHes each per-API DB, and
-     *    INSERT OR REPLACE into the corresponding tables
-     * 5. VACUUMs to minimize size
-     * 6. Room reopens lazily on next query
+     * The seed DB is built by CI (build-seed.yml) which:
+     * 1. Merges all per-API DBs via merge_dbs.py
+     * 2. Runs build_precompute.py to populate mp_stats and peer_averages
+     * 3. Publishes goveye.db + seed-manifest.json to the seed-latest release
      *
-     * Partial failure is graceful — if one per-API DB download fails, the
-     * remaining 6 are still merged (that table set is just empty).
+     * This is simpler and faster than merging per-API DBs on-device:
+     * - Single file download (~180MB) with accurate progress
+     * - No on-device merge or precompute (those are CI-only steps)
+     * - Precomputed stats tables are already in the seed DB
+     *
+     * After the download, per-API version keys are fetched from each
+     * stream's manifest so the update check knows the starting state.
      *
      * Checks for metered connection first (Pitfall 4) — returns
      * [DatabaseUpdateState.NeedsWifi] if on mobile data.
      *
-     * @param onProgress Callback receiving download progress as 0f..1f across all stream downloads.
+     * @param onProgress Callback receiving download progress as 0f..1f.
      * @return [DatabaseUpdateState.UpToDate] on success, [DatabaseUpdateState.Failed]
      *         or [DatabaseUpdateState.NeedsWifi] on error.
      */
-    suspend fun downloadAndMergePerApiDbs(onProgress: (Float) -> Unit = {}): DatabaseUpdateState =
-        withContext(Dispatchers.IO) {
-            return@withContext try {
-                // 1. Check for metered connection (Pitfall 4)
-                if (isMeteredConnection()) {
-                    Log.w(TAG, "Metered connection — deferring download")
-                    return@withContext DatabaseUpdateState.NeedsWifi
-                }
-
-                // 2. Let Room create the empty goveye.db with all tables + FTS triggers.
-                //    Keep Room open — we'll use a separate raw SQLite connection for
-                //    the merge (ATTACH conflicts with Room's WAL transaction management)
-                //    and force the InvalidationTracker to refresh afterward.
-                Log.i(TAG, "Creating empty goveye.db via Room")
-                database.openHelper.writableDatabase
-
-                // 3. Download all 7 per-API .db files directly from GitHub release URLs.
-                //    We bypass the GitHub API (60 req/hour unauthenticated rate limit)
-                //    by constructing download URLs directly:
-                //    https://github.com/{owner}/{repo}/releases/download/{tag}/{asset}
-                val dbFiles = mutableMapOf<String, File>()
-                val manifests = mutableMapOf<String, DatabaseManifest>()
-                var totalProgress = 0f
-                val perStreamProgress = FloatArray(streamTags.size)
-
-                for ((index, pair) in streamTags.withIndex()) {
-                    val (tag, streamName) = pair
-                    val dbFileName = perApiDbFileName(streamName)
-                    val dbUrl = "$GITHUB_DOWNLOAD_BASE/$tag/$dbFileName"
-                    val manifestUrl = "$GITHUB_DOWNLOAD_BASE/$tag/$MANIFEST_ASSET_NAME"
-
-                    Log.i(TAG, "Downloading $streamName DB from $dbUrl")
-
-                    // Download manifest first (small, gives us hash + version)
-                    val manifest: DatabaseManifest? = try {
-                        val manifestJson = downloadAssetText(manifestUrl)
-                        json.decodeFromString<DatabaseManifest>(manifestJson)
-                    } catch (e: Exception) {
-                        Log.w(TAG, "Failed to download manifest for $streamName: ${e.message}")
-                        null
-                    }
-
-                    // Download the .db file with progress tracking
-                    val tempFile = File(context.cacheDir, "${streamName}_download.db")
-                    val request = Request.Builder().url(dbUrl).build()
-                    val downloadSuccess = try {
-                        dbDownloadClient.newCall(request).execute().use { response ->
-                            if (!response.isSuccessful) {
-                                Log.w(TAG, "HTTP ${response.code} downloading $streamName DB")
-                                false
-                            } else {
-                                val contentLength = response.body.contentLength()
-                                response.body.byteStream().use { input ->
-                                    tempFile.outputStream().use { output ->
-                                        val buffer = ByteArray(BUFFER_SIZE)
-                                        var bytesRead: Int
-                                        var totalRead = 0L
-                                        while (input.read(buffer).also { bytesRead = it } != -1) {
-                                            output.write(buffer, 0, bytesRead)
-                                            totalRead += bytesRead
-                                            if (contentLength > 0) {
-                                                perStreamProgress[index] = totalRead.toFloat() / contentLength
-                                                totalProgress = perStreamProgress.sum() / streamTags.size.toFloat()
-                                                onProgress(totalProgress)
-                                            }
-                                        }
-                                    }
-                                }
-                                true
-                            }
-                        }
-                    } catch (e: Exception) {
-                        Log.w(TAG, "Exception downloading $streamName DB: ${e.message}")
-                        tempFile.delete()
-                        false
-                    }
-
-                    if (!downloadSuccess) continue
-
-                    // Verify hash if manifest was downloaded
-                    if (manifest != null) {
-                        val actualHash = calculateSha256(tempFile)
-                        if (actualHash.equals(manifest.dbHash, ignoreCase = true)) {
-                            Log.i(TAG, "$streamName DB hash verified (${tempFile.length()} bytes)")
-                            dbFiles[streamName] = tempFile
-                            manifests[streamName] = manifest
-                        } else {
-                            Log.w(TAG, "$streamName DB hash mismatch — expected ${manifest.dbHash}, got $actualHash")
-                            tempFile.delete()
-                        }
-                    } else {
-                        Log.w(TAG, "$streamName has no manifest — skipping hash verification")
-                        dbFiles[streamName] = tempFile
-                    }
-                }
-
-                if (dbFiles.isEmpty()) {
-                    return@withContext DatabaseUpdateState.Failed("No per-API DBs downloaded successfully")
-                }
-
-                Log.i(TAG, "Downloaded ${dbFiles.size} DBs: ${dbFiles.keys}")
-
-                // 4. Merge: open a SEPARATE raw SQLite connection to goveye.db (Room
-                //    stays open) and do ATTACH + INSERT OR REPLACE. ATTACH conflicts
-                //    with Room's WAL transaction management, so we can't use Room's
-                //    connection. After the merge, we force-refresh the InvalidationTracker
-                //    so Room's Flow queries re-emit with the new data.
-                val dbPath = context.getDatabasePath(BundledDatabase.DATABASE_NAME)
-                Log.i(TAG, "Opening ${dbPath.path} for merge (separate connection)")
-                val mergedDb = SQLiteDatabase.openDatabase(
-                    dbPath.path,
-                    null,
-                    SQLiteDatabase.OPEN_READWRITE
-                )
-
-                for ((streamName, dbFile) in dbFiles) {
-                    val tables = perApiTables(streamName)
-                    // Sanitize schema alias — hyphens in stream names (e.g. "commons-votes")
-                    // break SQLite syntax, so replace with underscores.
-                    val schemaAlias = "src_${streamName.replace("-", "_")}"
-                    Log.i(TAG, "Merging $streamName → tables: $tables")
-                    mergedDb.execSQL("ATTACH DATABASE '${dbFile.path}' AS $schemaAlias")
-
-                    // Commons-votes and lords-votes share the same tables (divisions,
-                    // division_votes). A blanket DELETE FROM would wipe the other house's
-                    // data when the second stream merges. Instead, delete only rows
-                    // belonging to this stream's house:
-                    //   house=1 for commons-votes, house=2 for lords-votes.
-                    val houseFilter = when (streamName) {
-                        "commons-votes" -> 1
-                        "lords-votes" -> 2
-                        else -> null
-                    }
-
-                    for (table in tables) {
-                        // FTS4 tables are auto-populated by triggers — skip direct insert
-                        if (table == "mps_fts" || table.endsWith("_fts4")) continue
-
-                        if (houseFilter != null && table == "divisions") {
-                            // Delete votes for this house's divisions first (FK-like),
-                            // then delete the divisions themselves.
-                            mergedDb.execSQL(
-                                "DELETE FROM division_votes WHERE divisionId IN " +
-                                    "(SELECT id FROM divisions WHERE house = $houseFilter)"
-                            )
-                            mergedDb.execSQL("DELETE FROM divisions WHERE house = $houseFilter")
-                            // Explicitly list columns — the source per-API DB may have
-                            // fewer columns than the destination (e.g. twfyDebateUrl was
-                            // added later). SELECT * would fail with a column count mismatch.
-                            // Check if the source has twfyDebateUrl; if not, select NULL.
-                            val hasTwfyUrl = try {
-                                mergedDb.rawQuery(
-                                    "SELECT twfyDebateUrl FROM $schemaAlias.divisions LIMIT 0",
-                                    null
-                                ).use { true }
-                            } catch (e: Exception) {
-                                false
-                            }
-                            val twfyCol = if (hasTwfyUrl) "twfyDebateUrl" else "NULL"
-                            mergedDb.execSQL(
-                                "INSERT OR REPLACE INTO divisions " +
-                                    "(id, title, date, publicationUpdated, number, isDeferred, " +
-                                    "ayeCount, noCount, house, lastUpdated, twfyDebateUrl) " +
-                                    "SELECT id, title, date, publicationUpdated, number, isDeferred, " +
-                                    "ayeCount, noCount, house, lastUpdated, $twfyCol " +
-                                    "FROM $schemaAlias.divisions"
-                            )
-                            mergedDb.execSQL(
-                                "INSERT OR REPLACE INTO division_votes SELECT * FROM $schemaAlias.division_votes"
-                            )
-                        } else if (houseFilter != null && table == "division_votes") {
-                            // Already handled above alongside divisions — skip.
-                            continue
-                        } else {
-                            // Wipe existing data then copy fresh data
-                            mergedDb.execSQL("DELETE FROM $table")
-                            if (table == "historical_members") {
-                                // Explicit column list — per-API DB may have different column
-                                // order after ALTER TABLE migrations (e.g. photo appended at end)
-                                mergedDb.execSQL(
-                                    "INSERT OR REPLACE INTO historical_members " +
-                                        "(twfyPersonId, parliamentMemberId, displayName, alternateNames, " +
-                                        "party, house, startDate, endDate, constituency, isCurrent, " +
-                                        "photo, lastUpdated) " +
-                                        "SELECT twfyPersonId, parliamentMemberId, displayName, alternateNames, " +
-                                        "party, house, startDate, endDate, constituency, isCurrent, " +
-                                        "photo, lastUpdated FROM $schemaAlias.historical_members"
-                                )
-                            } else {
-                                mergedDb.execSQL(
-                                    "INSERT OR REPLACE INTO $table SELECT * FROM $schemaAlias.$table"
-                                )
-                            }
-                        }
-                        val count = mergedDb.rawQuery("SELECT COUNT(*) FROM $table", null).use {
-                            if (it.moveToFirst()) it.getInt(0) else -1
-                        }
-                        Log.i(TAG, "  $table: $count rows after merge")
-                    }
-
-                    mergedDb.execSQL("DETACH DATABASE $schemaAlias")
-                    dbFile.delete()
-                }
-
-                // Checkpoint WAL so data lands in the main DB file, then close.
-                // PRAGMA returns a result row so we must use rawQuery, not execSQL.
-                mergedDb.rawQuery("PRAGMA wal_checkpoint(TRUNCATE)", null).use { it.moveToFirst() }
-                mergedDb.close()
-                Log.i(TAG, "Merge complete, WAL checkpointed")
-
-                // 4b. Force Room's InvalidationTracker to refresh so Flow queries
-                //     notice the data written by the separate connection and re-emit.
-                Log.i(TAG, "Refreshing Room InvalidationTracker")
-                database.invalidationTracker.refreshVersionsSync()
-
-                // 5. Set per-API version keys from manifests
-                for ((streamName, manifest) in manifests) {
-                    setStreamVersion(streamName, manifest.version)
-                }
-
-                // 6. Mark seed version as complete
-                preferences.setSeedVersion(1)
-                Log.i(TAG, "Seed version set to 1 — first launch complete")
-
-                DatabaseUpdateState.UpToDate
-            } catch (e: Exception) {
-                Log.e(TAG, "downloadAndMergePerApiDbs failed", e)
-                DatabaseUpdateState.Failed(e.message ?: "Per-API DB download and merge failed")
+    suspend fun downloadSeedDb(onProgress: (Float) -> Unit = {}): DatabaseUpdateState = withContext(Dispatchers.IO) {
+        return@withContext try {
+            // 1. Check for metered connection (Pitfall 4)
+            if (isMeteredConnection()) {
+                Log.w(TAG, "Metered connection — deferring download")
+                return@withContext DatabaseUpdateState.NeedsWifi
             }
+
+            // 2. Close Room so it releases the DB file handle.
+            //    Room will reopen lazily on the next query with the new DB.
+            Log.i(TAG, "Closing Room to replace DB file")
+            database.close()
+
+            // 3. Download goveye.db from seed-latest release.
+            //    URL: https://github.com/Zen0-99/goveye-data/releases/download/seed-latest/goveye.db
+            val dbPath = context.getDatabasePath(BundledDatabase.DATABASE_NAME)
+            val seedDbUrl = "$GITHUB_DOWNLOAD_BASE/seed-latest/goveye.db"
+            Log.i(TAG, "Downloading seed DB from $seedDbUrl")
+
+            val tempFile = File(context.cacheDir, "goveye_seed_download.db")
+            val request = Request.Builder().url(seedDbUrl).build()
+            dbDownloadClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    return@withContext DatabaseUpdateState.Failed(
+                        "HTTP ${response.code} downloading seed DB"
+                    )
+                }
+                val contentLength = response.body.contentLength()
+                response.body.byteStream().use { input ->
+                    tempFile.outputStream().use { output ->
+                        val buffer = ByteArray(BUFFER_SIZE)
+                        var bytesRead: Int
+                        var totalRead = 0L
+                        while (input.read(buffer).also { bytesRead = it } != -1) {
+                            output.write(buffer, 0, bytesRead)
+                            totalRead += bytesRead
+                            if (contentLength > 0) {
+                                onProgress(totalRead.toFloat() / contentLength)
+                            }
+                        }
+                    }
+                }
+            }
+
+            Log.i(TAG, "Seed DB downloaded: ${tempFile.length()} bytes")
+
+            // 4. Replace the DB file. Delete any existing DB + WAL + SHM files
+            //    first (Room may have created them on a previous failed launch).
+            if (dbPath.exists()) dbPath.delete()
+            File("${dbPath.path}-wal").delete()
+            File("${dbPath.path}-shm").delete()
+            tempFile.copyTo(dbPath, overwrite = true)
+            tempFile.delete()
+            Log.i(TAG, "Seed DB installed at ${dbPath.path}")
+
+            // 5. Fetch per-API manifests to set version keys.
+            //    The seed DB is a snapshot — we need to know which version
+            //    each stream was at when the seed was built so the update
+            //    check can detect incremental patches correctly.
+            Log.i(TAG, "Fetching per-API manifests to set version keys")
+            val results = fetchAllManifests()
+            for (result in results) {
+                if (result == null) continue
+                val (streamName, manifest) = result
+                setStreamVersion(streamName, manifest.version)
+                Log.i(TAG, "  $streamName: version ${manifest.version}")
+            }
+
+            // 6. Mark seed version as complete
+            preferences.setSeedVersion(CURRENT_SEED_VERSION)
+            Log.i(TAG, "Seed version set to $CURRENT_SEED_VERSION — first launch complete")
+
+            DatabaseUpdateState.UpToDate
+        } catch (e: Exception) {
+            Log.e(TAG, "downloadSeedDb failed", e)
+            DatabaseUpdateState.Failed(e.message ?: "Seed DB download failed")
         }
+    }
 
     /**
      * Applies upsert/delete arrays for a single table within the current transaction.
@@ -730,6 +596,7 @@ class DatabaseUpdateManager @Inject constructor(
         "manifestos" -> preferences.manifestosVersion.first()
         "party-stats" -> preferences.partyStatsVersion.first()
         "historical-members" -> preferences.historicalMembersVersion.first()
+        "debates" -> preferences.debatesVersion.first()
         else -> null
     }
 
@@ -751,6 +618,7 @@ class DatabaseUpdateManager @Inject constructor(
             "manifestos" -> preferences.setManifestosVersion(version)
             "party-stats" -> preferences.setPartyStatsVersion(version)
             "historical-members" -> preferences.setHistoricalMembersVersion(version)
+            "debates" -> preferences.setDebatesVersion(version)
         }
     }
 
@@ -795,10 +663,20 @@ class DatabaseUpdateManager @Inject constructor(
     }
 
     companion object {
+        private const val TAG = "GovEye/DbUpdate"
+
+        /**
+         * Current seed DB version. Bump this when the seed DB schema or
+         * contents change in a way that requires existing users to
+         * re-download the full seed DB (e.g. schema fixes, new tables,
+         * corrected data). When this is higher than the user's stored
+         * seedVersion, the app treats it as a first launch and re-downloads.
+         */
+        const val CURRENT_SEED_VERSION = 2
+
         internal const val MANIFEST_ASSET_NAME = "manifest.json"
         internal const val PATCH_ASSET_NAME = "patch.json"
         private const val BUFFER_SIZE = 8192
-        private const val TAG = "GovEye/DbUpdate"
         private const val GITHUB_DOWNLOAD_BASE =
             "https://github.com/Zen0-99/goveye-data/releases/download"
     }
