@@ -1,5 +1,9 @@
 .planning/
 
+# Data build repo — separate repo at goveye-data/, not tracked here
+# All DB builds, workflows, and precomputation live in Zen0-99/goveye-data
+goveye-data/
+
 # Gradle
 .gradle/
 build/
