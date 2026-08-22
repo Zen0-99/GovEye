@@ -107,8 +107,8 @@ private fun PartyCard(party: PartySummary, onClick: () -> Unit) {
                         .align(Alignment.BottomEnd)
                         .size(130.dp)
                         .offset(
-                            x = 45.dp, // clip right edge heavily
-                            y = (-45).dp // clip bottom edge heavily
+                            x = 25.dp, // clip right edge
+                            y = 25.dp // clip bottom edge
                         )
                 )
             }
