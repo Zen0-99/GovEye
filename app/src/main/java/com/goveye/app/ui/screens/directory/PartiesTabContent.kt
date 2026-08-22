@@ -24,8 +24,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -97,11 +99,17 @@ private fun PartyCard(party: PartySummary, onClick: () -> Unit) {
                 )
         ) {
             // Logo — positioned at bottom-end, slightly clipping the edges.
+            // Monochrome white tint so all logos have a unified look on the
+            // party-colored card background.
             partyLogoResId(party.partyId)?.let { resId ->
                 Image(
                     painter = painterResource(resId),
                     contentDescription = party.partyName,
                     contentScale = ContentScale.Fit,
+                    colorFilter = ColorFilter.tint(
+                        MaterialTheme.colorScheme.onSurface,
+                        BlendMode.SrcIn
+                    ),
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .size(90.dp)
