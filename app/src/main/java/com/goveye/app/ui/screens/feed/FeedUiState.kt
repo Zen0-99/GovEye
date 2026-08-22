@@ -19,6 +19,7 @@ data class FeedUiState(
     val dateGroups: List<FeedDateGroup> = emptyList(),
     val followedMemberIds: Set<Int> = emptySet(),
     val divisionsWithFollowedVotes: Set<Int> = emptySet(),
+    val divisionTags: Map<Int, List<String>> = emptyMap(),
     val followingOnly: Boolean = false,
     val searchQuery: String = "",
     val houseFilter: Int = 0,
@@ -27,5 +28,6 @@ data class FeedUiState(
     val isEmpty: Boolean = false,
     val isRecessEmpty: Boolean = false,
     val recentDivisionsForRecess: List<Division> = emptyList(),
-    val hasMore: Boolean = false
+    val hasMore: Boolean = false,
+    val totalDivisions: Int = 0
 )

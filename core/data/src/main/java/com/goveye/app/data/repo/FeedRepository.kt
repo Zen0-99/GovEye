@@ -4,15 +4,21 @@ import android.util.Log
 import com.goveye.app.data.local.dao.DivisionDao
 import com.goveye.app.data.local.dao.FollowDao
 import com.goveye.app.data.local.dao.RecessDateDao
+import com.goveye.app.data.local.dao.TagDao
 import com.goveye.app.data.local.entity.DivisionEntity
+import com.goveye.app.data.local.entity.DivisionTagEntity
 import com.goveye.app.data.local.entity.RecessDateEntity
 import com.goveye.app.domain.model.Division
 import java.time.LocalDate
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 
@@ -25,6 +31,7 @@ data class FeedData(
     val divisions: List<Division> = emptyList(),
     val followedMemberIds: Set<Int> = emptySet(),
     val divisionsWithFollowedVotes: Set<Int> = emptySet(),
+    val divisionTags: Map<Int, List<String>> = emptyMap(),
     val currentRecess: RecessDateEntity? = null,
     val isLoading: Boolean = true
 )
@@ -47,7 +54,8 @@ data class FeedData(
 class FeedRepository @Inject constructor(
     private val divisionDao: DivisionDao,
     private val followDao: FollowDao,
-    private val recessDateDao: RecessDateDao
+    private val recessDateDao: RecessDateDao,
+    private val tagDao: TagDao
 ) {
 
     /**
@@ -55,31 +63,54 @@ class FeedRepository @Inject constructor(
      * The UI layer applies the "Following only" filter on top of this.
      * Default limit of 50 — loads only the most recent 50 divisions for fast
      * initial render. The UI can request more as the user scrolls.
+     *
+     * Optimization: the followed-MP division IDs are computed via a
+     * flatMapLatest on the followed-IDs flow, so the SQL query only
+     * re-runs when the followed set actually changes — not on every
+     * division table emission. The followed member IDs and the division
+     * IDs with followed votes are carried together as a Pair so both
+     * are available without a second query.
      */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private data class FollowedVoteData(val followedMemberIds: Set<Int>, val divisionsWithFollowedVotes: Set<Int>)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
     fun observeFeedData(limit: Int = 50): Flow<FeedData> = combine(
         divisionDao.observeDivisions(limit),
         followDao.observeUnmutedMemberIds()
-    ) { divisionEntities, followedIds ->
+            .flatMapLatest { followedIds ->
+                if (followedIds.isEmpty()) {
+                    flowOf(FollowedVoteData(emptySet(), emptySet()))
+                } else {
+                    flow {
+                        val divIds = divisionDao.getDivisionIdsWithMemberVotes(followedIds).toSet()
+                        emit(FollowedVoteData(followedIds.toSet(), divIds))
+                    }
+                }
+            },
+        tagDao.observeAllDivisionTagRows()
+    ) { divisionEntities, followedData, tagRows ->
         val dbStart = System.currentTimeMillis()
         Log.i(
             "GovEye/FeedRepo",
-            "observeFeedData emit — divisions=${divisionEntities.size} followedIds=${followedIds.size} limit=$limit"
+            "observeFeedData emit — divisions=${divisionEntities.size} followedIds=${followedData.followedMemberIds.size} votesWithFollowed=${followedData.divisionsWithFollowedVotes.size} tagRows=${tagRows.size} limit=$limit"
         )
-        val divisionIdsWithFollowedVotes = if (followedIds.isEmpty()) {
-            emptySet()
-        } else {
-            divisionDao.getDivisionIdsWithMemberVotes(followedIds).toSet()
-        }
+        // Build divisionId → tags map from tag rows
+        val divisionTags = tagRows
+            .groupBy { it.divisionId }
+            .mapValues { (_, rows) -> rows.map { it.tag } }
+
         FeedData(
             divisions = divisionEntities.map { it.toDomain() },
-            followedMemberIds = followedIds.toSet(),
-            divisionsWithFollowedVotes = divisionIdsWithFollowedVotes,
+            followedMemberIds = followedData.followedMemberIds,
+            divisionsWithFollowedVotes = followedData.divisionsWithFollowedVotes,
+            divisionTags = divisionTags,
             isLoading = false
         ).also {
             val dbTime = System.currentTimeMillis() - dbStart
             Log.i(
                 "GovEye/FeedRepo",
-                "FeedData built — ${it.divisions.size} divisions, votesWithFollowed=${it.divisionsWithFollowedVotes.size} dbTime=${dbTime}ms"
+                "FeedData built — ${it.divisions.size} divisions, votesWithFollowed=${it.divisionsWithFollowedVotes.size} tags=${it.divisionTags.size} dbTime=${dbTime}ms"
             )
         }
     }.flowOn(Dispatchers.Default)

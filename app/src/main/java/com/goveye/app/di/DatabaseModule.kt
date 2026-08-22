@@ -2,6 +2,8 @@ package com.goveye.app.di
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.goveye.app.data.local.BundledDatabase
 import com.goveye.app.data.local.LocalDatabase
 import com.goveye.app.data.local.dao.BillDao
@@ -56,6 +58,90 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
+    // Migration 11 → 12: No schema changes (identity hash update only).
+    // Room still requires a migration to bump the version number.
+    private val MIGRATION_11_12 = object : Migration(11, 12) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // No-op — schema unchanged, only identity hash differs
+        }
+    }
+
+    // Migration 12 → 13: Add mp_synopsis, mp_contacts, mp_experience tables.
+    private val MIGRATION_12_13 = object : Migration(12, 13) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `mp_synopsis` (`mpId` INTEGER NOT NULL, `synopsisText` TEXT, `lastUpdated` INTEGER NOT NULL, PRIMARY KEY(`mpId`))"
+            )
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `mp_contacts` (`mpId` INTEGER NOT NULL, `typeId` INTEGER NOT NULL, `type` TEXT, `isPreferred` INTEGER, `isWebAddress` INTEGER, `line1` TEXT, `line2` TEXT, `line3` TEXT, `line4` TEXT, `line5` TEXT, `postcode` TEXT, `phone` TEXT, `email` TEXT, `website` TEXT, `openingHours` TEXT, `lastUpdated` INTEGER NOT NULL, PRIMARY KEY(`mpId`, `typeId`))"
+            )
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `mp_experience` (`id` INTEGER NOT NULL, `mpId` INTEGER NOT NULL, `type` TEXT, `typeId` INTEGER, `title` TEXT, `organisation` TEXT, `startMonth` INTEGER, `startYear` INTEGER, `endMonth` INTEGER, `endYear` INTEGER, `lastUpdated` INTEGER NOT NULL, PRIMARY KEY(`id`))"
+            )
+        }
+    }
+
+    // Migration 13 → 14: Add purpose/contact/website columns to committees table.
+    // Idempotent — the seed DB may already include these columns if it was
+    // built with a newer bundled_schema.json.
+    private val MIGRATION_13_14 = object : Migration(13, 14) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            val existingColumns = db.query("PRAGMA table_info(committees)").use { cursor ->
+                buildList {
+                    while (cursor.moveToNext()) {
+                        add(cursor.getString(cursor.getColumnIndexOrThrow("name")))
+                    }
+                }
+            }.toSet()
+
+            val newColumns = listOf(
+                "purpose",
+                "contactEmail",
+                "contactPhone",
+                "contactAddress",
+                "websiteUrl"
+            )
+            for (col in newColumns) {
+                if (col !in existingColumns) {
+                    db.execSQL("ALTER TABLE committees ADD COLUMN $col TEXT")
+                }
+            }
+        }
+    }
+
+    // Migration 14 → 15: Add division_tags and bill_tags tables.
+    // Idempotent — the seed DB may already include these tables.
+    private val MIGRATION_14_15 = object : Migration(14, 15) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `division_tags` (`divisionId` INTEGER NOT NULL, `tag` TEXT NOT NULL, `hitCount` INTEGER NOT NULL, PRIMARY KEY(`divisionId`, `tag`))"
+            )
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `bill_tags` (`billId` INTEGER NOT NULL, `tag` TEXT NOT NULL, `hitCount` INTEGER NOT NULL, PRIMARY KEY(`billId`, `tag`))"
+            )
+        }
+    }
+
+    // Migration 15 → 16: Add councils table for local authority data.
+    // Idempotent — the seed DB may already include this table.
+    private val MIGRATION_15_16 = object : Migration(15, 16) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `councils` (`id` INTEGER NOT NULL, `reference` TEXT NOT NULL, `name` TEXT NOT NULL, `website` TEXT, `region` TEXT, `localAuthorityType` TEXT, `statisticalGeography` TEXT, `wikidata` TEXT, `twitter` TEXT, `contactEmail` TEXT, `contactPhone` TEXT, `lastUpdated` INTEGER NOT NULL, PRIMARY KEY(`id`))"
+            )
+        }
+    }
+
+    // Migration 16 → 17: Add tag_metadata table.
+    // Idempotent — the seed DB may already include this table.
+    private val MIGRATION_16_17 = object : Migration(16, 17) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `tag_metadata` (`tag` TEXT NOT NULL, `description` TEXT NOT NULL, `divisionCount` INTEGER NOT NULL, `billCount` INTEGER NOT NULL, PRIMARY KEY(`tag`))"
+            )
+        }
+    }
+
     @Provides
     @Singleton
     fun provideBundledDatabase(@ApplicationContext context: Context): BundledDatabase {
@@ -67,7 +153,16 @@ object DatabaseModule {
                 context,
                 BundledDatabase::class.java,
                 BundledDatabase.DATABASE_NAME
-            ).fallbackToDestructiveMigration(dropAllTables = true)
+            )
+            .addMigrations(
+                MIGRATION_11_12,
+                MIGRATION_12_13,
+                MIGRATION_13_14,
+                MIGRATION_14_15,
+                MIGRATION_15_16,
+                MIGRATION_16_17
+            )
+            .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
     }
 
@@ -145,6 +240,9 @@ object DatabaseModule {
     fun provideMpExperienceDao(database: BundledDatabase): MpExperienceDao = database.mpExperienceDao()
 
     @Provides
+    fun provideTagDao(database: BundledDatabase): com.goveye.app.data.local.dao.TagDao = database.tagDao()
+
+    @Provides
     fun provideDatabaseUpdateDao(database: BundledDatabase): DatabaseUpdateDao = database.databaseUpdateDao()
 
     // ── User-data DAOs (from LocalDatabase) ────────────────────────────
@@ -186,8 +284,11 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideCommitteesRepository(committeeDao: CommitteeDao): CommitteesRepository =
-        CommitteesRepository(committeeDao)
+    fun provideCommitteesRepository(
+        committeeDao: CommitteeDao,
+        memberMapper: MemberMapper
+    ): CommitteesRepository =
+        CommitteesRepository(committeeDao, memberMapper)
 
     @Provides
     @Singleton
@@ -199,7 +300,8 @@ object DatabaseModule {
     fun provideFeedRepository(
         divisionDao: DivisionDao,
         followDao: FollowDao,
-        recessDateDao: RecessDateDao
+        recessDateDao: RecessDateDao,
+        tagDao: com.goveye.app.data.local.dao.TagDao
     ): FeedRepository = FeedRepository(divisionDao, followDao, recessDateDao)
 
     @Provides

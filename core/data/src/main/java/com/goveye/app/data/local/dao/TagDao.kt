@@ -2,8 +2,9 @@ package com.goveye.app.data.local.dao
 
 import androidx.room.Dao
 import androidx.room.Query
-import com.goveye.app.data.local.entity.BillTagEntity
 import com.goveye.app.data.local.entity.DivisionTagEntity
+import com.goveye.app.data.local.entity.BillTagEntity
+import com.goveye.app.data.local.entity.TagMetadataEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -16,6 +17,9 @@ interface TagDao {
 
     @Query("SELECT tag FROM division_tags WHERE divisionId = :divisionId ORDER BY hitCount DESC")
     suspend fun getTagsForDivision(divisionId: Int): List<String>
+
+    @Query("SELECT * FROM division_tags ORDER BY hitCount DESC")
+    fun observeAllDivisionTagRows(): Flow<List<DivisionTagEntity>>
 
     @Query("SELECT DISTINCT tag FROM division_tags ORDER BY tag")
     fun observeAllDivisionTags(): Flow<List<String>>
@@ -42,6 +46,17 @@ interface TagDao {
 
     @Query("SELECT billId FROM bill_tags WHERE tag = :tag")
     suspend fun getBillIdsForTag(tag: String): List<Int>
+
+    // --- Tag metadata ---
+
+    @Query("SELECT * FROM tag_metadata WHERE tag = :tag")
+    suspend fun getTagMetadata(tag: String): TagMetadataEntity?
+
+    @Query("SELECT * FROM tag_metadata WHERE divisionCount > 0 OR billCount > 0 ORDER BY divisionCount DESC, billCount DESC")
+    fun observeAllTagMetadata(): Flow<List<TagMetadataEntity>>
+
+    @Query("SELECT * FROM tag_metadata WHERE divisionCount > 0 OR billCount > 0 ORDER BY divisionCount DESC, billCount DESC")
+    suspend fun getAllTagMetadata(): List<TagMetadataEntity>
 
     // --- Combined ---
 

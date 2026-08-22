@@ -35,6 +35,7 @@ import com.goveye.app.ui.screens.feed.FeedDivisionCard
 import com.goveye.app.ui.screens.feed.FeedNoActivityEmptyState
 import com.goveye.app.ui.screens.feed.FeedNoFollowsEmptyState
 import com.goveye.app.ui.screens.feed.FeedRecessEmptyState
+import com.goveye.app.ui.screens.divisions.TagMicroviewDialog
 import com.goveye.app.ui.screens.feed.FeedViewModel
 
 /**
@@ -51,12 +52,13 @@ fun FeedScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var showFilterSheet by remember { mutableStateOf(false) }
+    var selectedTag by remember { mutableStateOf<String?>(null) }
 
     Log.i(
         "GovEye/Feed",
         "FeedScreen compose — isLoading=${state.isLoading} isEmpty=${state.isEmpty} " +
             "isRecessEmpty=${state.isRecessEmpty} dateGroups=${state.dateGroups.size} " +
-            "totalDivisions=${state.dateGroups.sumOf { it.divisions.size }}"
+            "totalDivisions=${state.totalDivisions}"
     )
 
     // Stable lambdas — prevents ConfigureSearchBar's DisposableEffect from
@@ -133,10 +135,13 @@ fun FeedScreen(
                             "division-${it.id}"
                         }, contentType = { "feed_division" }) { division ->
                             val hasFollowed = division.id in state.divisionsWithFollowedVotes
+                            val tags = state.divisionTags[division.id] ?: emptyList()
                             FeedDivisionCard(
                                 division = division,
                                 hasFollowedVotes = hasFollowed,
-                                onClick = { onNavigateToDivision(division.id, division.house) }
+                                onClick = { onNavigateToDivision(division.id, division.house) },
+                                tags = tags,
+                                onTagClick = { tag -> selectedTag = tag }
                             )
                         }
                     }
@@ -163,6 +168,15 @@ fun FeedScreen(
             onViewModeChange = {},
             onClearFilters = viewModel::clearFilters,
             onDismiss = { showFilterSheet = false }
+        )
+    }
+
+    // Tag microview dialog
+    selectedTag?.let { tag ->
+        TagMicroviewDialog(
+            tag = tag,
+            onNavigateToDivision = onNavigateToDivision,
+            onDismiss = { selectedTag = null }
         )
     }
 }

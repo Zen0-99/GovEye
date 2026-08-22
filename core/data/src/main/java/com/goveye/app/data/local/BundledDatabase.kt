@@ -45,6 +45,7 @@ import com.goveye.app.data.local.entity.MpExperienceEntity
 import com.goveye.app.data.local.entity.MpFtsEntity
 import com.goveye.app.data.local.entity.DivisionTagEntity
 import com.goveye.app.data.local.entity.BillTagEntity
+import com.goveye.app.data.local.entity.TagMetadataEntity
 import com.goveye.app.data.local.entity.MpLinkEntity
 import com.goveye.app.data.local.entity.MpStatsEntity
 import com.goveye.app.data.local.entity.MpSynopsisEntity
@@ -100,9 +101,10 @@ import com.goveye.app.data.local.entity.RecessDatesMetaEntity
         MpExperienceEntity::class,
         DivisionTagEntity::class,
         BillTagEntity::class,
-        CouncilEntity::class
+        CouncilEntity::class,
+        TagMetadataEntity::class
     ],
-    version = 16,
+    version = 17,
     exportSchema = true
 )
 @TypeConverters(Converters::class)

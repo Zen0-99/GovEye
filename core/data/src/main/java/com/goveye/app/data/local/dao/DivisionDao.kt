@@ -35,6 +35,9 @@ interface DivisionDao {
     @Query("SELECT * FROM divisions WHERE id = :id")
     suspend fun getDivision(id: Int): DivisionEntity?
 
+    @Query("SELECT * FROM divisions WHERE id IN (:ids) ORDER BY date DESC")
+    suspend fun getDivisionsByIds(ids: List<Int>): List<DivisionEntity>
+
     @Upsert
     suspend fun upsertAll(divisions: List<DivisionEntity>)
 
@@ -135,14 +138,18 @@ interface DivisionDao {
      * SQL GROUP BY that returns party-level vote breakdown for a division.
      * Replaces loading 650 vote entities and grouping in Kotlin — one query
      * returns one row per party with aye/no/total counts.
+     *
+     * Note: vote values are stored uppercase ('AYE', 'NO', 'NOVOTERECORDED')
+     * by the data build scripts. Use UPPER() for case-insensitive matching
+     * so both bundled and runtime-inserted votes are counted correctly.
      */
     @Query(
         """
         SELECT
             partyName AS partyName,
             partyColour AS partyColour,
-            SUM(CASE WHEN vote = 'Aye' THEN 1 ELSE 0 END) AS ayeCount,
-            SUM(CASE WHEN vote = 'No' THEN 1 ELSE 0 END) AS noCount,
+            SUM(CASE WHEN UPPER(vote) = 'AYE' THEN 1 ELSE 0 END) AS ayeCount,
+            SUM(CASE WHEN UPPER(vote) = 'NO' THEN 1 ELSE 0 END) AS noCount,
             COUNT(*) AS totalMembers
         FROM division_votes
         WHERE divisionId = :divisionId
@@ -267,13 +274,12 @@ interface DivisionDao {
         """
         SELECT
             divisionId AS divisionId,
-            SUM(CASE WHEN vote = 'Aye' THEN 1 ELSE 0 END) AS partyAyes,
-            SUM(CASE WHEN vote = 'No' THEN 1 ELSE 0 END) AS partyNoes
+            SUM(CASE WHEN UPPER(vote) = 'AYE' THEN 1 ELSE 0 END) AS partyAyes,
+            SUM(CASE WHEN UPPER(vote) = 'NO' THEN 1 ELSE 0 END) AS partyNoes
         FROM division_votes
         WHERE divisionId IN (:divisionIds)
             AND partyName = :partyName
-            AND vote != 'NoVoteRecorded'
-            AND vote != 'No Vote Recorded'
+            AND UPPER(vote) NOT IN ('NOVOTERECORDED', 'NO VOTE RECORDED')
         GROUP BY divisionId
         """
     )

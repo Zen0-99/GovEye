@@ -2,6 +2,7 @@ package com.goveye.app.ui.screens.feed
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,12 +12,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
@@ -31,18 +32,23 @@ private val AyeColor @Composable get() = VoteColors.aye
 private val NoColor @Composable get() = VoteColors.no
 
 /**
- * Feed division card with optional followed-MP highlight tint.
+ * Feed division card with optional followed-MP highlight tint and tag pills.
  *
  * When [hasFollowedVotes] is true, the card background uses primary at 0.05 alpha
  * (D-04 — subtle tint) and a 4dp vertical strip on the left edge signals the highlight.
  * Otherwise uses surfaceContainer (same as the existing DivisionCard).
+ *
+ * When [tags] is non-empty, a horizontally scrollable row of tag pills is shown
+ * at the bottom of the card. Clicking a pill invokes [onTagClick].
  */
 @Composable
 fun FeedDivisionCard(
     division: Division,
     hasFollowedVotes: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    tags: List<String> = emptyList(),
+    onTagClick: (String) -> Unit = {}
 ) {
     val cardColor = if (hasFollowedVotes) {
         MaterialTheme.colorScheme.primary.copy(alpha = 0.05f)
@@ -123,7 +129,49 @@ fun FeedDivisionCard(
                     }
                 }
                 DivisionResultBar(ayeCount = division.ayeCount, noCount = division.noCount)
+
+                // Tag pills — horizontally scrollable, truncating at the right edge
+                if (tags.isNotEmpty()) {
+                    TagPillRow(
+                        tags = tags,
+                        onTagClick = onTagClick
+                    )
+                }
             }
+        }
+    }
+}
+
+/**
+ * Horizontally scrollable row of tag pills. Matches the style of the
+ * party filter pills in FilterBottomSheet — small, rounded, subtle background.
+ */
+@Composable
+private fun TagPillRow(
+    tags: List<String>,
+    onTagClick: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        tags.forEach { tag ->
+            val shape = RoundedCornerShape(20.dp)
+            Text(
+                text = tag,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                modifier = Modifier
+                    .clip(shape)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                    .clickable { onTagClick(tag) }
+                    .padding(horizontal = 10.dp, vertical = 4.dp)
+            )
         }
     }
 }

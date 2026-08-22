@@ -103,15 +103,17 @@ class FeedViewModel @Inject constructor(private val feedRepository: FeedReposito
                 }
                 // hasMore — whether there are more divisions to load
                 val hasMore = feedData.divisions.size >= limit
+                val totalDivisions = dateGroups.sumOf { it.divisions.size }
                 val processingTime = System.currentTimeMillis() - processingStart
                 Log.i(
                     "GovEye/Feed",
-                    "State built — dateGroups=${dateGroups.size} isEmpty=$isEmpty isRecessEmpty=$isRecessEmpty hasMore=$hasMore processingTime=${processingTime}ms"
+                    "State built — dateGroups=${dateGroups.size} totalDivisions=$totalDivisions isEmpty=$isEmpty isRecessEmpty=$isRecessEmpty hasMore=$hasMore processingTime=${processingTime}ms"
                 )
                 FeedUiState(
                     dateGroups = dateGroups,
                     followedMemberIds = feedData.followedMemberIds,
                     divisionsWithFollowedVotes = feedData.divisionsWithFollowedVotes,
+                    divisionTags = feedData.divisionTags,
                     followingOnly = followingOnly,
                     searchQuery = query,
                     houseFilter = house,
@@ -120,11 +122,12 @@ class FeedViewModel @Inject constructor(private val feedRepository: FeedReposito
                     isEmpty = isEmpty,
                     isRecessEmpty = isRecessEmpty,
                     recentDivisionsForRecess = recentForRecess,
-                    hasMore = hasMore
+                    hasMore = hasMore,
+                    totalDivisions = totalDivisions
                 )
             }
         }.flowOn(Dispatchers.Default)
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FeedUiState())
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(60_000), FeedUiState())
 
     fun setFollowingOnly(value: Boolean) {
         followingOnlyState.value = value
