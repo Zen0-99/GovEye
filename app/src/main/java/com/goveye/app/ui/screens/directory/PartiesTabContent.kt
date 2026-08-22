@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -106,9 +107,9 @@ private fun PartyCard(party: PartySummary, onClick: () -> Unit) {
                     modifier = Modifier
                         .align(Alignment.BottomStart)
                         .size(130.dp)
-                        .padding(
-                            start = (-20).dp, // clip left edge
-                            bottom = (-20).dp // clip bottom edge
+                        .offset(
+                            x = (-20).dp, // clip left edge
+                            y = (-20).dp // clip bottom edge
                         )
                 )
             }
