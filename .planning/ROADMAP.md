@@ -18,6 +18,10 @@ GovEye is a free, open-source Android app that makes UK Parliament as followable
 - [ ] **Phase 10: Polish & Release** - OPL attribution, notification reliability, Play Store release
 - [x] **Phase 11: Build-time Data Enrichment** - MNIS biographical data, IPSA expenses, ParlParse social/Wikipedia links, party manifestos with FTS search, Parties tab + PartyView (build-time into bundled DB). Dropped: Ayes & Noes, Public Whip, TWFY (see research/API-ENRICHMENT.md) (completed 2026-08-22)
 - [ ] **Phase 12: Unified Precomputed Database** - Single post-merge build script (build_precompute.py) produces precomputed stats tables (mp_stats, peer_averages) and fixes N+1 query paths with SQL JOINs. Eliminates 5,500+ runtime DAO calls per profile open. App reads precomputed rows instead of aggregating at runtime.
+- [x] **Phase 13: Expense Detail** - Rebuild IPSA parser to capture claim descriptions, add ExpenseBucketDetailScreen with per-claim detail view (following InterestBucketDetailScreen pattern) (completed 2026-08-23, verified in code)
+- [ ] **Phase 14: Government Announcements** - Track executive/regulatory action from GOV.UK Content API, Parliament Written Statements API, legislation.gov.uk API. Feed cards + Directory sub-tab. Tag personalization + 5-step onboarding redesign. All bundled DB (build-time, no live API).
+- [ ] **Phase 15: MP Activity Feed Redesign** - Transform Activity tab from votes-only to mixed feed (votes + questions + income + expenses + committee + career). Store written question text. Move bulk votes to Stats tab as summary + VotingRecordScreen.
+- [ ] **Phase 16: Debates Directory Redesign** - Replace 'Bills' directory tab with 'Debates' — umbrella for all parliamentary business (bills, SIs, motions, treaties). Each card = one work package (Level 1). Rename current 'Debate' code to 'Division'. Data layer for all types (Procedure Browser CSV for SIs/treaties, bill publications + news articles). Bills UI first, SIs/motions/treaties UI in a later phase.
 
 ## Phase Details
 
@@ -299,6 +303,111 @@ Plans:
 - [ ] 12-03: SQL JOIN fixes — replace N+1 queries in VotesRepository (getMemberVotingWithDivisions, getPartyBreakdown, checkIfRebel) and FollowingViewModel (batch recent vote query) with single SQL queries
 - [ ] 12-04: CI integration + validation — add build_precompute.py to build_db.py merge pipeline, verify profile open time under 1 second, verify precomputed stats match runtime computation results
 
+### Phase 13: Expense Detail
+
+**Goal**: Make expense cards on MP profiles clickable, showing individual claims with descriptions. Rebuild the IPSA CSV parser to capture fields currently discarded (Short Description, Details, journey info, payment breakdown) and add an ExpenseBucketDetailScreen following the InterestBucketDetailScreen pattern.
+**Depends on**: Phase 9 (Interests & Income — expense data infrastructure), Phase 11 (IPSA build script)
+**Requirements**: INT-02 (expense detail parity with interests detail)
+
+**Success Criteria** (what must be TRUE):
+
+  1. `build_ipsa.py` captures Short Description, Details, Claim Number, journey details (From/To/Mileage/Journey Type), and payment breakdown (Amount Paid/Not Paid/Repaid/Reason If Not Paid) from the IPSA CSV
+  2. `ExpenseEntity` has the new columns; Room schema bumped (additive — nullable columns on existing table)
+  3. `ExpenseBucketCard` in InterestsTabContent has an onClick handler that navigates to ExpenseBucketDetailScreen
+  4. `ExpenseBucketDetailScreen` shows individual claims grouped by date, with description, amount, status, and journey details where relevant
+  5. Global search bar works on the detail screen (same pattern as InterestBucketDetailScreen)
+  6. New `ExpenseBucketDetailRoute` wired in Routes.kt and GovEyeApp.kt navigation graph
+
+**Plans**: 2/2 plans executed (verified in code — no SUMMARY.md files, predates convention)
+
+Plans:
+
+- [x] 13-01: Rebuild IPSA parser — capture all discarded CSV fields, update ExpenseEntity schema, Room migration, update build_ipsa.py and merge_dbs.py
+- [x] 13-02: Expense detail UI — FinancialBucketDetailScreen (renamed from InterestBucketDetailScreen), InterestBucketDetailRoute with entryType, onClick wiring, search bar integration
+
+### Phase 14: Government Announcements
+
+**Goal**: Track executive/regulatory action from three free government data sources (GOV.UK Content API, Parliament Written Statements API, legislation.gov.uk API). Display as Feed cards and a new Directory sub-tab. Extend the existing tag system to announcements and MPs. Redesign onboarding to 5 steps with tag-based personalization. All data stored in bundled DB (build-time, no live API — scalability).
+**Depends on**: Phase 10 (bundled DB infrastructure), Phase 11 (build pipeline patterns), Phase 12 (precompute infrastructure)
+**Requirements**: DATA-01, DATA-02, DATA-03, DATA-04 (new data sources into bundled DB), FEED-01 (feed includes government announcements)
+
+**Success Criteria** (what must be TRUE):
+
+  1. `build_gov_publications.py` fetches GOV.UK publications across all ~25 departments (news articles, consultations, speeches, guidance, SIs) and stores in bundled DB
+  2. `build_written_statements.py` fetches written ministerial statements from Parliament Written Statements API (both Commons and Lords)
+  3. `build_legislation.py` fetches new SIs and Acts from legislation.gov.uk API
+  4. `build_tags.py` extended to pattern-match announcement text against TAG_DICTIONARY — new tables: publication_tags, statement_tags, legislation_tags
+  5. `build_mp_tags.py` aggregates tags from MP debate speeches — mp_tags table (memberId, tag, hitCount) for onboarding recommendations
+  6. New Feed card types: FeedPublicationCard, FeedStatementCard, FeedLegislationCard — mixed with existing division and debate cards
+  7. New "Government" sub-tab in Directory — browse announcements by source type, filter by tag/department, search
+  8. Onboarding redesigned to 5 steps: Government → Tags/Interests → Sources (recommended + all) → Parties → MPs (curated by tag match + party leaders first). Seed download runs in background throughout.
+  9. Tag-based filtering in Feed — user's selected onboarding tags prioritize relevant announcements
+  10. All announcement data in BundledDatabase, updated via CI with ~12h freshness delay
+
+**Plans**: 5 plans (tentative — will be detailed when phase is planned)
+
+Plans:
+
+- [ ] 14-01: Build scripts for government triad — build_gov_publications.py (GOV.UK Content API), build_written_statements.py (Parliament Written Statements API), build_legislation.py (legislation.gov.uk API), CI workflows, merge into bundled DB
+- [ ] 14-02: Tag extension + MP tagging — extend build_tags.py for announcement text, new build_mp_tags.py for MP tag aggregation, new tag tables
+- [ ] 14-03: Android data layer — entities, DAOs, GovernmentAnnouncementsRepository, all in BundledDatabase
+- [ ] 14-04: Android UI — Feed card types (publication/statement/legislation), Government sub-tab in Directory, tag filtering
+- [ ] 14-05: Onboarding redesign — 5-step flow (Government → Tags → Sources → Parties → MPs), tag selection UI, source recommendation logic, MP curation by tag match, seed download in background
+
+### Phase 15: MP Activity Feed Redesign
+
+**Goal**: Transform the MP profile Activity tab from votes-only into a mixed chronological feed of all MP activity (votes, written questions, income declarations, expense claims, committee joins, career milestones). Move bulk votes to Stats tab as a summary + dedicated VotingRecordScreen. Store written question text (currently only counts are stored).
+**Depends on**: Phase 13 (expense descriptions for activity feed), Phase 14 (MP tags for optional filtering)
+**Requirements**: MPDIR-08 (per-MP activity timeline), FEED-02 (activity feed includes all MP actions)
+
+**Success Criteria** (what must be TRUE):
+
+  1. `build_hansard.py` stores questionText and answerText from mySociety CSV (with fallback to per-question API for 255-char truncated entries)
+  2. MP profile Activity tab shows a mixed chronological feed: votes, written questions (with text), income declarations, expense claims (with descriptions), committee joins/leaves, career milestones
+  3. Each activity type has a distinct card design; date headers group items chronologically (existing FeedDateHeader pattern)
+  4. Activity feed is filterable by activity type
+  5. Stats tab has a "Recent votes" summary section below the vote map — last 5-10 votes with "See all" link
+  6. New VotingRecordScreen — full voting record (relocated from Activity tab), accessible from Stats tab "See all" link
+  7. Written questions show the actual question text, answering body, and date tabled
+
+**Plans**: 3 plans (tentative — will be detailed when phase is planned)
+
+Plans:
+
+- [ ] 15-01: Written question text storage — modify build_hansard.py to capture questionText/answerText from mySociety CSV, 255-char truncation fallback, new schema columns or written_questions table
+- [ ] 15-02: Activity feed redesign — mixed activity feed on MP profile (votes + questions + income + expenses + committee + career), distinct card designs per type, date grouping, activity type filter
+- [ ] 15-03: Votes relocation to Stats tab — Recent votes summary below vote map, VotingRecordScreen (full voting record), navigation wiring
+
+### Phase 16: Debates Directory Redesign
+
+**Goal**: Replace the 'Bills' directory tab with 'Debates' — the umbrella for all parliamentary business (bills, SIs, motions, treaties). Each card represents a single work package (Level 1, not topic-based). Rename current 'Debate'/'DebateCard' code references to 'Division'/'DivisionCard'. Build the data layer for all types (Procedure Browser CSV for SIs/treaties, Bills API publications + news articles, division-to-bill title matching). Build the bills UI first; SIs/motions/treaties UI deferred to a later phase (seed: debates-directory-expansion).
+**Depends on**: Phase 10 (bundled DB infrastructure), Phase 14 (tag system, Feed card patterns)
+**Requirements**: BILLS-01, BILLS-02, BILLS-03, BILLS-04 (enhanced), FEED-01 (bill activity in feed)
+
+**Success Criteria** (what must be TRUE):
+
+  1. Current 'Debate'/'DebateCard' code references renamed to 'Division'/'DivisionCard' throughout the Android codebase (DB table `debate_speeches` stays as-is)
+  2. 'Bills' directory tab replaced with 'Debates' — browsable catalog sorted by recent activity, with type chips (Bills/SIs/Motions/Treaties) + tag filters via bottom sheet + search bar
+  3. `build_si_metadata.py` downloads Procedure Browser CSVs (7,550 SIs + 333 treaties) and stores in bundled DB with procedure types (Draft affirmative, Made negative, etc.)
+  4. `build_bill_publications.py` fetches bill publications + news articles from Bills API, stores in new tables (bill_publications, bill_news_articles)
+  5. `build_bill_divisions.py` links divisions to bills via title matching (same approach as build_tags.py), stores in bill_divisions mapping table
+  6. Debates directory card: type chip, last activity date, progress indicator (stage X of Y for bills, Approved/Before Parliament for SIs)
+  7. Bill detail screen: full stage timeline with dates (fixed date formatting — "December 9th, 2025" + ranges for multiple sittings), divisions per stage, publications, news articles, related items section
+  8. Related items determined by same work package/enabling Act + tag overlap, hardcoded in seed, updated via delta
+  9. Following a bill → new activity shows in Feed as update card (current progress + smaller previous stage), clicking takes user to relevant section
+  10. Data layer includes all types (bills + SIs + motions) even though UI only shows bills in this phase
+
+**Plans**: TBD (will be detailed when phase is planned)
+
+Plans:
+
+- [ ] 16-01: Rename Debate→Division in code — rename all 'Debate'/'DebateCard' references to 'Division'/'DivisionCard' in Android codebase, update navigation routes
+- [ ] 16-02: Build scripts for SI/treaty metadata + bill publications/news + bill-division linkage — build_si_metadata.py (Procedure Browser CSV), build_bill_publications.py (Bills API), build_bill_divisions.py (title matching), new tables, CI integration
+- [ ] 16-03: Android data layer — entities, DAOs, DebatesRepository, all in BundledDatabase, schema migration
+- [ ] 16-04: Debates directory UI — replace Bills tab with Debates, card design (type chip + date + progress), type filter chips, tag filter bottom sheet, search bar
+- [ ] 16-05: Bill detail screen redesign — fixed timeline component (reusable), date formatting utility, divisions per stage, publications section, news articles per stage, related items section
+- [ ] 16-06: Feed integration — bill activity update cards (current progress + previous stage), follow-bill → feed card wiring
+
 ### Dropped sources (kept in research/API-ENRICHMENT.md as fallback)
 
 - **Ayes & Noes** (ayesandnoes.co.uk) — dropped: 90% redundant. We already compute recorded vote counts, rebellion counts, voting summaries, and party breakdowns from raw Parliament Votes API data. Only unique value is EDMs (Early Day Motions), which should come from the Parliament Questions API if wanted. API kept as fallback reference.
@@ -308,7 +417,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 â†’ 2 â†’ 3 â†’ 4 â†’ 5 â†’ 6 â†’ 7 â†’ 8 â†’ 9 â†’ 10 â†’ 11 â†’ 12
+Phases execute in numeric order: 1 â†’ 2 â†’ 3 â†’ 4 â†’ 5 â†’ 6 â†’ 7 â†’ 8 â†’ 9 â†’ 10 â†’ 11 â†’ 12 â†’ 13 â†’ 14 â†’ 15
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -324,4 +433,9 @@ Phases execute in numeric order: 1 â†’ 2 â†’ 3 â†’ 4 â†’ 5 �
 | 10. Polish & Release | 6/9 | 10-03â†’10-08 executed | - |
 | 11. Build-time Data Enrichment | 7/7 | Complete (verified in code) | 2026-08-22 |
 | 12. Unified Precomputed Database | 4/4 | Complete (build passes) | 2026-08-22 |
+| 13. Expense Detail | 2/2 | Complete (verified in code) | 2026-08-23 |
+| 14. Government Announcements | 0/5 | Not planned | - |
+| 15. MP Activity Feed Redesign | 0/3 | Not planned | - |
+| 16. Debates Directory Redesign | 0/6 | Not planned | - |
+
 

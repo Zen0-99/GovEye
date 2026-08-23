@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 14
 current_phase_name: government-announcements
 status: executing
-stopped_at: Phase 14 complete — all 5 plans executed (build scripts, tags, data layer, UI, onboarding)
-last_updated: "2026-08-23T21:00:00.000Z"
+stopped_at: Phase 15 context gathered
+last_updated: "2026-08-23T19:33:02.920Z"
 last_activity: 2026-08-23
-last_activity_desc: Plan 14-05 executed — 5-step onboarding redesign with tag personalization, source recommendations, MP curation
+last_activity_desc: Phase 14 verified (5 plans, 4 waves, 65/65 tests, build success)
 progress:
   total_phases: 15
-  completed_phases: 8
+  completed_phases: 9
   total_plans: 53
-  completed_plans: 31
+  completed_plans: 34
 total_phases: 12
 completed_phases: 9
 ---
@@ -137,6 +137,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-08-23T20:00:00.000Z
-Stopped at: Plan 14-02 complete — Tag extension + MP tags + party leaders + source recommendations build scripts
-Resume file: .planning/phases/14-government-announcements/14-05-PLAN.md
+Last session: 2026-08-23T19:33:02.854Z
+Stopped at: Phase 15 context gathered
+Resume file: .planning/phases/15-mp-activity-feed-redesign/15-CONTEXT.md
