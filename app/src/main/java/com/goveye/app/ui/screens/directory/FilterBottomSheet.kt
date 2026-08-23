@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.goveye.app.data.preference.DirectoryViewMode
 
@@ -52,7 +54,15 @@ fun FilterBottomSheet(
     onFollowingOnlyChange: (Boolean) -> Unit = {},
     onViewModeChange: (DirectoryViewMode) -> Unit,
     onClearFilters: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    // Government announcement filters (D-14)
+    allTags: List<String> = emptyList(),
+    allDepartments: List<String> = emptyList(),
+    allSources: List<String> = emptyList(),
+    onTagToggle: (String) -> Unit = {},
+    onDepartmentToggle: (String) -> Unit = {},
+    onSourceToggle: (String) -> Unit = {},
+    onTypeChange: (Int) -> Unit = {}
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -181,7 +191,27 @@ fun FilterBottomSheet(
                     }
 
                     FilterTabType.GOVERNMENT -> {
-                        // Tags, Departments, Type sections — fully implemented in Task 4
+                        // Tags — horizontally scrollable pills for all announcement tags
+                        item {
+                            SectionLabel("Tags")
+                            TagPillRow(
+                                tags = allTags,
+                                selectedTags = filterState.tagFilter,
+                                onTagToggle = onTagToggle
+                            )
+                        }
+
+                        // Departments — horizontally scrollable pills for all departments
+                        item {
+                            SectionLabel("Departments")
+                            DepartmentPillRow(
+                                departments = allDepartments,
+                                selectedDepartments = filterState.departmentFilter,
+                                onDepartmentToggle = onDepartmentToggle
+                            )
+                        }
+
+                        // Type — All / Publications / Statements / Legislation
                         item {
                             SectionLabel("Type")
                             SegmentedPill(
@@ -191,14 +221,58 @@ fun FilterBottomSheet(
                                     "Statements" to 2,
                                     "Legislation" to 3
                                 ),
-                                selectedValue = 0,
-                                onValueChange = {}
+                                selectedValue = filterState.typeFilter,
+                                onValueChange = onTypeChange
                             )
                         }
                     }
 
                     FilterTabType.FOLLOWING_HUB -> {
-                        // Tags, Sources, Parties, Officials, Type sections — fully implemented in Task 4
+                        // Tags — horizontally scrollable pills for all tags
+                        item {
+                            SectionLabel("Tags")
+                            TagPillRow(
+                                tags = allTags,
+                                selectedTags = filterState.tagFilter,
+                                onTagToggle = onTagToggle
+                            )
+                        }
+
+                        // Sources — horizontally scrollable pills for followed department-stream sources
+                        item {
+                            SectionLabel("Sources")
+                            SourcePillRow(
+                                sources = allSources,
+                                selectedSources = filterState.sourceFilter,
+                                onSourceToggle = onSourceToggle
+                            )
+                        }
+
+                        // Parties — existing PartyPillRow pattern
+                        item {
+                            SectionLabel("Parties")
+                            PartyPillRow(
+                                parties = distinctParties,
+                                filterState = filterState,
+                                onPartyToggle = onPartyToggle
+                            )
+                        }
+
+                        // Officials — existing followed MPs section (house + status filters)
+                        item {
+                            SectionLabel("Officials")
+                            SegmentedPill(
+                                options = listOf(
+                                    "All" to 0,
+                                    "Commons" to 1,
+                                    "Lords" to 2
+                                ),
+                                selectedValue = filterState.houseFilter,
+                                onValueChange = onHouseChange
+                            )
+                        }
+
+                        // Type — All / Publications / Statements / Legislation / Divisions
                         item {
                             SectionLabel("Type")
                             SegmentedPill(
@@ -209,8 +283,8 @@ fun FilterBottomSheet(
                                     "Legislation" to 3,
                                     "Divisions" to 4
                                 ),
-                                selectedValue = 0,
-                                onValueChange = {}
+                                selectedValue = filterState.typeFilter,
+                                onValueChange = onTypeChange
                             )
                         }
                     }
@@ -352,6 +426,184 @@ private fun PartyPillRow(parties: List<String>, filterState: DirectoryFilterStat
                     .clip(shape)
                     .background(containerColor)
                     .clickable { onPartyToggle(party) }
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+        }
+    }
+}
+
+/**
+ * Horizontally scrollable row of tag filter pills (D-14).
+ *
+ * Selected: primary 0.15 alpha bg + primary text + Bold.
+ * Unselected: onSurface 0.06 alpha bg + onSurfaceVariant text.
+ * Same pill shape as [PartyPillRow] (RoundedCornerShape(20.dp)).
+ */
+@Composable
+private fun TagPillRow(
+    tags: List<String>,
+    selectedTags: Set<String>,
+    onTagToggle: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (tags.isEmpty()) {
+        Text(
+            text = "No tags available",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        return
+    }
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        tags.forEach { tag ->
+            val isSelected = tag in selectedTags
+            val shape = RoundedCornerShape(20.dp)
+            val containerColor = if (isSelected) {
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+            } else {
+                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)
+            }
+            val contentColor = if (isSelected) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            }
+            val fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+
+            Text(
+                text = tag,
+                style = MaterialTheme.typography.labelMedium,
+                color = contentColor,
+                fontWeight = fontWeight,
+                maxLines = 1,
+                modifier = Modifier
+                    .clip(shape)
+                    .background(containerColor)
+                    .clickable { onTagToggle(tag) }
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+        }
+    }
+}
+
+/**
+ * Horizontally scrollable row of source filter pills (D-14).
+ *
+ * Same pill style as [TagPillRow], for followed department-stream sources.
+ */
+@Composable
+private fun SourcePillRow(
+    sources: List<String>,
+    selectedSources: Set<String>,
+    onSourceToggle: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (sources.isEmpty()) {
+        Text(
+            text = "No sources available",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        return
+    }
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        sources.forEach { source ->
+            val isSelected = source in selectedSources
+            val shape = RoundedCornerShape(20.dp)
+            val containerColor = if (isSelected) {
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+            } else {
+                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)
+            }
+            val contentColor = if (isSelected) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            }
+            val fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+
+            Text(
+                text = source,
+                style = MaterialTheme.typography.labelMedium,
+                color = contentColor,
+                fontWeight = fontWeight,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .clip(shape)
+                    .background(containerColor)
+                    .clickable { onSourceToggle(source) }
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+        }
+    }
+}
+
+/**
+ * Horizontally scrollable row of department filter pills (D-14).
+ *
+ * Same pill style as [TagPillRow], for 25 departments.
+ * Fixed max width 120dp with TextOverflow.Ellipsis at pill edge, text centered.
+ */
+@Composable
+private fun DepartmentPillRow(
+    departments: List<String>,
+    selectedDepartments: Set<String>,
+    onDepartmentToggle: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (departments.isEmpty()) {
+        Text(
+            text = "No departments available",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        return
+    }
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        departments.forEach { department ->
+            val isSelected = department in selectedDepartments
+            val shape = RoundedCornerShape(20.dp)
+            val containerColor = if (isSelected) {
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+            } else {
+                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)
+            }
+            val contentColor = if (isSelected) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            }
+            val fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+
+            Text(
+                text = department,
+                style = MaterialTheme.typography.labelMedium,
+                color = contentColor,
+                fontWeight = fontWeight,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier
+                    .widthIn(max = 120.dp)
+                    .clip(shape)
+                    .background(containerColor)
+                    .clickable { onDepartmentToggle(department) }
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             )
         }

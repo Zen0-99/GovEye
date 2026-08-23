@@ -12,9 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
@@ -35,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -49,13 +47,13 @@ import com.goveye.app.ui.screens.following.FollowingViewModel
 import com.goveye.app.ui.theme.padding
 
 /**
- * Following tab — FotMob roster style (D-03).
+ * Following tab — central hub for all followed entities (D-14).
  *
- * Shows a list of followed MPs with their most recent vote. Tapping a card
- * opens the MP's profile. Overflow menu allows unfollow/mute.
+ * Shows followed entities grouped by type: Officials (MPs), Parties, Sources,
+ * and Tags. Each section lists followed entities with an unfollow action.
+ * Tapping a card opens the entity's profile.
  *
- * Filter icon opens the same FilterBottomSheet as the directory (Party,
- * House, Status).
+ * Filter icon opens the FilterBottomSheet with FOLLOWING_HUB tab type.
  */
 @Composable
 fun FollowingScreen(
@@ -89,16 +87,17 @@ fun FollowingScreen(
         }
 
         uiState.followedMps.isEmpty() && uiState.searchQuery.isBlank() && !uiState.filterState.hasActiveFilters -> {
-            // Empty state — no followed MPs yet
+            // Empty state — no followed entities yet
             Box(
                 modifier = modifier.fillMaxSize().padding(MaterialTheme.padding.large),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Following\n\nFollow MPs to track their votes and activity.",
+                    text = "Following\n\nFollow MPs, parties, sources, and tags to track " +
+                        "their votes and activity in your feed.",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    textAlign = TextAlign.Center
                 )
             }
         }
@@ -118,55 +117,66 @@ fun FollowingScreen(
         }
 
         else -> {
-            when (uiState.viewMode) {
-                com.goveye.app.data.preference.DirectoryViewMode.LIST -> {
-                    LazyColumn(
-                        modifier = modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(
-                            items = uiState.followedMps,
-                            key = { it.memberId }
-                        ) { followedMp ->
-                            FollowedMpCard(
-                                followedMp = followedMp,
-                                onClick = { onNavigateToProfile(followedMp.memberId) },
-                                onUnfollow = { viewModel.unfollow(followedMp.memberId) }
-                            )
-                        }
+            // Sectioned list — Officials, Parties, Sources, Tags (D-14)
+            LazyColumn(
+                modifier = modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // --- Officials section (existing followed MPs) ---
+                item(key = "section-officials-header") {
+                    SectionHeader("Officials")
+                }
+                if (uiState.followedMps.isEmpty()) {
+                    item(key = "section-officials-empty") {
+                        SectionEmptyHint("No followed MPs yet")
+                    }
+                } else {
+                    items(
+                        items = uiState.followedMps,
+                        key = { "official-${it.memberId}" }
+                    ) { followedMp ->
+                        FollowedMpCard(
+                            followedMp = followedMp,
+                            onClick = { onNavigateToProfile(followedMp.memberId) },
+                            onUnfollow = { viewModel.unfollow(followedMp.memberId) }
+                        )
                     }
                 }
 
-                com.goveye.app.data.preference.DirectoryViewMode.GRID -> {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
-                        modifier = modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        gridItems(
-                            items = uiState.followedMps,
-                            key = { it.memberId }
-                        ) { followedMp ->
-                            FollowedMpGridCard(
-                                followedMp = followedMp,
-                                onClick = { onNavigateToProfile(followedMp.memberId) }
-                            )
-                        }
-                    }
+                // --- Parties section (framework — follow data layer not yet implemented) ---
+                item(key = "section-parties-header") {
+                    SectionHeader("Parties")
+                }
+                item(key = "section-parties-empty") {
+                    SectionEmptyHint("No followed parties yet")
+                }
+
+                // --- Sources section (framework — follow data layer not yet implemented) ---
+                item(key = "section-sources-header") {
+                    SectionHeader("Sources")
+                }
+                item(key = "section-sources-empty") {
+                    SectionEmptyHint("No followed sources yet")
+                }
+
+                // --- Tags section (framework — follow data layer not yet implemented) ---
+                item(key = "section-tags-header") {
+                    SectionHeader("Tags")
+                }
+                item(key = "section-tags-empty") {
+                    SectionEmptyHint("No followed tags yet")
                 }
             }
         }
     }
 
-    // Filter bottom sheet — same as directory
+    // Filter bottom sheet — Following hub (D-14)
     if (showFilterSheet) {
         FilterBottomSheet(
             distinctParties = uiState.distinctParties,
             filterState = uiState.filterState,
-            tabType = FilterTabType.OFFICIALS,
+            tabType = FilterTabType.FOLLOWING_HUB,
             viewMode = uiState.viewMode,
             onPartyToggle = viewModel::togglePartyFilter,
             onHouseChange = viewModel::setHouseFilter,
@@ -365,4 +375,31 @@ private fun FollowedMpGridCard(followedMp: FollowedMpUi, onClick: () -> Unit, mo
             }
         }
     }
+}
+
+/**
+ * Section header for grouped followed entities (D-14).
+ */
+@Composable
+private fun SectionHeader(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+    )
+}
+
+/**
+ * Empty hint for a followed entity section with no followed items.
+ */
+@Composable
+private fun SectionEmptyHint(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(bottom = 4.dp)
+    )
 }

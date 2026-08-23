@@ -20,6 +20,7 @@ import com.goveye.app.domain.model.WrittenStatement
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 
 /**
@@ -101,6 +102,18 @@ class GovernmentAnnouncementsRepository @Inject constructor(
     suspend fun getLegislation(id: Int): Legislation? = legislationDao.getLegislation(id)?.toDomain()
 
     // --- Announcement tags ---
+
+    /**
+     * All distinct tags across publication, statement, and legislation tag tables.
+     * Used by the FilterBottomSheet Tags section (D-14).
+     */
+    fun observeAllAnnouncementTags(): Flow<List<String>> = combine(
+        announcementTagDao.observeAllPublicationTags(),
+        announcementTagDao.observeAllStatementTags(),
+        announcementTagDao.observeAllLegislationTags()
+    ) { pubs, stmts, leg ->
+        (pubs + stmts + leg).distinct().sorted()
+    }
 
     fun observeTagsForPublication(publicationId: Int): Flow<List<String>> =
         announcementTagDao.observeTagsForPublication(publicationId)

@@ -47,6 +47,17 @@ sealed class PostcodeSearchState {
     data class Found(val result: com.goveye.app.data.repo.PostcodeLookupResult) : PostcodeSearchState()
 }
 
+/**
+ * Holder for the 4 government announcement filter values (D-14),
+ * used to combine them into [DirectoryFilterState] in a single step.
+ */
+private data class GovFilterExtras(
+    val tags: Set<String>,
+    val sources: Set<String>,
+    val departments: Set<String>,
+    val type: Int
+)
+
 @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 @HiltViewModel
 class DirectoryViewModel @Inject constructor(
@@ -82,6 +93,22 @@ class DirectoryViewModel @Inject constructor(
         directoryFilterPreferences.currentOnly
     ) { included, excluded, house, currentOnly ->
         DirectoryFilterState(included, excluded, house, currentOnly)
+    }.combine(
+        combine(
+            directoryFilterPreferences.tagFilter,
+            directoryFilterPreferences.sourceFilter,
+            directoryFilterPreferences.departmentFilter,
+            directoryFilterPreferences.typeFilter
+        ) { tags, sources, departments, type ->
+            GovFilterExtras(tags, sources, departments, type)
+        }
+    ) { base, extras ->
+        base.copy(
+            tagFilter = extras.tags,
+            sourceFilter = extras.sources,
+            departmentFilter = extras.departments,
+            typeFilter = extras.type
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DirectoryFilterState())
 
     // Distinct party names for the filter bottom sheet's Party section
@@ -153,6 +180,25 @@ class DirectoryViewModel @Inject constructor(
     fun setGovernmentSourceType(type: GovernmentSourceType) {
         _governmentSourceType.value = type
     }
+
+    // --- Government filter data (D-14) ---
+
+    /** All distinct announcement tags for the FilterBottomSheet Tags section. */
+    val allAnnouncementTags: StateFlow<List<String>> =
+        governmentAnnouncementsRepository.observeAllAnnouncementTags()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** All distinct department (organisation) names from publications. */
+    val allDepartments: StateFlow<List<String>> =
+        governmentPublications
+            .map { pubs -> pubs.map { it.organisation }.distinct().sorted() }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** All source recommendation names (department-stream pairs) for the FilterBottomSheet Sources section. */
+    val allSources: StateFlow<List<String>> =
+        governmentAnnouncementsRepository.observeAllRecommendations()
+            .map { recs -> recs.map { it.organisationName }.distinct().sorted() }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     // FTS search results with filters applied in Kotlin (RESEARCH.md §5.3 Approach B)
     // Skip debounce for empty queries — avoids a 300ms delayed no-op emission
@@ -280,6 +326,36 @@ class DirectoryViewModel @Inject constructor(
 
     fun setCurrentOnly(currentOnly: Boolean) {
         viewModelScope.launch { directoryFilterPreferences.setCurrentOnly(currentOnly) }
+    }
+
+    // --- Government filter operations (D-14) ---
+
+    fun toggleTagFilter(tag: String) {
+        viewModelScope.launch {
+            val current = filterState.value.tagFilter.toMutableSet()
+            if (tag in current) current.remove(tag) else current.add(tag)
+            directoryFilterPreferences.setTagFilter(current)
+        }
+    }
+
+    fun toggleSourceFilter(source: String) {
+        viewModelScope.launch {
+            val current = filterState.value.sourceFilter.toMutableSet()
+            if (source in current) current.remove(source) else current.add(source)
+            directoryFilterPreferences.setSourceFilter(current)
+        }
+    }
+
+    fun toggleDepartmentFilter(department: String) {
+        viewModelScope.launch {
+            val current = filterState.value.departmentFilter.toMutableSet()
+            if (department in current) current.remove(department) else current.add(department)
+            directoryFilterPreferences.setDepartmentFilter(current)
+        }
+    }
+
+    fun setTypeFilter(type: Int) {
+        viewModelScope.launch { directoryFilterPreferences.setTypeFilter(type) }
     }
 
     fun clearFilters() {

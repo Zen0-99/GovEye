@@ -43,11 +43,19 @@ data class DirectoryFilterState(
     val houseFilter: Int = 0,
     val currentOnly: Boolean = false,
     // feed filter — Following only toggle
-    val followingOnly: Boolean = false
+    val followingOnly: Boolean = false,
+    // Government announcement filters (D-14)
+    val tagFilter: Set<String> = emptySet(),
+    val sourceFilter: Set<String> = emptySet(),
+    val departmentFilter: Set<String> = emptySet(),
+    // Type filter — 0 = All, 1 = Publications, 2 = Statements, 3 = Legislation, 4 = Divisions
+    val typeFilter: Int = 0
 ) {
     val hasActiveFilters: Boolean
         get() = includedParties.isNotEmpty() || excludedParties.isNotEmpty() ||
-            houseFilter != 0 || currentOnly || followingOnly
+            houseFilter != 0 || currentOnly || followingOnly ||
+            tagFilter.isNotEmpty() || sourceFilter.isNotEmpty() ||
+            departmentFilter.isNotEmpty() || typeFilter != 0
 
     /**
      * Returns the [PartyFilterState] for [party] — DISABLED, INCLUDED, or EXCLUDED.

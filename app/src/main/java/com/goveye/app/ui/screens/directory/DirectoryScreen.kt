@@ -101,6 +101,9 @@ fun DirectoryScreen(
     val governmentStatements by viewModel.governmentStatements.collectAsStateWithLifecycle(emptyList())
     val governmentLegislation by viewModel.governmentLegislation.collectAsStateWithLifecycle(emptyList())
     val governmentLoading by viewModel.governmentLoading.collectAsStateWithLifecycle(true)
+    val allAnnouncementTags by viewModel.allAnnouncementTags.collectAsStateWithLifecycle(emptyList())
+    val allDepartments by viewModel.allDepartments.collectAsStateWithLifecycle(emptyList())
+    val allSources by viewModel.allSources.collectAsStateWithLifecycle(emptyList())
     val postcodeState by viewModel.postcodeResult.collectAsStateWithLifecycle()
     var showFilterSheet by remember { mutableStateOf(false) }
 
@@ -256,7 +259,14 @@ fun DirectoryScreen(
             onCurrentOnlyChange = viewModel::setCurrentOnly,
             onViewModeChange = viewModel::setViewMode,
             onClearFilters = viewModel::clearFilters,
-            onDismiss = { showFilterSheet = false }
+            onDismiss = { showFilterSheet = false },
+            allTags = allAnnouncementTags,
+            allDepartments = allDepartments,
+            allSources = allSources,
+            onTagToggle = viewModel::toggleTagFilter,
+            onDepartmentToggle = viewModel::toggleDepartmentFilter,
+            onSourceToggle = viewModel::toggleSourceFilter,
+            onTypeChange = viewModel::setTypeFilter
         )
     }
 }
