@@ -2,14 +2,70 @@ package com.goveye.app.ui.screens.feed
 
 import com.goveye.app.data.local.entity.RecessDateEntity
 import com.goveye.app.domain.model.Division
+import com.goveye.app.domain.model.GovernmentPublication
+import com.goveye.app.domain.model.Legislation
+import com.goveye.app.domain.model.WrittenStatement
 
 /**
- * A group of divisions sharing the same date, with a relative date header.
+ * Card type enum for type filtering in the feed and government tab.
+ */
+enum class CardType {
+    DIVISION,
+    PUBLICATION,
+    STATEMENT,
+    LEGISLATION
+}
+
+/**
+ * Sealed interface for mixed feed items — supports divisions, publications,
+ * statements, and legislation in a single chronological feed.
+ *
+ * Each subtype exposes a [date] (ISO format string) for chronological grouping
+ * and an [id] for LazyColumn keying.
+ */
+sealed interface FeedItem {
+    val date: String
+    val id: Int
+    val typePrefix: String
+    val cardType: CardType
+
+    data class DivisionItem(val division: Division, val tags: List<String> = emptyList()) : FeedItem {
+        override val date: String get() = division.date
+        override val id: Int get() = division.id
+        override val typePrefix: String = "division"
+        override val cardType: CardType = CardType.DIVISION
+    }
+
+    data class PublicationItem(val publication: GovernmentPublication, val tags: List<String> = emptyList()) :
+        FeedItem {
+        override val date: String get() = publication.firstPublishedAt
+        override val id: Int get() = publication.id
+        override val typePrefix: String = "publication"
+        override val cardType: CardType = CardType.PUBLICATION
+    }
+
+    data class StatementItem(val statement: WrittenStatement, val tags: List<String> = emptyList()) : FeedItem {
+        override val date: String get() = statement.dateMade
+        override val id: Int get() = statement.id
+        override val typePrefix: String = "statement"
+        override val cardType: CardType = CardType.STATEMENT
+    }
+
+    data class LegislationItem(val legislation: Legislation, val tags: List<String> = emptyList()) : FeedItem {
+        override val date: String get() = legislation.date
+        override val id: Int get() = legislation.id
+        override val typePrefix: String = "legislation"
+        override val cardType: CardType = CardType.LEGISLATION
+    }
+}
+
+/**
+ * A group of feed items sharing the same date, with a relative date header.
  */
 data class FeedDateGroup(
     val dateHeader: String, // "Today", "Yesterday", "20 August 2026"
     val dateKey: String, // ISO date "2026-08-20" for grouping
-    val divisions: List<Division>
+    val items: List<FeedItem>
 )
 
 /**
@@ -20,9 +76,14 @@ data class FeedUiState(
     val followedMemberIds: Set<Int> = emptySet(),
     val divisionsWithFollowedVotes: Set<Int> = emptySet(),
     val divisionTags: Map<Int, List<String>> = emptyMap(),
+    val announcementTags: Map<String, List<String>> = emptyMap(),
     val followingOnly: Boolean = false,
     val searchQuery: String = "",
     val houseFilter: Int = 0,
+    val tagFilter: Set<String> = emptySet(),
+    val sourceFilter: Set<String> = emptySet(),
+    val departmentFilter: Set<String> = emptySet(),
+    val typeFilter: Set<CardType> = emptySet(),
     val currentRecess: RecessDateEntity? = null,
     val isLoading: Boolean = true,
     val isEmpty: Boolean = false,

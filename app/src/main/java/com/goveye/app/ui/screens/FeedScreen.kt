@@ -13,8 +13,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,17 +30,20 @@ import com.goveye.app.ui.components.StickyInfoCard
 import com.goveye.app.ui.screens.directory.DirectoryFilterState
 import com.goveye.app.ui.screens.directory.FilterBottomSheet
 import com.goveye.app.ui.screens.directory.FilterTabType
+import com.goveye.app.ui.screens.divisions.TagMicroviewDialog
 import com.goveye.app.ui.screens.feed.FeedDateHeader
 import com.goveye.app.ui.screens.feed.FeedDivisionCard
+import com.goveye.app.ui.screens.feed.FeedItem
 import com.goveye.app.ui.screens.feed.FeedNoActivityEmptyState
 import com.goveye.app.ui.screens.feed.FeedNoFollowsEmptyState
+import com.goveye.app.ui.screens.feed.FeedPublicationCard
 import com.goveye.app.ui.screens.feed.FeedRecessEmptyState
-import com.goveye.app.ui.screens.divisions.TagMicroviewDialog
 import com.goveye.app.ui.screens.feed.FeedViewModel
 
 /**
- * Feed tab — chronological divisions feed with sticky date headers,
- * followed-MP highlighting, filter, and recess-aware empty states.
+ * Feed tab — chronological mixed feed with sticky date headers,
+ * showing divisions, publications, statements, and legislation.
+ * Followed-MP highlighting, filter, and recess-aware empty states.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -131,16 +134,15 @@ fun FeedScreen(
                         stickyHeader(key = "header-${group.dateKey}") {
                             FeedDateHeader(dateHeader = group.dateHeader)
                         }
-                        items(group.divisions, key = {
-                            "division-${it.id}"
-                        }, contentType = { "feed_division" }) { division ->
-                            val hasFollowed = division.id in state.divisionsWithFollowedVotes
-                            val tags = state.divisionTags[division.id] ?: emptyList()
-                            FeedDivisionCard(
-                                division = division,
-                                hasFollowedVotes = hasFollowed,
-                                onClick = { onNavigateToDivision(division.id, division.house) },
-                                tags = tags,
+                        items(
+                            items = group.items,
+                            key = { item -> "${item.typePrefix}-${item.id}" },
+                            contentType = { item -> "feed_${item.typePrefix}" }
+                        ) { item ->
+                            FeedItemCard(
+                                item = item,
+                                state = state,
+                                onNavigateToDivision = onNavigateToDivision,
                                 onTagClick = { tag -> selectedTag = tag }
                             )
                         }
@@ -178,5 +180,70 @@ fun FeedScreen(
             onNavigateToDivision = onNavigateToDivision,
             onDismiss = { selectedTag = null }
         )
+    }
+}
+
+/**
+ * Renders the appropriate card composable for a [FeedItem] subtype.
+ */
+@Composable
+private fun FeedItemCard(
+    item: FeedItem,
+    state: com.goveye.app.ui.screens.feed.FeedUiState,
+    onNavigateToDivision: (Int, Int) -> Unit,
+    onTagClick: (String) -> Unit
+) {
+    when (item) {
+        is FeedItem.DivisionItem -> {
+            val hasFollowed = item.division.id in state.divisionsWithFollowedVotes
+            FeedDivisionCard(
+                division = item.division,
+                hasFollowedVotes = hasFollowed,
+                onClick = { onNavigateToDivision(item.division.id, item.division.house) },
+                tags = item.tags,
+                onTagClick = onTagClick
+            )
+        }
+
+        is FeedItem.PublicationItem -> {
+            FeedPublicationCard(
+                publication = item.publication,
+                onClick = { /* TODO: navigate to publication detail */ },
+                tags = item.tags,
+                onTagClick = onTagClick
+            )
+        }
+
+        is FeedItem.StatementItem -> {
+            // StatementItem rendering — wired in Task 2 (FeedStatementCard)
+            // For now, render as a simple text placeholder
+            androidx.compose.material3.Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surfaceContainer
+            ) {
+                Text(
+                    text = item.statement.title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+        }
+
+        is FeedItem.LegislationItem -> {
+            // LegislationItem rendering — wired in Task 2 (FeedLegislationCard)
+            // For now, render as a simple text placeholder
+            androidx.compose.material3.Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surfaceContainer
+            ) {
+                Text(
+                    text = item.legislation.title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+        }
     }
 }
