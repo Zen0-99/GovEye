@@ -1,5 +1,6 @@
 package com.goveye.app.ui.screens
 
+import android.content.Context
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -15,19 +16,24 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.goveye.app.domain.ThemeMode
+import com.goveye.app.ui.settings.DownloadSettingsViewModel
 import com.goveye.app.ui.theme.ThemeViewModel
 import com.goveye.app.ui.theme.padding
+import com.goveye.app.work.WorkScheduler
 
 /**
- * Settings tab — appearance controls (D-18).
+ * Settings tab — appearance controls (D-18) and download settings.
  *
  * Light/dark/system mode toggle and AMOLED switch. The color scheme is
  * fixed to Sky (grayscale + blue/white background) and not user-selectable.
@@ -35,9 +41,14 @@ import com.goveye.app.ui.theme.padding
  *
  * Notification preferences are per-MP (accessed via the bell icon on each
  * MP's profile header), not global — so no notification toggles here.
+ *
+ * Download settings include a WiFi-only toggle that controls whether
+ * database updates happen exclusively over unmetered connections.
  */
 @Composable
-fun SettingsScreen(themeViewModel: ThemeViewModel, modifier: Modifier = Modifier) {
+fun SettingsScreen(themeViewModel: ThemeViewModel, modifier: Modifier = Modifier, onTestOnboarding: () -> Unit = {}) {
+    val downloadSettingsViewModel: DownloadSettingsViewModel = hiltViewModel()
+
     com.goveye.app.ui.components.ConfigureSearchBar(
         config = com.goveye.app.ui.components.SearchBarConfig(
             isVisible = true,
@@ -47,6 +58,8 @@ fun SettingsScreen(themeViewModel: ThemeViewModel, modifier: Modifier = Modifier
     val themeMode by themeViewModel.themeMode.collectAsStateWithLifecycle()
     val isAmoled by themeViewModel.isAmoled.collectAsStateWithLifecycle()
     val showInfoCards by themeViewModel.showInfoCards.collectAsStateWithLifecycle()
+    val wifiOnly by downloadSettingsViewModel.wifiOnly.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
     // AMOLED toggle only makes sense when the app is actually rendering dark.
     // In SYSTEM mode, that depends on the system dark setting.
@@ -123,6 +136,53 @@ fun SettingsScreen(themeViewModel: ThemeViewModel, modifier: Modifier = Modifier
                 checked = showInfoCards,
                 onCheckedChange = { themeViewModel.setShowInfoCards(it) }
             )
+        }
+
+        // --- Data / Download settings ---
+        Text(
+            text = "Data",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(top = MaterialTheme.padding.large)
+        )
+
+        // WiFi-only toggle
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Download over WiFi only",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Switch(
+                checked = wifiOnly,
+                onCheckedChange = { enabled ->
+                    downloadSettingsViewModel.setWifiOnly(enabled)
+                    // Re-schedule the periodic update worker with the new
+                    // network constraint so it takes effect immediately.
+                    WorkScheduler.scheduleDatabaseUpdateCheck(context, wifiOnly = enabled)
+                }
+            )
+        }
+
+        // --- Debug / Testing ---
+        Text(
+            text = "Testing",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(top = MaterialTheme.padding.large)
+        )
+
+        // Test onboarding button — shows the onboarding flow without
+        // triggering a download. Useful for testing UI changes.
+        OutlinedButton(
+            onClick = onTestOnboarding,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Test onboarding")
         }
     }
 }
