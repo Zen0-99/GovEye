@@ -73,7 +73,7 @@ fun MPsStep(
             .padding(horizontal = 24.dp)
             .statusBarsPadding()
     ) {
-        Spacer(Modifier.height(60.dp))
+        Spacer(Modifier.height(24.dp))
 
         // Title
         Text(
@@ -82,14 +82,14 @@ fun MPsStep(
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground
         )
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(4.dp))
         Text(
             text = "Party leaders and MPs who match your topics are recommended first.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(16.dp))
 
         // Content — LazyColumn with 3 sections
         LazyColumn(
@@ -242,15 +242,17 @@ fun MPsStep(
                     }
                 }
             }
-        }
 
-        // Skip for now — centered above Back/Continue row
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
-        ) {
-            TextButton(onClick = onSkip) {
-                Text("Skip for now")
+            // Skip for now — at the bottom of the list
+            item {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    TextButton(onClick = onSkip) {
+                        Text("Skip for now")
+                    }
+                }
             }
         }
 

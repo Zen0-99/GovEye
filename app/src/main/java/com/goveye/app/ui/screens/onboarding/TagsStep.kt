@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -33,6 +32,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 /**
@@ -71,7 +72,7 @@ fun TagsStep(
             .padding(horizontal = 24.dp)
             .statusBarsPadding()
     ) {
-        Spacer(Modifier.height(60.dp))
+        Spacer(Modifier.height(24.dp))
 
         // Title
         Text(
@@ -80,7 +81,7 @@ fun TagsStep(
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground
         )
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(4.dp))
         Text(
             text = "Select the areas you care about. We'll use these to recommend sources and MPs.",
             style = MaterialTheme.typography.bodyMedium,
@@ -93,9 +94,11 @@ fun TagsStep(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(16.dp))
 
-        // Tag grid — 2 columns with category headers spanning full width
+        // Tag grid — 2 columns with category headers spanning full width.
+        // Skip for now is the last item inside the grid so it scrolls with
+        // the content instead of being sticky.
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
             modifier = Modifier.weight(1f),
@@ -119,15 +122,17 @@ fun TagsStep(
                     )
                 }
             }
-        }
 
-        // Skip for now — centered above Back/Continue row
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
-        ) {
-            TextButton(onClick = onSkip) {
-                Text("Skip for now")
+            // Skip for now — at the bottom of the list, full width
+            item(span = { GridItemSpan(maxLineSpan) }, key = "skip") {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    TextButton(onClick = onSkip) {
+                        Text("Skip for now")
+                    }
+                }
             }
         }
 
@@ -149,7 +154,7 @@ fun TagsStep(
                 enabled = selectedTags.isNotEmpty(),
                 modifier = Modifier.weight(2f).height(48.dp)
             ) {
-                Text("Continue to sources")
+                Text("Continue")
             }
         }
     }
@@ -176,6 +181,9 @@ private fun CategoryHeader(title: String) {
  *   - primary border 2dp + primaryContainer 0.3 alpha bg when selected
  *   - outlineVariant border 1dp + surface bg when unselected
  *   - Checkmark badge top-right when selected
+ *
+ * Fixed height + single line text so all cards are the same height
+ * regardless of tag name length.
  */
 @Composable
 private fun TagCell(tagName: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
@@ -195,16 +203,17 @@ private fun TagCell(tagName: String, selected: Boolean, onClick: () -> Unit, mod
         },
         modifier = modifier
             .clickable(onClick = onClick)
-            .heightIn(min = 48.dp)
+            .height(56.dp)
             .border(width = borderWidth, color = borderColor, shape = RoundedCornerShape(16.dp))
     ) {
-        Box(modifier = Modifier.padding(16.dp)) {
+        Box(modifier = Modifier.padding(horizontal = 16.dp)) {
             Text(
                 text = tagName,
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 2,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.align(Alignment.CenterStart)
             )
 

@@ -46,13 +46,81 @@ object SourceRecommendationHelper {
     )
 
     /**
+     * Fallback tag→department mapping used when the source_recommendations
+     * table is empty (first launch before seed download completes).
+     * Maps each of the 26 tags to the most relevant 1-3 departments.
+     * Mirrors the hybrid mapping in build_source_recs.py (D-06).
+     */
+    private val FALLBACK_TAG_DEPARTMENTS: Map<String, List<Pair<String, String>>> = mapOf(
+        "Universal Credit" to listOf("department-for-work-and-pensions" to "Department for Work and Pensions"),
+        "PIP & Disability Benefits" to listOf("department-for-work-and-pensions" to "Department for Work and Pensions"),
+        "Disability" to listOf("department-for-work-and-pensions" to "Department for Work and Pensions"),
+        "Welfare & Social Security" to listOf("department-for-work-and-pensions" to "Department for Work and Pensions"),
+        "Immigration & Asylum" to listOf("home-office" to "Home Office"),
+        "Budget & Fiscal" to listOf("hm-treasury" to "HM Treasury"),
+        "Taxation" to listOf("hm-revenue-customs" to "HM Revenue & Customs", "hm-treasury" to "HM Treasury"),
+        "NHS" to listOf("department-of-health-and-social-care" to "Department of Health and Social Care"),
+        "Social Care" to listOf("department-of-health-and-social-care" to "Department of Health and Social Care"),
+        "Mental Health" to listOf("department-of-health-and-social-care" to "Department of Health and Social Care"),
+        "Education" to listOf("department-for-education" to "Department for Education"),
+        "Children & Families" to
+            listOf(
+                "department-for-education" to "Department for Education",
+                "department-for-work-and-pensions" to "Department for Work and Pensions"
+            ),
+        "Climate & Environment" to
+            listOf(
+                "department-for-energy-security-and-net-zero" to "Department for Energy Security and Net Zero",
+                "department-for-environment-food-rural-affairs" to "Department for Environment, Food & Rural Affairs"
+            ),
+        "Justice & Crime" to listOf("ministry-of-justice" to "Ministry of Justice", "home-office" to "Home Office"),
+        "Human Rights" to
+            listOf(
+                "ministry-of-justice" to "Ministry of Justice",
+                "attorney-generals-office" to "Attorney General's Office"
+            ),
+        "Defence" to listOf("ministry-of-defence" to "Ministry of Defence"),
+        "Housing" to
+            listOf(
+                "department-for-levelling-up-housing-and-communities" to
+                    "Department for Levelling Up, Housing and Communities"
+            ),
+        "Transport" to listOf("department-for-transport" to "Department for Transport"),
+        "Brexit & EU" to
+            listOf(
+                "foreign-commonwealth-development-office" to "Foreign, Commonwealth & Development Office",
+                "cabinet-office" to "Cabinet Office"
+            ),
+        "Foreign Policy" to
+            listOf("foreign-commonwealth-development-office" to "Foreign, Commonwealth & Development Office"),
+        "Employment & Workers" to
+            listOf(
+                "department-for-business-and-trade" to "Department for Business and Trade",
+                "department-for-work-and-pensions" to "Department for Work and Pensions"
+            ),
+        "Business & Enterprise" to listOf("department-for-business-and-trade" to "Department for Business and Trade"),
+        "Energy" to
+            listOf("department-for-energy-security-and-net-zero" to "Department for Energy Security and Net Zero"),
+        "Constitutional & Devolution" to
+            listOf("cabinet-office" to "Cabinet Office", "ministry-of-justice" to "Ministry of Justice"),
+        "Technology & Digital" to
+            listOf(
+                "department-for-science-innovation-and-technology" to
+                    "Department for Science, Innovation and Technology"
+            ),
+        "Agriculture & Farming" to
+            listOf(
+                "department-for-environment-food-rural-affairs" to "Department for Environment, Food & Rural Affairs"
+            )
+    )
+
+    /**
      * Maps selected tags to recommended departments using the
      * source_recommendations table (isRecommended=1 entries).
      *
-     * For each selected tag, queries source_recommendations where
-     * isRecommended=1. Groups by organisationSlug. For each department,
-     * all 3 streams are pre-checked (isChecked=true) per D-05.
-     * Deduplicates departments across tags.
+     * Falls back to [FALLBACK_TAG_DEPARTMENTS] when the DB table is empty
+     * (first launch before seed download completes) so the user always
+     * sees recommendations based on their selected tags.
      *
      * @return sorted by organisationName
      */
@@ -62,14 +130,32 @@ object SourceRecommendationHelper {
     ): List<RecommendedDepartment> {
         if (selectedTags.isEmpty()) return emptyList()
 
+        // Try DB-backed recommendations first
         val recommendedRecs = allRecommendations
             .filter { it.tag in selectedTags && it.isRecommended }
 
-        val byDepartment = recommendedRecs
-            .groupBy { it.organisationSlug }
-            .mapValues { (_, recs) -> recs.first().organisationName }
+        if (recommendedRecs.isNotEmpty()) {
+            val byDepartment = recommendedRecs
+                .groupBy { it.organisationSlug }
+                .mapValues { (_, recs) -> recs.first().organisationName }
 
-        return byDepartment.entries
+            return byDepartment.entries
+                .map { (slug, name) ->
+                    RecommendedDepartment(
+                        organisationSlug = slug,
+                        organisationName = name,
+                        streams = StreamType.ALL.map { StreamState(it, isChecked = true) }
+                    )
+                }
+                .sortedBy { it.organisationName }
+        }
+
+        // Fallback: static tag→department mapping (DB not yet populated)
+        val fallbackDepts = selectedTags
+            .flatMap { tag -> FALLBACK_TAG_DEPARTMENTS[tag] ?: emptyList() }
+            .distinctBy { it.first }
+
+        return fallbackDepts
             .map { (slug, name) ->
                 RecommendedDepartment(
                     organisationSlug = slug,

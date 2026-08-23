@@ -134,16 +134,44 @@ class MainActivity : ComponentActivity() {
                 if (showOnboarding) {
                     OnboardingScreen(
                         testMode = onboardingTestMode,
+                        onGovernmentSelected = {
+                            // Start the download + request notification permission
+                            // immediately when the user picks their country (step 1),
+                            // so the seed DB downloads in the background while the
+                            // user completes the remaining onboarding steps (tags,
+                            // sources, parties, MPs).
+                            MainScope().launch {
+                                onboardingPreferences.setSelectedGovernment("UK")
+
+                                // Request POST_NOTIFICATIONS on Android 13+ so the
+                                // download foreground notification is visible.
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                                    ContextCompat.checkSelfPermission(
+                                        this@MainActivity,
+                                        Manifest.permission.POST_NOTIFICATIONS
+                                    ) != PackageManager.PERMISSION_GRANTED
+                                ) {
+                                    notificationPermissionLauncher.launch(
+                                        Manifest.permission.POST_NOTIFICATIONS
+                                    )
+                                }
+
+                                // Enqueue the download worker immediately
+                                val wifiOnly = downloadPreferences.wifiOnly.first()
+                                WorkScheduler.enqueueDatabaseDownload(
+                                    this@MainActivity,
+                                    wifiOnly = wifiOnly
+                                )
+                                Log.i(TAG, "Download started during onboarding (government selected)")
+                            }
+                        },
                         onComplete = { selectedGov ->
                             if (!onboardingTestMode) {
-                                // Real onboarding — mark completed, store the
-                                // selected government, and proceed to download.
-                                // The download is gated on a government being
-                                // selected — it will not start until this
-                                // preference is set.
+                                // Onboarding complete — mark completed. The
+                                // download was already started when the user
+                                // selected their government (onGovernmentSelected).
                                 MainScope().launch {
                                     onboardingPreferences.setOnboardingCompleted(true)
-                                    onboardingPreferences.setSelectedGovernment(selectedGov)
                                 }
                             }
                             showOnboarding = false
@@ -174,11 +202,10 @@ class MainActivity : ComponentActivity() {
                 var retryCount by remember { mutableIntStateOf(0) }
 
                 LaunchedEffect(retryCount) {
-                    // Gate the download on a government being selected.
-                    // The user must choose a government during onboarding
-                    // before any download starts. We wait for the preference
-                    // to be non-null (the onboarding onComplete callback
-                    // writes it asynchronously via MainScope().launch).
+                    // Wait for a government to be selected before doing anything.
+                    // The download is started in onGovernmentSelected (during
+                    // onboarding step 1), not here. This LaunchedEffect observes
+                    // the worker progress and updates dbState accordingly.
                     val selectedGov = onboardingPreferences.selectedGovernment
                         .first { it != null }
                     if (selectedGov == null) {
@@ -188,40 +215,13 @@ class MainActivity : ComponentActivity() {
 
                     val isFirstLaunch = databaseUpdateManager.isFirstLaunch()
                     if (isFirstLaunch) {
-                        Log.i(TAG, "First launch (government=$selectedGov) — enqueuing DatabaseDownloadWorker")
+                        Log.i(TAG, "First launch (government=$selectedGov) — observing download worker")
                         dbState = DatabaseUpdateState.Downloading(0f, true)
 
-                        // Request POST_NOTIFICATIONS on Android 13+ so the
-                        // download foreground notification is visible.
-                        // Without this, the notification is silently
-                        // suppressed and the user has no indication the
-                        // download is happening.
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                            ContextCompat.checkSelfPermission(
-                                this@MainActivity,
-                                Manifest.permission.POST_NOTIFICATIONS
-                            ) != PackageManager.PERMISSION_GRANTED
-                        ) {
-                            // Launch permission request — don't wait for
-                            // result. The download proceeds regardless;
-                            // the notification just won't show if denied.
-                            notificationPermissionLauncher.launch(
-                                Manifest.permission.POST_NOTIFICATIONS
-                            )
-                        }
-
-                        // Enqueue the foreground-service worker. KEEP policy
-                        // means if the work is already running (e.g. Activity
-                        // recreated after minimization), the in-progress
-                        // download is not cancelled.
-                        val wifiOnly = downloadPreferences.wifiOnly.first()
-                        WorkScheduler.enqueueDatabaseDownload(this@MainActivity, wifiOnly = wifiOnly)
-
                         // Observe the worker's progress until it reaches a
-                        // terminal state. The download runs in a foreground
-                        // service, so it continues even if the app is
-                        // minimized — this observation just picks up the
-                        // current state when the UI is visible.
+                        // terminal state. The download was already enqueued
+                        // in onGovernmentSelected — this just picks up the
+                        // state for the UI.
                         val workInfoFlow = WorkManager.getInstance(this@MainActivity)
                             .getWorkInfosForUniqueWorkFlow(DatabaseDownloadWorker.WORK_NAME)
 
@@ -240,12 +240,6 @@ class MainActivity : ComponentActivity() {
 
                                 WorkInfo.State.SUCCEEDED -> {
                                     Log.i(TAG, "Download worker succeeded — needs restart")
-                                    // Don't navigate to the main screen yet.
-                                    // Room's InvalidationTracker is broken
-                                    // from database.close() during the
-                                    // download. Show a "Restart" button so
-                                    // the user can recreate the Activity
-                                    // and get fresh Room connections.
                                     dbState = DatabaseUpdateState.NeedsRestart
                                 }
 

@@ -77,7 +77,12 @@ import kotlinx.coroutines.delay
  *   [onComplete] does not trigger a download (used by Settings "Test onboarding").
  */
 @Composable
-fun OnboardingScreen(onComplete: (String) -> Unit, modifier: Modifier = Modifier, testMode: Boolean = false) {
+fun OnboardingScreen(
+    onComplete: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    testMode: Boolean = false,
+    onGovernmentSelected: (() -> Unit)? = null
+) {
     val viewModel: OnboardingViewModel = hiltViewModel()
     var currentStep by remember { mutableStateOf(0) }
     var fadingOut by remember { mutableStateOf(false) }
@@ -132,7 +137,16 @@ fun OnboardingScreen(onComplete: (String) -> Unit, modifier: Modifier = Modifier
             1 -> GovernmentSelectionStep(
                 selectedGovernment = selectedGov,
                 onSelectedChange = { selectedGov = it },
-                onContinue = { currentStep = 2 },
+                onContinue = {
+                    // Start the download + request notification permission
+                    // immediately when the user picks their country, so the
+                    // seed DB downloads in the background while the user
+                    // completes the remaining onboarding steps.
+                    if (!testMode) {
+                        onGovernmentSelected?.invoke()
+                    }
+                    currentStep = 2
+                },
                 onBack = { currentStep = 0 }
             )
 
@@ -272,7 +286,7 @@ private fun GovernmentSelectionStep(
             .padding(horizontal = 24.dp)
             .statusBarsPadding()
     ) {
-        Spacer(Modifier.height(60.dp))
+        Spacer(Modifier.height(24.dp))
 
         // Title
         Text(
@@ -281,7 +295,7 @@ private fun GovernmentSelectionStep(
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground
         )
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(4.dp))
         Text(
             text = "Select the government you want to keep an eye on. " +
                 "More countries coming soon.",
@@ -289,7 +303,7 @@ private fun GovernmentSelectionStep(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(16.dp))
 
         // Government cards
         GovernmentCard(

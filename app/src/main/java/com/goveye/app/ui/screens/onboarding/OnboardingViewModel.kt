@@ -132,12 +132,13 @@ constructor(
             SourceRecommendationHelper.getAllSources()
         )
 
-    /** Active parties with seat counts (from MpDao). */
+    /** Active parties with seat counts (from MpDao). Falls back to a
+     *  static list when the DB is empty (first launch before seed download). */
     val parties: StateFlow<List<PartyInfo>> =
         flow {
             try {
                 val summaries = mpDao.getActiveParties()
-                emit(summaries.map { it.toPartyInfo() })
+                emit(if (summaries.isEmpty()) emptyList() else summaries.map { it.toPartyInfo() })
             } catch (e: Exception) {
                 emit(emptyList())
             }

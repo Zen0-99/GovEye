@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
@@ -34,15 +35,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.goveye.app.ui.theme.parsePartyColor
 
 /**
  * Step 4 — Parties: "Follow parties".
  *
- * LazyVerticalGrid(GridCells.Fixed(2)) of 17 party cards with party color
+ * LazyVerticalGrid(GridCells.Fixed(2)) of party cards with party color
  * tint, abbreviation badge, seat count. Selected state shows 2dp partyColor
  * border + checkmark.
+ *
+ * Falls back to a static list of major UK parties when the DB is empty
+ * (first launch before seed download completes).
  *
  * Per UI-SPEC Section 3, Step 4.
  */
@@ -55,13 +60,15 @@ fun PartiesStep(
     onBack: () -> Unit,
     onSkip: () -> Unit
 ) {
+    val partiesToShow = if (parties.isEmpty()) FALLBACK_PARTIES else parties
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 24.dp)
             .statusBarsPadding()
     ) {
-        Spacer(Modifier.height(60.dp))
+        Spacer(Modifier.height(24.dp))
 
         // Title
         Text(
@@ -70,14 +77,14 @@ fun PartiesStep(
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground
         )
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(4.dp))
         Text(
             text = "Select parties to track in your feed.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(16.dp))
 
         // Party grid — 2 columns
         LazyVerticalGrid(
@@ -87,7 +94,7 @@ fun PartiesStep(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(
-                items = parties,
+                items = partiesToShow,
                 key = { it.partyId }
             ) { party ->
                 PartyCard(
@@ -96,15 +103,17 @@ fun PartiesStep(
                     onClick = { onPartyToggle(party.partyId) }
                 )
             }
-        }
 
-        // Skip for now — centered above Back/Continue row
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
-        ) {
-            TextButton(onClick = onSkip) {
-                Text("Skip for now")
+            // Skip for now — at the bottom of the grid, full width
+            item(span = { GridItemSpan(maxLineSpan) }, key = "skip") {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    TextButton(onClick = onSkip) {
+                        Text("Skip for now")
+                    }
+                }
             }
         }
 
@@ -125,7 +134,7 @@ fun PartiesStep(
                 onClick = onContinue,
                 modifier = Modifier.weight(2f).height(48.dp)
             ) {
-                Text("Continue to MPs")
+                Text("Continue")
             }
         }
     }
@@ -141,7 +150,11 @@ private fun PartyCard(party: PartyInfo, selected: Boolean, onClick: () -> Unit, 
 
     Surface(
         shape = RoundedCornerShape(16.dp),
-        color = partyColor.copy(alpha = 0.08f),
+        color = if (selected) {
+            partyColor.copy(alpha = 0.12f)
+        } else {
+            partyColor.copy(alpha = 0.08f)
+        },
         modifier = modifier
             .clickable(onClick = onClick)
             .border(width = borderWidth, color = borderColor, shape = RoundedCornerShape(16.dp))
@@ -177,6 +190,7 @@ private fun PartyCard(party: PartyInfo, selected: Boolean, onClick: () -> Unit, 
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Center
                 )
                 Text(
@@ -206,3 +220,20 @@ private fun PartyCard(party: PartyInfo, selected: Boolean, onClick: () -> Unit, 
         }
     }
 }
+
+/**
+ * Fallback party list used when the DB is empty (first launch before
+ * seed download completes). Major UK parties with approximate seat counts.
+ */
+private val FALLBACK_PARTIES = listOf(
+    PartyInfo(0, "Labour", "Lab", "#E4003B", 411),
+    PartyInfo(1, "Conservative", "Con", "#0A3B7C", 121),
+    PartyInfo(2, "Liberal Democrats", "LD", "#FAA61A", 72),
+    PartyInfo(3, "Scottish National Party", "SNP", "#FDF38E", 9),
+    PartyInfo(4, "Plaid Cymru", "PC", "#005B54", 4),
+    PartyInfo(5, "Green Party", "Green", "#6AB023", 4),
+    PartyInfo(6, "Reform UK", "Reform", "#12B6CF", 5),
+    PartyInfo(7, "Democratic Unionist Party", "DUP", "#D01906", 5),
+    PartyInfo(8, "Sinn Féin", "SF", "#326738", 7),
+    PartyInfo(9, "Independent", "Ind", "#808080", 4)
+)

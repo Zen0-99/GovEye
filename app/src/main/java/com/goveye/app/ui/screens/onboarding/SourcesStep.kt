@@ -1,6 +1,9 @@
 package com.goveye.app.ui.screens.onboarding
 
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -8,34 +11,34 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 /**
  * Step 3 — Sources: "Choose your sources".
  *
- * LazyColumn with two sections:
- * - "Recommended" — departments matching user tags with 3 stream checkboxes
- *   pre-checked per D-05.
- * - "All sources" — all 75 department-stream combinations grouped by department.
- *
- * If no tags selected, Recommended section shows a hint.
+ * Recommended and all sources displayed as rounded rectangle cards
+ * (matching the TagsStep card design). Tapping a department card
+ * toggles all 3 streams at once.
  *
  * Per UI-SPEC Section 3, Step 3.
  */
@@ -56,7 +59,7 @@ fun SourcesStep(
             .padding(horizontal = 24.dp)
             .statusBarsPadding()
     ) {
-        Spacer(Modifier.height(60.dp))
+        Spacer(Modifier.height(24.dp))
 
         // Title
         Text(
@@ -65,15 +68,14 @@ fun SourcesStep(
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground
         )
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(4.dp))
         Text(
-            text = "Recommended based on your topics. Follow departments to see their " +
-                "publications, statements, and legislation.",
+            text = "Recommended based on your topics. Tap a department to follow all its streams.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(16.dp))
 
         // Content — LazyColumn with Recommended + All sources sections
         LazyColumn(
@@ -96,20 +98,28 @@ fun SourcesStep(
                         text = "Select topics to see recommendations",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 24.dp)
+                        modifier = Modifier.padding(vertical = 16.dp)
+                    )
+                }
+            } else if (recommendedDepartments.isEmpty()) {
+                item {
+                    Text(
+                        text = "No recommendations available yet — the database is still downloading.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 16.dp)
                     )
                 }
             } else {
                 items(
                     items = recommendedDepartments,
-                    key = { it.organisationSlug }
+                    key = { "rec-${it.organisationSlug}" }
                 ) { dept ->
-                    RecommendedDepartmentCard(
-                        department = dept,
+                    SourceCard(
+                        name = dept.organisationName,
+                        streams = dept.streams,
                         selectedSources = selectedSources,
+                        organisationSlug = dept.organisationSlug,
                         onSourceToggle = onSourceToggle
                     )
                 }
@@ -127,37 +137,27 @@ fun SourcesStep(
             }
 
             allDepartments.forEach { dept ->
-                item(key = "header-${dept.organisationSlug}") {
-                    Text(
-                        text = dept.organisationName,
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)
-                    )
-                }
-                items(
-                    items = dept.streams,
-                    key = { "${dept.organisationSlug}-${it.streamType.name}" }
-                ) { stream ->
-                    val sourceKey = "${dept.organisationSlug}:${stream.streamType.name}"
-                    val isChecked = sourceKey in selectedSources
-                    StreamCheckboxRow(
-                        label = stream.streamType.displayName,
-                        isChecked = isChecked,
-                        onToggle = { onSourceToggle(sourceKey) }
+                item(key = "all-${dept.organisationSlug}") {
+                    SourceCard(
+                        name = dept.organisationName,
+                        streams = dept.streams,
+                        selectedSources = selectedSources,
+                        organisationSlug = dept.organisationSlug,
+                        onSourceToggle = onSourceToggle
                     )
                 }
             }
-        }
 
-        // Skip for now — centered above Back/Continue row
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
-        ) {
-            TextButton(onClick = onSkip) {
-                Text("Skip for now")
+            // Skip for now — at the bottom of the list
+            item {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    TextButton(onClick = onSkip) {
+                        Text("Skip for now")
+                    }
+                }
             }
         }
 
@@ -178,43 +178,97 @@ fun SourcesStep(
                 onClick = onContinue,
                 modifier = Modifier.weight(2f).height(48.dp)
             ) {
-                Text("Continue to parties")
+                Text("Continue")
             }
         }
     }
 }
 
+/**
+ * A source card — rounded rectangle matching the TagsStep card design.
+ * Shows department name + stream chips. Tapping the card toggles all 3 streams.
+ * Selected state (all streams checked) shows primary border + checkmark.
+ */
 @Composable
-private fun RecommendedDepartmentCard(
-    department: RecommendedDepartment,
+private fun SourceCard(
+    name: String,
+    streams: List<StreamState>,
     selectedSources: Set<String>,
-    onSourceToggle: (String) -> Unit
+    organisationSlug: String,
+    onSourceToggle: (String) -> Unit,
+    modifier: Modifier = Modifier
 ) {
+    val allSelected = streams.all { stream ->
+        "$organisationSlug:${stream.streamType.name}" in selectedSources
+    }
+    val anySelected = streams.any { stream ->
+        "$organisationSlug:${stream.streamType.name}" in selectedSources
+    }
+    val borderColor = if (allSelected) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.outlineVariant
+    }
+    val borderWidth = if (allSelected) 2.dp else 1.dp
+
     Surface(
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surface,
-        modifier = Modifier.fillMaxWidth()
+        color = if (allSelected) {
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+        } else {
+            MaterialTheme.colorScheme.surface
+        },
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable {
+                // Toggle all 3 streams at once
+                streams.forEach { stream ->
+                    onSourceToggle("$organisationSlug:${stream.streamType.name}")
+                }
+            }
+            .border(width = borderWidth, color = borderColor, shape = RoundedCornerShape(16.dp))
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = department.organisationName,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Spacer(Modifier.height(8.dp))
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                department.streams.forEach { stream ->
-                    val sourceKey = "${department.organisationSlug}:${stream.streamType.name}"
-                    val isChecked = sourceKey in selectedSources
-                    StreamCheckboxRow(
-                        label = stream.streamType.displayName,
-                        isChecked = isChecked,
-                        onToggle = { onSourceToggle(sourceKey) },
-                        modifier = Modifier.weight(1f)
+        Box(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(Modifier.height(4.dp))
+                // Stream chips — show which streams are followed
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    streams.forEach { stream ->
+                        val sourceKey = "$organisationSlug:${stream.streamType.name}"
+                        val isChecked = sourceKey in selectedSources
+                        StreamChip(
+                            label = stream.streamType.displayName,
+                            isChecked = isChecked || allSelected
+                        )
+                    }
+                }
+            }
+
+            // Checkmark — top right corner
+            if (allSelected) {
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .size(24.dp)
+                        .align(Alignment.TopEnd)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Check,
+                        contentDescription = "Selected",
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.padding(4.dp)
                     )
                 }
             }
@@ -222,20 +276,41 @@ private fun RecommendedDepartmentCard(
     }
 }
 
+/**
+ * A small chip showing a stream name with a check indicator.
+ */
 @Composable
-private fun StreamCheckboxRow(label: String, isChecked: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifier) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier
+private fun StreamChip(label: String, isChecked: Boolean) {
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = if (isChecked) {
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+        }
     ) {
-        Checkbox(
-            checked = isChecked,
-            onCheckedChange = { onToggle() }
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+        ) {
+            if (isChecked) {
+                Icon(
+                    imageVector = Icons.Outlined.Check,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = if (isChecked) {
+                    MaterialTheme.colorScheme.onSurface
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                }
+            )
+        }
     }
 }
