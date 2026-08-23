@@ -2,7 +2,6 @@ package com.goveye.app.work
 
 import android.content.Context
 import android.content.pm.ServiceInfo
-import android.os.Process
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.hilt.work.HiltWorker
@@ -86,8 +85,10 @@ class DatabaseDownloadWorker @AssistedInject constructor(
         val result = databaseUpdateManager.downloadSeedDb { progress ->
             Log.d(TAG, "Download progress: ${(progress * 100).toInt()}%")
 
-            // Report progress to WorkInfo for UI observation
-            setProgressAsync(workDataOf(KEY_PROGRESS to progress))
+            // Report progress to WorkInfo for UI observation.
+            // Use the suspend setProgress (not setProgressAsync) so
+            // updates are delivered reliably to the observer in MainActivity.
+            setProgress(workDataOf(KEY_PROGRESS to progress))
 
             // Update the notification periodically (avoid flooding)
             if (progress - lastNotificationUpdate >= NOTIFICATION_UPDATE_THRESHOLD || progress >= 1f) {
@@ -98,15 +99,13 @@ class DatabaseDownloadWorker @AssistedInject constructor(
 
         return when (result) {
             is DatabaseUpdateState.UpToDate -> {
-                Log.i(TAG, "Download and merge complete — restarting process for fresh Room")
+                Log.i(TAG, "Download and merge complete — waiting for user to restart")
                 updateForegroundNotification(1f, "Download complete")
-                // Give WorkManager a moment to persist the success state,
-                // then kill the process so Android restarts the Activity
-                // with a fresh Room instance. Without this, the InvalidationTracker
-                // is broken from database.close() during the download and Flow
-                // queries never emit — all screens show empty data.
-                delay(500)
-                Process.killProcess(Process.myPid())
+                // Don't auto-relaunch the Activity. The UI observes
+                // WorkInfo.State.SUCCEEDED and shows a "Restart" button.
+                // The user taps it to recreate the Activity, which gives
+                // all ViewModels fresh Room connections (InvalidationTracker
+                // is broken from database.close() during the download).
                 Result.success()
             }
 

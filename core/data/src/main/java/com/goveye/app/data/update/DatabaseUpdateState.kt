@@ -46,6 +46,14 @@ sealed interface DatabaseUpdateState {
 
     /** Metered connection detected before a full DB download (Pitfall 4). */
     data object NeedsWifi : DatabaseUpdateState
+
+    /**
+     * Seed DB download is complete, but Room's InvalidationTracker is broken
+     * from `database.close()` during the download. The user must tap
+     * "Restart" to recreate the Activity so all ViewModels and Flow
+     * collectors get fresh Room connections.
+     */
+    data object NeedsRestart : DatabaseUpdateState
 }
 
 /**

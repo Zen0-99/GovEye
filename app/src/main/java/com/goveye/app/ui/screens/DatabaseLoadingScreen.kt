@@ -1,12 +1,16 @@
 package com.goveye.app.ui.screens
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Wifi
@@ -37,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -47,17 +53,21 @@ import com.goveye.app.data.update.DatabaseUpdateState
  * Loading screen shown during first-launch DB download and patch application.
  *
  * Layout:
- * - Top: "GovEye" title + "Downloading parliamentary data" subtitle
+ * - Top: "GovEye" title + subtitle
  * - Center: Large circular progress indicator with percentage inside
- * - Bottom: "This only happens once" hint
+ * - Bottom: "You can minimise the app" hint (during download) or
+ *   Restart button (after download completes)
  *
- * Background matches the app's theme (MaterialTheme.colorScheme.background),
- * same as Scaffold's default containerColor used throughout the app.
+ * When the download completes, the circular progress ring fills to 100%
+ * and the percentage text fades into a checkmark icon inside the same
+ * circle. A Restart button appears at the bottom — same design as the
+ * onboarding Continue button.
  *
  * @param state The current [DatabaseUpdateState] driving the UI.
  * @param onDownloadNow Called when the user confirms download on metered connection.
  * @param onWaitForWifi Called when the user chooses to wait for Wi-Fi.
  * @param onRetry Called when the user taps Retry after a download failure.
+ * @param onRestart Called when the user taps Restart after download completes.
  */
 @Composable
 fun DatabaseLoadingScreen(
@@ -65,6 +75,7 @@ fun DatabaseLoadingScreen(
     onDownloadNow: () -> Unit = {},
     onWaitForWifi: () -> Unit = {},
     onRetry: () -> Unit = {},
+    onRestart: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showWifiDialog by remember { mutableStateOf(state is DatabaseUpdateState.NeedsWifi) }
@@ -75,6 +86,8 @@ fun DatabaseLoadingScreen(
         state is DatabaseUpdateState.Applying ||
         state is DatabaseUpdateState.NeedsFullDownload
 
+    val isRestartState = state is DatabaseUpdateState.NeedsRestart
+
     val subtitle = when (state) {
         is DatabaseUpdateState.Downloading -> "Downloading parliamentary data"
         is DatabaseUpdateState.Checking -> "Checking for updates"
@@ -83,6 +96,7 @@ fun DatabaseLoadingScreen(
         is DatabaseUpdateState.NeedsFullDownload -> "Preparing download"
         is DatabaseUpdateState.NeedsWifi -> "Waiting for Wi-Fi"
         is DatabaseUpdateState.Failed -> "Download failed"
+        is DatabaseUpdateState.NeedsRestart -> "Download complete"
         else -> "Loading"
     }
 
@@ -115,8 +129,10 @@ fun DatabaseLoadingScreen(
         }
 
         // ── Center: circular progress ─────────────────────────────────
+        // Shown during download AND after completion — the circle stays
+        // in place; only the content inside changes (percentage → checkmark).
         AnimatedVisibility(
-            visible = isProgressState,
+            visible = isProgressState || isRestartState,
             enter = fadeIn(),
             exit = fadeOut(),
             modifier = Modifier.align(Alignment.Center)
@@ -145,7 +161,7 @@ fun DatabaseLoadingScreen(
             WifiNeededSection(onDownloadAnyway = { showWifiDialog = true })
         }
 
-        // ── Bottom: hint ──────────────────────────────────────────────
+        // ── Bottom: hint (during download) or restart button (after) ──
         AnimatedVisibility(
             visible = isProgressState,
             enter = fadeIn(),
@@ -155,10 +171,28 @@ fun DatabaseLoadingScreen(
                 .padding(bottom = 80.dp)
         ) {
             Text(
-                text = "This only happens once",
+                text = "You can minimise the app",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
             )
+        }
+
+        // Restart button — same design as onboarding Continue button.
+        // Bottom-aligned, full width, 48dp height. No back button.
+        AnimatedVisibility(
+            visible = isRestartState,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(start = 24.dp, end = 24.dp, bottom = 32.dp)
+        ) {
+            Button(
+                onClick = onRestart,
+                modifier = Modifier.fillMaxWidth().height(48.dp)
+            ) {
+                Text("Restart GovEye")
+            }
         }
     }
 
@@ -206,14 +240,24 @@ fun DatabaseLoadingScreen(
  * to it and continues toward the next milestone.
  *
  * For indeterminate states (checking, applying, preparing), shows a spinner.
+ *
+ * For the NeedsRestart state (download complete), the ring fills to 100% and
+ * the percentage text fades out while a checkmark icon fades in — all inside
+ * the same circle, so there's no layout jump.
  */
 @Composable
 private fun CircularProgressWithPercentage(state: DatabaseUpdateState) {
     val isDownloading = state is DatabaseUpdateState.Downloading &&
         (state as DatabaseUpdateState.Downloading).isFullDb
 
-    if (isDownloading) {
-        val actualProgress = (state as DatabaseUpdateState.Downloading).progress
+    val isRestartState = state is DatabaseUpdateState.NeedsRestart
+
+    if (isDownloading || isRestartState) {
+        val actualProgress = if (isRestartState) {
+            1f
+        } else {
+            (state as DatabaseUpdateState.Downloading).progress
+        }
 
         // Fake smooth progress: animates toward the next milestone so the user
         // sees continuous movement. When actual progress jumps ahead, snaps to it.
@@ -239,6 +283,22 @@ private fun CircularProgressWithPercentage(state: DatabaseUpdateState) {
         val progress = displayedProgress.value
         val percent = (progress * 100).toInt()
 
+        // Animate the alpha of percentage text vs checkmark — when download
+        // completes, percentage fades out and checkmark fades in.
+        val contentAlpha = remember { androidx.compose.animation.core.Animatable(1f) }
+
+        LaunchedEffect(isRestartState) {
+            if (isRestartState) {
+                // Snap progress to 100% first
+                displayedProgress.snapTo(1f)
+                // Fade percentage out, checkmark in
+                contentAlpha.animateTo(
+                    targetValue = 0f,
+                    animationSpec = tween(durationMillis = 600, easing = androidx.compose.animation.core.LinearEasing)
+                )
+            }
+        }
+
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier.size(280.dp)
@@ -259,14 +319,34 @@ private fun CircularProgressWithPercentage(state: DatabaseUpdateState) {
                 strokeWidth = 12.dp,
                 strokeCap = StrokeCap.Round
             )
-            // Percentage text in center — large
-            Text(
-                text = "$percent%",
-                style = MaterialTheme.typography.displayLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-                fontSize = 64.sp
-            )
+            // Center content — cross-fade between percentage and checkmark.
+            // percentageAlpha goes from 1 → 0 when download completes.
+            // checkmarkAlpha is the inverse (0 → 1).
+            val percentageAlpha = contentAlpha.value
+            val checkmarkAlpha = 1f - contentAlpha.value
+
+            // Percentage text — fades out on completion
+            if (percentageAlpha > 0.01f) {
+                Text(
+                    text = "$percent%",
+                    style = MaterialTheme.typography.displayLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 64.sp,
+                    modifier = Modifier.graphicsLayer { alpha = percentageAlpha }
+                )
+            }
+            // Checkmark icon — fades in on completion
+            if (checkmarkAlpha > 0.01f) {
+                Icon(
+                    imageVector = Icons.Outlined.Check,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .size(80.dp)
+                        .graphicsLayer { alpha = checkmarkAlpha }
+                )
+            }
         }
     } else {
         // Indeterminate spinner — same 280dp size as the determinate circle

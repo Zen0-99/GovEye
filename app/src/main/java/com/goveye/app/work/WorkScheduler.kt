@@ -18,6 +18,9 @@ import java.util.concurrent.TimeUnit
  * - [enqueueVotePollingOneShot]: One-shot — triggered after a votes patch.
  * - [enqueueBillPollingOneShot]: One-shot — triggered after a bills patch.
  *
+ * All database update workers respect the [wifiOnly] parameter: when true,
+ * they use [NetworkType.UNMETERED] so updates only happen over WiFi.
+ *
  * No periodic polling workers — all change detection is DB-patch-driven (D-09).
  */
 object WorkScheduler {
@@ -76,10 +79,13 @@ object WorkScheduler {
      * doesn't replace an already-scheduled worker. Initial delay is 15
      * minutes after app start (the startup check in MainActivity handles
      * the immediate check).
+     *
+     * @param wifiOnly When true, uses [NetworkType.UNMETERED] so the update
+     *   check only runs over WiFi.
      */
-    fun scheduleDatabaseUpdateCheck(context: Context) {
+    fun scheduleDatabaseUpdateCheck(context: Context, wifiOnly: Boolean = false) {
         val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .setRequiredNetworkType(if (wifiOnly) NetworkType.UNMETERED else NetworkType.CONNECTED)
             .build()
 
         val request = PeriodicWorkRequestBuilder<DatabaseUpdateWorker>(
@@ -111,10 +117,12 @@ object WorkScheduler {
      * so the download continues even when the app is minimized.
      *
      * @param context Android context.
+     * @param wifiOnly When true, uses [NetworkType.UNMETERED] so the download
+     *   only runs over WiFi.
      */
-    fun enqueueDatabaseDownload(context: Context) {
+    fun enqueueDatabaseDownload(context: Context, wifiOnly: Boolean = false) {
         val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .setRequiredNetworkType(if (wifiOnly) NetworkType.UNMETERED else NetworkType.CONNECTED)
             .build()
 
         val request = OneTimeWorkRequestBuilder<DatabaseDownloadWorker>()
