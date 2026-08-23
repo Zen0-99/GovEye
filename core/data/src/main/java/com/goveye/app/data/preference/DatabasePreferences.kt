@@ -71,6 +71,18 @@ class DatabasePreferences @Inject constructor(@Named("database") private val dat
     /** Current local historical-members stream version, or null if never updated. */
     val historicalMembersVersion: Flow<Int?> = dataStore.data.map { it[HISTORICAL_MEMBERS_VERSION_KEY] }
 
+    /** Current local debates stream version, or null if never updated. */
+    val debatesVersion: Flow<Int?> = dataStore.data.map { it[DEBATES_VERSION_KEY] }
+
+    /** Current local gov-publications stream version, or null if never updated. */
+    val govPublicationsVersion: Flow<Int?> = dataStore.data.map { it[GOV_PUBLICATIONS_VERSION_KEY] }
+
+    /** Current local written-statements stream version, or null if never updated. */
+    val writtenStatementsVersion: Flow<Int?> = dataStore.data.map { it[WRITTEN_STATEMENTS_VERSION_KEY] }
+
+    /** Current local legislation stream version, or null if never updated. */
+    val legislationVersion: Flow<Int?> = dataStore.data.map { it[LEGISLATION_VERSION_KEY] }
+
     /**
      * Seed DB version — null means first launch (seed DB not yet downloaded).
      * Set to 1 after the first-launch download completes.
@@ -129,6 +141,22 @@ class DatabasePreferences @Inject constructor(@Named("database") private val dat
         dataStore.edit { it[HISTORICAL_MEMBERS_VERSION_KEY] = version }
     }
 
+    suspend fun setDebatesVersion(version: Int) {
+        dataStore.edit { it[DEBATES_VERSION_KEY] = version }
+    }
+
+    suspend fun setGovPublicationsVersion(version: Int) {
+        dataStore.edit { it[GOV_PUBLICATIONS_VERSION_KEY] = version }
+    }
+
+    suspend fun setWrittenStatementsVersion(version: Int) {
+        dataStore.edit { it[WRITTEN_STATEMENTS_VERSION_KEY] = version }
+    }
+
+    suspend fun setLegislationVersion(version: Int) {
+        dataStore.edit { it[LEGISLATION_VERSION_KEY] = version }
+    }
+
     suspend fun setSeedVersion(version: Int) {
         dataStore.edit { it[SEED_VERSION_KEY] = version }
     }
@@ -169,6 +197,10 @@ class DatabasePreferences @Inject constructor(@Named("database") private val dat
         val MANIFESTOS_VERSION_KEY = intPreferencesKey("manifestos_version")
         val PARTY_STATS_VERSION_KEY = intPreferencesKey("party_stats_version")
         val HISTORICAL_MEMBERS_VERSION_KEY = intPreferencesKey("historical_members_version")
+        val DEBATES_VERSION_KEY = intPreferencesKey("debates_version")
+        val GOV_PUBLICATIONS_VERSION_KEY = intPreferencesKey("gov_publications_version")
+        val WRITTEN_STATEMENTS_VERSION_KEY = intPreferencesKey("written_statements_version")
+        val LEGISLATION_VERSION_KEY = intPreferencesKey("legislation_version")
         val SEED_VERSION_KEY = intPreferencesKey("seed_version")
         val LAST_NOTIFIED_DIVISION_ID_KEY = intPreferencesKey("last_notified_division_id")
         val LAST_NOTIFIED_BILL_STAGES_KEY = stringPreferencesKey("last_notified_bill_stages")

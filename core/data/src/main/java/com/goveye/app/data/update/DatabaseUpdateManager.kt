@@ -25,6 +25,7 @@ import com.goveye.app.data.local.entity.PartyStatsEntity
 import com.goveye.app.data.local.entity.RecessDateEntity
 import com.goveye.app.data.local.entity.RecessDatesMetaEntity
 import com.goveye.app.data.preference.DatabasePreferences
+import com.goveye.app.data.preference.DownloadPreferences
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.io.IOException
@@ -39,6 +40,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.decodeFromStream
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -65,6 +67,7 @@ import okhttp3.Request
 @Singleton
 class DatabaseUpdateManager @Inject constructor(
     private val preferences: DatabasePreferences,
+    private val downloadPreferences: DownloadPreferences,
     private val json: Json,
     @ApplicationContext private val context: Context,
     private val database: BundledDatabase,
@@ -191,22 +194,29 @@ class DatabaseUpdateManager @Inject constructor(
      */
     suspend fun applyPatches(patches: List<PatchInfo>): DatabaseUpdateState = withContext(Dispatchers.IO) {
         return@withContext try {
-            // 1. Download and parse all patch.json files, merge changes maps
+            // 1. Download and parse all patch.json files, merge changes maps.
+            //    Large patches (e.g. expenses with 144K rows ≈ 114MB) are streamed
+            //    to a temp file and parsed via decodeFromStream to avoid OOM from
+            //    loading the entire JSON as a single string.
             val combinedChanges = mutableMapOf<String, TableChanges>()
             for (patchInfo in patches) {
-                val patchJson = downloadAssetText(patchInfo.patchUrl)
-                val patch = json.decodeFromString<DatabasePatch>(patchJson)
+                val patchFile = downloadAssetToFile(patchInfo.patchUrl, "patch_${patchInfo.streamName}.json")
+                patchFile.use { scope ->
+                    val patch = scope.file.inputStream().use { stream ->
+                        json.decodeFromStream<DatabasePatch>(stream)
+                    }
 
-                // Merge changes — each patch touches only its own tables (no conflicts)
-                for ((tableName, changes) in patch.changes) {
-                    val existing = combinedChanges[tableName]
-                    if (existing != null) {
-                        combinedChanges[tableName] = TableChanges(
-                            upsert = existing.upsert + changes.upsert,
-                            delete = existing.delete + changes.delete
-                        )
-                    } else {
-                        combinedChanges[tableName] = changes
+                    // Merge changes — each patch touches only its own tables (no conflicts)
+                    for ((tableName, changes) in patch.changes) {
+                        val existing = combinedChanges[tableName]
+                        if (existing != null) {
+                            combinedChanges[tableName] = TableChanges(
+                                upsert = existing.upsert + changes.upsert,
+                                delete = existing.delete + changes.delete
+                            )
+                        } else {
+                            combinedChanges[tableName] = changes
+                        }
                     }
                 }
             }
@@ -249,15 +259,27 @@ class DatabaseUpdateManager @Inject constructor(
      * Checks for metered connection first (Pitfall 4) — returns
      * [DatabaseUpdateState.NeedsWifi] if on mobile data.
      *
+     * @param wifiOnly When non-null, controls whether to refuse downloads on
+     *   metered connections. When null, reads the [DownloadPreferences.wifiOnly]
+     *   flow at call time.
      * @param onProgress Callback receiving download progress as 0f..1f.
      * @return [DatabaseUpdateState.UpToDate] on success, [DatabaseUpdateState.Failed]
      *         or [DatabaseUpdateState.NeedsWifi] on error.
      */
-    suspend fun downloadSeedDb(onProgress: (Float) -> Unit = {}): DatabaseUpdateState = withContext(Dispatchers.IO) {
+    suspend fun downloadSeedDb(
+        wifiOnly: Boolean? = null,
+        onProgress: suspend (Float) -> Unit = {}
+    ): DatabaseUpdateState = withContext(Dispatchers.IO) {
         return@withContext try {
-            // 1. Check for metered connection (Pitfall 4)
-            if (isMeteredConnection()) {
-                Log.w(TAG, "Metered connection — deferring download")
+            // 1. Resolve the wifiOnly setting — use the provided value or
+            //    read from preferences.
+            val effectiveWifiOnly = wifiOnly ?: downloadPreferences.wifiOnly.first()
+
+            // 2. Check for metered connection (Pitfall 4) — only when
+            //    wifiOnly is enabled. When wifiOnly is false, allow downloads
+            //    on any network so the user gets their data regardless.
+            if (effectiveWifiOnly && isMeteredConnection()) {
+                Log.w(TAG, "Metered connection and wifiOnly enabled — deferring download")
                 return@withContext DatabaseUpdateState.NeedsWifi
             }
 
@@ -516,7 +538,10 @@ class DatabaseUpdateManager @Inject constructor(
         DatabaseUpdateApi.MP_LINKS_TAG to "mp-links",
         DatabaseUpdateApi.MANIFESTOS_TAG to "manifestos",
         DatabaseUpdateApi.PARTY_STATS_TAG to "party-stats",
-        DatabaseUpdateApi.HISTORICAL_MEMBERS_TAG to "historical-members"
+        DatabaseUpdateApi.HISTORICAL_MEMBERS_TAG to "historical-members",
+        DatabaseUpdateApi.GOV_PUBLICATIONS_TAG to "gov-publications",
+        DatabaseUpdateApi.WRITTEN_STATEMENTS_TAG to "written-statements",
+        DatabaseUpdateApi.LEGISLATION_TAG to "legislation"
     )
 
     private suspend fun fetchAllManifests(): List<Pair<String, DatabaseManifest>?> = coroutineScope {
@@ -554,6 +579,9 @@ class DatabaseUpdateManager @Inject constructor(
         "manifestos" -> "manifestos.db"
         "party-stats" -> "party_stats.db"
         "historical-members" -> "historical_members.db"
+        "gov-publications" -> "gov_publications.db"
+        "written-statements" -> "written_statements.db"
+        "legislation" -> "legislation.db"
         else -> "$streamName.db"
     }
 
@@ -576,6 +604,9 @@ class DatabaseUpdateManager @Inject constructor(
         "manifestos" -> listOf("party_manifestos")
         "party-stats" -> listOf("party_stats")
         "historical-members" -> listOf("historical_members", "historical_members_fts4")
+        "gov-publications" -> listOf("government_publications")
+        "written-statements" -> listOf("written_statements")
+        "legislation" -> listOf("legislation")
         else -> emptyList()
     }
 
@@ -597,6 +628,9 @@ class DatabaseUpdateManager @Inject constructor(
         "party-stats" -> preferences.partyStatsVersion.first()
         "historical-members" -> preferences.historicalMembersVersion.first()
         "debates" -> preferences.debatesVersion.first()
+        "gov-publications" -> preferences.govPublicationsVersion.first()
+        "written-statements" -> preferences.writtenStatementsVersion.first()
+        "legislation" -> preferences.legislationVersion.first()
         else -> null
     }
 
@@ -619,6 +653,9 @@ class DatabaseUpdateManager @Inject constructor(
             "party-stats" -> preferences.setPartyStatsVersion(version)
             "historical-members" -> preferences.setHistoricalMembersVersion(version)
             "debates" -> preferences.setDebatesVersion(version)
+            "gov-publications" -> preferences.setGovPublicationsVersion(version)
+            "written-statements" -> preferences.setWrittenStatementsVersion(version)
+            "legislation" -> preferences.setLegislationVersion(version)
         }
     }
 
@@ -631,6 +668,45 @@ class DatabaseUpdateManager @Inject constructor(
         val network = cm.activeNetwork ?: return true
         val caps = cm.getNetworkCapabilities(network) ?: return true
         return !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+    }
+
+    /**
+     * Downloads a text asset (manifest.json or patch.json) to a temp file.
+     *
+     * Used for large patches that would cause OOM if loaded as a single string.
+     * The caller is responsible for deleting the temp file via [File.use].
+     *
+     * @param url The URL to download.
+     * @param fileName The name for the temp file in the cache directory.
+     * @return A [FileUseScope] that auto-deletes the temp file on close.
+     */
+    private fun downloadAssetToFile(url: String, fileName: String): FileUseScope {
+        val request = Request.Builder().url(url).build()
+        val tempFile = File(context.cacheDir, fileName)
+        dbDownloadClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw IOException("HTTP ${response.code} fetching asset: $url")
+            }
+            response.body.byteStream().use { input ->
+                tempFile.outputStream().use { output ->
+                    input.copyTo(output, bufferSize = 8192)
+                }
+            }
+        }
+        if (tempFile.length() == 0L) {
+            tempFile.delete()
+            throw IOException("Empty response body for asset: $url")
+        }
+        return FileUseScope(tempFile)
+    }
+
+    /**
+     * Wrapper that auto-deletes a temp file on [close].
+     */
+    private class FileUseScope(val file: File) : AutoCloseable {
+        override fun close() {
+            file.delete()
+        }
     }
 
     /**
@@ -672,7 +748,7 @@ class DatabaseUpdateManager @Inject constructor(
          * corrected data). When this is higher than the user's stored
          * seedVersion, the app treats it as a first launch and re-downloads.
          */
-        const val CURRENT_SEED_VERSION = 3
+        const val CURRENT_SEED_VERSION = 4
 
         internal const val MANIFEST_ASSET_NAME = "manifest.json"
         internal const val PATCH_ASSET_NAME = "patch.json"
