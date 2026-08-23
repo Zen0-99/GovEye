@@ -2,8 +2,8 @@ package com.goveye.app.data.local.dao
 
 import androidx.room.Dao
 import androidx.room.Query
-import com.goveye.app.data.local.entity.DivisionTagEntity
 import com.goveye.app.data.local.entity.BillTagEntity
+import com.goveye.app.data.local.entity.DivisionTagEntity
 import com.goveye.app.data.local.entity.TagMetadataEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -52,21 +52,52 @@ interface TagDao {
     @Query("SELECT * FROM tag_metadata WHERE tag = :tag")
     suspend fun getTagMetadata(tag: String): TagMetadataEntity?
 
-    @Query("SELECT * FROM tag_metadata WHERE divisionCount > 0 OR billCount > 0 ORDER BY divisionCount DESC, billCount DESC")
+    @Query(
+        "SELECT * FROM tag_metadata WHERE divisionCount > 0 OR billCount > 0 ORDER BY divisionCount DESC, billCount DESC"
+    )
     fun observeAllTagMetadata(): Flow<List<TagMetadataEntity>>
 
-    @Query("SELECT * FROM tag_metadata WHERE divisionCount > 0 OR billCount > 0 ORDER BY divisionCount DESC, billCount DESC")
+    @Query(
+        "SELECT * FROM tag_metadata WHERE divisionCount > 0 OR billCount > 0 ORDER BY divisionCount DESC, billCount DESC"
+    )
     suspend fun getAllTagMetadata(): List<TagMetadataEntity>
 
     // --- Combined ---
 
-    @Query("""
+    @Query(
+        """
         SELECT DISTINCT tag FROM (
             SELECT tag FROM division_tags
             UNION
             SELECT tag FROM bill_tags
+            UNION
+            SELECT tag FROM publication_tags
+            UNION
+            SELECT tag FROM statement_tags
+            UNION
+            SELECT tag FROM legislation_tags
+            UNION
+            SELECT tag FROM mp_tags
         )
         ORDER BY tag
-    """)
+    """
+    )
     suspend fun getAllTags(): List<String>
+
+    @Query(
+        """
+        SELECT DISTINCT tag FROM (
+            SELECT tag FROM publication_tags
+            UNION
+            SELECT tag FROM statement_tags
+            UNION
+            SELECT tag FROM legislation_tags
+        )
+        ORDER BY tag
+    """
+    )
+    fun observeAllAnnouncementTags(): Flow<List<String>>
+
+    @Query("SELECT DISTINCT tag FROM mp_tags ORDER BY tag")
+    fun observeAllMpTags(): Flow<List<String>>
 }

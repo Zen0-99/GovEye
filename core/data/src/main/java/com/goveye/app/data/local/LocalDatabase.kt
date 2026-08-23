@@ -3,9 +3,11 @@ package com.goveye.app.data.local
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import com.goveye.app.data.local.dao.BillFollowDao
+import com.goveye.app.data.local.dao.CachedPublicationDao
 import com.goveye.app.data.local.dao.FollowDao
 import com.goveye.app.data.local.dao.MpNotificationPreferenceDao
 import com.goveye.app.data.local.entity.BillFollowEntity
+import com.goveye.app.data.local.entity.CachedPublicationEntity
 import com.goveye.app.data.local.entity.FollowEntity
 import com.goveye.app.data.local.entity.MpNotificationPreferenceEntity
 
@@ -28,15 +30,17 @@ import com.goveye.app.data.local.entity.MpNotificationPreferenceEntity
     entities = [
         FollowEntity::class,
         BillFollowEntity::class,
-        MpNotificationPreferenceEntity::class
+        MpNotificationPreferenceEntity::class,
+        CachedPublicationEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = true
 )
 abstract class LocalDatabase : RoomDatabase() {
     abstract fun followDao(): FollowDao
     abstract fun billFollowDao(): BillFollowDao
     abstract fun mpNotificationPreferenceDao(): MpNotificationPreferenceDao
+    abstract fun cachedPublicationDao(): CachedPublicationDao
 
     companion object {
         const val DATABASE_NAME = "local.db"

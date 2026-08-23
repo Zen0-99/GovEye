@@ -6,18 +6,22 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.goveye.app.data.local.BundledDatabase
 import com.goveye.app.data.local.LocalDatabase
+import com.goveye.app.data.local.dao.AnnouncementTagDao
 import com.goveye.app.data.local.dao.BillDao
 import com.goveye.app.data.local.dao.BillFollowDao
 import com.goveye.app.data.local.dao.BioDataDao
+import com.goveye.app.data.local.dao.CachedPublicationDao
 import com.goveye.app.data.local.dao.CommitteeDao
 import com.goveye.app.data.local.dao.DatabaseUpdateDao
 import com.goveye.app.data.local.dao.DebateSpeechDao
 import com.goveye.app.data.local.dao.DivisionDao
 import com.goveye.app.data.local.dao.ExpenseDao
 import com.goveye.app.data.local.dao.FollowDao
+import com.goveye.app.data.local.dao.GovernmentPublicationDao
 import com.goveye.app.data.local.dao.HansardDao
 import com.goveye.app.data.local.dao.HistoricalMemberDao
 import com.goveye.app.data.local.dao.InterestDao
+import com.goveye.app.data.local.dao.LegislationDao
 import com.goveye.app.data.local.dao.ManifestoDao
 import com.goveye.app.data.local.dao.MpContactDao
 import com.goveye.app.data.local.dao.MpDao
@@ -26,9 +30,12 @@ import com.goveye.app.data.local.dao.MpLinkDao
 import com.goveye.app.data.local.dao.MpNotificationPreferenceDao
 import com.goveye.app.data.local.dao.MpStatsDao
 import com.goveye.app.data.local.dao.MpSynopsisDao
+import com.goveye.app.data.local.dao.MpTagDao
+import com.goveye.app.data.local.dao.PartyLeaderDao
 import com.goveye.app.data.local.dao.PartyStatsDao
 import com.goveye.app.data.local.dao.RecessDateDao
 import com.goveye.app.data.local.dao.SearchDao
+import com.goveye.app.data.local.dao.SourceRecommendationDao
 import com.goveye.app.data.local.dao.WrittenStatementDao
 import com.goveye.app.data.mapper.HansardMapper
 import com.goveye.app.data.mapper.MemberMapper
@@ -254,6 +261,55 @@ object DatabaseModule {
                 )
                 """.trimIndent()
             )
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS `government_publications` (
+                    `id` INTEGER NOT NULL,
+                    `title` TEXT NOT NULL,
+                    `summary` TEXT NOT NULL,
+                    `url` TEXT NOT NULL,
+                    `documentType` TEXT NOT NULL,
+                    `organisation` TEXT NOT NULL,
+                    `organisationSlug` TEXT NOT NULL,
+                    `firstPublishedAt` TEXT NOT NULL,
+                    `publicUpdatedAt` TEXT NOT NULL,
+                    `imageUrl` TEXT,
+                    `lastUpdated` INTEGER NOT NULL,
+                    PRIMARY KEY(`id`)
+                )
+                """.trimIndent()
+            )
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS `legislation` (
+                    `id` INTEGER NOT NULL,
+                    `title` TEXT NOT NULL,
+                    `type` TEXT NOT NULL,
+                    `year` INTEGER NOT NULL,
+                    `number` INTEGER NOT NULL,
+                    `date` TEXT NOT NULL,
+                    `url` TEXT NOT NULL,
+                    `lastUpdated` INTEGER NOT NULL,
+                    PRIMARY KEY(`id`)
+                )
+                """.trimIndent()
+            )
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `publication_tags` (`publicationId` INTEGER NOT NULL, `tag` TEXT NOT NULL, `hitCount` INTEGER NOT NULL, PRIMARY KEY(`publicationId`, `tag`))"
+            )
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `statement_tags` (`statementId` INTEGER NOT NULL, `tag` TEXT NOT NULL, `hitCount` INTEGER NOT NULL, PRIMARY KEY(`statementId`, `tag`))"
+            )
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `legislation_tags` (`legislationId` INTEGER NOT NULL, `tag` TEXT NOT NULL, `hitCount` INTEGER NOT NULL, PRIMARY KEY(`legislationId`, `tag`))"
+            )
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `mp_tags` (`memberId` INTEGER NOT NULL, `tag` TEXT NOT NULL, `hitCount` INTEGER NOT NULL, PRIMARY KEY(`memberId`, `tag`))"
+            )
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `party_leaders` (`partyId` INTEGER NOT NULL, `memberId` INTEGER NOT NULL, `title` TEXT NOT NULL, PRIMARY KEY(`partyId`))"
+            )
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `source_recommendations` (`tag` TEXT NOT NULL, `organisationSlug` TEXT NOT NULL, `organisationName` TEXT NOT NULL, `hitCount` INTEGER NOT NULL, `isRecommended` INTEGER NOT NULL, PRIMARY KEY(`tag`, `organisationSlug`))"
+            )
         }
     }
 
@@ -284,6 +340,28 @@ object DatabaseModule {
             .build()
     }
 
+    // Migration 1 → 2 for LocalDatabase: Add cached_publications table (D-02).
+    // Idempotent — the table may already exist if the DB was created at v2.
+    private val LOCAL_MIGRATION_1_2 = object : Migration(1, 2) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS `cached_publications` (
+                    `url` TEXT NOT NULL,
+                    `title` TEXT NOT NULL,
+                    `summary` TEXT NOT NULL,
+                    `bodyText` TEXT NOT NULL,
+                    `documentType` TEXT NOT NULL,
+                    `organisation` TEXT NOT NULL,
+                    `imageUrl` TEXT,
+                    `firstPublishedAt` TEXT NOT NULL,
+                    `fetchedAt` INTEGER NOT NULL,
+                    PRIMARY KEY(`url`)
+                )
+                """.trimIndent()
+            )
+        }
+    }
+
     @Provides
     @Singleton
     fun provideLocalDatabase(@ApplicationContext context: Context): LocalDatabase {
@@ -294,7 +372,9 @@ object DatabaseModule {
                 context,
                 LocalDatabase::class.java,
                 LocalDatabase.DATABASE_NAME
-            ).fallbackToDestructiveMigration(dropAllTables = true)
+            )
+            .addMigrations(LOCAL_MIGRATION_1_2)
+            .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
     }
 
@@ -372,6 +452,26 @@ object DatabaseModule {
     @Provides
     fun provideWrittenStatementDao(database: BundledDatabase): WrittenStatementDao = database.writtenStatementDao()
 
+    @Provides
+    fun provideGovernmentPublicationDao(database: BundledDatabase): GovernmentPublicationDao =
+        database.governmentPublicationDao()
+
+    @Provides
+    fun provideLegislationDao(database: BundledDatabase): LegislationDao = database.legislationDao()
+
+    @Provides
+    fun provideAnnouncementTagDao(database: BundledDatabase): AnnouncementTagDao = database.announcementTagDao()
+
+    @Provides
+    fun provideMpTagDao(database: BundledDatabase): MpTagDao = database.mpTagDao()
+
+    @Provides
+    fun providePartyLeaderDao(database: BundledDatabase): PartyLeaderDao = database.partyLeaderDao()
+
+    @Provides
+    fun provideSourceRecommendationDao(database: BundledDatabase): SourceRecommendationDao =
+        database.sourceRecommendationDao()
+
     // ── User-data DAOs (from LocalDatabase) ────────────────────────────
 
     @Provides
@@ -383,6 +483,9 @@ object DatabaseModule {
     @Provides
     fun provideMpNotificationPreferenceDao(database: LocalDatabase): MpNotificationPreferenceDao =
         database.mpNotificationPreferenceDao()
+
+    @Provides
+    fun provideCachedPublicationDao(database: LocalDatabase): CachedPublicationDao = database.cachedPublicationDao()
 
     // ── Mappers ────────────────────────────────────────────────────────
 
@@ -503,6 +606,20 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideGovernmentAnnouncementsRepository(
-        writtenStatementDao: WrittenStatementDao
-    ): GovernmentAnnouncementsRepository = GovernmentAnnouncementsRepository(writtenStatementDao)
+        writtenStatementDao: WrittenStatementDao,
+        governmentPublicationDao: GovernmentPublicationDao,
+        legislationDao: LegislationDao,
+        announcementTagDao: AnnouncementTagDao,
+        mpTagDao: MpTagDao,
+        partyLeaderDao: PartyLeaderDao,
+        sourceRecommendationDao: SourceRecommendationDao
+    ): GovernmentAnnouncementsRepository = GovernmentAnnouncementsRepository(
+        writtenStatementDao,
+        governmentPublicationDao,
+        legislationDao,
+        announcementTagDao,
+        mpTagDao,
+        partyLeaderDao,
+        sourceRecommendationDao
+    )
 }

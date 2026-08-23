@@ -3,6 +3,7 @@ package com.goveye.app.data.local
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import com.goveye.app.data.local.dao.AnnouncementTagDao
 import com.goveye.app.data.local.dao.BillDao
 import com.goveye.app.data.local.dao.BioDataDao
 import com.goveye.app.data.local.dao.CommitteeDao
@@ -11,9 +12,11 @@ import com.goveye.app.data.local.dao.DatabaseUpdateDao
 import com.goveye.app.data.local.dao.DebateSpeechDao
 import com.goveye.app.data.local.dao.DivisionDao
 import com.goveye.app.data.local.dao.ExpenseDao
+import com.goveye.app.data.local.dao.GovernmentPublicationDao
 import com.goveye.app.data.local.dao.HansardDao
 import com.goveye.app.data.local.dao.HistoricalMemberDao
 import com.goveye.app.data.local.dao.InterestDao
+import com.goveye.app.data.local.dao.LegislationDao
 import com.goveye.app.data.local.dao.ManifestoDao
 import com.goveye.app.data.local.dao.MpApiIdDao
 import com.goveye.app.data.local.dao.MpContactDao
@@ -22,9 +25,12 @@ import com.goveye.app.data.local.dao.MpExperienceDao
 import com.goveye.app.data.local.dao.MpLinkDao
 import com.goveye.app.data.local.dao.MpStatsDao
 import com.goveye.app.data.local.dao.MpSynopsisDao
+import com.goveye.app.data.local.dao.MpTagDao
+import com.goveye.app.data.local.dao.PartyLeaderDao
 import com.goveye.app.data.local.dao.PartyStatsDao
 import com.goveye.app.data.local.dao.RecessDateDao
 import com.goveye.app.data.local.dao.SearchDao
+import com.goveye.app.data.local.dao.SourceRecommendationDao
 import com.goveye.app.data.local.dao.TagDao
 import com.goveye.app.data.local.dao.WrittenStatementDao
 import com.goveye.app.data.local.entity.BillEntity
@@ -38,10 +44,13 @@ import com.goveye.app.data.local.entity.DivisionEntity
 import com.goveye.app.data.local.entity.DivisionTagEntity
 import com.goveye.app.data.local.entity.DivisionVoteEntity
 import com.goveye.app.data.local.entity.ExpenseEntity
+import com.goveye.app.data.local.entity.GovernmentPublicationEntity
 import com.goveye.app.data.local.entity.HansardContributionEntity
 import com.goveye.app.data.local.entity.HistoricalMemberEntity
 import com.goveye.app.data.local.entity.HistoricalMemberFts4Entity
 import com.goveye.app.data.local.entity.InterestEntity
+import com.goveye.app.data.local.entity.LegislationEntity
+import com.goveye.app.data.local.entity.LegislationTagEntity
 import com.goveye.app.data.local.entity.MpApiIdEntity
 import com.goveye.app.data.local.entity.MpCommitteeCrossRef
 import com.goveye.app.data.local.entity.MpContactEntity
@@ -51,12 +60,17 @@ import com.goveye.app.data.local.entity.MpFtsEntity
 import com.goveye.app.data.local.entity.MpLinkEntity
 import com.goveye.app.data.local.entity.MpStatsEntity
 import com.goveye.app.data.local.entity.MpSynopsisEntity
+import com.goveye.app.data.local.entity.MpTagEntity
+import com.goveye.app.data.local.entity.PartyLeaderEntity
 import com.goveye.app.data.local.entity.PartyManifestoEntity
 import com.goveye.app.data.local.entity.PartyManifestoFts4Entity
 import com.goveye.app.data.local.entity.PartyStatsEntity
 import com.goveye.app.data.local.entity.PeerAveragesEntity
+import com.goveye.app.data.local.entity.PublicationTagEntity
 import com.goveye.app.data.local.entity.RecessDateEntity
 import com.goveye.app.data.local.entity.RecessDatesMetaEntity
+import com.goveye.app.data.local.entity.SourceRecommendationEntity
+import com.goveye.app.data.local.entity.StatementTagEntity
 import com.goveye.app.data.local.entity.TagMetadataEntity
 import com.goveye.app.data.local.entity.WrittenStatementEntity
 
@@ -108,7 +122,15 @@ import com.goveye.app.data.local.entity.WrittenStatementEntity
         CouncilEntity::class,
         TagMetadataEntity::class,
         MpApiIdEntity::class,
-        WrittenStatementEntity::class
+        WrittenStatementEntity::class,
+        GovernmentPublicationEntity::class,
+        LegislationEntity::class,
+        PublicationTagEntity::class,
+        StatementTagEntity::class,
+        LegislationTagEntity::class,
+        MpTagEntity::class,
+        PartyLeaderEntity::class,
+        SourceRecommendationEntity::class
     ],
     version = 20,
     exportSchema = true
@@ -138,6 +160,12 @@ abstract class BundledDatabase : RoomDatabase() {
     abstract fun tagDao(): TagDao
     abstract fun mpApiIdDao(): MpApiIdDao
     abstract fun writtenStatementDao(): WrittenStatementDao
+    abstract fun governmentPublicationDao(): GovernmentPublicationDao
+    abstract fun legislationDao(): LegislationDao
+    abstract fun announcementTagDao(): AnnouncementTagDao
+    abstract fun mpTagDao(): MpTagDao
+    abstract fun partyLeaderDao(): PartyLeaderDao
+    abstract fun sourceRecommendationDao(): SourceRecommendationDao
     abstract fun databaseUpdateDao(): DatabaseUpdateDao
 
     companion object {
