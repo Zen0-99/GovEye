@@ -5,10 +5,10 @@ milestone_name: milestone
 current_phase: 14
 current_phase_name: government-announcements
 status: executing
-stopped_at: Plan 14-01 complete — Government data triad build scripts (GOV.UK publications, Written Statements, legislation)
-last_updated: "2026-08-23T17:00:00.000Z"
+stopped_at: Plan 14-04 complete — Government announcements UI (Feed cards, Government tab, FilterBottomSheet expansion, FollowingScreen hub)
+last_updated: "2026-08-23T19:00:00.000Z"
 last_activity: 2026-08-23
-last_activity_desc: Plan 14-01 executed — 3 build scripts, 3 test files, 3 CI workflows, merge_dbs + schema extensions
+last_activity_desc: Plan 14-04 executed — 3 new Feed card types, Government tab, FilterBottomSheet Tags/Sources/Departments/Type sections, FollowingScreen central hub
 progress:
   total_phases: 15
   completed_phases: 8
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-08-16)
 ## Current Position
 
 Phase: 14 (government-announcements) — EXECUTING
-Plans: 14-01 (build scripts) COMPLETE, 14-03 (Android data layer) COMPLETE
+Plans: 14-01 (build scripts) COMPLETE, 14-03 (Android data layer) COMPLETE, 14-04 (Android UI) COMPLETE
 Status: Executing Phase 14
-Last activity: 2026-08-23 — Plan 14-01 executed (3 build scripts, 3 CI workflows, merge_dbs + schema extensions)
+Last activity: 2026-08-23 — Plan 14-04 executed (3 Feed card types, Government tab, FilterBottomSheet expansion, FollowingScreen hub)
 
 Progress: [████████████████░░] 73% (7 of 11 phases complete, Phase 9 context gathered)
 
@@ -137,6 +137,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-08-23T17:00:00.000Z
-Stopped at: Plan 14-01 complete — Government data triad build scripts
-Resume file: .planning/phases/14-government-announcements/14-02-PLAN.md
+Last session: 2026-08-23T19:00:00.000Z
+Stopped at: Plan 14-04 complete — Government announcements UI
+Resume file: .planning/phases/14-government-announcements/14-05-PLAN.md
