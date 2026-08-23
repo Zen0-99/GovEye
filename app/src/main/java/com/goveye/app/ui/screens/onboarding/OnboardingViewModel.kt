@@ -85,11 +85,15 @@ constructor(
     val availableTags: StateFlow<List<String>> =
         flow {
             try {
-                emit(tagDao.getAllTags())
+                val dbTags = tagDao.getAllTags()
+                // Fall back to the static list if the DB is empty (first launch
+                // before seed download completes) — onboarding must always show
+                // all 26 tags so the user can pick topics.
+                emit(if (dbTags.isEmpty()) ALL_TAG_NAMES else dbTags)
             } catch (e: Exception) {
-                emit(emptyList())
+                emit(ALL_TAG_NAMES)
             }
-        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, ALL_TAG_NAMES)
 
     /** All source recommendations (D-06 hybrid tag→department mapping). */
     val allRecommendations: StateFlow<List<SourceRecommendation>> =

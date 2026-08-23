@@ -234,6 +234,13 @@ class DatabaseUpdateManager @Inject constructor(
             }
 
             DatabaseUpdateState.UpToDate
+        } catch (e: OutOfMemoryError) {
+            // OOM during JSON tree parsing (e.g. expenses patch with 144K rows).
+            // The seed DB is already installed — a failed patch just means stale
+            // data for that stream, not a crash. Log and return Failed so the UI
+            // can show a retry option instead of killing the app.
+            Log.e(TAG, "OOM applying patches (patch too large for heap)", e)
+            DatabaseUpdateState.Failed("Patch too large to apply — seed DB is usable but may be stale")
         } catch (e: Exception) {
             DatabaseUpdateState.Failed(e.message ?: "Patch application failed")
         }
