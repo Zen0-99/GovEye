@@ -11,9 +11,4 @@ import androidx.room.Entity
     tableName = "tag_metadata",
     primaryKeys = ["tag"]
 )
-data class TagMetadataEntity(
-    val tag: String,
-    val description: String,
-    val divisionCount: Int,
-    val billCount: Int
-)
+data class TagMetadataEntity(val tag: String, val description: String, val divisionCount: Int, val billCount: Int)

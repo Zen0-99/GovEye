@@ -10,6 +10,9 @@ interface ExpenseDao {
     @Query("SELECT * FROM expenses WHERE mpId = :mpId ORDER BY claimDate DESC")
     suspend fun getByMpId(mpId: Int): List<ExpenseEntity>
 
+    @Query("SELECT * FROM expenses WHERE mpId = :mpId AND bucket = :bucket ORDER BY claimDate DESC")
+    suspend fun getByMpIdAndBucket(mpId: Int, bucket: String): List<ExpenseEntity>
+
     @Query(
         "SELECT bucket, SUM(amountPence) as totalPence FROM expenses WHERE mpId = :mpId GROUP BY bucket ORDER BY totalPence DESC"
     )

@@ -15,7 +15,7 @@ interface DebateSpeechDao {
     @Query("SELECT * FROM debate_speeches WHERE divisionId = :divisionId ORDER BY speechOrder ASC")
     suspend fun getSpeechesForDivision(divisionId: Int): List<DebateSpeechEntity>
 
-    @Query("SELECT COUNT(*) FROM debate_speeches WHERE divisionId = :divisionId")
+    @Query("SELECT COUNT(*) FROM debate_speeches WHERE divisionId = :divisionId AND speakerName != ''")
     suspend fun countSpeechesForDivision(divisionId: Int): Int
 
     @Upsert

@@ -10,5 +10,8 @@ import javax.inject.Singleton
 class ExpensesRepository @Inject constructor(private val expenseDao: ExpenseDao) {
     suspend fun getExpenses(mpId: Int): List<ExpenseEntity> = expenseDao.getByMpId(mpId)
 
+    suspend fun getExpensesByBucket(mpId: Int, bucket: String): List<ExpenseEntity> =
+        expenseDao.getByMpIdAndBucket(mpId, bucket)
+
     suspend fun getBucketTotals(mpId: Int): List<ExpenseBucketTotal> = expenseDao.getBucketTotals(mpId)
 }

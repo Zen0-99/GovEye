@@ -31,7 +31,16 @@ class MembersRepositoryTest {
             RuntimeEnvironment.getApplication(),
             BundledDatabase::class.java
         ).allowMainThreadQueries().build()
-        repository = MembersRepository(database.mpDao(), database.searchDao(), api, MemberMapper)
+        repository = MembersRepository(
+            database.mpDao(),
+            database.searchDao(),
+            api,
+            MemberMapper,
+            mockk(relaxed = true),
+            database.mpSynopsisDao(),
+            database.mpContactDao(),
+            database.mpExperienceDao()
+        )
     }
 
     @After

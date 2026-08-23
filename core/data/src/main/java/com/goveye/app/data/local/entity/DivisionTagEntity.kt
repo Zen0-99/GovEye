@@ -13,8 +13,4 @@ import androidx.room.Entity
     tableName = "division_tags",
     primaryKeys = ["divisionId", "tag"]
 )
-data class DivisionTagEntity(
-    val divisionId: Int,
-    val tag: String,
-    val hitCount: Int
-)
+data class DivisionTagEntity(val divisionId: Int, val tag: String, val hitCount: Int)

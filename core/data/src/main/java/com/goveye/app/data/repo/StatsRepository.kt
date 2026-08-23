@@ -9,9 +9,12 @@ import com.goveye.app.data.local.dao.MpDao
 import com.goveye.app.data.local.dao.MpStatsDao
 import com.goveye.app.data.local.entity.DivisionVoteEntity
 import com.goveye.app.data.local.entity.MpEntity
+import com.goveye.app.data.local.entity.MpStatsEntity
+import com.goveye.app.data.local.entity.PeerAveragesEntity
 import com.goveye.app.domain.model.VoteType
 import com.goveye.app.domain.stats.ActivityScore
 import com.goveye.app.domain.stats.ActivityScoreCalculator
+import com.goveye.app.domain.stats.MpStats
 import com.goveye.app.domain.stats.PeerAverages
 import com.goveye.app.domain.stats.RebellionCalculator
 import com.goveye.app.domain.stats.TraitBar
@@ -334,10 +337,10 @@ class StatsRepository @Inject constructor(
     }
 
     private fun DivisionVoteEntity.toDomainVote(): com.goveye.app.domain.model.DivisionVote {
-        val voteType = when (vote) {
-            "Aye" -> VoteType.AYE
-            "No" -> VoteType.NO
-            "NoVoteRecorded", "No Vote Recorded" -> VoteType.NO_VOTE_RECORDED
+        val voteType = when (vote.uppercase()) {
+            "AYE" -> VoteType.AYE
+            "NO" -> VoteType.NO
+            "NOVOTERECORDED", "NO VOTE RECORDED" -> VoteType.NO_VOTE_RECORDED
             else -> VoteType.NO_VOTE_RECORDED
         }
         return com.goveye.app.domain.model.DivisionVote(

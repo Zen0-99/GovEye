@@ -10,8 +10,4 @@ import androidx.room.Entity
     tableName = "bill_tags",
     primaryKeys = ["billId", "tag"]
 )
-data class BillTagEntity(
-    val billId: Int,
-    val tag: String,
-    val hitCount: Int
-)
+data class BillTagEntity(val billId: Int, val tag: String, val hitCount: Int)
