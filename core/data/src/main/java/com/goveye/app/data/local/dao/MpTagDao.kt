@@ -2,6 +2,7 @@ package com.goveye.app.data.local.dao
 
 import androidx.room.Dao
 import androidx.room.Query
+import com.goveye.app.data.local.entity.MpTagEntity
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -22,4 +23,12 @@ interface MpTagDao {
 
     @Query("SELECT DISTINCT tag FROM mp_tags ORDER BY tag")
     fun observeAllMpTags(): Flow<List<String>>
+
+    /** All mp_tags rows for the given tags — used by MpCurationHelper (D-08). */
+    @Query("SELECT * FROM mp_tags WHERE tag IN (:tags) ORDER BY hitCount DESC")
+    suspend fun getMpTagsForTags(tags: List<String>): List<MpTagEntity>
+
+    /** All mp_tags rows — used by MpCurationHelper when tags are selected (D-08). */
+    @Query("SELECT * FROM mp_tags ORDER BY hitCount DESC")
+    fun observeAllMpTagRows(): Flow<List<MpTagEntity>>
 }

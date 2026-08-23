@@ -9,11 +9,13 @@ import com.goveye.app.data.local.dao.SourceRecommendationDao
 import com.goveye.app.data.local.dao.WrittenStatementDao
 import com.goveye.app.data.local.entity.GovernmentPublicationEntity
 import com.goveye.app.data.local.entity.LegislationEntity
+import com.goveye.app.data.local.entity.MpTagEntity
 import com.goveye.app.data.local.entity.PartyLeaderEntity
 import com.goveye.app.data.local.entity.SourceRecommendationEntity
 import com.goveye.app.data.local.entity.WrittenStatementEntity
 import com.goveye.app.domain.model.GovernmentPublication
 import com.goveye.app.domain.model.Legislation
+import com.goveye.app.domain.model.MpTag
 import com.goveye.app.domain.model.PartyLeader
 import com.goveye.app.domain.model.SourceRecommendation
 import com.goveye.app.domain.model.WrittenStatement
@@ -138,6 +140,14 @@ class GovernmentAnnouncementsRepository @Inject constructor(
 
     suspend fun getMpsForTag(tag: String): List<Int> = mpTagDao.getMpsForTag(tag)
 
+    /** All mp_tags rows for the given tags — used by MpCurationHelper (D-08). */
+    suspend fun getMpTagsForTags(tags: List<String>): List<MpTag> =
+        mpTagDao.getMpTagsForTags(tags).map { it.toDomain() }
+
+    /** All mp_tags rows as a reactive flow — used by OnboardingViewModel (D-08). */
+    fun observeAllMpTagRows(): Flow<List<MpTag>> =
+        mpTagDao.observeAllMpTagRows().map { entities -> entities.map { it.toDomain() } }
+
     // --- Party leaders ---
 
     fun observePartyLeaders(): Flow<List<PartyLeader>> = partyLeaderDao.observePartyLeaders().map { entities ->
@@ -208,5 +218,11 @@ class GovernmentAnnouncementsRepository @Inject constructor(
         organisationName = organisationName,
         hitCount = hitCount,
         isRecommended = isRecommended
+    )
+
+    private fun MpTagEntity.toDomain(): MpTag = MpTag(
+        memberId = memberId,
+        tag = tag,
+        hitCount = hitCount
     )
 }
