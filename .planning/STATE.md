@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 14
 current_phase_name: government-announcements
 status: executing
-stopped_at: Plan 14-02 complete — Tag extension + MP tags + party leaders + source recommendations build scripts
-last_updated: "2026-08-23T20:00:00.000Z"
+stopped_at: Phase 14 complete — all 5 plans executed (build scripts, tags, data layer, UI, onboarding)
+last_updated: "2026-08-23T21:00:00.000Z"
 last_activity: 2026-08-23
-last_activity_desc: Plan 14-02 executed — Extended build_tags.py for announcement tags, created build_mp_tags.py (recency-weighted), build_party_leaders.py (MNIS bio_data), build_source_recs.py (hybrid tag→department), wired into build-seed.yml
+last_activity_desc: Plan 14-05 executed — 5-step onboarding redesign with tag personalization, source recommendations, MP curation
 progress:
   total_phases: 15
   completed_phases: 8
   total_plans: 53
-  completed_plans: 30
+  completed_plans: 31
 total_phases: 12
 completed_phases: 9
 ---
@@ -29,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-08-16)
 
 ## Current Position
 
-Phase: 14 (government-announcements) — EXECUTING
-Plans: 14-01 (build scripts) COMPLETE, 14-02 (tag extension + post-merge scripts) COMPLETE, 14-03 (Android data layer) COMPLETE, 14-04 (Android UI) COMPLETE
-Status: Executing Phase 14
-Last activity: 2026-08-23 — Plan 14-02 executed (tag extension, MP tags, party leaders, source recommendations)
+Phase: 14 (government-announcements) — COMPLETE (pending verification)
+Plans: 14-01 (build scripts) COMPLETE, 14-02 (tag extension + post-merge scripts) COMPLETE, 14-03 (Android data layer) COMPLETE, 14-04 (Android UI) COMPLETE, 14-05 (onboarding redesign) COMPLETE
+Status: Phase 14 execution complete — pending verification
+Last activity: 2026-08-23 — Plan 14-05 executed (5-step onboarding redesign with tag personalization)
 
 Progress: [████████████████░░] 73% (7 of 11 phases complete, Phase 9 context gathered)
 
