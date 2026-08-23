@@ -34,10 +34,12 @@ import com.goveye.app.ui.screens.divisions.TagMicroviewDialog
 import com.goveye.app.ui.screens.feed.FeedDateHeader
 import com.goveye.app.ui.screens.feed.FeedDivisionCard
 import com.goveye.app.ui.screens.feed.FeedItem
+import com.goveye.app.ui.screens.feed.FeedLegislationCard
 import com.goveye.app.ui.screens.feed.FeedNoActivityEmptyState
 import com.goveye.app.ui.screens.feed.FeedNoFollowsEmptyState
 import com.goveye.app.ui.screens.feed.FeedPublicationCard
 import com.goveye.app.ui.screens.feed.FeedRecessEmptyState
+import com.goveye.app.ui.screens.feed.FeedStatementCard
 import com.goveye.app.ui.screens.feed.FeedViewModel
 
 /**
@@ -215,35 +217,21 @@ private fun FeedItemCard(
         }
 
         is FeedItem.StatementItem -> {
-            // StatementItem rendering — wired in Task 2 (FeedStatementCard)
-            // For now, render as a simple text placeholder
-            androidx.compose.material3.Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surfaceContainer
-            ) {
-                Text(
-                    text = item.statement.title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(16.dp)
-                )
-            }
+            FeedStatementCard(
+                statement = item.statement,
+                onClick = { /* TODO: navigate to statement detail */ },
+                tags = item.tags,
+                onTagClick = onTagClick
+            )
         }
 
         is FeedItem.LegislationItem -> {
-            // LegislationItem rendering — wired in Task 2 (FeedLegislationCard)
-            // For now, render as a simple text placeholder
-            androidx.compose.material3.Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surfaceContainer
-            ) {
-                Text(
-                    text = item.legislation.title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(16.dp)
-                )
-            }
+            FeedLegislationCard(
+                legislation = item.legislation,
+                onClick = { /* TODO: navigate to legislation detail */ },
+                tags = item.tags,
+                onTagClick = onTagClick
+            )
         }
     }
 }

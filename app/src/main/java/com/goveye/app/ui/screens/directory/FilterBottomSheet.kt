@@ -34,6 +34,8 @@ enum class FilterTabType {
     OFFICIALS,
     DIVISIONS,
     FEED,
+    GOVERNMENT,
+    FOLLOWING_HUB,
     OTHER
 }
 
@@ -174,6 +176,41 @@ fun FilterBottomSheet(
                                 text = "No filters available for this tab",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    FilterTabType.GOVERNMENT -> {
+                        // Tags, Departments, Type sections — fully implemented in Task 4
+                        item {
+                            SectionLabel("Type")
+                            SegmentedPill(
+                                options = listOf(
+                                    "All" to 0,
+                                    "Publications" to 1,
+                                    "Statements" to 2,
+                                    "Legislation" to 3
+                                ),
+                                selectedValue = 0,
+                                onValueChange = {}
+                            )
+                        }
+                    }
+
+                    FilterTabType.FOLLOWING_HUB -> {
+                        // Tags, Sources, Parties, Officials, Type sections — fully implemented in Task 4
+                        item {
+                            SectionLabel("Type")
+                            SegmentedPill(
+                                options = listOf(
+                                    "All" to 0,
+                                    "Publications" to 1,
+                                    "Statements" to 2,
+                                    "Legislation" to 3,
+                                    "Divisions" to 4
+                                ),
+                                selectedValue = 0,
+                                onValueChange = {}
                             )
                         }
                     }

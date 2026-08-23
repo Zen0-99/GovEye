@@ -21,8 +21,6 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -35,15 +33,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -62,16 +57,20 @@ import com.goveye.app.ui.components.FloatingSearchBar
 import com.goveye.app.ui.components.InfoCard
 import com.goveye.app.ui.components.StickyInfoCard
 import com.goveye.app.ui.components.TabTextWithBadge
+import com.goveye.app.ui.screens.bills.BillBrowseViewModel
 import com.goveye.app.ui.screens.bills.BillsTabContent
+import com.goveye.app.ui.screens.divisions.DivisionBrowseViewModel
 import com.goveye.app.ui.screens.divisions.DivisionsTabContent
 import com.goveye.app.ui.theme.padding
-import kotlinx.coroutines.launch
 
 private enum class DirectoryTab(val title: String) {
     OFFICIALS("Officials"),
     PARTIES("Parties"),
+    COMMITTEES("Committees"),
+    COUNCILS("Councils"),
     BILLS("Bills"),
-    DIVISIONS("Debates")
+    DIVISIONS("Debates"),
+    GOVERNMENT("Government")
 }
 
 @Composable
@@ -80,6 +79,8 @@ fun DirectoryScreen(
     onNavigateToDivision: (Int, Int) -> Unit = { _, _ -> },
     onNavigateToBill: (Int) -> Unit = {},
     onNavigateToParty: (Int) -> Unit = {},
+    onNavigateToCommittee: (Int) -> Unit = {},
+    onNavigateToCouncil: (Int) -> Unit = {},
     showInfoCards: Boolean = true,
     modifier: Modifier = Modifier,
     viewModel: DirectoryViewModel = hiltViewModel()
@@ -93,33 +94,47 @@ fun DirectoryScreen(
     val filterState by viewModel.filterState.collectAsStateWithLifecycle(DirectoryFilterState())
     val distinctParties by viewModel.distinctParties.collectAsStateWithLifecycle(emptyList())
     val parties by viewModel.parties.collectAsStateWithLifecycle(emptyList())
+    val councils by viewModel.councils.collectAsStateWithLifecycle(emptyList())
+    val committees by viewModel.committees.collectAsStateWithLifecycle(emptyList())
+    val governmentSourceType by viewModel.governmentSourceType.collectAsStateWithLifecycle(GovernmentSourceType.ALL)
+    val governmentPublications by viewModel.governmentPublications.collectAsStateWithLifecycle(emptyList())
+    val governmentStatements by viewModel.governmentStatements.collectAsStateWithLifecycle(emptyList())
+    val governmentLegislation by viewModel.governmentLegislation.collectAsStateWithLifecycle(emptyList())
+    val governmentLoading by viewModel.governmentLoading.collectAsStateWithLifecycle(true)
+    val postcodeState by viewModel.postcodeResult.collectAsStateWithLifecycle()
     var showFilterSheet by remember { mutableStateOf(false) }
+
+    // Eagerly create Bills and Divisions ViewModels at the DirectoryScreen
+    // level so their flow chains start immediately — not on first tab visit.
+    // Without this, the first composition of each tab happens during a
+    // navigation transition, causing jank (ViewModel creation + flow startup
+    // + DB query on the main thread during the 150ms animation).
+    val billsViewModel: BillBrowseViewModel = hiltViewModel()
+    val billsState by billsViewModel.state.collectAsStateWithLifecycle()
+    val divisionsViewModel: DivisionBrowseViewModel = hiltViewModel()
+    val divisionsState by divisionsViewModel.state.collectAsStateWithLifecycle()
 
     // Save tab index across navigation — rememberSaveable survives screen changes
     var savedTabIndex by rememberSaveable { mutableStateOf(0) }
-    val pagerState = rememberPagerState(
-        initialPage = savedTabIndex,
-        pageCount = { DirectoryTab.entries.size }
-    )
+
+    // Track current page for search bar config and filter sheet
+    var currentPage by remember { mutableIntStateOf(savedTabIndex) }
 
     Log.i(
         "GovEye/Directory",
         "DirectoryScreen compose — searchQuery='$searchQuery' pagingItems=${lazyPagingItems.itemCount} " +
             "searchResults=${searchResults.size} filteredMps=${filteredMps.size} " +
-            "hasFilters=${filterState.hasActiveFilters} currentPage=${pagerState.currentPage}"
+            "hasFilters=${filterState.hasActiveFilters} currentPage=$currentPage"
     )
-    val coroutineScope = rememberCoroutineScope()
-
-    // Persist tab changes
-    LaunchedEffect(pagerState.currentPage) {
-        savedTabIndex = pagerState.currentPage
-    }
 
     // Context-aware placeholder based on current tab
-    val currentTab = DirectoryTab.entries[pagerState.currentPage]
+    val currentTab = DirectoryTab.entries[currentPage]
     val searchPlaceholder = when (currentTab) {
         DirectoryTab.DIVISIONS -> "Search debates…"
-        DirectoryTab.OFFICIALS -> "Search MPs, parties, constituencies…"
+        DirectoryTab.OFFICIALS -> "Search MPs, parties, constituencies, postcodes…"
+        DirectoryTab.COMMITTEES -> "Search committees…"
+        DirectoryTab.COUNCILS -> "Search councils…"
+        DirectoryTab.GOVERNMENT -> "Search government announcements…"
         else -> "Search…"
     }
 
@@ -142,41 +157,21 @@ fun DirectoryScreen(
     )
 
     Column(modifier = modifier.fillMaxSize()) {
-        // Tab row — 4 tabs fill the full width evenly.
-        TabRow(
-            selectedTabIndex = pagerState.currentPage,
-            containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.onSurface
-        ) {
-            DirectoryTab.entries.forEachIndexed { index, tab ->
-                Tab(
-                    selected = pagerState.currentPage == index,
-                    onClick = {
-                        coroutineScope.launch { pagerState.animateScrollToPage(index) }
-                    },
-                    selectedContentColor = MaterialTheme.colorScheme.onSurface,
-                    unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    text = {
-                        TabTextWithBadge(
-                            text = tab.title,
-                            badgeCount = tabCounts[index]
-                        )
-                    }
+        com.goveye.app.ui.components.SubTabPager(
+            tabs = DirectoryTab.entries.mapIndexed { index, tab ->
+                com.goveye.app.ui.components.SubTab(
+                    label = tab.title,
+                    badgeCount = tabCounts[index]
                 )
-            }
-        }
-
-        // Pager — each tab has its own content.
-        // Only compose the current page — no offscreen pre-composition.
-        // This prevents adjacent tabs from doing work during navigation transitions.
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.fillMaxSize().weight(1f)
+            },
+            initialPage = savedTabIndex,
+            edgePadding = 0.dp,
+            onPageChange = { page ->
+                currentPage = page
+                savedTabIndex = page
+            },
+            modifier = Modifier.fillMaxWidth()
         ) { page ->
-            if (page != pagerState.currentPage) {
-                Log.i("GovEye/Directory", "Pager page $page skipped (offscreen)")
-                return@HorizontalPager
-            }
             Log.i("GovEye/Directory", "Pager composing page $page: ${DirectoryTab.entries[page]}")
             when (DirectoryTab.entries[page]) {
                 DirectoryTab.OFFICIALS -> OfficialsTabContent(
@@ -187,7 +182,8 @@ fun DirectoryScreen(
                     filteredMps = filteredMps,
                     hasActiveFilters = filterState.hasActiveFilters,
                     onNavigateToProfile = onNavigateToProfile,
-                    showInfoCards = showInfoCards
+                    showInfoCards = showInfoCards,
+                    postcodeState = postcodeState
                 )
 
                 DirectoryTab.PARTIES -> PartiesTabContent(
@@ -195,17 +191,48 @@ fun DirectoryScreen(
                     onNavigateToParty = onNavigateToParty
                 )
 
+                DirectoryTab.COMMITTEES -> CommitteesTabContent(
+                    committees = committees,
+                    searchQuery = searchQuery,
+                    onNavigateToCommittee = onNavigateToCommittee
+                )
+
+                DirectoryTab.COUNCILS -> CouncilsTabContent(
+                    councils = councils,
+                    searchQuery = searchQuery,
+                    onNavigateToCouncil = onNavigateToCouncil
+                )
+
                 DirectoryTab.BILLS -> BillsTabContent(
                     onNavigateToBill = onNavigateToBill,
                     searchQuery = searchQuery,
-                    showInfoCards = showInfoCards
+                    showInfoCards = showInfoCards,
+                    state = billsState,
+                    onSearchQueryChange = billsViewModel::setSearchQuery
                 )
 
                 DirectoryTab.DIVISIONS -> DivisionsTabContent(
                     onNavigateToDivision = onNavigateToDivision,
                     houseFilter = filterState.houseFilter,
                     searchQuery = searchQuery,
-                    showInfoCards = showInfoCards
+                    showInfoCards = showInfoCards,
+                    state = divisionsState,
+                    onSearchQueryChange = divisionsViewModel::setSearchQuery,
+                    onHouseFilterChange = divisionsViewModel::setHouseFilter,
+                    onTagClick = { tag ->
+                        viewModel.updateSearchQuery(tag)
+                    }
+                )
+
+                DirectoryTab.GOVERNMENT -> GovernmentTabContent(
+                    searchQuery = searchQuery,
+                    sourceTypeFilter = governmentSourceType,
+                    publications = governmentPublications,
+                    statements = governmentStatements,
+                    legislation = governmentLegislation,
+                    isLoading = governmentLoading,
+                    showInfoCards = showInfoCards,
+                    onSourceTypeChange = viewModel::setGovernmentSourceType
                 )
             }
         }
@@ -213,9 +240,10 @@ fun DirectoryScreen(
 
     // Filter bottom sheet — tab-aware
     if (showFilterSheet) {
-        val currentTabType = when (DirectoryTab.entries[pagerState.currentPage]) {
+        val currentTabType = when (DirectoryTab.entries[currentPage]) {
             DirectoryTab.OFFICIALS -> FilterTabType.OFFICIALS
             DirectoryTab.DIVISIONS -> FilterTabType.DIVISIONS
+            DirectoryTab.GOVERNMENT -> FilterTabType.GOVERNMENT
             else -> FilterTabType.OTHER
         }
         FilterBottomSheet(
@@ -247,7 +275,8 @@ private fun OfficialsTabContent(
     filteredMps: List<com.goveye.app.domain.model.Mp>,
     hasActiveFilters: Boolean,
     onNavigateToProfile: (Int) -> Unit,
-    showInfoCards: Boolean = true
+    showInfoCards: Boolean = true,
+    postcodeState: PostcodeSearchState = PostcodeSearchState.Idle
 ) {
     Log.i(
         "GovEye/Directory",
@@ -255,13 +284,37 @@ private fun OfficialsTabContent(
     )
     // Priority: search results > filtered browsing > paged browsing
     if (searchQuery.isNotBlank()) {
-        if (searchResults.isEmpty()) {
+        // Show loading state for postcode search
+        if (postcodeState is PostcodeSearchState.Loading) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(48.dp),
+                        strokeWidth = 4.dp
+                    )
+                    Text(
+                        text = "Looking up postcode…",
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 16.dp)
+                    )
+                }
+            }
+        } else if (searchResults.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                val message = when (postcodeState) {
+                    is PostcodeSearchState.NotFound -> "Postcode not found. Check the format (e.g., SW1A 1AA)."
+                    else -> "No MPs found for \"$searchQuery\""
+                }
                 Text(
-                    text = "No MPs found for \"$searchQuery\"",
+                    text = message,
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -278,6 +331,18 @@ private fun OfficialsTabContent(
                         StickyInfoCard(
                             title = "Officials",
                             subtitle = "Browse all MPs and Lords in the UK Parliament."
+                        )
+                    }
+                }
+                // Show postcode result header
+                if (postcodeState is PostcodeSearchState.Found) {
+                    val result = (postcodeState as PostcodeSearchState.Found).result
+                    item(key = "postcode-header") {
+                        PostcodeResultCard(
+                            postcode = result.postcode,
+                            constituency = result.constituencyName,
+                            council = result.adminDistrict,
+                            region = result.region
                         )
                     }
                 }
@@ -491,5 +556,161 @@ private fun PlaceholderTabContent(label: String) {
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+    }
+}
+
+/**
+ * Card showing postcode lookup result — constituency, council, region.
+ * Displayed above the MP list when a postcode is searched.
+ */
+@Composable
+private fun PostcodeResultCard(postcode: String, constituency: String?, council: String?, region: String?) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.primaryContainer,
+        tonalElevation = 2.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = postcode,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+            if (constituency != null) {
+                Text(
+                    text = constituency,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+            if (council != null) {
+                Text(
+                    text = council,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+            if (region != null) {
+                Text(
+                    text = region,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Councils tab — shows a searchable list of UK local authorities.
+ * Card-based design similar to the Parties tab.
+ */
+@Composable
+private fun CouncilsTabContent(
+    councils: List<com.goveye.app.data.local.dao.CouncilSummary>,
+    searchQuery: String,
+    onNavigateToCouncil: (Int) -> Unit
+) {
+    val filtered = remember(councils, searchQuery) {
+        if (searchQuery.isBlank()) {
+            councils
+        } else {
+            councils.filter { it.name.contains(searchQuery, ignoreCase = true) }
+        }
+    }
+
+    if (filtered.isEmpty()) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = if (searchQuery.isNotBlank()) {
+                    "No councils found for \"$searchQuery\""
+                } else {
+                    "No councils available"
+                },
+                style = MaterialTheme.typography.bodyLarge,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    } else {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(filtered, key = { it.id }, contentType = { "council_card" }) { council ->
+                CouncilCard(
+                    council = council,
+                    onClick = { onNavigateToCouncil(council.id) }
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Council card — shows council name, type, and region.
+ * Similar visual style to party cards.
+ */
+@Composable
+private fun CouncilCard(council: com.goveye.app.data.local.dao.CouncilSummary, onClick: () -> Unit) {
+    val typeLabel = when (council.localAuthorityType) {
+        "MD" -> "Metropolitan District"
+        "NMD" -> "Non-Metropolitan District"
+        "UA" -> "Unitary Authority"
+        "LBO" -> "London Borough"
+        "CC" -> "County Council"
+        "MBC" -> "Metropolitan Borough"
+        else -> council.localAuthorityType ?: "Local Authority"
+    }
+
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 2.dp
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Council icon — building emoji or first letter
+            Surface(
+                shape = androidx.compose.foundation.shape.CircleShape,
+                color = MaterialTheme.colorScheme.primaryContainer,
+                modifier = Modifier.size(48.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text = council.name.firstOrNull()?.uppercase() ?: "?",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    text = council.name,
+                    style = MaterialTheme.typography.titleSmall
+                )
+                Text(
+                    text = typeLabel,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
     }
 }
