@@ -1,12 +1,17 @@
 package com.goveye.app
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -14,11 +19,13 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import com.goveye.app.data.preference.DownloadPreferences
 import com.goveye.app.data.update.DatabaseUpdateManager
 import com.goveye.app.data.update.DatabaseUpdateState
 import com.goveye.app.domain.ThemeMode
@@ -26,6 +33,7 @@ import com.goveye.app.ui.GovEyeApp
 import com.goveye.app.ui.navigation.DeepLinkHandler
 import com.goveye.app.ui.navigation.DeepLinkNavigator
 import com.goveye.app.ui.screens.DatabaseLoadingScreen
+import com.goveye.app.ui.screens.OnboardingScreen
 import com.goveye.app.ui.theme.GovEyeTheme
 import com.goveye.app.ui.theme.ThemeViewModel
 import com.goveye.app.work.DatabaseDownloadWorker
@@ -35,6 +43,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
@@ -44,6 +53,12 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var databaseUpdateManager: DatabaseUpdateManager
+
+    @Inject
+    lateinit var downloadPreferences: DownloadPreferences
+
+    @Inject
+    lateinit var onboardingPreferences: com.goveye.app.data.preference.OnboardingPreferences
 
     @Volatile
     private var splashVisible = true
@@ -66,6 +81,16 @@ class MainActivity : ComponentActivity() {
             val appTheme by themeViewModel.appTheme.collectAsStateWithLifecycle()
             val themeMode by themeViewModel.themeMode.collectAsStateWithLifecycle()
             val isAmoled by themeViewModel.isAmoled.collectAsStateWithLifecycle()
+
+            // Permission launcher for POST_NOTIFICATIONS (Android 13+).
+            // Used on first launch so the download foreground notification
+            // is visible to the user.
+            val notificationPermissionLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.RequestPermission()
+            ) { _ ->
+                // Result is ignored — download proceeds regardless.
+                // The notification just won't show if denied.
+            }
 
             val isSystemDark = isSystemInDarkTheme()
             val isDark = when (themeMode) {
@@ -93,6 +118,41 @@ class MainActivity : ComponentActivity() {
                 themeMode = themeMode,
                 isAmoled = isAmoled
             ) {
+                // Onboarding state — shown before the download flow on
+                // first launch. Wakely-style fade transitions between
+                // Welcome and Government selection steps.
+                var showOnboarding by remember { mutableStateOf(false) }
+                var onboardingTestMode by remember { mutableStateOf(false) }
+
+                LaunchedEffect(Unit) {
+                    val completed = onboardingPreferences.onboardingCompleted.first()
+                    if (!completed) {
+                        showOnboarding = true
+                    }
+                }
+
+                if (showOnboarding) {
+                    OnboardingScreen(
+                        testMode = onboardingTestMode,
+                        onComplete = { selectedGov ->
+                            if (!onboardingTestMode) {
+                                // Real onboarding — mark completed, store the
+                                // selected government, and proceed to download.
+                                // The download is gated on a government being
+                                // selected — it will not start until this
+                                // preference is set.
+                                MainScope().launch {
+                                    onboardingPreferences.setOnboardingCompleted(true)
+                                    onboardingPreferences.setSelectedGovernment(selectedGov)
+                                }
+                            }
+                            showOnboarding = false
+                            onboardingTestMode = false
+                        }
+                    )
+                    return@GovEyeTheme
+                }
+
                 // Database update state — drives whether to show the loading screen
                 // or the main app (D-04, D-05, D-10a, DATA-03).
                 // On first launch (no DB file yet), start with Checking to show
@@ -114,16 +174,48 @@ class MainActivity : ComponentActivity() {
                 var retryCount by remember { mutableIntStateOf(0) }
 
                 LaunchedEffect(retryCount) {
+                    // Gate the download on a government being selected.
+                    // The user must choose a government during onboarding
+                    // before any download starts. We wait for the preference
+                    // to be non-null (the onboarding onComplete callback
+                    // writes it asynchronously via MainScope().launch).
+                    val selectedGov = onboardingPreferences.selectedGovernment
+                        .first { it != null }
+                    if (selectedGov == null) {
+                        Log.i(TAG, "No government selected — not starting download")
+                        return@LaunchedEffect
+                    }
+
                     val isFirstLaunch = databaseUpdateManager.isFirstLaunch()
                     if (isFirstLaunch) {
-                        Log.i(TAG, "First launch — enqueuing DatabaseDownloadWorker")
+                        Log.i(TAG, "First launch (government=$selectedGov) — enqueuing DatabaseDownloadWorker")
                         dbState = DatabaseUpdateState.Downloading(0f, true)
+
+                        // Request POST_NOTIFICATIONS on Android 13+ so the
+                        // download foreground notification is visible.
+                        // Without this, the notification is silently
+                        // suppressed and the user has no indication the
+                        // download is happening.
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                            ContextCompat.checkSelfPermission(
+                                this@MainActivity,
+                                Manifest.permission.POST_NOTIFICATIONS
+                            ) != PackageManager.PERMISSION_GRANTED
+                        ) {
+                            // Launch permission request — don't wait for
+                            // result. The download proceeds regardless;
+                            // the notification just won't show if denied.
+                            notificationPermissionLauncher.launch(
+                                Manifest.permission.POST_NOTIFICATIONS
+                            )
+                        }
 
                         // Enqueue the foreground-service worker. KEEP policy
                         // means if the work is already running (e.g. Activity
                         // recreated after minimization), the in-progress
                         // download is not cancelled.
-                        WorkScheduler.enqueueDatabaseDownload(this@MainActivity)
+                        val wifiOnly = downloadPreferences.wifiOnly.first()
+                        WorkScheduler.enqueueDatabaseDownload(this@MainActivity, wifiOnly = wifiOnly)
 
                         // Observe the worker's progress until it reaches a
                         // terminal state. The download runs in a foreground
@@ -147,8 +239,14 @@ class MainActivity : ComponentActivity() {
                                 }
 
                                 WorkInfo.State.SUCCEEDED -> {
-                                    Log.i(TAG, "Download worker succeeded")
-                                    dbState = DatabaseUpdateState.UpToDate
+                                    Log.i(TAG, "Download worker succeeded — needs restart")
+                                    // Don't navigate to the main screen yet.
+                                    // Room's InvalidationTracker is broken
+                                    // from database.close() during the
+                                    // download. Show a "Restart" button so
+                                    // the user can recreate the Activity
+                                    // and get fresh Room connections.
+                                    dbState = DatabaseUpdateState.NeedsRestart
                                 }
 
                                 WorkInfo.State.FAILED -> {
@@ -176,18 +274,30 @@ class MainActivity : ComponentActivity() {
                         // background. The app is already visible (UpToDate), so
                         // the user doesn't see any loading screen.
                         val updateState = databaseUpdateManager.checkForUpdates()
+                        Log.i(TAG, "Update check result: $updateState")
                         when (updateState) {
                             is DatabaseUpdateState.NeedsPatches -> {
                                 val patches = (updateState as DatabaseUpdateState.NeedsPatches).patches
+                                Log.i(
+                                    TAG,
+                                    "Applying ${patches.size} patches: ${patches.joinToString {
+                                        it.streamName
+                                    }}"
+                                )
                                 databaseUpdateManager.applyPatches(patches)
                             }
 
                             is DatabaseUpdateState.NeedsFullDownload -> {
                                 Log.i(TAG, "Full download needed (stream multiple behind)")
-                                WorkScheduler.enqueueDatabaseDownload(this@MainActivity)
+                                val wifiOnly = downloadPreferences.wifiOnly.first()
+                                WorkScheduler.enqueueDatabaseDownload(this@MainActivity, wifiOnly = wifiOnly)
                             }
 
-                            else -> { /* UpToDate or Failed — nothing to do */ }
+                            is DatabaseUpdateState.Failed -> {
+                                Log.w(TAG, "Update check failed: ${updateState.message}")
+                            }
+
+                            else -> { /* UpToDate — nothing to do */ }
                         }
                     }
                 }
@@ -203,19 +313,37 @@ class MainActivity : ComponentActivity() {
                     is DatabaseUpdateState.NeedsWifi,
                     is DatabaseUpdateState.NeedsPatches,
                     is DatabaseUpdateState.Checking,
-                    is DatabaseUpdateState.Failed -> {
+                    is DatabaseUpdateState.Failed,
+                    is DatabaseUpdateState.NeedsRestart -> {
                         DatabaseLoadingScreen(
                             state = dbState,
                             onRetry = {
                                 dbState = DatabaseUpdateState.Checking
                                 retryCount++
+                            },
+                            onRestart = {
+                                // Kill the app process so the user gets a
+                                // fresh start with clean Room connections.
+                                // The InvalidationTracker was broken by
+                                // database.close() during the download —
+                                // only a process restart fixes it.
+                                // The user taps the app icon to relaunch.
+                                android.os.Process.killProcess(
+                                    android.os.Process.myPid()
+                                )
                             }
                         )
                     }
 
                     else -> {
                         // UpToDate or Idle — show the app
-                        GovEyeApp(deepLinkNavigator = deepLinkNavigator)
+                        GovEyeApp(
+                            deepLinkNavigator = deepLinkNavigator,
+                            onTestOnboarding = {
+                                showOnboarding = true
+                                onboardingTestMode = true
+                            }
+                        )
                     }
                 }
             }

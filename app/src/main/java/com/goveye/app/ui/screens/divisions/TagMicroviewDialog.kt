@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -138,15 +139,19 @@ fun TagMicroviewDialog(
                             modifier = Modifier.padding(top = 4.dp),
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
+                            val divisionLabel = "${uiState.divisionCount} division" +
+                                if (uiState.divisionCount != 1) "s" else ""
                             Text(
-                                text = "${uiState.divisionCount} division${if (uiState.divisionCount != 1) "s" else ""}",
+                                text = divisionLabel,
                                 style = MaterialTheme.typography.labelLarge,
                                 color = headerTextColor.copy(alpha = 0.85f),
                                 fontWeight = FontWeight.Medium
                             )
                             if (uiState.billCount > 0) {
+                                val billLabel = "${uiState.billCount} bill" +
+                                    if (uiState.billCount != 1) "s" else ""
                                 Text(
-                                    text = "${uiState.billCount} bill${if (uiState.billCount != 1) "s" else ""}",
+                                    text = billLabel,
                                     style = MaterialTheme.typography.labelLarge,
                                     color = headerTextColor.copy(alpha = 0.85f),
                                     fontWeight = FontWeight.Medium
@@ -207,10 +212,7 @@ fun TagMicroviewDialog(
 }
 
 @Composable
-private fun TagDivisionItem(
-    division: Division,
-    onClick: () -> Unit
-) {
+private fun TagDivisionItem(division: Division, onClick: () -> Unit) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -260,8 +262,11 @@ private fun TagDivisionItem(
                         color = AyeColor,
                         fontWeight = FontWeight.Bold
                     )
-                    Text("·", style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        "·",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     Text(
                         text = "${division.noCount}",
                         style = MaterialTheme.typography.labelMedium,

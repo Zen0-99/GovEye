@@ -32,19 +32,28 @@ class NotificationHelper @Inject constructor(@ApplicationContext private val con
         const val SPEECHES_CHANNEL_ID = "speeches"
         const val BILLS_CHANNEL_ID = "bills"
         const val DOWNLOAD_CHANNEL_ID = "download"
+        const val UPDATE_CHANNEL_ID = "updates"
         const val VOTES_CHANNEL_NAME = "Vote Notifications"
         const val SPEECHES_CHANNEL_NAME = "Speech Notifications"
         const val BILLS_CHANNEL_NAME = "Bill Notifications"
         const val DOWNLOAD_CHANNEL_NAME = "Data Download"
+        const val UPDATE_CHANNEL_NAME = "Data Updates"
         const val VOTES_CHANNEL_DESC = "Notifications when followed MPs vote"
         const val SPEECHES_CHANNEL_DESC = "Notifications when followed MPs speak (coming soon)"
         const val BILLS_CHANNEL_DESC = "Notifications when followed bills change stage"
         const val DOWNLOAD_CHANNEL_DESC = "Foreground service notification during database download"
+        const val UPDATE_CHANNEL_DESC = "Notifications when parliamentary data has been updated"
 
         const val EXTRA_DIVISION_ID = "division_id"
         const val EXTRA_DIVISION_HOUSE = "division_house"
         const val EXTRA_MP_NAME = "mp_name"
         const val EXTRA_BILL_ID = "bill_id"
+
+        /** Notification ID for the update worker foreground notification. */
+        const val UPDATE_FOREGROUND_NOTIFICATION_ID = 1004
+
+        /** Notification ID for update announcement notifications. */
+        const val UPDATE_ANNOUNCEMENT_NOTIFICATION_ID = 1005
 
         private var nextNotificationId = 1000
     }
@@ -88,11 +97,22 @@ class NotificationHelper @Inject constructor(@ApplicationContext private val con
                 enableVibration(false)
                 setShowBadge(false)
             }
+            val updateChannel = NotificationChannel(
+                UPDATE_CHANNEL_ID,
+                UPDATE_CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = UPDATE_CHANNEL_DESC
+                setSound(null, null)
+                enableVibration(false)
+                setShowBadge(false)
+            }
             val nm = context.getSystemService(NotificationManager::class.java)
             nm.createNotificationChannel(votesChannel)
             nm.createNotificationChannel(speechesChannel)
             nm.createNotificationChannel(billsChannel)
             nm.createNotificationChannel(downloadChannel)
+            nm.createNotificationChannel(updateChannel)
         }
     }
 
@@ -255,4 +275,84 @@ class NotificationHelper @Inject constructor(@ApplicationContext private val con
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
     }
+
+    /**
+     * Shows a notification announcing that parliamentary data has been
+     * updated. Adapted from Miko's [ExtensionUpdateNotifier.promptUpdates]
+     * pattern — informs the user that fresh data (votes, bills, etc.) has
+     * been applied in the background.
+     *
+     * Uses the [UPDATE_CHANNEL_ID] (IMPORTANCE_LOW, silent) so it doesn't
+     * disrupt the user. Auto-cancel on tap.
+     *
+     * @param streamNames The data streams that were updated (e.g. "commons-votes", "bills").
+     */
+    fun showDataUpdatedNotification(streamNames: List<String>) {
+        val count = streamNames.size
+        val title = if (count == 1) {
+            "GovEye data updated"
+        } else {
+            "GovEye data updated"
+        }
+        val body = streamNames.joinToString(", ")
+
+        val notification = NotificationCompat.Builder(context, UPDATE_CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.stat_sys_download_done)
+            .setContentTitle(title)
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build()
+
+        try {
+            notificationManager.notify(UPDATE_ANNOUNCEMENT_NOTIFICATION_ID, notification)
+        } catch (e: SecurityException) {
+            // POST_NOTIFICATIONS not granted — silently skip
+        }
+    }
+
+    /**
+     * Shows a notification announcing that a major data update is available
+     * and the user needs to open the app to download it. This is used when
+     * the periodic update worker detects that a full re-download is needed
+     * (e.g. a stream is multiple versions behind) but can't perform it in
+     * the background.
+     *
+     * Uses the [UPDATE_CHANNEL_ID] (IMPORTANCE_LOW, silent). Auto-cancel on tap.
+     */
+    fun showMajorUpdateAvailableNotification() {
+        val notification = NotificationCompat.Builder(context, UPDATE_CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.stat_sys_download)
+            .setContentTitle("Update available")
+            .setContentText("New parliamentary data is available. Open GovEye to update.")
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build()
+
+        try {
+            notificationManager.notify(UPDATE_ANNOUNCEMENT_NOTIFICATION_ID, notification)
+        } catch (e: SecurityException) {
+            // POST_NOTIFICATIONS not granted — silently skip
+        }
+    }
+
+    /**
+     * Builds a foreground notification for the update worker (Stonesync
+     * pattern). Used by [com.goveye.app.work.DatabaseUpdateWorker] when
+     * applying patches in the background.
+     *
+     * @param contentText The notification body text (e.g. "Applying updates…").
+     * @param indeterminate When true, shows an indeterminate progress spinner.
+     */
+    fun buildUpdateForegroundNotification(
+        contentText: String,
+        indeterminate: Boolean = false
+    ): NotificationCompat.Builder = NotificationCompat.Builder(context, DOWNLOAD_CHANNEL_ID)
+        .setSmallIcon(android.R.drawable.stat_sys_download)
+        .setContentTitle("GovEye")
+        .setContentText(contentText)
+        .setProgress(0, 0, indeterminate)
+        .setOngoing(true)
+        .setPriority(NotificationCompat.PRIORITY_LOW)
 }

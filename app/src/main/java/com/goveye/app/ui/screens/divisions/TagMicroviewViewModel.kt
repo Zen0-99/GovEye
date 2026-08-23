@@ -2,8 +2,8 @@ package com.goveye.app.ui.screens.divisions
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.goveye.app.data.local.dao.TagDao
 import com.goveye.app.data.local.dao.DivisionDao
+import com.goveye.app.data.local.dao.TagDao
 import com.goveye.app.data.local.entity.DivisionEntity
 import com.goveye.app.data.mapper.DivisionMapper
 import com.goveye.app.domain.model.Division
@@ -24,10 +24,8 @@ data class TagMicroviewUiState(
 )
 
 @HiltViewModel
-class TagMicroviewViewModel @Inject constructor(
-    private val tagDao: TagDao,
-    private val divisionDao: DivisionDao
-) : ViewModel() {
+class TagMicroviewViewModel @Inject constructor(private val tagDao: TagDao, private val divisionDao: DivisionDao) :
+    ViewModel() {
 
     private val _uiState = MutableStateFlow(TagMicroviewUiState())
     val uiState: StateFlow<TagMicroviewUiState> = _uiState.asStateFlow()

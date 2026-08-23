@@ -31,10 +31,17 @@ data class DivisionDetailRoute(val divisionId: Int, val house: Int = 1) : NavKey
 data class BillDetailRoute(val billId: Int) : NavKey
 
 @Serializable
-data class InterestBucketDetailRoute(val memberId: Int, val bucketLabel: String) : NavKey
+data class InterestBucketDetailRoute(val memberId: Int, val bucketLabel: String, val entryType: String = "INCOME") :
+    NavKey
 
 @Serializable
 data class TranscriptRoute(val divisionId: Int, val divisionTitle: String) : NavKey
 
 @Serializable
 data class PartyRoute(val partyId: Int) : NavKey
+
+@Serializable
+data class CommitteeRoute(val committeeId: Int) : NavKey
+
+@Serializable
+data class CouncilRoute(val councilId: Int) : NavKey

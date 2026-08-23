@@ -21,6 +21,7 @@ object NetworkModule {
     private const val MEMBERS_BASE_URL = "https://members-api.parliament.uk/api/"
     private const val HANSARD_BASE_URL = "https://hansard-api.parliament.uk/"
     private const val GITHUB_API_BASE_URL = "https://api.github.com/"
+    private const val POSTCODES_BASE_URL = "https://api.postcodes.io/"
     private const val TIMEOUT_SECONDS = 30L
     private const val HANSARD_TIMEOUT_SECONDS = 15L
     private const val DB_DOWNLOAD_TIMEOUT_MINUTES = 10L
@@ -68,16 +69,29 @@ object NetworkModule {
         .build()
 
     /**
-     * OkHttpClient with a 10-minute timeout for per-API DB downloads.
-     * The default 30s timeout is too short for large file downloads on slow
-     * connections. Used by DatabaseUpdateManager.downloadAndMergePerApiDbs.
+     * OkHttpClient with a 10-minute timeout for large DB downloads.
+     *
+     * Built from scratch (NOT via okHttpClient.newBuilder()) to avoid
+     * inheriting the HttpLoggingInterceptor with Level.BODY — that
+     * interceptor buffers the entire response body in memory, which
+     * causes OutOfMemoryError when downloading the 557MB seed DB.
+     *
+     * Used by DatabaseUpdateManager.downloadSeedDb.
      */
     @Provides
     @Singleton
     @Named("dbDownloadClient")
-    fun provideDbDownloadOkHttpClient(okHttpClient: OkHttpClient): OkHttpClient = okHttpClient
-        .newBuilder()
-        .connectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+    fun provideDbDownloadOkHttpClient(): OkHttpClient = OkHttpClient
+        .Builder()
+        .addInterceptor { chain ->
+            val request =
+                chain
+                    .request()
+                    .newBuilder()
+                    .header("User-Agent", USER_AGENT)
+                    .build()
+            chain.proceed(request)
+        }.connectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
         .readTimeout(DB_DOWNLOAD_TIMEOUT_MINUTES, TimeUnit.MINUTES)
         .writeTimeout(DB_DOWNLOAD_TIMEOUT_MINUTES, TimeUnit.MINUTES)
         .build()
@@ -105,6 +119,22 @@ object NetworkModule {
     @Named("githubApi")
     fun provideGithubRetrofit(okHttpClient: OkHttpClient, json: Json): Retrofit =
         buildRetrofit(GITHUB_API_BASE_URL, okHttpClient, json)
+
+    /**
+     * Retrofit for postcodes.io — free UK postcode lookup API.
+     * Used by PostcodeRepository to resolve postcodes to constituencies.
+     * 15s timeout is sufficient for single-postcode lookups.
+     */
+    @Provides
+    @Singleton
+    @Named("postcodesApi")
+    fun providePostcodesRetrofit(@Named("hansardClient") okHttpClient: OkHttpClient, json: Json): Retrofit =
+        buildRetrofit(POSTCODES_BASE_URL, okHttpClient, json)
+
+    @Provides
+    @Singleton
+    fun providePostcodesApi(@Named("postcodesApi") retrofit: Retrofit): com.goveye.app.data.api.PostcodesApi =
+        retrofit.create(com.goveye.app.data.api.PostcodesApi::class.java)
 
     private fun buildRetrofit(baseUrl: String, okHttpClient: OkHttpClient, json: Json): Retrofit = Retrofit
         .Builder()

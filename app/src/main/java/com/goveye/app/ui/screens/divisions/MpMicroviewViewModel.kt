@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.goveye.app.data.local.dao.MpDao
 import com.goveye.app.data.repo.FollowRepository
+import com.goveye.app.data.repo.HistoricalMemberRepository
 import com.goveye.app.data.repo.MembersRepository
 import com.goveye.app.data.repo.VotesRepository
 import com.goveye.app.domain.model.MemberVoteWithDivision
@@ -29,23 +30,29 @@ data class MpMicroviewUiState(
 /**
  * Lightweight ViewModel for the MP microview dialog.
  *
- * Unlike [ProfileViewModel], this doesn't depend on the MP being in the
- * local database. It receives the basic info (name, party, etc.) from the
- * DivisionVote and loads the voting record + follow state in the background.
- *
- * If the MP is in the local DB, it uses that data (which has thumbnailUrl,
- * party colors, etc.). If not, it fetches from the Members API.
+ * Uses the centralized ID resolution via [historicalMemberRepository]:
+ * 1. Try `mps` table (current Commons MPs) — ID = Parliament API member ID
+ * 2. Try `historical_members` table (Lords, former MPs) — lookup by parliamentMemberId
+ *    - If house=2 (Lords), votes are stored with memberId + LORDS_ID_OFFSET (1,000,000)
+ *    - If house=1 (former Commons MP), votes use the memberId directly
+ * 3. Fall back to the DivisionVote data passed by the caller
  */
 @HiltViewModel
 class MpMicroviewViewModel @Inject constructor(
     private val membersRepository: MembersRepository,
     private val votesRepository: VotesRepository,
     private val followRepository: FollowRepository,
-    private val mpDao: MpDao
+    private val mpDao: MpDao,
+    private val historicalMemberRepository: HistoricalMemberRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MpMicroviewUiState())
     val uiState: StateFlow<MpMicroviewUiState> = _uiState.asStateFlow()
+
+    companion object {
+        /** Lords votes are stored with memberId + this offset (see build_lords_votes.py) */
+        private const val LORDS_ID_OFFSET = 1_000_000
+    }
 
     fun load(
         memberId: Int,
@@ -55,7 +62,7 @@ class MpMicroviewViewModel @Inject constructor(
         fallbackConstituency: String?
     ) {
         viewModelScope.launch {
-            // 1. Try to load from bundled DB first (all 650 MPs are in the DB)
+            // 1. Try to load from bundled DB first (all 650 Commons MPs are in the DB)
             val mpEntity = mpDao.getMp(memberId)
             if (mpEntity != null) {
                 val mp = Mp(
@@ -83,37 +90,64 @@ class MpMicroviewViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(mp = mp, isLoading = false)
                 loadVotesAndFollow(memberId, mpEntity.house, mpEntity.partyName)
             } else {
-                // 2. MP not in bundled DB (e.g., a Lord who voted but isn't in the
-                // Commons directory) — show fallback data from the DivisionVote.
-                // Lords aren't in the bundled MP directory by design (D-02).
-                val fallbackMp = Mp(
-                    id = memberId,
-                    nameListAs = fallbackName,
-                    nameDisplayAs = fallbackName,
-                    nameFullTitle = null,
-                    gender = null,
-                    party = fallbackPartyName?.let {
-                        com.goveye.app.domain.model.Party(0, it, "", fallbackPartyColour ?: "", "")
-                    },
-                    constituency = fallbackConstituency?.let {
-                        com.goveye.app.domain.model.Constituency(0, it)
-                    },
-                    house = 1,
-                    membershipStartDate = null,
-                    isActive = true,
-                    thumbnailUrl = null
-                )
-                _uiState.value = _uiState.value.copy(mp = fallbackMp, isLoading = false)
-                // Still load votes with fallback house + party
-                loadVotesAndFollow(memberId, 1, fallbackPartyName)
+                // 2. Not in Commons DB — look up in historical_members (Lords, former MPs)
+                val historicalMember = historicalMemberRepository.getByParliamentMemberId(memberId)
+                if (historicalMember != null) {
+                    val house = historicalMember.house
+                    // For Lords (house=2), votes are stored with memberId + LORDS_ID_OFFSET
+                    val votesMemberId = if (house == 2) memberId + LORDS_ID_OFFSET else memberId
+                    val mp = Mp(
+                        id = memberId,
+                        nameListAs = historicalMember.displayName,
+                        nameDisplayAs = historicalMember.displayName,
+                        nameFullTitle = null,
+                        gender = null,
+                        party = (historicalMember.party ?: fallbackPartyName)?.let {
+                            com.goveye.app.domain.model.Party(0, it, "", fallbackPartyColour ?: "", "")
+                        },
+                        constituency = (historicalMember.constituency ?: fallbackConstituency)?.let {
+                            com.goveye.app.domain.model.Constituency(0, it)
+                        },
+                        house = house,
+                        membershipStartDate = historicalMember.startDate,
+                        isActive = historicalMember.isCurrent == 1,
+                        thumbnailUrl = null
+                    )
+                    _uiState.value = _uiState.value.copy(mp = mp, isLoading = false)
+                    loadVotesAndFollow(votesMemberId, house, historicalMember.party ?: fallbackPartyName)
+                } else {
+                    // 3. Fallback — use data from the DivisionVote
+                    val fallbackMp = Mp(
+                        id = memberId,
+                        nameListAs = fallbackName,
+                        nameDisplayAs = fallbackName,
+                        nameFullTitle = null,
+                        gender = null,
+                        party = fallbackPartyName?.let {
+                            com.goveye.app.domain.model.Party(0, it, "", fallbackPartyColour ?: "", "")
+                        },
+                        constituency = fallbackConstituency?.let {
+                            com.goveye.app.domain.model.Constituency(0, it)
+                        },
+                        house = 1,
+                        membershipStartDate = null,
+                        isActive = true,
+                        thumbnailUrl = null
+                    )
+                    _uiState.value = _uiState.value.copy(mp = fallbackMp, isLoading = false)
+                    // For division detail, the memberId is already the correct one
+                    // (Lords votes store memberId + offset directly in division_votes)
+                    loadVotesAndFollow(memberId, 1, fallbackPartyName)
+                }
             }
         }
     }
 
-    private fun loadVotesAndFollow(memberId: Int, house: Int, partyName: String?) {
+    private fun loadVotesAndFollow(votesMemberId: Int, house: Int, partyName: String?) {
         viewModelScope.launch {
-            // Check follow state
-            val isFollowing = followRepository.isFollowing(memberId)
+            // Check follow state — use the canonical memberId (without Lords offset)
+            val followId = if (votesMemberId >= LORDS_ID_OFFSET) votesMemberId - LORDS_ID_OFFSET else votesMemberId
+            val isFollowing = followRepository.isFollowing(followId)
             _uiState.value = _uiState.value.copy(isFollowing = isFollowing)
         }
 
@@ -122,8 +156,8 @@ class MpMicroviewViewModel @Inject constructor(
                 // Load all division dates for the house (for attendance calc)
                 val allDates = votesRepository.getAllDivisionDates(house)
 
-                // Load all votes from the bundled DB (the DB has ALL votes for ALL divisions)
-                val votes = votesRepository.getMemberVotingWithDivisions(memberId)
+                // Load all votes using the correct memberId (with Lords offset if applicable)
+                val votes = votesRepository.getMemberVotingWithDivisions(votesMemberId)
                 _uiState.value = _uiState.value.copy(
                     memberVotes = votes,
                     allDivisionDates = allDates
@@ -131,7 +165,7 @@ class MpMicroviewViewModel @Inject constructor(
 
                 // Compute rebellion stats — fast path using SQL aggregation
                 if (votes.isNotEmpty() && partyName != null) {
-                    val memberVotes = votesRepository.getMemberVotes(memberId)
+                    val memberVotes = votesRepository.getMemberVotes(votesMemberId)
                     val divisionIds = memberVotes.map { it.divisionId }.distinct()
                     val partyVoteCounts = votesRepository.getPartyVoteCounts(divisionIds, partyName)
                     val stats = RebellionCalculator.computeAggregated(memberVotes, partyVoteCounts)

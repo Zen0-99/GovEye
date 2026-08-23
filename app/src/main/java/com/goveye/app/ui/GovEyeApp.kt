@@ -2,18 +2,21 @@ package com.goveye.app.ui
 
 import android.util.Log
 import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -24,6 +27,7 @@ import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -39,6 +43,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
@@ -55,6 +62,8 @@ import com.goveye.app.ui.components.FloatingSearchBar
 import com.goveye.app.ui.components.LocalSearchBarState
 import com.goveye.app.ui.components.SearchBarStateHolder
 import com.goveye.app.ui.navigation.BillDetailRoute
+import com.goveye.app.ui.navigation.CommitteeRoute
+import com.goveye.app.ui.navigation.CouncilRoute
 import com.goveye.app.ui.navigation.DeepLinkNavigator
 import com.goveye.app.ui.navigation.DirectoryRoute
 import com.goveye.app.ui.navigation.DivisionDetailRoute
@@ -69,10 +78,12 @@ import com.goveye.app.ui.screens.FeedScreen
 import com.goveye.app.ui.screens.FollowingScreen
 import com.goveye.app.ui.screens.SettingsScreen
 import com.goveye.app.ui.screens.bills.BillDetailScreen
+import com.goveye.app.ui.screens.committee.CommitteeScreen
+import com.goveye.app.ui.screens.council.CouncilScreen
 import com.goveye.app.ui.screens.directory.DirectoryScreen
 import com.goveye.app.ui.screens.divisions.DivisionDetailScreen
 import com.goveye.app.ui.screens.divisions.TranscriptScreen
-import com.goveye.app.ui.screens.mpprofile.InterestBucketDetailScreen
+import com.goveye.app.ui.screens.mpprofile.FinancialBucketDetailScreen
 import com.goveye.app.ui.screens.mpprofile.ProfileScreen
 import com.goveye.app.ui.screens.party.PartyScreen
 import com.goveye.app.ui.theme.ThemeViewModel
@@ -91,11 +102,11 @@ import com.goveye.app.ui.theme.ThemeViewModel
  * [SettingsScreen] so theme changes propagate live.
  */
 @Composable
-fun GovEyeApp(deepLinkNavigator: DeepLinkNavigator) {
+fun GovEyeApp(deepLinkNavigator: DeepLinkNavigator, onTestOnboarding: () -> Unit = {}) {
     val themeViewModel: ThemeViewModel = hiltViewModel()
     val searchStateHolder = remember { SearchBarStateHolder() }
     CompositionLocalProvider(LocalSearchBarState provides searchStateHolder) {
-        GovEyeAppContent(themeViewModel, deepLinkNavigator, searchStateHolder)
+        GovEyeAppContent(themeViewModel, deepLinkNavigator, searchStateHolder, onTestOnboarding)
     }
 }
 
@@ -103,7 +114,8 @@ fun GovEyeApp(deepLinkNavigator: DeepLinkNavigator) {
 private fun GovEyeAppContent(
     themeViewModel: ThemeViewModel,
     deepLinkNavigator: DeepLinkNavigator,
-    searchStateHolder: SearchBarStateHolder
+    searchStateHolder: SearchBarStateHolder,
+    onTestOnboarding: () -> Unit = {}
 ) {
     val searchConfig by searchStateHolder.config
     val showInfoCards by themeViewModel.showInfoCards.collectAsStateWithLifecycle()
@@ -229,6 +241,12 @@ private fun GovEyeAppContent(
                             onNavigateToParty = { partyId ->
                                 currentBackStack.add(PartyRoute(partyId))
                             },
+                            onNavigateToCommittee = { committeeId ->
+                                currentBackStack.add(CommitteeRoute(committeeId))
+                            },
+                            onNavigateToCouncil = { councilId ->
+                                currentBackStack.add(CouncilRoute(councilId))
+                            },
                             showInfoCards = showInfoCards,
                             modifier = Modifier
                                 .fillMaxSize()
@@ -251,8 +269,14 @@ private fun GovEyeAppContent(
                             onNavigateToInterestBucket = { targetMemberId, bucketLabel ->
                                 currentBackStack.add(InterestBucketDetailRoute(targetMemberId, bucketLabel))
                             },
+                            onNavigateToExpenseBucket = { targetMemberId, bucketLabel ->
+                                currentBackStack.add(InterestBucketDetailRoute(targetMemberId, bucketLabel, "EXPENSE"))
+                            },
                             onNavigateToParty = { partyId ->
                                 currentBackStack.add(PartyRoute(partyId))
+                            },
+                            onNavigateToCommittee = { committeeId ->
+                                currentBackStack.add(CommitteeRoute(committeeId))
                             },
                             contentTopPadding = topBarHeight,
                             modifier = Modifier.fillMaxSize()
@@ -263,6 +287,32 @@ private fun GovEyeAppContent(
                     NavEntry(key) {
                         PartyScreen(
                             partyId = key.partyId,
+                            onBack = { currentBackStack.removeLastOrNull() },
+                            onNavigateToProfile = { targetId ->
+                                currentBackStack.add(ProfileRoute(targetId))
+                            },
+                            contentTopPadding = topBarHeight,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+
+                is CommitteeRoute ->
+                    NavEntry(key) {
+                        CommitteeScreen(
+                            committeeId = key.committeeId,
+                            onBack = { currentBackStack.removeLastOrNull() },
+                            onNavigateToProfile = { targetId ->
+                                currentBackStack.add(ProfileRoute(targetId))
+                            },
+                            contentTopPadding = topBarHeight,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+
+                is CouncilRoute ->
+                    NavEntry(key) {
+                        CouncilScreen(
+                            councilId = key.councilId,
                             onBack = { currentBackStack.removeLastOrNull() },
                             onNavigateToProfile = { targetId ->
                                 currentBackStack.add(ProfileRoute(targetId))
@@ -312,9 +362,14 @@ private fun GovEyeAppContent(
 
                 is InterestBucketDetailRoute ->
                     NavEntry(key) {
-                        InterestBucketDetailScreen(
+                        FinancialBucketDetailScreen(
                             memberId = key.memberId,
                             bucketLabel = key.bucketLabel,
+                            entryType = if (key.entryType == "EXPENSE") {
+                                com.goveye.app.domain.model.FinancialEntryType.EXPENSE
+                            } else {
+                                com.goveye.app.domain.model.FinancialEntryType.INCOME
+                            },
                             onBack = { currentBackStack.removeLastOrNull() },
                             modifier = Modifier.fillMaxSize().padding(top = topBarHeight)
                         )
@@ -337,6 +392,7 @@ private fun GovEyeAppContent(
                     NavEntry(key) {
                         SettingsScreen(
                             themeViewModel = themeViewModel,
+                            onTestOnboarding = onTestOnboarding,
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(top = topBarHeight)
@@ -354,7 +410,9 @@ private fun GovEyeAppContent(
     // - All other screens show just the search bar (full width)
     val currentRoute = currentBackStack.lastOrNull()
     val isDetailTopBar =
-        currentRoute is ProfileRoute || currentRoute is InterestBucketDetailRoute || currentRoute is PartyRoute
+        currentRoute is ProfileRoute || currentRoute is InterestBucketDetailRoute ||
+            currentRoute is PartyRoute || currentRoute is CommitteeRoute ||
+            currentRoute is CouncilRoute
 
     // Merge search config and detail config for the unified top bar.
     // On detail screens, the back button and action icons come from
@@ -407,14 +465,67 @@ private fun GovEyeAppContent(
     ) { innerPadding ->
         // Capture the top bar height so we can pass it to tab screens.
         SideEffect {
-            topBarHeight = innerPadding.calculateTopPadding()
+            val newHeight = innerPadding.calculateTopPadding()
+            if (newHeight != topBarHeight) {
+                Log.i("GovEye/Layout", "topBarHeight changed: $topBarHeight -> $newHeight")
+                topBarHeight = newHeight
+            }
         }
         val density = LocalDensity.current
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = innerPadding.calculateTopPadding())
         ) {
+            // ── Shell-level gradient ───────────────────────────────────
+            // Renders behind NavDisplay so it persists across navigation
+            // transitions (like the search bar) instead of sliding with
+            // the content. Fades in/out smoothly via animateColorAsState
+            // when navigating to/from detail screens with a party accent.
+            val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+
+            // Remember the last non-null accent color so the gradient
+            // can fade OUT (alpha → 0) after the screen leaves, instead
+            // of snapping to transparent instantly.
+            var lastAccentColor by remember { mutableStateOf<Color?>(null) }
+            LaunchedEffect(topBarAccentColor) {
+                if (topBarAccentColor != null) {
+                    lastAccentColor = topBarAccentColor
+                }
+            }
+
+            // Animate the gradient alpha: 1 when on a detail screen with
+            // an accent color, 0 otherwise. This gives a smooth fade
+            // in/out regardless of navigation direction.
+            val gradientAlpha by androidx.compose.animation.core.animateFloatAsState(
+                targetValue = if (topBarAccentColor != null) 1f else 0f,
+                animationSpec = tween(durationMillis = 300),
+                label = "gradientAlpha"
+            )
+
+            // Only render the gradient when there's something to show
+            // (avoids unnecessary compositing when fully transparent).
+            if (gradientAlpha > 0.01f && lastAccentColor != null) {
+                val color = lastAccentColor!!
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(280.dp)
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    color.copy(
+                                        alpha = (if (isDark) 0.85f else 0.7f) * gradientAlpha
+                                    ),
+                                    color.copy(
+                                        alpha = (if (isDark) 0.3f else 0.2f) * gradientAlpha
+                                    ),
+                                    Color.Transparent
+                                )
+                            )
+                        )
+                )
+            }
+
             // NavDisplay fills the full height — no bottom padding from
             // Scaffold. Detail screens cover the nav bar area entirely.
             // Tab root screens pad their own content by bottomBarHeight.
@@ -487,11 +598,7 @@ private fun GovEyeAppContent(
 }
 
 @Composable
-private fun GovEyeBottomBar(
-    currentTabIndex: Int,
-    onTabSelected: (Int) -> Unit,
-    modifier: Modifier = Modifier
-) {
+private fun GovEyeBottomBar(currentTabIndex: Int, onTabSelected: (Int) -> Unit, modifier: Modifier = Modifier) {
     NavigationBar(
         modifier = modifier
     ) {

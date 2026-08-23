@@ -27,6 +27,7 @@ fun ManifestoSearchResultItem(
     @Suppress("UNUSED_PARAMETER") query: String,
     isExpanded: Boolean,
     onToggleExpand: () -> Unit,
+    onNavigateToSection: () -> Unit,
     @Suppress("UNUSED_PARAMETER") fullText: String?,
     modifier: Modifier = Modifier
 ) {
@@ -41,7 +42,7 @@ fun ManifestoSearchResultItem(
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
-            .clickable(onClick = onToggleExpand)
+            .clickable(onClick = onNavigateToSection)
             .animateContentSize()
     ) {
         Column(modifier = Modifier.padding(MaterialTheme.padding.medium)) {

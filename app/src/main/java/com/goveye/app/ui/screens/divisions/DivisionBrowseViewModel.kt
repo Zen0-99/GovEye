@@ -2,6 +2,7 @@ package com.goveye.app.ui.screens.divisions
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.goveye.app.data.local.dao.TagDao
 import com.goveye.app.data.repo.VotesRepository
 import com.goveye.app.domain.model.Division
 import com.goveye.app.domain.model.SyncStatus
@@ -20,6 +21,7 @@ import kotlinx.coroutines.flow.stateIn
 
 data class DivisionBrowseState(
     val divisions: List<Division> = emptyList(),
+    val divisionTags: Map<Int, List<String>> = emptyMap(),
     val isLoading: Boolean = false,
     val syncStatus: SyncStatus = SyncStatus.EMPTY,
     val searchQuery: String = "",
@@ -29,7 +31,10 @@ data class DivisionBrowseState(
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
-class DivisionBrowseViewModel @Inject constructor(private val votesRepository: VotesRepository) : ViewModel() {
+class DivisionBrowseViewModel @Inject constructor(
+    private val votesRepository: VotesRepository,
+    private val tagDao: TagDao
+) : ViewModel() {
 
     private val searchQueryState = MutableStateFlow("")
     private val houseFilterState = MutableStateFlow(0)
@@ -48,9 +53,14 @@ class DivisionBrowseViewModel @Inject constructor(private val votesRepository: V
             } else {
                 votesRepository.observeDivisionsByHouse(house, limit)
             }
-            resultFlow.map { result ->
+            // Combine divisions with all tag rows so cards can show tags
+            combine(resultFlow, tagDao.observeAllDivisionTagRows()) { result, tagRows ->
+                val divisionTags = tagRows
+                    .groupBy { it.divisionId }
+                    .mapValues { (_, rows) -> rows.map { it.tag } }
                 DivisionBrowseState(
                     divisions = result.data,
+                    divisionTags = divisionTags,
                     isLoading = false,
                     syncStatus = result.status,
                     searchQuery = query,

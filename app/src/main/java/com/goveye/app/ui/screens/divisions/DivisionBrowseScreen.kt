@@ -2,7 +2,6 @@ package com.goveye.app.ui.screens.divisions
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,19 +16,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.goveye.app.domain.model.Division
 import com.goveye.app.domain.model.SyncStatus
 import com.goveye.app.ui.components.StickyInfoCard
@@ -48,18 +41,19 @@ fun DivisionsTabContent(
     searchQuery: String = "",
     showInfoCards: Boolean = true,
     modifier: Modifier = Modifier,
-    viewModel: DivisionBrowseViewModel = hiltViewModel()
+    state: DivisionBrowseState = DivisionBrowseState(),
+    onSearchQueryChange: (String) -> Unit = {},
+    onHouseFilterChange: (Int) -> Unit = {},
+    onTagClick: (String) -> Unit = {}
 ) {
-    val state by viewModel.state.collectAsStateWithLifecycle()
-
     // Apply external house filter from the filter bottom sheet
     androidx.compose.runtime.LaunchedEffect(houseFilter) {
-        viewModel.setHouseFilter(houseFilter)
+        onHouseFilterChange(houseFilter)
     }
 
     // Apply search query from the global search bar
     androidx.compose.runtime.LaunchedEffect(searchQuery) {
-        viewModel.setSearchQuery(searchQuery)
+        onSearchQueryChange(searchQuery)
     }
 
     Column(modifier = modifier.fillMaxSize()) {
@@ -106,85 +100,16 @@ fun DivisionsTabContent(
                     }
                 }
                 items(state.divisions, key = { it.id }, contentType = { "division_card" }) { division ->
-                    DivisionCard(
+                    val tags = state.divisionTags[division.id] ?: emptyList()
+                    com.goveye.app.ui.screens.feed.FeedDivisionCard(
                         division = division,
-                        onClick = { onNavigateToDivision(division.id, division.house) }
+                        hasFollowedVotes = false,
+                        tags = tags,
+                        onClick = { onNavigateToDivision(division.id, division.house) },
+                        onTagClick = onTagClick
                     )
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun DivisionCard(division: Division, onClick: () -> Unit) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = division.title,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            // Date + house badge inline, then result bar
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Date + house on the left
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = formatDivisionDate(division.date),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = if (division.house == 2) "Lords" else "Commons",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                // Aye vs No counts
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "${division.ayeCount}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = AyeColor,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "·",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = "${division.noCount}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = NoColor,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-            // Result bar
-            DivisionResultBar(ayeCount = division.ayeCount, noCount = division.noCount)
         }
     }
 }

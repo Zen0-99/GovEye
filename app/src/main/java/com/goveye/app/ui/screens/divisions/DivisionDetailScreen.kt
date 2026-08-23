@@ -5,6 +5,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Article
@@ -62,6 +64,8 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 // Theme-aware vote colors
@@ -73,11 +77,15 @@ data class DivisionDetailState(
     val votes: List<DivisionVote> = emptyList(),
     val partyBreakdown: List<PartyBreakdown> = emptyList(),
     val speechCount: Int = 0,
+    val tags: List<String> = emptyList(),
     val isLoading: Boolean = false
 )
 
 @HiltViewModel
-class DivisionDetailViewModel @Inject constructor(private val votesRepository: VotesRepository) : ViewModel() {
+class DivisionDetailViewModel @Inject constructor(
+    private val votesRepository: VotesRepository,
+    private val tagDao: com.goveye.app.data.local.dao.TagDao
+) : ViewModel() {
 
     private val _state = MutableStateFlow(DivisionDetailState(isLoading = true))
     val state: StateFlow<DivisionDetailState> = _state.asStateFlow()
@@ -88,35 +96,54 @@ class DivisionDetailViewModel @Inject constructor(private val votesRepository: V
         if (loadedDivisionId == divisionId) return
         loadedDivisionId = divisionId
 
-        // Observe division + votes together — the bundled DB is the source of
-        // truth, updated via patches. The observe flows emit the data.
+        // Phase 1: Load initial data synchronously using first() to avoid
+        // the brief loading spinner. The bundled DB is local, so this is
+        // fast (single Room query on a background thread).
         viewModelScope.launch {
-            votesRepository.observeDivision(divisionId).collect { divisionResult ->
-                val division = divisionResult.data
-                if (division == null) {
-                    _state.value = _state.value.copy(isLoading = false)
-                    return@collect
-                }
+            val divisionResult = votesRepository.observeDivision(divisionId).first()
+            val division = divisionResult.data
+            if (division == null) {
+                _state.value = _state.value.copy(isLoading = false)
+                return@launch
+            }
 
-                // Re-fetch votes + breakdown each time the division emits.
+            val votes = votesRepository.getVotesForDivision(divisionId)
+            val breakdown = votesRepository.getPartyBreakdown(divisionId)
+            val speechCount = votesRepository.countSpeechesForDivision(divisionId)
+            val tags = tagDao.getTagsForDivision(divisionId)
+            _state.value = DivisionDetailState(
+                division = division,
+                votes = votes,
+                partyBreakdown = breakdown,
+                speechCount = speechCount,
+                tags = tags,
+                isLoading = false
+            )
+        }
+
+        // Phase 2: Observe for ongoing updates (patches, sync, etc.)
+        // Skip the first emission since we already loaded it above.
+        viewModelScope.launch {
+            votesRepository.observeDivision(divisionId).drop(1).collect { divisionResult ->
+                val division = divisionResult.data ?: return@collect
                 val votes = votesRepository.getVotesForDivision(divisionId)
                 val breakdown = votesRepository.getPartyBreakdown(divisionId)
                 val speechCount = votesRepository.countSpeechesForDivision(divisionId)
-                _state.value = DivisionDetailState(
+                val tags = tagDao.getTagsForDivision(divisionId)
+                _state.value = _state.value.copy(
                     division = division,
                     votes = votes,
                     partyBreakdown = breakdown,
                     speechCount = speechCount,
-                    isLoading = false
+                    tags = tags
                 )
             }
         }
 
-        // Separately observe votes as a flow — this re-emits when votes are
+        // Separately observe votes as a flow - re-emits when votes are
         // upserted (even if the division entity itself doesn't change).
         viewModelScope.launch {
             votesRepository.observeVotesForDivision(divisionId).collect {
-                // Only update if we already have a division loaded
                 val current = _state.value
                 if (current.division != null && !current.isLoading) {
                     val votes = votesRepository.getVotesForDivision(divisionId)
@@ -264,8 +291,8 @@ fun DivisionDetailScreen(
     }
 }
 
-/** Fallback data for the microview dialog (from DivisionVote). */
-private data class MicroviewFallback(
+/** Fallback data for the microview dialog (from DivisionVote or transcript speech). */
+internal data class MicroviewFallback(
     val name: String,
     val partyName: String?,
     val partyColour: String?,
@@ -297,6 +324,7 @@ private fun DivisionDetailContent(
             DivisionHeaderCard(
                 division = division,
                 speechCount = state.speechCount,
+                tags = state.tags,
                 onNavigateToTranscript = {
                     onNavigateToTranscript(division.id, division.title)
                 }
@@ -378,7 +406,12 @@ private fun DivisionDetailContent(
 enum class VoteFilter { ALL, AYE, NO }
 
 @Composable
-private fun DivisionHeaderCard(division: Division, speechCount: Int = 0, onNavigateToTranscript: () -> Unit = {}) {
+private fun DivisionHeaderCard(
+    division: Division,
+    speechCount: Int = 0,
+    tags: List<String> = emptyList(),
+    onNavigateToTranscript: () -> Unit = {}
+) {
     // TWFY debate URL — stored in the DB at build time (scraped from the
     // TWFY division page). Falls back to the TWFY division page URL if not
     // available (e.g. older DB without the column populated).
@@ -476,6 +509,32 @@ private fun DivisionHeaderCard(division: Division, speechCount: Int = 0, onNavig
                         text = "View Transcript ($speechCount speeches)",
                         style = MaterialTheme.typography.labelLarge
                     )
+                }
+            }
+
+            // Tag pills — horizontally scrollable row under the transcript button.
+            // Same style as feed cards and directory debate cards.
+            if (tags.isNotEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    tags.forEach { tag ->
+                        val shape = RoundedCornerShape(20.dp)
+                        Text(
+                            text = tag,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1,
+                            modifier = Modifier
+                                .clip(shape)
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                                .padding(horizontal = 10.dp, vertical = 4.dp)
+                        )
+                    }
                 }
             }
         }

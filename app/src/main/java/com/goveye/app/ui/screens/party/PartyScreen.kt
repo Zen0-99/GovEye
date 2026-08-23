@@ -9,8 +9,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -21,15 +19,14 @@ import androidx.compose.material.icons.outlined.PersonRemove
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -43,12 +40,15 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.goveye.app.ui.components.ConfigureDetailTopBar
+import com.goveye.app.ui.components.ConfigureSearchBar
 import com.goveye.app.ui.components.DetailTopBarAction
 import com.goveye.app.ui.components.DetailTopBarConfig
+import com.goveye.app.ui.components.SearchBarConfig
+import com.goveye.app.ui.components.SubTab
+import com.goveye.app.ui.components.SubTabPager
 import com.goveye.app.ui.theme.padding
 import com.goveye.app.ui.theme.parsePartyColor
 import com.goveye.app.ui.utils.partyLogoResId
-import kotlinx.coroutines.launch
 
 enum class PartyTab(val label: String) {
     INFO("Info"),
@@ -72,11 +72,8 @@ fun PartyScreen(
         viewModel.loadParty(partyId)
     }
 
-    val pagerState = rememberPagerState(
-        initialPage = 0,
-        pageCount = { PartyTab.entries.size }
-    )
-    val coroutineScope = rememberCoroutineScope()
+    // Track the current tab index — needed for search bar config.
+    var currentPage by remember { mutableIntStateOf(0) }
 
     val party = uiState.party
     val partyColor = remember(party) { parsePartyColor(party?.partyBackgroundColour) }
@@ -88,6 +85,7 @@ fun PartyScreen(
         config = DetailTopBarConfig(
             title = "",
             onBack = onBack,
+            accentColor = if (party != null) partyColor else null,
             iconTint = if (party != null) headerIconTint else null,
             actions = if (party != null) {
                 listOf(
@@ -115,6 +113,21 @@ fun PartyScreen(
             } else {
                 emptyList()
             }
+        )
+    )
+
+    // Wire the global search bar to manifesto search when on the Manifesto tab.
+    val manifestoSearchQuery by viewModel.manifestoSearchQuery.collectAsStateWithLifecycle()
+    val isOnManifestoTab = currentPage == PartyTab.entries.indexOf(PartyTab.MANIFESTO)
+    ConfigureSearchBar(
+        config = SearchBarConfig(
+            query = if (isOnManifestoTab) manifestoSearchQuery else "",
+            onQueryChange = if (isOnManifestoTab) {
+                viewModel::updateManifestoSearchQuery
+            } else {
+                {}
+            },
+            placeholder = if (isOnManifestoTab) "Search this manifesto…" else "Search…"
         )
     )
 
@@ -147,37 +160,10 @@ fun PartyScreen(
                 contentTopPadding = contentTopPadding
             )
 
-            // Tabs
-            ScrollableTabRow(
-                selectedTabIndex = pagerState.currentPage,
-                containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.onSurface,
-                edgePadding = 16.dp
-            ) {
-                PartyTab.entries.forEachIndexed { index, tab ->
-                    Tab(
-                        selected = pagerState.currentPage == index,
-                        onClick = {
-                            coroutineScope.launch { pagerState.animateScrollToPage(index) }
-                        },
-                        text = {
-                            Text(
-                                text = tab.label,
-                                color = if (pagerState.currentPage == index) {
-                                    MaterialTheme.colorScheme.onSurface
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                }
-                            )
-                        }
-                    )
-                }
-            }
-
-            // Pager content
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.fillMaxWidth().weight(1f)
+            SubTabPager(
+                tabs = PartyTab.entries.map { SubTab(label = it.label) },
+                onPageChange = { currentPage = it },
+                modifier = Modifier.fillMaxWidth()
             ) { page ->
                 when (PartyTab.entries[page]) {
                     PartyTab.INFO -> PartyInfoTab(
@@ -201,13 +187,11 @@ fun PartyScreen(
                     )
 
                     PartyTab.MANIFESTO -> {
-                        val searchQuery by viewModel.manifestoSearchQuery.collectAsStateWithLifecycle()
                         val searchResults by viewModel.manifestoSearchResults.collectAsStateWithLifecycle()
                         PartyManifestoTab(
                             manifesto = uiState.manifesto,
-                            searchQuery = searchQuery,
+                            searchQuery = manifestoSearchQuery,
                             searchResults = searchResults,
-                            onSearchQueryChange = viewModel::updateManifestoSearchQuery,
                             fullManifestoText = uiState.manifesto?.manifestoText
                         )
                     }
@@ -230,18 +214,12 @@ private fun PartyContentHeader(
 ) {
     val headerTextColor = if (isDark) Color.White else Color(0xFF1A1A1A)
 
+    // Gradient is rendered at the shell level (GovEyeApp) so it fades
+    // in/out smoothly across navigation transitions. This Box is
+    // transparent — the shell-level gradient shows through.
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        partyColor.copy(alpha = if (isDark) 0.85f else 0.7f),
-                        partyColor.copy(alpha = if (isDark) 0.3f else 0.2f),
-                        Color.Transparent
-                    )
-                )
-            )
     ) {
         Row(
             modifier = Modifier
