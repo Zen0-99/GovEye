@@ -1,9 +1,5 @@
 package com.goveye.app.ui.screens.onboarding
 
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,45 +8,33 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.goveye.app.ui.theme.parsePartyColor
-import com.goveye.app.ui.utils.partyLogoResId
+import com.goveye.app.ui.screens.directory.PartyCardShared
 
 /**
  * Step 3 — Parties: "Follow parties".
  *
- * Uses the same party card design as the Directory's Parties tab:
- * 140dp height, party color gradient background, party logo at
- * bottom-end, party name + MP count at top-left. Selected state
- * shows 2dp partyColor border.
+ * Uses the same [PartyCardShared] composable as the Directory's Parties tab
+ * — 140dp height, party color gradient background, party logo, name + MP
+ * count. Selected state shows 2dp partyColor border.
  *
- * Falls back to a static list of major UK parties (with real MNIS
- * party IDs for logos) when the DB is empty.
+ * Falls back to a static list of major UK parties (with real MNIS party IDs
+ * for logos) when the DB is empty.
  *
  * Per UI-SPEC Section 3, Step 3.
  */
@@ -89,7 +73,7 @@ fun PartiesStep(
 
         Spacer(Modifier.height(16.dp))
 
-        // Party grid — 2 columns, same card design as Directory
+        // Party grid — 2 columns, same PartyCardShared as Directory
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
             modifier = Modifier.weight(1f),
@@ -100,8 +84,11 @@ fun PartiesStep(
                 items = partiesToShow,
                 key = { it.partyId }
             ) { party ->
-                DirectoryPartyCard(
-                    party = party,
+                PartyCardShared(
+                    partyId = party.partyId,
+                    partyName = party.partyName,
+                    partyBackgroundColour = party.partyBackgroundColour,
+                    seats = party.seatCount,
                     selected = party.partyId in selectedParties,
                     onClick = { onPartyToggle(party.partyId) }
                 )
@@ -138,86 +125,6 @@ fun PartiesStep(
                 modifier = Modifier.weight(2f).height(48.dp)
             ) {
                 Text("Continue")
-            }
-        }
-    }
-}
-
-/**
- * Party card matching the Directory's PartiesTabContent design:
- * - 140dp height, RoundedCornerShape(16dp)
- * - Party color gradient background
- * - Party logo at bottom-end (if available)
- * - Party name + MP count at top-left
- * - Selected: 2dp partyColor border
- */
-@Composable
-private fun DirectoryPartyCard(
-    party: PartyInfo,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val partyColor = remember(party.partyBackgroundColour) {
-        parsePartyColor(party.partyBackgroundColour)
-    }
-    val borderColor = if (selected) partyColor else MaterialTheme.colorScheme.outlineVariant
-    val borderWidth = if (selected) 2.dp else 0.dp
-
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = partyColor.copy(alpha = 0.5f),
-        modifier = modifier
-            .fillMaxWidth()
-            .height(140.dp)
-            .clickable(onClick = onClick)
-            .border(width = borderWidth, color = borderColor, shape = RoundedCornerShape(16.dp))
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            partyColor.copy(alpha = 0.6f),
-                            partyColor.copy(alpha = 0.25f)
-                        )
-                    )
-                )
-        ) {
-            // Logo — positioned at bottom-end
-            partyLogoResId(party.partyId)?.let { resId ->
-                Image(
-                    painter = painterResource(resId),
-                    contentDescription = party.partyName,
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .size(110.dp)
-                        .offset(x = (-5).dp, y = 10.dp)
-                )
-            }
-
-            // Party name + MP count at the top-left
-            Column(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Text(
-                    text = party.partyName,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = "${party.seatCount} MP${if (party.seatCount != 1) "s" else ""}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
         }
     }

@@ -2,6 +2,7 @@ package com.goveye.app.ui.screens.directory
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -73,16 +74,44 @@ fun PartiesTabContent(parties: List<PartySummary>, onNavigateToParty: (Int) -> U
 
 @Composable
 private fun PartyCard(party: PartySummary, onClick: () -> Unit) {
-    // Raw party color — closer to the original party colour
-    val partyColor = parsePartyColor(party.partyBackgroundColour)
+    PartyCardShared(
+        partyId = party.partyId,
+        partyName = party.partyName,
+        partyBackgroundColour = party.partyBackgroundColour,
+        seats = party.seats,
+        selected = false,
+        onClick = onClick
+    )
+}
+
+/**
+ * Shared party card composable — used by both the Directory's Parties tab
+ * and the onboarding Parties step. 140dp height, party color gradient
+ * background, party logo at bottom-end, name + MP count at top-left.
+ * When [selected] is true, a 2dp partyColor border is shown.
+ */
+@Composable
+fun PartyCardShared(
+    partyId: Int,
+    partyName: String,
+    partyBackgroundColour: String,
+    seats: Int,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val partyColor = parsePartyColor(partyBackgroundColour)
+    val borderColor = if (selected) partyColor else Color.Transparent
+    val borderWidth = if (selected) 2.dp else 0.dp
 
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = partyColor.copy(alpha = 0.5f),
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(140.dp)
             .clickable(onClick = onClick)
+            .border(width = borderWidth, color = borderColor, shape = RoundedCornerShape(16.dp))
     ) {
         Box(
             modifier = Modifier
@@ -97,10 +126,10 @@ private fun PartyCard(party: PartySummary, onClick: () -> Unit) {
                 )
         ) {
             // Logo — positioned at bottom-end, fully visible (no right-edge clip).
-            partyLogoResId(party.partyId)?.let { resId ->
+            partyLogoResId(partyId)?.let { resId ->
                 Image(
                     painter = painterResource(resId),
-                    contentDescription = party.partyName,
+                    contentDescription = partyName,
                     contentScale = ContentScale.Fit,
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
@@ -120,7 +149,7 @@ private fun PartyCard(party: PartySummary, onClick: () -> Unit) {
                     .padding(MaterialTheme.padding.medium)
             ) {
                 Text(
-                    text = party.partyName,
+                    text = partyName,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -128,7 +157,7 @@ private fun PartyCard(party: PartySummary, onClick: () -> Unit) {
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "${party.seats} MP${if (party.seats != 1) "s" else ""}",
+                    text = "$seats MP${if (seats != 1) "s" else ""}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
