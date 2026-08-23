@@ -249,13 +249,24 @@ constructor(
 
     /**
      * Persists all onboarding selections to DataStore before onComplete fires.
-     * Followed MPs are already persisted to LocalDatabase via FollowRepository
-     * on each toggle — no extra persistence needed for follows.
+     * All sources are auto-selected (the Sources step was removed — we assume
+     * the user wants all sources). Followed MPs are already persisted to
+     * LocalDatabase via FollowRepository on each toggle.
      */
     fun persistSelections() {
         viewModelScope.launch {
             onboardingPreferences.setSelectedTags(_selectedTags.value)
-            onboardingPreferences.setSelectedSources(_selectedSources.value)
+            // Auto-select all sources — the Sources step was removed from
+            // onboarding because it was too complex for the average user.
+            // All department×stream combinations are selected by default.
+            val allSourceKeys = SourceRecommendationHelper.getAllSources()
+                .flatMap { dept ->
+                    dept.streams.map { stream ->
+                        "${dept.organisationSlug}:${stream.streamType.name}"
+                    }
+                }
+                .toSet()
+            onboardingPreferences.setSelectedSources(allSourceKeys)
             onboardingPreferences.setSelectedParties(_selectedParties.value)
         }
     }

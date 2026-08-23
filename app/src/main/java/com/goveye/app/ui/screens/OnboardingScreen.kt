@@ -55,7 +55,6 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import com.goveye.app.ui.screens.onboarding.MPsStep
 import com.goveye.app.ui.screens.onboarding.OnboardingViewModel
 import com.goveye.app.ui.screens.onboarding.PartiesStep
-import com.goveye.app.ui.screens.onboarding.SourcesStep
 import com.goveye.app.ui.screens.onboarding.TagsStep
 import kotlinx.coroutines.delay
 
@@ -91,9 +90,6 @@ fun OnboardingScreen(
 
     val selectedTags by viewModel.selectedTags.collectAsStateWithLifecycle()
     val availableTags by viewModel.availableTags.collectAsStateWithLifecycle()
-    val selectedSources by viewModel.selectedSources.collectAsStateWithLifecycle()
-    val recommendedDepartments by viewModel.recommendedDepartments.collectAsStateWithLifecycle()
-    val allDepartments by viewModel.allDepartments.collectAsStateWithLifecycle()
     val selectedParties by viewModel.selectedParties.collectAsStateWithLifecycle()
     val parties by viewModel.parties.collectAsStateWithLifecycle()
     val partyLeaders by viewModel.partyLeaderInfos.collectAsStateWithLifecycle()
@@ -159,27 +155,16 @@ fun OnboardingScreen(
                 onSkip = { currentStep = 3 }
             )
 
-            3 -> SourcesStep(
-                selectedSources = selectedSources,
-                selectedTags = selectedTags,
-                recommendedDepartments = recommendedDepartments,
-                allDepartments = allDepartments,
-                onSourceToggle = viewModel::toggleSource,
+            3 -> PartiesStep(
+                selectedParties = selectedParties,
+                parties = parties,
+                onPartyToggle = viewModel::toggleParty,
                 onContinue = { currentStep = 4 },
                 onBack = { currentStep = 2 },
                 onSkip = { currentStep = 4 }
             )
 
-            4 -> PartiesStep(
-                selectedParties = selectedParties,
-                parties = parties,
-                onPartyToggle = viewModel::toggleParty,
-                onContinue = { currentStep = 5 },
-                onBack = { currentStep = 3 },
-                onSkip = { currentStep = 5 }
-            )
-
-            5 -> MPsStep(
+            4 -> MPsStep(
                 partyLeaders = partyLeaders,
                 recommendedMps = recommendedMps,
                 selectedTags = selectedTags,
@@ -187,7 +172,7 @@ fun OnboardingScreen(
                 pagedMps = pagedMps,
                 onFollowToggle = viewModel::toggleFollowMp,
                 onFinish = { fadingOut = true },
-                onBack = { currentStep = 4 },
+                onBack = { currentStep = 3 },
                 onSkip = { fadingOut = true }
             )
         }

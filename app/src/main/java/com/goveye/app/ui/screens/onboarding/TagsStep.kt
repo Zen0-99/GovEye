@@ -203,16 +203,16 @@ private fun TagCell(tagName: String, selected: Boolean, onClick: () -> Unit, mod
         },
         modifier = modifier
             .clickable(onClick = onClick)
-            .height(56.dp)
+            .height(72.dp)
             .border(width = borderWidth, color = borderColor, shape = RoundedCornerShape(16.dp))
     ) {
-        Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+        Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
             Text(
                 text = tagName,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.align(Alignment.CenterStart)
             )

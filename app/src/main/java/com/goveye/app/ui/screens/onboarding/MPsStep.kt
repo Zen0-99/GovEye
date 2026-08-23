@@ -32,7 +32,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.paging.LoadState
@@ -124,8 +123,13 @@ fun MPsStep(
                 }
             }
 
-            // Recommended for you section
-            if (selectedTags.isNotEmpty()) {
+            // Recommended for you section — only show when there are actual
+            // recommendations (mp_tags table populated in the seed DB).
+            // When tags are selected but no recommendations exist yet (e.g.
+            // the seed DB is still downloading or mp_tags is empty), skip
+            // this section entirely — the Party leaders and All MPs sections
+            // are sufficient.
+            if (recommendedMps.isNotEmpty()) {
                 item {
                     Spacer(Modifier.height(16.dp))
                     Text(
@@ -135,50 +139,14 @@ fun MPsStep(
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
-                if (recommendedMps.isEmpty()) {
-                    item {
-                        Text(
-                            text = "Select topics to see MP recommendations",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 24.dp)
-                        )
-                    }
-                } else {
-                    items(
-                        items = recommendedMps,
-                        key = { "rec-${it.id}" }
-                    ) { mp ->
-                        RecommendedMpRow(
-                            mp = mp,
-                            isFollowed = mp.id in followedMpIds,
-                            onFollowToggle = { onFollowToggle(mp.id) }
-                        )
-                    }
-                }
-            } else if (partyLeaders.isNotEmpty()) {
-                // No tags selected — show hint for recommended section
-                item {
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        text = "Recommended for you",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-                item {
-                    Text(
-                        text = "Select topics to see MP recommendations",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 24.dp)
+                items(
+                    items = recommendedMps,
+                    key = { "rec-${it.id}" }
+                ) { mp ->
+                    RecommendedMpRow(
+                        mp = mp,
+                        isFollowed = mp.id in followedMpIds,
+                        onFollowToggle = { onFollowToggle(mp.id) }
                     )
                 }
             }
