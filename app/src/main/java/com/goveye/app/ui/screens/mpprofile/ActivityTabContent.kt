@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -60,17 +59,6 @@ fun ActivityTabContent(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Search bar
-        item {
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = onSearchQueryChange,
-                placeholder = { Text("Search votes…") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-        }
-
         // Result count
         if (totalCount > 0) {
             item {

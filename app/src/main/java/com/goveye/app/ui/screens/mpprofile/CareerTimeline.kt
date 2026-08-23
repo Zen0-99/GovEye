@@ -115,7 +115,7 @@ private fun TimelineView(experiences: List<BiographyExperience>) {
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = experience.title ?: "Unknown role",
+                        text = experience.title ?: experience.type ?: "Unknown role",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurface
@@ -151,7 +151,7 @@ private fun TableView(experiences: List<BiographyExperience>) {
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = experience.title ?: "Unknown role",
+                        text = experience.title ?: experience.type ?: "Unknown role",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface
                     )

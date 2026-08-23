@@ -22,7 +22,6 @@ import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.Business
 import androidx.compose.material.icons.outlined.CardGiftcard
 import androidx.compose.material.icons.outlined.Category
-import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Flight
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Home
@@ -79,12 +78,18 @@ fun InterestsTabContent(
     interests: List<Interest>,
     expenseBucketTotals: List<ExpenseBucketTotal> = emptyList(),
     onNavigateToBucketDetail: (String) -> Unit,
+    onNavigateToExpenseBucket: (String) -> Unit = {},
+    showFilterSheet: Boolean = false,
+    onFilterSheetDismiss: () -> Unit = {},
+    fromDate: String? = null,
+    toDate: String? = null,
+    onFromDateChange: (String?) -> Unit = {},
+    onToDateChange: (String?) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    // --- Date filter state (per-MP, not persisted — D-08) ---
-    var fromDate by remember { mutableStateOf<String?>(null) }
-    var toDate by remember { mutableStateOf<String?>(null) }
-    var showFilterSheet by remember { mutableStateOf(false) }
+    // --- Date filter state is now lifted to the screen level so the
+    // global search bar's filter icon can trigger the sheet and report
+    // hasActiveFilters. The values are passed in from MpProfileScreen.
 
     // --- Monthly navigation state (D-07) ---
     // Default to the most recent month that has interests, or current month if empty
@@ -140,7 +145,7 @@ fun InterestsTabContent(
                 ExpenseSectionHeader()
             }
             items(expenseBucketTotals, key = { it.bucket }) { total ->
-                ExpenseBucketCard(total = total)
+                ExpenseBucketCard(total = total, onClick = { onNavigateToExpenseBucket(total.bucket) })
             }
         }
         return
@@ -160,8 +165,8 @@ fun InterestsTabContent(
             )
             if (fromDate != null || toDate != null) {
                 TextButton(onClick = {
-                    fromDate = null
-                    toDate = null
+                    onFromDateChange(null)
+                    onToDateChange(null)
                 }) {
                     Text("Clear filter")
                 }
@@ -212,26 +217,6 @@ fun InterestsTabContent(
             )
         }
 
-        // --- Date filter button ---
-        item(span = { GridItemSpan(2) }) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                TextButton(onClick = { showFilterSheet = true }) {
-                    Icon(
-                        Icons.Outlined.FilterList,
-                        contentDescription = "Filter by date",
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Text(
-                        text = if (fromDate != null || toDate != null) "Date filter (active)" else "Date filter",
-                        modifier = Modifier.padding(start = 4.dp)
-                    )
-                }
-            }
-        }
-
         // --- Income section (registered interests) ---
         item(span = { GridItemSpan(2) }) {
             IncomeSectionHeader()
@@ -249,23 +234,23 @@ fun InterestsTabContent(
                 ExpenseSectionHeader()
             }
             items(expenseBucketTotals, key = { "expense_${it.bucket}" }) { total ->
-                ExpenseBucketCard(total = total)
+                ExpenseBucketCard(total = total, onClick = { onNavigateToExpenseBucket(total.bucket) })
             }
         }
     }
 
-    // --- Date filter bottom sheet ---
+    // --- Date filter bottom sheet (triggered from the global search bar's filter icon) ---
     if (showFilterSheet) {
         InterestDateFilterBottomSheet(
             fromDate = fromDate,
             toDate = toDate,
-            onFromDateChange = { fromDate = it },
-            onToDateChange = { toDate = it },
+            onFromDateChange = onFromDateChange,
+            onToDateChange = onToDateChange,
             onClear = {
-                fromDate = null
-                toDate = null
+                onFromDateChange(null)
+                onToDateChange(null)
             },
-            onDismiss = { showFilterSheet = false }
+            onDismiss = onFilterSheetDismiss
         )
     }
 }
@@ -497,14 +482,16 @@ private fun ExpenseSectionHeader() {
 }
 
 @Composable
-private fun ExpenseBucketCard(total: ExpenseBucketTotal) {
+private fun ExpenseBucketCard(total: ExpenseBucketTotal, onClick: () -> Unit = {}) {
     val icon = EXPENSE_BUCKET_ICONS[total.bucket] ?: Icons.Outlined.Category
     val formattedAmount = formatPenceToGbp(total.totalPence)
 
     Surface(
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surfaceContainer,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
     ) {
         Column(
             modifier = Modifier.padding(MaterialTheme.padding.medium),

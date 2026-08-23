@@ -12,14 +12,18 @@ data class BiographyExperience(
 ) {
     val dateRangeText: String
         get() = buildString {
-            startYear?.let { append(it) }
             if (startMonth != null && startYear != null) {
-                append("/").append(startMonth.toString().padStart(2, '0'))
+                append(startMonth.toString().padStart(2, '0'))
+                append("/").append(startYear)
+            } else {
+                startYear?.let { append(it) }
             }
             append(" – ")
-            endYear?.let { append(it) } ?: append("present")
             if (endMonth != null && endYear != null) {
-                append("/").append(endMonth.toString().padStart(2, '0'))
+                append(endMonth.toString().padStart(2, '0'))
+                append("/").append(endYear)
+            } else {
+                endYear?.let { append(it) } ?: append("present")
             }
         }
 }
@@ -39,7 +43,12 @@ data class Committee(
     val categoryName: String?,
     val startDate: String?,
     val endDate: String?,
-    val isActive: Boolean
+    val isActive: Boolean,
+    val purpose: String? = null,
+    val contactEmail: String? = null,
+    val contactPhone: String? = null,
+    val contactAddress: String? = null,
+    val websiteUrl: String? = null
 )
 
 data class Contact(

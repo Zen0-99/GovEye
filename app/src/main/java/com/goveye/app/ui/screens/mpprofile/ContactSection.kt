@@ -19,17 +19,59 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.goveye.app.data.local.entity.MpLinkEntity
 import com.goveye.app.domain.model.Contact
 import com.goveye.app.ui.theme.padding
 
+/**
+ * Merges contacts that share the same email into a single entry.
+ * The merged entry gets a combined type label (e.g., "Parliamentary and
+ * Constituency office") and keeps the first non-null phone/address.
+ * Contacts without an email are passed through unchanged.
+ */
+private fun deduplicateContacts(contacts: List<Contact>): List<Contact> {
+    val byEmail = contacts.filter { !it.email.isNullOrBlank() }.groupBy { it.email }
+    val withoutEmail = contacts.filter { it.email.isNullOrBlank() }
+    val merged = byEmail.map { (email, group) ->
+        if (group.size == 1) {
+            group[0]
+        } else {
+            val combinedType = group.mapNotNull { it.type }.distinct().joinToString(" and ")
+            Contact(
+                type = combinedType,
+                isPreferred = group.any { it.isPreferred == true },
+                isWebAddress = false,
+                line1 = group.firstNotNullOfOrNull { it.line1 },
+                line2 = group.firstNotNullOfOrNull { it.line2 },
+                line3 = group.firstNotNullOfOrNull { it.line3 },
+                line4 = group.firstNotNullOfOrNull { it.line4 },
+                line5 = group.firstNotNullOfOrNull { it.line5 },
+                postcode = group.firstNotNullOfOrNull { it.postcode },
+                phone = group.firstNotNullOfOrNull { it.phone },
+                email = email,
+                website = null,
+                openingHours = group.firstNotNullOfOrNull { it.openingHours }
+            )
+        }
+    }
+    // Preserve original ordering: merged contacts first (in original order), then non-email contacts
+    val mergedEmails = byEmail.keys
+    val orderedMerged = contacts.filter { it.email in mergedEmails }.map { c ->
+        merged.first { it.email == c.email }
+    }.distinctBy { it.email }
+    return orderedMerged + withoutEmail
+}
+
 @Composable
-fun ContactSection(contacts: List<Contact>, modifier: Modifier = Modifier) {
-    if (contacts.isEmpty()) return
+fun ContactSection(contacts: List<Contact>, socialLinks: MpLinkEntity? = null, modifier: Modifier = Modifier) {
+    val deduplicated = remember(contacts) { deduplicateContacts(contacts) }
+    if (deduplicated.isEmpty() && socialLinks == null) return
 
     Surface(
         modifier = modifier
@@ -52,7 +94,7 @@ fun ContactSection(contacts: List<Contact>, modifier: Modifier = Modifier) {
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                contacts.firstNotNullOfOrNull { it.openingHours?.takeIf(String::isNotBlank) }?.let { hours ->
+                deduplicated.firstNotNullOfOrNull { it.openingHours?.takeIf(String::isNotBlank) }?.let { hours ->
                     Text(
                         text = hours,
                         style = MaterialTheme.typography.labelSmall,
@@ -62,8 +104,15 @@ fun ContactSection(contacts: List<Contact>, modifier: Modifier = Modifier) {
                     )
                 }
             }
-            contacts.forEach { contact ->
+            deduplicated.forEach { contact ->
                 ContactRow(contact)
+            }
+            // Social links row — inline at the bottom of the contact card
+            if (socialLinks != null) {
+                SocialLinksRow(
+                    links = socialLinks,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
     }

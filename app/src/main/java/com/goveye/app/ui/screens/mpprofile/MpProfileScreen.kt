@@ -17,8 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Notifications
@@ -28,17 +26,17 @@ import androidx.compose.material.icons.outlined.PersonRemove
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -69,7 +67,6 @@ import com.goveye.app.ui.theme.LocalPartyAccent
 import com.goveye.app.ui.theme.padding
 import com.goveye.app.ui.theme.parsePartyColor
 import com.goveye.app.ui.theme.partyAccentColorScheme
-import kotlinx.coroutines.launch
 
 private enum class ProfileTab(val title: String) {
     PROFILE("Profile"),
@@ -88,7 +85,9 @@ fun ProfileScreen(
     onNavigateToProfile: (Int) -> Unit,
     onNavigateToDivision: (Int, Int) -> Unit = { _, _ -> },
     onNavigateToInterestBucket: (Int, String) -> Unit = { _, _ -> },
+    onNavigateToExpenseBucket: (Int, String) -> Unit = { _, _ -> },
     onNavigateToParty: (Int) -> Unit = {},
+    onNavigateToCommittee: (Int) -> Unit = {},
     modifier: Modifier = Modifier,
     contentTopPadding: Dp = 0.dp,
     viewModel: ProfileViewModel = hiltViewModel()
@@ -110,8 +109,17 @@ fun ProfileScreen(
         viewModel.loadProfile(memberId)
     }
 
-    val pagerState = rememberPagerState(pageCount = { ProfileTab.entries.size })
-    val coroutineScope = rememberCoroutineScope()
+    var showInterestFilterSheet by remember { mutableStateOf(false) }
+
+    // Track current tab index for search bar config and filter sheet
+    var currentPage by remember { mutableIntStateOf(0) }
+
+    // Lifted interest date filter state — needed at the screen level so the
+    // global floating search bar's filter icon can trigger the sheet and
+    // report hasActiveFilters.
+    var interestFromDate by remember { mutableStateOf<String?>(null) }
+    var interestToDate by remember { mutableStateOf<String?>(null) }
+    val interestHasActiveFilter = interestFromDate != null || interestToDate != null
 
     // Configure the shell's detail top bar (Miko-style shared toolbar).
     // No title — the name lives in the content header beside the avatar.
@@ -121,6 +129,39 @@ fun ProfileScreen(
     val partyColor = remember(mp) { parsePartyColor(mp?.party?.backgroundColour) }
     val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     val headerIconTint = if (isDark) Color.White else Color(0xFF1A1A1A)
+    val isInterestsTab = currentPage == ProfileTab.INTERESTS.ordinal
+    val isActivityTab = currentPage == ProfileTab.ACTIVITY.ordinal
+
+    // Wire the global floating search bar — the filter icon and search field
+    // are built into the FloatingSearchBar at the shell level. We configure
+    // it here so:
+    // - On the Interests tab: the filter icon triggers the date filter sheet,
+    //   and hasActiveFilters reflects whether a date range is set.
+    // - On the Activity tab: the search field searches votes by division title.
+    // - On other tabs: the search bar is visible but inactive (no filter).
+    val activitySearchQuery = uiState.activitySearchQuery
+    com.goveye.app.ui.components.ConfigureSearchBar(
+        config = com.goveye.app.ui.components.SearchBarConfig(
+            isVisible = true,
+            query = if (isActivityTab) activitySearchQuery else "",
+            placeholder = when {
+                isActivityTab -> "Search votes…"
+                isInterestsTab -> "Search entries…"
+                else -> "Search…"
+            },
+            onQueryChange = { query ->
+                if (isActivityTab) {
+                    viewModel.updateActivitySearchQuery(memberId, query)
+                }
+            },
+            onFilterClick = if (isInterestsTab) {
+                { showInterestFilterSheet = true }
+            } else {
+                null
+            },
+            hasActiveFilters = isInterestsTab && interestHasActiveFilter
+        )
+    )
 
     ConfigureDetailTopBar(
         config = com.goveye.app.ui.components.DetailTopBarConfig(
@@ -129,28 +170,34 @@ fun ProfileScreen(
             accentColor = if (mp != null) partyColor else null,
             iconTint = if (mp != null) headerIconTint else null,
             actions = if (mp != null) {
-                listOf(
-                    DetailTopBarAction(
-                        icon = if (uiState.notificationsEnabled) {
-                            Icons.Outlined.NotificationsActive
-                        } else {
-                            Icons.Outlined.Notifications
-                        },
-                        contentDescription = "Notification settings",
-                        onClick = { showNotificationSheet = true },
-                        tint = headerIconTint
-                    ),
-                    DetailTopBarAction(
-                        icon = if (uiState.isFollowing) {
-                            Icons.Outlined.PersonRemove
-                        } else {
-                            Icons.Outlined.PersonAdd
-                        },
-                        contentDescription = if (uiState.isFollowing) "Unfollow" else "Follow",
-                        onClick = { viewModel.toggleFollow(memberId) },
-                        tint = headerIconTint
+                buildList {
+                    // Filter and search are handled by the floating search bar —
+                    // no redundant icons here. Only notification and follow toggles.
+                    add(
+                        DetailTopBarAction(
+                            icon = if (uiState.notificationsEnabled) {
+                                Icons.Outlined.NotificationsActive
+                            } else {
+                                Icons.Outlined.Notifications
+                            },
+                            contentDescription = "Notification settings",
+                            onClick = { showNotificationSheet = true },
+                            tint = headerIconTint
+                        )
                     )
-                )
+                    add(
+                        DetailTopBarAction(
+                            icon = if (uiState.isFollowing) {
+                                Icons.Outlined.PersonRemove
+                            } else {
+                                Icons.Outlined.PersonAdd
+                            },
+                            contentDescription = if (uiState.isFollowing) "Unfollow" else "Follow",
+                            onClick = { viewModel.toggleFollow(memberId) },
+                            tint = headerIconTint
+                        )
+                    )
+                }
             } else {
                 emptyList()
             }
@@ -190,43 +237,14 @@ fun ProfileScreen(
                         onNavigateToParty = onNavigateToParty
                     )
 
-                    // Scrollable tabs
-                    ScrollableTabRow(
-                        selectedTabIndex = pagerState.currentPage,
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        contentColor = MaterialTheme.colorScheme.onSurface,
-                        edgePadding = 16.dp
-                    ) {
-                        ProfileTab.entries.forEachIndexed { index, tab ->
-                            Tab(
-                                selected = pagerState.currentPage == index,
-                                onClick = {
-                                    coroutineScope.launch { pagerState.animateScrollToPage(index) }
-                                },
-                                text = {
-                                    Text(
-                                        text = tab.title,
-                                        color = if (pagerState.currentPage == index) {
-                                            MaterialTheme.colorScheme.onSurface
-                                        } else {
-                                            MaterialTheme.colorScheme.onSurfaceVariant
-                                        }
-                                    )
-                                },
-                                selectedContentColor = MaterialTheme.colorScheme.onSurface,
-                                unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    // Pager — each page has its own scrollable LazyColumn.
-                    // Only compose the current page — no offscreen pre-composition.
-                    // This prevents adjacent tabs from doing work during navigation transitions.
-                    HorizontalPager(
-                        state = pagerState,
-                        modifier = Modifier.fillMaxWidth().weight(1f)
+                    // Sub-tab pager — shared component for all tabbed screens.
+                    // Handles instant jump, only-compose-current-page, and
+                    // pre-loaded data pattern.
+                    com.goveye.app.ui.components.SubTabPager(
+                        tabs = ProfileTab.entries.map { com.goveye.app.ui.components.SubTab(label = it.title) },
+                        onPageChange = { currentPage = it },
+                        modifier = Modifier.fillMaxWidth()
                     ) { page ->
-                        if (page != pagerState.currentPage) return@HorizontalPager
                         when (ProfileTab.entries[page]) {
                             ProfileTab.PROFILE -> ProfileTabContent(
                                 mp = mp,
@@ -245,7 +263,8 @@ fun ProfileScreen(
                             )
 
                             ProfileTab.COMMITTEES -> CommitteesTabContent(
-                                committees = uiState.committees
+                                committees = uiState.committees,
+                                onCommitteeClick = onNavigateToCommittee
                             )
 
                             ProfileTab.STATS -> ProfileStatsTabContent(
@@ -285,7 +304,16 @@ fun ProfileScreen(
                                 expenseBucketTotals = uiState.expenseBucketTotals,
                                 onNavigateToBucketDetail = { bucketLabel ->
                                     onNavigateToInterestBucket(memberId, bucketLabel)
-                                }
+                                },
+                                onNavigateToExpenseBucket = { bucketLabel ->
+                                    onNavigateToExpenseBucket(memberId, bucketLabel)
+                                },
+                                showFilterSheet = showInterestFilterSheet,
+                                onFilterSheetDismiss = { showInterestFilterSheet = false },
+                                fromDate = interestFromDate,
+                                toDate = interestToDate,
+                                onFromDateChange = { interestFromDate = it },
+                                onToDateChange = { interestToDate = it }
                             )
                         }
                     }
@@ -362,18 +390,12 @@ private fun ProfileContentHeader(
     }
     val pillTextColor = if (pillColor.luminance() > 0.5f) Color(0xFF1A1A1A) else Color.White
 
+    // Gradient is rendered at the shell level (GovEyeApp) so it fades
+    // in/out smoothly across navigation transitions. This Box is
+    // transparent — the shell-level gradient shows through.
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        partyColor.copy(alpha = if (isDark) 0.85f else 0.7f),
-                        partyColor.copy(alpha = if (isDark) 0.3f else 0.2f),
-                        Color.Transparent
-                    )
-                )
-            )
     ) {
         Row(
             modifier = Modifier
@@ -444,8 +466,7 @@ private fun ProfileTabContent(
             )
         }
         item { BioSection(synopsis = synopsis) }
-        item { SocialLinksRow(links = mpLinks) }
-        item { ContactSection(contacts = contacts) }
+        item { ContactSection(contacts = contacts, socialLinks = mpLinks) }
         item {
             RelatedMpsSection(
                 samePartyMps = samePartyMps,
@@ -467,12 +488,28 @@ private fun CareerTabContent(experiences: List<com.goveye.app.domain.model.Biogr
 }
 
 @Composable
-private fun CommitteesTabContent(committees: List<com.goveye.app.domain.model.Committee>) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 20.dp)
-    ) {
-        item { CommitteeChipsSection(committees = committees) }
+private fun CommitteesTabContent(
+    committees: List<com.goveye.app.domain.model.Committee>,
+    onCommitteeClick: (Int) -> Unit = {}
+) {
+    if (committees.isEmpty()) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "Not currently serving on any committees",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    } else {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 20.dp)
+        ) {
+            item { CommitteeChipsSection(committees = committees, onCommitteeClick = onCommitteeClick) }
+        }
     }
 }
 

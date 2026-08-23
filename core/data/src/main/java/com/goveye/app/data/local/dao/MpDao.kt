@@ -46,6 +46,11 @@ interface MpDao {
     )
     suspend fun searchMpsLocal(query: String): List<MpEntity>
 
+    @Query(
+        "SELECT * FROM mps WHERE constituencyName = :constituencyName AND isActive = 1 ORDER BY nameListAs"
+    )
+    suspend fun getMpsByConstituency(constituencyName: String): List<MpEntity>
+
     @Upsert
     suspend fun upsertAll(mps: List<MpEntity>)
 

@@ -27,7 +27,11 @@ import com.goveye.app.ui.theme.padding
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun CommitteeChipsSection(committees: List<Committee>, modifier: Modifier = Modifier) {
+fun CommitteeChipsSection(
+    committees: List<Committee>,
+    onCommitteeClick: (Int) -> Unit = {},
+    modifier: Modifier = Modifier
+) {
     if (committees.isEmpty()) return
 
     val activeCommittees = committees.filter { it.isActive }
@@ -69,7 +73,7 @@ fun CommitteeChipsSection(committees: List<Committee>, modifier: Modifier = Modi
             ) {
                 visibleCommittees.forEach { committee ->
                     AssistChip(
-                        onClick = { /* Future: committee detail screen */ },
+                        onClick = { onCommitteeClick(committee.id) },
                         label = { Text(committee.name, maxLines = 1) }
                     )
                 }

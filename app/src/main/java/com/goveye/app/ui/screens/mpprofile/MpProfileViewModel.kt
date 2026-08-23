@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.goveye.app.data.local.dao.ExpenseBucketTotal
 import com.goveye.app.data.local.dao.MpDao
 import com.goveye.app.data.local.entity.BioDataEntity
+import com.goveye.app.data.local.entity.ExpenseEntity
 import com.goveye.app.data.local.entity.MpEntity
 import com.goveye.app.data.local.entity.MpLinkEntity
 import com.goveye.app.data.repo.BioDataRepository
@@ -31,6 +32,8 @@ import com.goveye.app.domain.stats.RebellionStats
 import com.goveye.app.domain.stats.TraitBar
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -54,6 +57,7 @@ data class ProfileUiState(
     val interests: List<Interest> = emptyList(),
     val bioData: BioDataEntity? = null,
     val expenseBucketTotals: List<ExpenseBucketTotal> = emptyList(),
+    val expenses: List<ExpenseEntity> = emptyList(),
     val mpLinks: MpLinkEntity? = null,
     val activityScore: ActivityScore? = null,
     val traitBars: List<TraitBar> = emptyList(),
@@ -90,138 +94,140 @@ class ProfileViewModel @Inject constructor(
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
 
     fun loadProfile(memberId: Int) {
-        // Load everything in a single coroutine to avoid staged loading.
-        // The bundled DB is local — all queries are fast. Running them
-        // sequentially in one coroutine ensures the UI state updates in
-        // one batch instead of trickling in over multiple coroutine
-        // scheduling cycles.
+        // Load the MP basic data first so the header renders immediately,
+        // then load everything else in parallel and update the state in
+        // a single batch. This prevents the section-by-section "trickle"
+        // effect where each DB query triggers a separate recomposition.
         viewModelScope.launch {
-            // 1. MP basic data (one-shot, not Flow — no need to observe a
-            //    bundled DB that doesn't change during a session)
+            // 1. MP basic data — needed for the header, party color, etc.
+            // Try bundled DB first; fall back to live API for Lords and other
+            // members not in the Commons-only bundled directory.
             val mpResult = membersRepository.observeMp(memberId).first()
-            val mp = mpResult.data
+            val mp = mpResult.data ?: membersRepository.fetchMemberFromApi(memberId)
             _uiState.value = _uiState.value.copy(
                 mp = mp,
-                syncStatus = mpResult.status,
+                syncStatus = if (mp != null) SyncStatus.FRESH else SyncStatus.EMPTY,
                 isLoading = false
             )
 
-            // 2. Follow state + notification prefs (one-shot)
-            val isFollowing = followRepository.observeIsFollowing(memberId).first()
-            _uiState.value = _uiState.value.copy(isFollowing = isFollowing)
+            // 2. Load everything else in parallel — each section updates
+            //    the UI independently as soon as its data is ready, so the
+            //    user sees content appear progressively instead of waiting
+            //    for the slowest query.
+            val house = mp?.house ?: 1
+            val partyName = mp?.party?.name
+            val partyId = mp?.party?.id
 
-            val notifPref = notificationPrefRepository.observe(memberId).first()
-            _uiState.value = _uiState.value.copy(
-                notificationsEnabled = notifPref.notificationsEnabled,
-                votesNotificationsEnabled = notifPref.votesEnabled,
-                speechesNotificationsEnabled = notifPref.speechesEnabled
-            )
-
-            // 3. Synopsis, contacts, experiences (one-shot)
-            try {
-                val synopsis = membersRepository.getSynopsis(memberId)
-                _uiState.value = _uiState.value.copy(synopsis = synopsis)
-            } catch (e: Exception) {
-            }
-            try {
-                val contacts = membersRepository.getContact(memberId)
-                _uiState.value = _uiState.value.copy(contacts = contacts)
-            } catch (e: Exception) {
-            }
-            try {
-                val experiences = membersRepository.getExperience(memberId)
-                // 3b. Fetch MNIS bio data and merge posts into career timeline (D-02)
-                val bioData = try {
-                    bioDataRepository.getBioData(memberId)
-                } catch (e: Exception) {
-                    null
+            coroutineScope {
+                // Launch each load as an independent coroutine that updates
+                // state on completion. Fast DB reads appear instantly; slow
+                // API fallbacks trickle in without blocking the rest.
+                launch {
+                    val isFollowing = followRepository.observeIsFollowing(memberId).first()
+                    _uiState.value = _uiState.value.copy(isFollowing = isFollowing)
                 }
-                val mergedExperiences = mergeExperiencesWithMnisPosts(experiences, bioData)
-                _uiState.value = _uiState.value.copy(
-                    experiences = mergedExperiences,
-                    bioData = bioData
-                )
-            } catch (e: Exception) {
-            }
-
-            // 3c. Fetch social links (ParlParse) (D-10)
-            try {
-                val mpLinks = mpLinksRepository.getLinks(memberId)
-                _uiState.value = _uiState.value.copy(mpLinks = mpLinks)
-            } catch (e: Exception) {
-            }
-
-            // 4. Committees (one-shot)
-            val committeesResult = committeesRepository.observeCommitteesForMember(memberId).first()
-            _uiState.value = _uiState.value.copy(committees = committeesResult.data)
-
-            // 5. Same-party MPs
-            mp?.party?.id?.let { partyId ->
-                val entities = mpDao.getMpsByParty(partyId, memberId)
-                _uiState.value = _uiState.value.copy(samePartyMps = entities.map { it.toDomainMp() })
-            }
-
-            // 6. Votes + rebellion stats — fast path using SQL aggregation
-            try {
-                val house = mp?.house ?: 1
-                val allDates = votesRepository.getAllDivisionDates(house)
-                val votes = votesRepository.getMemberVotingWithDivisions(memberId)
-                android.util.Log.i("GovEye/Profile", "Loaded ${votes.size} votes for MP $memberId (house=$house)")
-
-                val partyName = mp?.party?.name
-                val rebellionStats = if (votes.isNotEmpty() && partyName != null) {
-                    // Fast rebellion calculation: single SQL GROUP BY query
-                    // returns ~200 rows instead of loading 130k+ vote entities.
-                    // Reuse the MP's votes already loaded above — no second query.
-                    val memberVotes = votesRepository.getMemberVotes(memberId)
-                    val divisionIds = memberVotes.map { it.divisionId }.distinct()
-                    val partyVoteCounts = votesRepository.getPartyVoteCounts(divisionIds, partyName)
-                    RebellionCalculator.computeAggregated(memberVotes, partyVoteCounts)
-                } else {
-                    null
+                launch {
+                    val notifPref = notificationPrefRepository.observe(memberId).first()
+                    _uiState.value = _uiState.value.copy(
+                        notificationsEnabled = notifPref.notificationsEnabled,
+                        votesNotificationsEnabled = notifPref.votesEnabled,
+                        speechesNotificationsEnabled = notifPref.speechesEnabled
+                    )
                 }
-
-                _uiState.value = _uiState.value.copy(
-                    allDivisionDates = allDates,
-                    memberVotes = votes,
-                    memberPartyName = partyName,
-                    rebellionStats = rebellionStats
-                )
-                android.util.Log.i(
-                    "GovEye/Profile",
-                    "Rebellion stats computed: ${rebellionStats?.rebellionCount ?: 0} rebellions in ${rebellionStats?.totalDivisionsVoted ?: 0} divisions"
-                )
-            } catch (e: Exception) {
-                android.util.Log.e("GovEye/Profile", "Failed to load votes for MP $memberId", e)
+                launch {
+                    val synopsis = runCatching { membersRepository.getSynopsis(memberId) }.getOrNull()
+                    _uiState.value = _uiState.value.copy(synopsis = synopsis)
+                }
+                launch {
+                    val contacts = runCatching { membersRepository.getContact(memberId) }.getOrDefault(emptyList())
+                    _uiState.value = _uiState.value.copy(contacts = contacts)
+                }
+                launch {
+                    // bioData is a fast DB read — load it first so maiden speech
+                    // and other stats appear instantly with the header.
+                    val bioData = runCatching { bioDataRepository.getBioData(memberId) }.getOrNull()
+                    _uiState.value = _uiState.value.copy(bioData = bioData)
+                }
+                launch {
+                    // experiences may involve API fallback — load separately so
+                    // it doesn't delay bioData (maiden speech, etc.)
+                    // Re-fetch bioData for the merge (cheap DB read, avoids race)
+                    val bioData = runCatching { bioDataRepository.getBioData(memberId) }.getOrNull()
+                    val experiences = runCatching {
+                        membersRepository.getExperience(memberId)
+                    }.getOrDefault(emptyList())
+                    val merged = mergeExperiencesWithMnisPosts(experiences, bioData)
+                    _uiState.value = _uiState.value.copy(experiences = merged)
+                }
+                launch {
+                    val mpLinks = runCatching { mpLinksRepository.getLinks(memberId) }.getOrNull()
+                    _uiState.value = _uiState.value.copy(mpLinks = mpLinks)
+                }
+                launch {
+                    val committees = committeesRepository.observeCommitteesForMember(memberId).first()
+                    _uiState.value = _uiState.value.copy(committees = committees.data)
+                }
+                launch {
+                    val samePartyMps = partyId?.let {
+                        mpDao.getMpsByParty(it, memberId).map { it.toDomainMp() }
+                    } ?: emptyList()
+                    _uiState.value = _uiState.value.copy(samePartyMps = samePartyMps)
+                }
+                launch {
+                    val votesResult = runCatching {
+                        val allDates = votesRepository.getAllDivisionDates(house)
+                        val votes = votesRepository.getMemberVotingWithDivisions(memberId)
+                        android.util.Log.i(
+                            "GovEye/Profile",
+                            "Loaded ${votes.size} votes for MP $memberId (house=$house)"
+                        )
+                        Triple(allDates, votes, votes.isNotEmpty() && partyName != null)
+                    }.getOrNull()
+                    _uiState.value = _uiState.value.copy(
+                        allDivisionDates = votesResult?.first ?: emptyList(),
+                        memberVotes = votesResult?.second ?: emptyList(),
+                        memberPartyName = partyName
+                    )
+                    // Rebellion stats depend on votes being loaded
+                    if (votesResult?.third == true) {
+                        val rebellionStats = runCatching {
+                            val memberVotes = votesRepository.getMemberVotes(memberId)
+                            val divisionIds = memberVotes.map { it.divisionId }.distinct()
+                            val partyVoteCounts = votesRepository.getPartyVoteCounts(divisionIds, partyName!!)
+                            RebellionCalculator.computeAggregated(memberVotes, partyVoteCounts)
+                        }.getOrNull()
+                        _uiState.value = _uiState.value.copy(rebellionStats = rebellionStats)
+                    }
+                }
+                launch {
+                    val stats = runCatching {
+                        statsRepository.getActivityScore(memberId, house, partyName) to
+                            statsRepository.getTraitBars(memberId, house, partyName)
+                    }.getOrNull()
+                    _uiState.value = _uiState.value.copy(
+                        activityScore = stats?.first,
+                        traitBars = stats?.second ?: emptyList()
+                    )
+                }
+                launch {
+                    val interests = interestsRepository.observeInterestsForMember(memberId).first()
+                    _uiState.value = _uiState.value.copy(interests = interests.data)
+                }
+                launch {
+                    val bucketTotals = runCatching {
+                        expensesRepository.getBucketTotals(memberId)
+                    }.getOrDefault(emptyList())
+                    _uiState.value = _uiState.value.copy(expenseBucketTotals = bucketTotals)
+                }
+                launch {
+                    val expenses = runCatching {
+                        expensesRepository.getExpenses(memberId)
+                    }.getOrDefault(emptyList())
+                    _uiState.value = _uiState.value.copy(expenses = expenses)
+                }
             }
 
-            // 6b. Activity score + trait bars (peer aggregation, may be slow on first run)
-            try {
-                val house = mp?.house ?: 1
-                val partyName = mp?.party?.name
-                val activityScore = statsRepository.getActivityScore(memberId, house, partyName)
-                val traitBars = statsRepository.getTraitBars(memberId, house, partyName)
-                _uiState.value = _uiState.value.copy(
-                    activityScore = activityScore,
-                    traitBars = traitBars
-                )
-            } catch (e: Exception) {
-                android.util.Log.e("GovEye/Profile", "Failed to compute activity score for MP $memberId", e)
-            }
-
-            // 7. Interests (one-shot)
-            val interestsResult = interestsRepository.observeInterestsForMember(memberId).first()
-            android.util.Log.i("GovEye/Profile", "Loaded ${interestsResult.data.size} interests for MP $memberId")
-            _uiState.value = _uiState.value.copy(interests = interestsResult.data)
-
-            // 8. Expense bucket totals (one-shot)
-            try {
-                val bucketTotals = expensesRepository.getBucketTotals(memberId)
-                _uiState.value = _uiState.value.copy(expenseBucketTotals = bucketTotals)
-            } catch (e: Exception) {
-            }
-
-            // 9. Load first page of activity votes
+            // 3. Load first page of activity votes (separate — paginated)
             loadActivityVotes(memberId)
         }
     }
@@ -263,9 +269,9 @@ class ProfileViewModel @Inject constructor(
         return (experiences + mnisPosts).sortedByDescending { it.startYear ?: 0 }
     }
 
-    /** Safely get an optional string from a JSONObject, returning null if missing or empty. */
+    /** Safely get an optional string from a JSONObject, returning null if missing, empty, or JSON null. */
     private fun org.json.JSONObject.optStringOrNull(key: String): String? {
-        if (!has(key)) return null
+        if (!has(key) || isNull(key)) return null
         val value = optString(key)
         return value.ifEmpty { null }
     }

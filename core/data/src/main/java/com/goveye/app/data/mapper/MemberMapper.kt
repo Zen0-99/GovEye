@@ -52,6 +52,29 @@ object MemberMapper {
 
     fun toDomain(items: List<MemberItem>): List<Mp> = items.map { toDomain(it.value) }
 
+    fun toDomainMp(entity: MpEntity): Mp = Mp(
+        id = entity.id,
+        nameListAs = entity.nameListAs,
+        nameDisplayAs = entity.nameDisplayAs,
+        nameFullTitle = entity.nameFullTitle,
+        gender = entity.gender,
+        party = Party(
+            id = entity.partyId,
+            name = entity.partyName,
+            abbreviation = entity.partyAbbreviation,
+            backgroundColour = entity.partyBackgroundColour,
+            foregroundColour = entity.partyForegroundColour
+        ),
+        constituency = Constituency(
+            id = entity.constituencyId,
+            name = entity.constituencyName
+        ),
+        house = entity.house,
+        membershipStartDate = entity.membershipStartDate,
+        isActive = entity.isActive,
+        thumbnailUrl = entity.thumbnailUrl
+    )
+
     fun toExperienceDomain(dto: BiographyExperienceDto): BiographyExperience = BiographyExperience(
         id = dto.id,
         type = dto.type,

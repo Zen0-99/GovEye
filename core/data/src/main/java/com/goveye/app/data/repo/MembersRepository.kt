@@ -6,9 +6,15 @@ import androidx.paging.PagingData
 import androidx.paging.map
 import com.goveye.app.data.api.MembersApi
 import com.goveye.app.data.local.dao.HistoricalMemberDao
+import com.goveye.app.data.local.dao.MpContactDao
 import com.goveye.app.data.local.dao.MpDao
+import com.goveye.app.data.local.dao.MpExperienceDao
+import com.goveye.app.data.local.dao.MpSynopsisDao
 import com.goveye.app.data.local.dao.SearchDao
+import com.goveye.app.data.local.entity.MpContactEntity
 import com.goveye.app.data.local.entity.MpEntity
+import com.goveye.app.data.local.entity.MpExperienceEntity
+import com.goveye.app.data.local.entity.MpSynopsisEntity
 import com.goveye.app.data.mapper.MemberMapper
 import com.goveye.app.domain.model.BiographyExperience
 import com.goveye.app.domain.model.BiographyItem
@@ -31,7 +37,10 @@ class MembersRepository @Inject constructor(
     private val searchDao: SearchDao,
     private val membersApi: MembersApi,
     private val mapper: MemberMapper,
-    private val historicalMemberDao: HistoricalMemberDao
+    private val historicalMemberDao: HistoricalMemberDao,
+    private val mpSynopsisDao: MpSynopsisDao,
+    private val mpContactDao: MpContactDao,
+    private val mpExperienceDao: MpExperienceDao
 ) {
 
     suspend fun getMpsByIds(ids: List<Int>): List<MpEntity> = mpDao.getMpsByIds(ids)
@@ -50,6 +59,18 @@ class MembersRepository @Inject constructor(
         } else {
             RepositoryResult(entity.toDomain(), SyncStatus.FRESH)
         }
+    }
+
+    /**
+     * Fetches a member from the live Parliament API by ID.
+     * Used as a fallback for members not in the bundled DB (e.g. Lords).
+     * Returns null on network failure.
+     */
+    suspend fun fetchMemberFromApi(memberId: Int): Mp? = try {
+        val response = membersApi.getMember(memberId)
+        mapper.toDomain(response.value)
+    } catch (e: Exception) {
+        null
     }
 
     fun observePagedMps(): Flow<PagingData<Mp>> = Pager(
@@ -105,6 +126,21 @@ class MembersRepository @Inject constructor(
     }
 
     /**
+     * Find current MPs by constituency name (exact or partial match).
+     * Used by postcode search: postcodes.io returns a constituency name,
+     * and we look up the MP(s) for that constituency in the local DB.
+     *
+     * Returns a list because some constituency names from postcodes.io
+     * might partially match multiple constituencies (unlikely but possible).
+     */
+    suspend fun searchMpsByConstituency(constituencyName: String): List<Mp> = try {
+        mpDao.getMpsByConstituency(constituencyName).map { it.toDomain() }
+    } catch (e: Exception) {
+        // Fallback: use FTS search on the constituency name
+        searchMpsFts(constituencyName).first()
+    }
+
+    /**
      * Maps a HistoricalMemberEntity to an Mp domain object.
      * Uses parliamentMemberId as the id (for navigation to profile).
      * isActive is false for historical members (they're former MPs).
@@ -145,6 +181,14 @@ class MembersRepository @Inject constructor(
         if (cached != null && System.currentTimeMillis() - cached.second < CacheTtl.MPS_MS) {
             return cached.first
         }
+        // Try bundled DB first — instant, no network
+        val dbEntity = mpSynopsisDao.getByMpId(memberId)
+        if (dbEntity != null && !dbEntity.synopsisText.isNullOrBlank()) {
+            val synopsis = stripHtml(dbEntity.synopsisText)
+            synopsisCache[memberId] = synopsis to System.currentTimeMillis()
+            return synopsis
+        }
+        // Fall back to live API if not in bundled DB
         return try {
             val response = membersApi.getMemberSynopsis(memberId)
             val synopsis = stripHtml(response.value ?: "")
@@ -160,6 +204,14 @@ class MembersRepository @Inject constructor(
         if (cached != null && System.currentTimeMillis() - cached.second < CacheTtl.MPS_MS) {
             return cached.first
         }
+        // Try bundled DB first — instant, no network
+        val dbContacts = mpContactDao.getByMpId(memberId)
+        if (dbContacts.isNotEmpty()) {
+            val contacts = dbContacts.map { it.toDomain() }
+            contactCache[memberId] = contacts to System.currentTimeMillis()
+            return contacts
+        }
+        // Fall back to live API if not in bundled DB
         return try {
             val response = membersApi.getMemberContact(memberId)
             val contacts = response.value.map { mapper.toContactDomain(it) }
@@ -175,9 +227,19 @@ class MembersRepository @Inject constructor(
         if (cached != null && System.currentTimeMillis() - cached.second < CacheTtl.MPS_MS) {
             return cached.first
         }
+        // Try bundled DB first — instant, no network
+        val dbExperiences = mpExperienceDao.getByMpId(memberId)
+        if (dbExperiences.isNotEmpty()) {
+            val experiences = dbExperiences.map { it.toDomain() }
+                .filter { it.title != null || it.organisation != null }
+            experienceCache[memberId] = experiences to System.currentTimeMillis()
+            return experiences
+        }
+        // Fall back to live API if not in bundled DB
         return try {
             val response = membersApi.getMemberExperience(memberId)
             val experiences = response.value.map { mapper.toExperienceDomain(it) }
+                .filter { it.title != null || it.organisation != null }
             experienceCache[memberId] = experiences to System.currentTimeMillis()
             experiences
         } catch (e: Exception) {
@@ -229,4 +291,33 @@ class MembersRepository @Inject constructor(
         .replace("&#39;", "'")
         .replace("&nbsp;", " ")
         .trim()
+
+    // --- Bundled DB entity → domain mappers ---
+
+    private fun MpContactEntity.toDomain(): Contact = Contact(
+        type = type,
+        isPreferred = isPreferred,
+        isWebAddress = isWebAddress,
+        line1 = line1,
+        line2 = line2,
+        line3 = line3,
+        line4 = line4,
+        line5 = line5,
+        postcode = postcode,
+        phone = phone,
+        email = email,
+        website = website,
+        openingHours = openingHours
+    )
+
+    private fun MpExperienceEntity.toDomain(): BiographyExperience = BiographyExperience(
+        id = id,
+        type = type,
+        title = title,
+        organisation = organisation,
+        startMonth = startMonth,
+        startYear = startYear,
+        endMonth = endMonth,
+        endYear = endYear
+    )
 }
