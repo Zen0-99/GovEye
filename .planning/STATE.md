@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: milestone
-current_phase: 12
-current_phase_name: Unified Precomputed Database
-status: phase_executed
-stopped_at: Phase 12 — all 4 plans implemented, build successful
-last_updated: "2026-08-22T01:00:00.000Z"
-last_activity: 2026-08-22
-last_activity_desc: Phase 12 implemented — build_precompute.py, mp_stats + peer_averages entities/DAO, StatsRepository rewrite with fallback, SQL JOIN fixes for N+1 queries, CI integration. Build successful.
+current_phase: 14
+current_phase_name: government-announcements
+status: executing
+stopped_at: Plan 14-03 complete — Android data layer for government announcements
+last_updated: "2026-08-23T16:00:00.000Z"
+last_activity: 2026-08-23
+last_activity_desc: Plan 14-03 executed — 9 entities, 8 DAOs, repository, patch streams, schema v20
 progress:
-  total_phases: 12
-  completed_phases: 9
-  total_plans: 40
-  completed_plans: 40
+  total_phases: 15
+  completed_phases: 8
+  total_plans: 53
+  completed_plans: 30
 total_phases: 12
 completed_phases: 9
 ---
@@ -25,14 +25,14 @@ completed_phases: 9
 See: .planning/PROJECT.md (updated 2026-08-16)
 
 **Core value:** Make UK government activity as easy to follow as a football team — so anyone, especially younger voters, can see what their representatives are actually doing.
-**Current focus:** Phase 9 — Interests & Income (7th patch stream, monetary parser, dashboard UI) — COMPLETE (09-01 through 09-04 done)
+**Current focus:** Phase 14 — government-announcements
 
 ## Current Position
 
-Phase: 9 (Interests & Income) — COMPLETE
-Plans: 09-01 (build-side) COMPLETE, 09-02 (Android data) COMPLETE, 09-03 (Android UI) COMPLETE, 09-04 (CI infra) COMPLETE
-Status: 4 of 4 plans complete. All Phase 9 work done — build script, data layer, UI, and CI infrastructure. All 118 Python tests + 110 Kotlin tests green.
-Last activity: 2026-08-20 — Plan 09-04 complete (recess gates, checkpoint/resume, smart Bills delta)
+Phase: 14 (government-announcements) — EXECUTING
+Plans: 14-03 (Android data layer) COMPLETE
+Status: Executing Phase 14
+Last activity: 2026-08-23 — Plan 14-03 executed (9 entities, 8 DAOs, repository, patch streams, schema v20)
 
 Progress: [████████████████░░] 73% (7 of 11 phases complete, Phase 9 context gathered)
 
@@ -101,6 +101,12 @@ Recent decisions affecting current work:
 - [Phase 10]: D-11 Bundle bills+committees+recess; keep hansard+profile detail as live API
 - [Phase 10]: D-12 Continue as Phase 10 plans (10-05 through 10-08)
 
+### Roadmap Evolution
+
+- Phase 13 added: Expense Detail — rebuild IPSA parser, add ExpenseBucketDetailScreen
+- Phase 14 added: Government Announcements — GOV.UK Content API + Written Statements + legislation.gov.uk, tag personalization, onboarding redesign
+- Phase 15 added: MP Activity Feed Redesign — mixed activity feed, question text storage, votes relocation to Stats tab
+
 ### Pending Todos
 
 - 06-01 Task 9: Tests (FollowDao, FollowRepository, FollowingViewModel)
@@ -131,6 +137,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-08-20T16:00:00.000Z
-Stopped at: Phase 9 — All 4 plans complete (09-01 through 09-04). Phase 9 done.
-Resume file: .planning/ROADMAP.md (next phase selection)
+Last session: 2026-08-23T16:00:00.000Z
+Stopped at: Plan 14-03 complete — Android data layer for government announcements
+Resume file: .planning/phases/14-government-announcements/14-04-PLAN.md
