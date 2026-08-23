@@ -29,6 +29,7 @@ import com.goveye.app.data.local.dao.MpSynopsisDao
 import com.goveye.app.data.local.dao.PartyStatsDao
 import com.goveye.app.data.local.dao.RecessDateDao
 import com.goveye.app.data.local.dao.SearchDao
+import com.goveye.app.data.local.dao.WrittenStatementDao
 import com.goveye.app.data.mapper.HansardMapper
 import com.goveye.app.data.mapper.MemberMapper
 import com.goveye.app.data.repo.BillFollowRepository
@@ -38,6 +39,7 @@ import com.goveye.app.data.repo.CommitteesRepository
 import com.goveye.app.data.repo.ExpensesRepository
 import com.goveye.app.data.repo.FeedRepository
 import com.goveye.app.data.repo.FollowRepository
+import com.goveye.app.data.repo.GovernmentAnnouncementsRepository
 import com.goveye.app.data.repo.HansardRepository
 import com.goveye.app.data.repo.HistoricalMemberRepository
 import com.goveye.app.data.repo.InterestsRepository
@@ -58,11 +60,45 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
-    // Migration 11 → 12: No schema changes (identity hash update only).
-    // Room still requires a migration to bump the version number.
+    // Migration 11 → 12: Fix mp_stats.activityScore column type (INTEGER → REAL)
+    // and identity hash update. The seed DB at v11 has activityScore as INTEGER
+    // but Room expects REAL. SQLite can't ALTER COLUMN, so recreate the table.
     private val MIGRATION_11_12 = object : Migration(11, 12) {
         override fun migrate(db: SupportSQLiteDatabase) {
-            // No-op — schema unchanged, only identity hash differs
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS `mp_stats_new` (
+                    `memberId` INTEGER NOT NULL,
+                    `house` INTEGER NOT NULL,
+                    `questionCount` INTEGER NOT NULL,
+                    `speechCount` INTEGER NOT NULL,
+                    `committeeCount` INTEGER NOT NULL,
+                    `voteParticipationRate` REAL NOT NULL,
+                    `rebellionRate` REAL NOT NULL,
+                    `rebellionCount` INTEGER NOT NULL,
+                    `totalDivisionsVoted` INTEGER NOT NULL,
+                    `activityScore` REAL NOT NULL,
+                    `rebellionPercentile` INTEGER NOT NULL,
+                    `participationPercentile` INTEGER NOT NULL,
+                    `questionsPercentile` INTEGER NOT NULL,
+                    `speechesPercentile` INTEGER NOT NULL,
+                    `committeesPercentile` INTEGER NOT NULL,
+                    PRIMARY KEY(`memberId`)
+                )
+                """.trimIndent()
+            )
+            db.execSQL(
+                """INSERT INTO `mp_stats_new` SELECT
+                    `memberId`, `house`, `questionCount`, `speechCount`,
+                    `committeeCount`, `voteParticipationRate`, `rebellionRate`,
+                    `rebellionCount`, `totalDivisionsVoted`, `activityScore`,
+                    `rebellionPercentile`, `participationPercentile`,
+                    `questionsPercentile`, `speechesPercentile`,
+                    `committeesPercentile`
+                FROM `mp_stats`
+                """.trimIndent()
+            )
+            db.execSQL("DROP TABLE `mp_stats`")
+            db.execSQL("ALTER TABLE `mp_stats_new` RENAME TO `mp_stats`")
         }
     }
 
@@ -142,6 +178,85 @@ object DatabaseModule {
         }
     }
 
+    private val MIGRATION_17_18 = object : Migration(17, 18) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS `mp_api_ids` (
+                    `memberId` INTEGER NOT NULL,
+                    `mnisId` INTEGER,
+                    `twfyPersonId` INTEGER,
+                    `ipsaMemberId` TEXT,
+                    `publicWhipId` TEXT,
+                    `lastUpdated` INTEGER NOT NULL,
+                    PRIMARY KEY(`memberId`)
+                )
+                """.trimIndent()
+            )
+        }
+    }
+
+    // Migration 18 → 19: Add IPSA descriptive fields to expenses table.
+    // Idempotent — the seed DB may already include these columns if built
+    // with a newer bundled_schema.json.
+    private val MIGRATION_18_19 = object : Migration(18, 19) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            val existingColumns = db.query("PRAGMA table_info(expenses)").use { cursor ->
+                buildList {
+                    while (cursor.moveToNext()) {
+                        add(cursor.getString(cursor.getColumnIndexOrThrow("name")))
+                    }
+                }
+            }
+            val newColumns = listOf(
+                "shortDescription" to "TEXT",
+                "details" to "TEXT",
+                "claimNumber" to "TEXT",
+                "journeyType" to "TEXT",
+                "journeyFrom" to "TEXT",
+                "journeyTo" to "TEXT",
+                "travel" to "TEXT",
+                "nights" to "TEXT",
+                "mileage" to "TEXT",
+                "amountPaidPence" to "INTEGER",
+                "amountNotPaidPence" to "INTEGER",
+                "amountRepaidPence" to "INTEGER",
+                "reasonIfNotPaid" to "TEXT",
+                "supplyMonth" to "TEXT",
+                "supplyPeriod" to "TEXT"
+            )
+            for ((colName, colType) in newColumns) {
+                if (colName !in existingColumns) {
+                    db.execSQL("ALTER TABLE `expenses` ADD COLUMN `$colName` $colType")
+                }
+            }
+        }
+    }
+
+    // Migration 19 → 20: Add government announcement tables (Phase 14).
+    // Idempotent — the seed DB may already include these tables if built
+    // with a newer bundled_schema.json.
+    private val MIGRATION_19_20 = object : Migration(19, 20) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS `written_statements` (
+                    `id` INTEGER NOT NULL,
+                    `memberId` INTEGER NOT NULL,
+                    `memberRole` TEXT NOT NULL,
+                    `uin` TEXT NOT NULL,
+                    `dateMade` TEXT NOT NULL,
+                    `answeringBodyId` INTEGER NOT NULL,
+                    `answeringBodyName` TEXT NOT NULL,
+                    `title` TEXT NOT NULL,
+                    `text` TEXT NOT NULL,
+                    `house` INTEGER NOT NULL,
+                    `lastUpdated` INTEGER NOT NULL,
+                    PRIMARY KEY(`id`)
+                )
+                """.trimIndent()
+            )
+        }
+    }
+
     @Provides
     @Singleton
     fun provideBundledDatabase(@ApplicationContext context: Context): BundledDatabase {
@@ -160,7 +275,10 @@ object DatabaseModule {
                 MIGRATION_13_14,
                 MIGRATION_14_15,
                 MIGRATION_15_16,
-                MIGRATION_16_17
+                MIGRATION_16_17,
+                MIGRATION_17_18,
+                MIGRATION_18_19,
+                MIGRATION_19_20
             )
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
@@ -243,7 +361,16 @@ object DatabaseModule {
     fun provideTagDao(database: BundledDatabase): com.goveye.app.data.local.dao.TagDao = database.tagDao()
 
     @Provides
+    fun provideCouncilDao(database: BundledDatabase): com.goveye.app.data.local.dao.CouncilDao = database.councilDao()
+
+    @Provides
+    fun provideMpApiIdDao(database: BundledDatabase): com.goveye.app.data.local.dao.MpApiIdDao = database.mpApiIdDao()
+
+    @Provides
     fun provideDatabaseUpdateDao(database: BundledDatabase): DatabaseUpdateDao = database.databaseUpdateDao()
+
+    @Provides
+    fun provideWrittenStatementDao(database: BundledDatabase): WrittenStatementDao = database.writtenStatementDao()
 
     // ── User-data DAOs (from LocalDatabase) ────────────────────────────
 
@@ -280,14 +407,20 @@ object DatabaseModule {
         mpSynopsisDao: com.goveye.app.data.local.dao.MpSynopsisDao,
         mpContactDao: com.goveye.app.data.local.dao.MpContactDao,
         mpExperienceDao: com.goveye.app.data.local.dao.MpExperienceDao
-    ): MembersRepository = MembersRepository(mpDao, searchDao, membersApi, memberMapper, historicalMemberDao, mpSynopsisDao, mpContactDao, mpExperienceDao)
+    ): MembersRepository = MembersRepository(
+        mpDao,
+        searchDao,
+        membersApi,
+        memberMapper,
+        historicalMemberDao,
+        mpSynopsisDao,
+        mpContactDao,
+        mpExperienceDao
+    )
 
     @Provides
     @Singleton
-    fun provideCommitteesRepository(
-        committeeDao: CommitteeDao,
-        memberMapper: MemberMapper
-    ): CommitteesRepository =
+    fun provideCommitteesRepository(committeeDao: CommitteeDao, memberMapper: MemberMapper): CommitteesRepository =
         CommitteesRepository(committeeDao, memberMapper)
 
     @Provides
@@ -302,7 +435,7 @@ object DatabaseModule {
         followDao: FollowDao,
         recessDateDao: RecessDateDao,
         tagDao: com.goveye.app.data.local.dao.TagDao
-    ): FeedRepository = FeedRepository(divisionDao, followDao, recessDateDao)
+    ): FeedRepository = FeedRepository(divisionDao, followDao, recessDateDao, tagDao)
 
     @Provides
     @Singleton
@@ -366,4 +499,10 @@ object DatabaseModule {
     @Singleton
     fun provideBillFollowRepository(billFollowDao: BillFollowDao): BillFollowRepository =
         BillFollowRepository(billFollowDao)
+
+    @Provides
+    @Singleton
+    fun provideGovernmentAnnouncementsRepository(
+        writtenStatementDao: WrittenStatementDao
+    ): GovernmentAnnouncementsRepository = GovernmentAnnouncementsRepository(writtenStatementDao)
 }
