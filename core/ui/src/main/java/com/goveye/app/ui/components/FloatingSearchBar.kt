@@ -1,10 +1,13 @@
 package com.goveye.app.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -84,29 +87,62 @@ fun FloatingSearchBar(
     segments: List<SearchSegment> = emptyList(),
     isSearchActive: Boolean = false,
     onSearchActiveChange: (Boolean) -> Unit = {},
+    actions: List<DetailTopBarAction> = emptyList(),
+    iconTint: androidx.compose.ui.graphics.Color? = null,
+    accentColor: androidx.compose.ui.graphics.Color? = null,
     modifier: Modifier = Modifier
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val shape = RoundedCornerShape(20.dp)
     val focusManager = LocalFocusManager.current
+    val backIconTint = iconTint ?: colorScheme.onSurface
+    // Blend the party accent color into the search bar background when on
+    // a detail screen (profile/party). Deeper tint — 25% party color over
+    // surfaceContainer. Animated so it transitions smoothly instead of
+    // flickering when navigating between list and detail screens.
+    val targetColor = if (accentColor != null) {
+        androidx.compose.ui.graphics.lerp(
+            colorScheme.surfaceContainer,
+            accentColor,
+            0.25f
+        )
+    } else {
+        colorScheme.surfaceContainer
+    }
+    val searchBarColor by animateColorAsState(
+        targetValue = targetColor,
+        animationSpec = tween(durationMillis = 300),
+        label = "searchBarColor"
+    )
 
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Optional back button (shrinks the search bar)
-            if (onBack != null) {
-                IconButton(
-                    onClick = onBack,
-                    modifier = Modifier.size(44.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                        contentDescription = "Back",
-                        tint = colorScheme.onSurface
-                    )
+            // Optional back button — animated in/out so the search bar
+            // morphs width smoothly. We capture the callback so it's
+            // available during the exit animation even if onBack becomes
+            // null on the next composition.
+            // Padding is applied inside the AnimatedVisibility so it
+            // animates away with the button — no gap jump when it exits.
+            val backCallback = onBack
+            AnimatedVisibility(
+                visible = onBack != null,
+                enter = expandHorizontally(animationSpec = tween(200)) + fadeIn(animationSpec = tween(200)),
+                exit = shrinkHorizontally(animationSpec = tween(200)) + fadeOut(animationSpec = tween(200))
+            ) {
+                Box(modifier = Modifier.padding(end = 4.dp)) {
+                    IconButton(
+                        onClick = backCallback ?: {},
+                        modifier = Modifier.size(44.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = "Back",
+                            tint = backIconTint
+                        )
+                    }
                 }
             }
 
@@ -115,7 +151,7 @@ fun FloatingSearchBar(
                     .weight(1f)
                     .clip(shape),
                 shape = shape,
-                color = colorScheme.surfaceContainer
+                color = searchBarColor
             ) {
                 Column {
                     Row(
@@ -289,6 +325,35 @@ fun FloatingSearchBar(
                                     }
                                 }
                             }
+                        }
+                    }
+                }
+            }
+
+            // Action icons (detail screens) — animated in/out as a group
+            // so the search bar morphs width smoothly when entering/leaving
+            // detail screens. Padding is inside AnimatedVisibility so it
+            // animates away with the icons — no gap jump on exit.
+            AnimatedVisibility(
+                visible = actions.isNotEmpty(),
+                enter = expandHorizontally(animationSpec = tween(200)) + fadeIn(animationSpec = tween(200)),
+                exit = shrinkHorizontally(animationSpec = tween(200)) + fadeOut(animationSpec = tween(200))
+            ) {
+                Row(
+                    modifier = Modifier.padding(start = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    actions.forEach { action ->
+                        IconButton(
+                            onClick = action.onClick,
+                            modifier = Modifier.size(44.dp)
+                        ) {
+                            Icon(
+                                imageVector = action.icon,
+                                contentDescription = action.contentDescription,
+                                tint = action.tint ?: iconTint ?: colorScheme.onSurface,
+                                modifier = Modifier.size(22.dp)
+                            )
                         }
                     }
                 }
