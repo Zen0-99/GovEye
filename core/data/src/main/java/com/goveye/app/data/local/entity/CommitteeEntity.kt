@@ -12,6 +12,11 @@ data class CommitteeEntity(
     val startDate: String? = null,
     val endDate: String? = null,
     val isActive: Boolean,
+    val purpose: String? = null,
+    val contactEmail: String? = null,
+    val contactPhone: String? = null,
+    val contactAddress: String? = null,
+    val websiteUrl: String? = null,
     val lastUpdated: Long
 )
 

@@ -24,7 +24,12 @@ object CommitteeMapper {
         categoryName = entity.categoryName,
         startDate = entity.startDate,
         endDate = entity.endDate,
-        isActive = entity.isActive
+        isActive = entity.isActive,
+        purpose = entity.purpose,
+        contactEmail = entity.contactEmail,
+        contactPhone = entity.contactPhone,
+        contactAddress = entity.contactAddress,
+        websiteUrl = entity.websiteUrl
     )
 
     fun toCrossRef(memberId: Int, committeeId: Int, timestamp: Long): MpCommitteeCrossRef =
