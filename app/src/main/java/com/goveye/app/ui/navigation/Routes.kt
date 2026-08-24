@@ -45,3 +45,6 @@ data class CommitteeRoute(val committeeId: Int) : NavKey
 
 @Serializable
 data class CouncilRoute(val councilId: Int) : NavKey
+
+@Serializable
+data class VotingRecordRoute(val memberId: Int) : NavKey

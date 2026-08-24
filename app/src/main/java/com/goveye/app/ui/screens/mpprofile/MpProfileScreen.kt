@@ -88,6 +88,7 @@ fun ProfileScreen(
     onNavigateToExpenseBucket: (Int, String) -> Unit = { _, _ -> },
     onNavigateToParty: (Int) -> Unit = {},
     onNavigateToCommittee: (Int) -> Unit = {},
+    onNavigateToVotingRecord: (Int) -> Unit = {},
     modifier: Modifier = Modifier,
     contentTopPadding: Dp = 0.dp,
     viewModel: ProfileViewModel = hiltViewModel()
@@ -268,6 +269,7 @@ fun ProfileScreen(
                             )
 
                             ProfileTab.STATS -> ProfileStatsTabContent(
+                                memberId = memberId,
                                 memberVotes = uiState.memberVotes,
                                 rebellionStats = uiState.rebellionStats,
                                 allDivisionDates = uiState.allDivisionDates,
@@ -275,7 +277,8 @@ fun ProfileScreen(
                                 traitBars = uiState.traitBars,
                                 onNavigateToDivision = { divisionId, house ->
                                     onNavigateToDivision(divisionId, house)
-                                }
+                                },
+                                onNavigateToVotingRecord = { onNavigateToVotingRecord(memberId) }
                             )
 
                             ProfileTab.ACTIVITY -> ActivityTabContent(
@@ -515,12 +518,14 @@ private fun CommitteesTabContent(
 
 @Composable
 private fun ProfileStatsTabContent(
+    memberId: Int,
     memberVotes: List<MemberVoteWithDivision>,
     rebellionStats: RebellionStats?,
     allDivisionDates: List<String>,
     activityScore: com.goveye.app.domain.stats.ActivityScore?,
     traitBars: List<com.goveye.app.domain.stats.TraitBar>,
-    onNavigateToDivision: (Int, Int) -> Unit
+    onNavigateToDivision: (Int, Int) -> Unit,
+    onNavigateToVotingRecord: (Int) -> Unit
 ) {
     // Compute chart data
     val monthlyVoting = remember(memberVotes) { VotingStatsCalculator.computeMonthlyVoting(memberVotes) }
@@ -607,6 +612,17 @@ private fun ProfileStatsTabContent(
                         onTileClick = onNavigateToDivision
                     )
                 }
+            }
+        }
+
+        // Recent votes summary — 5 compact rows + "See all" link (D-08)
+        if (memberVotes.isNotEmpty()) {
+            item {
+                RecentVotesSummary(
+                    recentVotes = memberVotes.take(5),
+                    onSeeAll = { onNavigateToVotingRecord(memberId) },
+                    onNavigateToDivision = onNavigateToDivision
+                )
             }
         }
 
@@ -755,4 +771,99 @@ private fun formatDivisionDate(dateString: String): String = try {
     "${parts[2]}/${parts[1]}/${parts[0]}"
 } catch (e: Exception) {
     dateString
+}
+
+/**
+ * Compact "Recent votes" summary for the Stats tab (D-08).
+ *
+ * Shows up to 5 recent votes as compact rows (division title, aye/no badge,
+ * date) with a "See all" link that navigates to [VotingRecordScreen].
+ */
+@Composable
+private fun RecentVotesSummary(
+    recentVotes: List<MemberVoteWithDivision>,
+    onSeeAll: () -> Unit,
+    onNavigateToDivision: (Int, Int) -> Unit
+) {
+    com.goveye.app.ui.components.charts.ChartCard {
+        Text(
+            text = "Recent votes",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            recentVotes.forEach { vote ->
+                RecentVoteRow(
+                    vote = vote,
+                    onClick = { onNavigateToDivision(vote.divisionId, vote.house) }
+                )
+            }
+        }
+        TextButton(
+            onClick = onSeeAll,
+            modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+        ) {
+            Text(
+                text = "See all",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
+@Composable
+private fun RecentVoteRow(vote: MemberVoteWithDivision, onClick: () -> Unit) {
+    val ayeColor = com.goveye.app.ui.components.VoteColors.aye
+    val noColor = com.goveye.app.ui.components.VoteColors.no
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 4.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Compact aye/no badge
+        Box(
+            modifier = Modifier
+                .size(24.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(
+                    when (vote.vote) {
+                        VoteType.AYE -> ayeColor
+                        VoteType.NO -> noColor
+                        VoteType.NO_VOTE_RECORDED -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                    }
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = when (vote.vote) {
+                    VoteType.AYE -> "Aye"
+                    VoteType.NO -> "No"
+                    VoteType.NO_VOTE_RECORDED -> "—"
+                },
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White,
+                fontWeight = FontWeight.Bold
+            )
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = vote.divisionTitle,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Text(
+            text = formatDivisionDate(vote.divisionDate),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
 }

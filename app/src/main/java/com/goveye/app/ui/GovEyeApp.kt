@@ -74,6 +74,7 @@ import com.goveye.app.ui.navigation.PartyRoute
 import com.goveye.app.ui.navigation.ProfileRoute
 import com.goveye.app.ui.navigation.SettingsRoute
 import com.goveye.app.ui.navigation.TranscriptRoute
+import com.goveye.app.ui.navigation.VotingRecordRoute
 import com.goveye.app.ui.screens.FeedScreen
 import com.goveye.app.ui.screens.FollowingScreen
 import com.goveye.app.ui.screens.SettingsScreen
@@ -85,6 +86,7 @@ import com.goveye.app.ui.screens.divisions.DivisionDetailScreen
 import com.goveye.app.ui.screens.divisions.TranscriptScreen
 import com.goveye.app.ui.screens.mpprofile.FinancialBucketDetailScreen
 import com.goveye.app.ui.screens.mpprofile.ProfileScreen
+import com.goveye.app.ui.screens.mpprofile.VotingRecordScreen
 import com.goveye.app.ui.screens.party.PartyScreen
 import com.goveye.app.ui.theme.ThemeViewModel
 
@@ -174,6 +176,11 @@ private fun GovEyeAppContent(
                 }
 
                 is InterestBucketDetailRoute -> {
+                    currentTabIndex = 1
+                    directoryBackStack.add(route)
+                }
+
+                is VotingRecordRoute -> {
                     currentTabIndex = 1
                     directoryBackStack.add(route)
                 }
@@ -278,6 +285,9 @@ private fun GovEyeAppContent(
                             onNavigateToCommittee = { committeeId ->
                                 currentBackStack.add(CommitteeRoute(committeeId))
                             },
+                            onNavigateToVotingRecord = { memberId ->
+                                currentBackStack.add(VotingRecordRoute(memberId))
+                            },
                             contentTopPadding = topBarHeight,
                             modifier = Modifier.fillMaxSize()
                         )
@@ -375,6 +385,18 @@ private fun GovEyeAppContent(
                         )
                     }
 
+                is VotingRecordRoute ->
+                    NavEntry(key) {
+                        VotingRecordScreen(
+                            memberId = key.memberId,
+                            onBack = { currentBackStack.removeLastOrNull() },
+                            onNavigateToDivision = { divisionId, house ->
+                                currentBackStack.add(DivisionDetailRoute(divisionId, house))
+                            },
+                            modifier = Modifier.fillMaxSize().padding(top = topBarHeight)
+                        )
+                    }
+
                 is FollowingRoute ->
                     NavEntry(key) {
                         FollowingScreen(
@@ -412,7 +434,7 @@ private fun GovEyeAppContent(
     val isDetailTopBar =
         currentRoute is ProfileRoute || currentRoute is InterestBucketDetailRoute ||
             currentRoute is PartyRoute || currentRoute is CommitteeRoute ||
-            currentRoute is CouncilRoute
+            currentRoute is CouncilRoute || currentRoute is VotingRecordRoute
 
     // Merge search config and detail config for the unified top bar.
     // On detail screens, the back button and action icons come from
