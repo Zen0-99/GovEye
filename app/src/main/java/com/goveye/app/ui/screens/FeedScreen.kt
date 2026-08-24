@@ -221,6 +221,14 @@ private fun FeedItemCard(
         is FeedItem.LegislationItem -> {
             { onNavigateToLegislationDetail(item.legislation.id) }
         }
+
+        is FeedItem.FinancialItem -> {
+            { /* navigate to financial detail — wired in 17-02-07 */ }
+        }
+
+        is FeedItem.SpeechItem -> {
+            { onNavigateToDivision(item.divisionId, 1) }
+        }
     }
     UnifiedFeedCard(
         item = item,

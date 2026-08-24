@@ -13,7 +13,9 @@ enum class CardType {
     DIVISION,
     PUBLICATION,
     STATEMENT,
-    LEGISLATION
+    LEGISLATION,
+    FINANCIAL,
+    SPEECH
 }
 
 /**
@@ -56,6 +58,49 @@ sealed interface FeedItem {
         override val id: Int get() = legislation.id
         override val typePrefix: String = "legislation"
         override val cardType: CardType = CardType.LEGISLATION
+    }
+
+    /**
+     * A followed MP's income or expense entry rendered as a [UnifiedFinancialCard]
+     * in the feed (with a profile icon). [isIncome] distinguishes the two.
+     */
+    data class FinancialItem(
+        val memberId: Int,
+        val memberName: String,
+        val memberPartyColorHex: String?,
+        val memberPhotoUrl: String?,
+        val amount: String,
+        val whoOrWhere: String,
+        val description: String,
+        val category: String,
+        val isIncome: Boolean,
+        override val date: String,
+        override val id: Int = listOf(memberId, amount, date).hashCode(),
+        val tags: List<String> = emptyList()
+    ) : FeedItem {
+        override val typePrefix: String = "financial"
+        override val cardType: CardType = CardType.FINANCIAL
+    }
+
+    /**
+     * A followed MP's speech from a debate, rendered as a [FeedSpeechCard]
+     * in the feed (profile icon + 3 lines of speech text + tags inherited
+     * from the parent division).
+     */
+    data class SpeechItem(
+        val memberId: Int,
+        val memberName: String,
+        val memberPartyColorHex: String?,
+        val memberPhotoUrl: String?,
+        val speechText: String,
+        val divisionId: Int,
+        val divisionTitle: String,
+        override val date: String,
+        override val id: Int = listOf(memberId, divisionId).hashCode(),
+        val tags: List<String> = emptyList()
+    ) : FeedItem {
+        override val typePrefix: String = "speech"
+        override val cardType: CardType = CardType.SPEECH
     }
 }
 

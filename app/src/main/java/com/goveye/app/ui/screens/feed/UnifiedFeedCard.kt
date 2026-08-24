@@ -339,4 +339,29 @@ private fun getCardTypeData(item: FeedItem): CardTypeData = when (item) {
             divisionData = null
         )
     }
+
+    // Financial and Speech items are rendered by their own card composables
+    // (FeedFinancialCard / FeedSpeechCard), never via UnifiedFeedCard. These
+    // branches exist only to satisfy the exhaustive `when` over FeedItem.
+    is FeedItem.FinancialItem -> CardTypeData(
+        imageUrl = null,
+        title = item.amount,
+        typeLabel = if (item.isIncome) "Income" else "Expense",
+        byWho = item.whoOrWhere,
+        source = item.category,
+        date = formatDivisionDate(item.date),
+        tags = item.tags,
+        divisionData = null
+    )
+
+    is FeedItem.SpeechItem -> CardTypeData(
+        imageUrl = null,
+        title = item.speechText,
+        typeLabel = "Speech",
+        byWho = item.memberName,
+        source = item.divisionTitle,
+        date = formatDivisionDate(item.date),
+        tags = item.tags,
+        divisionData = null
+    )
 }
