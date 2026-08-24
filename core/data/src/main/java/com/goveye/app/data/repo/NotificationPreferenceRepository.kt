@@ -23,6 +23,10 @@ class NotificationPreferenceRepository @Inject constructor(private val dao: MpNo
 
     suspend fun getMemberIdsWithVotesEnabled(): List<Int> = dao.getMemberIdsWithVotesEnabled()
 
+    suspend fun getMemberIdsWithIncomeEnabled(): List<Int> = dao.getMemberIdsWithIncomeEnabled()
+
+    suspend fun getMemberIdsWithExpensesEnabled(): List<Int> = dao.getMemberIdsWithExpensesEnabled()
+
     /**
      * Set the master toggle. When turning ON, enable all types.
      * When turning OFF, disable all types.
@@ -36,7 +40,14 @@ class NotificationPreferenceRepository @Inject constructor(private val dao: MpNo
             }
         } else {
             // Turn off: disable everything
-            dao.upsert(current.copy(votesEnabled = false, speechesEnabled = false))
+            dao.upsert(
+                current.copy(
+                    votesEnabled = false,
+                    speechesEnabled = false,
+                    incomeEnabled = false,
+                    expensesEnabled = false
+                )
+            )
         }
     }
 
@@ -49,6 +60,16 @@ class NotificationPreferenceRepository @Inject constructor(private val dao: MpNo
     suspend fun setSpeechesEnabled(memberId: Int, enabled: Boolean) {
         val current = dao.get(memberId) ?: MpNotificationPreferenceEntity(memberId)
         dao.upsert(current.copy(speechesEnabled = enabled))
+    }
+
+    suspend fun setIncomeEnabled(memberId: Int, enabled: Boolean) {
+        val current = dao.get(memberId) ?: MpNotificationPreferenceEntity(memberId)
+        dao.upsert(current.copy(incomeEnabled = enabled))
+    }
+
+    suspend fun setExpensesEnabled(memberId: Int, enabled: Boolean) {
+        val current = dao.get(memberId) ?: MpNotificationPreferenceEntity(memberId)
+        dao.upsert(current.copy(expensesEnabled = enabled))
     }
 
     suspend fun delete(memberId: Int) = dao.delete(memberId)

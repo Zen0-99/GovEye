@@ -18,6 +18,12 @@ interface MpNotificationPreferenceDao {
     @Query("SELECT memberId FROM mp_notification_prefs WHERE votesEnabled = 1")
     suspend fun getMemberIdsWithVotesEnabled(): List<Int>
 
+    @Query("SELECT memberId FROM mp_notification_prefs WHERE incomeEnabled = 1")
+    suspend fun getMemberIdsWithIncomeEnabled(): List<Int>
+
+    @Query("SELECT memberId FROM mp_notification_prefs WHERE expensesEnabled = 1")
+    suspend fun getMemberIdsWithExpensesEnabled(): List<Int>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(pref: MpNotificationPreferenceEntity)
 
@@ -26,6 +32,12 @@ interface MpNotificationPreferenceDao {
 
     @Query("UPDATE mp_notification_prefs SET speechesEnabled = :enabled WHERE memberId = :memberId")
     suspend fun setSpeechesEnabled(memberId: Int, enabled: Boolean)
+
+    @Query("UPDATE mp_notification_prefs SET incomeEnabled = :enabled WHERE memberId = :memberId")
+    suspend fun setIncomeEnabled(memberId: Int, enabled: Boolean)
+
+    @Query("UPDATE mp_notification_prefs SET expensesEnabled = :enabled WHERE memberId = :memberId")
+    suspend fun setExpensesEnabled(memberId: Int, enabled: Boolean)
 
     @Query("DELETE FROM mp_notification_prefs WHERE memberId = :memberId")
     suspend fun delete(memberId: Int)
