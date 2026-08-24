@@ -292,7 +292,8 @@ fun ProfileScreen(
                                 onFilterClick = { showActivityFilterSheet = true },
                                 onNavigateToDivision = { divisionId, house ->
                                     onNavigateToDivision(divisionId, house)
-                                }
+                                },
+                                partyColorHex = mp.party?.backgroundColour
                             )
 
                             ProfileTab.INTERESTS -> InterestsTabContent(

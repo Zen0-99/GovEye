@@ -31,6 +31,7 @@ import com.goveye.app.domain.model.ActivityEntry
 import com.goveye.app.domain.model.ActivityEntryType
 import com.goveye.app.ui.components.VoteColors
 import com.goveye.app.ui.screens.feed.FeedDateHeader
+import com.goveye.app.ui.screens.feed.UnifiedFinancialCard
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -55,6 +56,7 @@ fun ActivityTabContent(
     totalCount: Int,
     @Suppress("UNUSED_PARAMETER") onFilterClick: () -> Unit,
     onNavigateToDivision: (Int, Int) -> Unit,
+    partyColorHex: String? = null,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -103,9 +105,27 @@ fun ActivityTabContent(
 
                         ActivityEntryType.QUESTION -> ActivityQuestionCard(entry)
 
-                        ActivityEntryType.INCOME -> ActivityIncomeCard(entry)
+                        ActivityEntryType.INCOME -> UnifiedFinancialCard(
+                            amount = entry.amountPence?.let { formatAmount(it) } ?: "£0",
+                            whoOrWhere = entry.summary,
+                            description = entry.summary,
+                            category = entry.categoryName ?: "",
+                            date = formatActivityDate(entry.date),
+                            isIncome = true,
+                            partyColorHex = partyColorHex,
+                            onClick = { /* navigate to income detail */ }
+                        )
 
-                        ActivityEntryType.EXPENSE -> ActivityExpenseCard(entry)
+                        ActivityEntryType.EXPENSE -> UnifiedFinancialCard(
+                            amount = entry.totalAmountPence?.let { formatAmount(it) } ?: "£0",
+                            whoOrWhere = entry.bucketLabel ?: "",
+                            description = "${entry.claimCount ?: 0} claims",
+                            category = entry.bucketLabel ?: "",
+                            date = formatActivityDate(entry.date),
+                            isIncome = false,
+                            partyColorHex = partyColorHex,
+                            onClick = { /* navigate to expense detail */ }
+                        )
 
                         ActivityEntryType.COMMITTEE -> ActivityCommitteeCard(entry)
 
@@ -210,102 +230,6 @@ fun ActivityQuestionCard(entry: ActivityEntry) {
                 entry.answeringBodyName?.let { body ->
                     Text(
                         text = body,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Text(
-                    text = formatActivityDate(entry.date),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
-// --- Income card (D-10 — all interests as events on registration date) ---
-
-@Composable
-fun ActivityIncomeCard(entry: ActivityEntry) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainer)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = entry.summary,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                entry.categoryName?.let { category ->
-                    Text(
-                        text = category,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                entry.amountPence?.let { pence ->
-                    Text(
-                        text = formatAmount(pence),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                Text(
-                    text = formatActivityDate(entry.date),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
-// --- Expense card (D-11 — monthly bucket totals with claim count) ---
-
-@Composable
-fun ActivityExpenseCard(entry: ActivityEntry) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainer)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "${entry.bucketLabel ?: entry.summary}",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                entry.totalAmountPence?.let { pence ->
-                    Text(
-                        text = formatAmount(pence),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                entry.claimCount?.let { count ->
-                    Text(
-                        text = "$count claim${if (count != 1) "s" else ""}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
