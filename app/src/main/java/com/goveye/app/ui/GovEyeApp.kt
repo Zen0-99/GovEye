@@ -487,6 +487,20 @@ private fun GovEyeAppContent(
     val topBarIconTint = if (isDetailTopBar) detailConfig.iconTint else null
     val topBarAccentColor = if (isDetailTopBar) detailConfig.accentColor else null
 
+    // Guard: snapshot the search config on committed navigation (route
+    // change) so the search bar does not update during predictive back
+    // preview. During predictive back, the previous screen's
+    // ConfigureSearchBar fires prematurely (its DisposableEffect runs when
+    // the entry is composed for the transition animation), which caused
+    // the placeholder text and filter button to change before the back
+    // gesture was committed (issue #12.1). By snapshotting only when the
+    // route actually changes, the search bar retains the committed
+    // screen's config until the back navigation is committed.
+    var committedSearchConfig by remember { mutableStateOf(searchConfig) }
+    LaunchedEffect(currentRoute) {
+        committedSearchConfig = searchStateHolder.config.value
+    }
+
     // Bottom bar is only shown on tab root screens — not on detail screens
     // pushed onto a tab's back stack.
     val isTabRoot = currentRoute is FeedRoute ||
@@ -509,9 +523,9 @@ private fun GovEyeAppContent(
             FloatingSearchBar(
                 query = searchConfig.query,
                 onQueryChange = searchConfig.onQueryChange,
-                onFilterClick = searchConfig.onFilterClick,
-                hasActiveFilters = searchConfig.hasActiveFilters,
-                placeholder = searchConfig.placeholder,
+                onFilterClick = committedSearchConfig.onFilterClick,
+                hasActiveFilters = committedSearchConfig.hasActiveFilters,
+                placeholder = committedSearchConfig.placeholder,
                 filterChips = searchConfig.filterChips,
                 onBack = topBarOnBack,
                 segments = searchConfig.segments,

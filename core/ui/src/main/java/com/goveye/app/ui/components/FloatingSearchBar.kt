@@ -1,7 +1,8 @@
 package com.goveye.app.ui.components
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
@@ -9,6 +10,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -98,9 +100,11 @@ fun FloatingSearchBar(
     val backIconTint = iconTint ?: colorScheme.onSurface
     // Blend the party accent color into the search bar background when on
     // a detail screen (profile/party). Deeper tint — 25% party color over
-    // surfaceContainer. Animated so it transitions smoothly instead of
-    // flickering when navigating between list and detail screens.
-    val targetColor = if (accentColor != null) {
+    // surfaceContainer. Direct color reference (no animateColorAsState) so
+    // it recomposes synchronously with theme changes — previously the
+    // animated color caused the search bar to lag behind the rest of the
+    // screen during light/dark mode toggle (issue #12.2).
+    val searchBarColor = if (accentColor != null) {
         androidx.compose.ui.graphics.lerp(
             colorScheme.surfaceContainer,
             accentColor,
@@ -109,11 +113,6 @@ fun FloatingSearchBar(
     } else {
         colorScheme.surfaceContainer
     }
-    val searchBarColor by animateColorAsState(
-        targetValue = targetColor,
-        animationSpec = tween(durationMillis = 300),
-        label = "searchBarColor"
-    )
 
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
@@ -253,18 +252,44 @@ fun FloatingSearchBar(
                             }
                         }
 
-                        // Filter icon — changes color when filters are active
-                        if (onFilterClick != null) {
-                            IconButton(
-                                onClick = onFilterClick,
-                                modifier = Modifier.size(40.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.FilterList,
-                                    contentDescription = "Filter",
-                                    tint = if (hasActiveFilters) colorScheme.primary else colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(22.dp)
-                                )
+                        // Filter icon — changes color when filters are active.
+                        // Wrapped in AnimatedContent with fadeIn/fadeOut and
+                        // animated width so it transitions smoothly when
+                        // navigating between list and detail screens (issue
+                        // #12). Previously the filter button appeared/
+                        // disappeared instantly, causing the right side of
+                        // the search bar to jump.
+                        val filterClick = onFilterClick
+                        val filterButtonWidth by animateDpAsState(
+                            targetValue = if (filterClick != null) 40.dp else 0.dp,
+                            animationSpec = tween(durationMillis = 300),
+                            label = "filterButtonWidth"
+                        )
+                        AnimatedContent(
+                            targetState = filterClick,
+                            transitionSpec = {
+                                fadeIn(animationSpec = tween(200)) togetherWith
+                                    fadeOut(animationSpec = tween(200))
+                            },
+                            label = "filterButton",
+                            modifier = Modifier.size(filterButtonWidth)
+                        ) { click ->
+                            if (click != null) {
+                                IconButton(
+                                    onClick = click,
+                                    modifier = Modifier.size(40.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.FilterList,
+                                        contentDescription = "Filter",
+                                        tint = if (hasActiveFilters) {
+                                            colorScheme.primary
+                                        } else {
+                                            colorScheme.onSurfaceVariant
+                                        },
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
                             }
                         }
                     }
