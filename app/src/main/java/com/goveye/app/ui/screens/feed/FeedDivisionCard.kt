@@ -186,28 +186,5 @@ fun CardIconBadge(icon: androidx.compose.ui.graphics.vector.ImageVector, modifie
     }
 }
 
-/**
- * Type badge — labelSmall text in a RoundedCornerShape(4.dp) chip with
- * primaryContainer background and onPrimaryContainer text.
- */
-@Composable
-fun TypeBadge(text: String, modifier: Modifier = Modifier) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onPrimaryContainer,
-        fontWeight = FontWeight.Bold,
-        maxLines = 1,
-        modifier = modifier
-            .clip(RoundedCornerShape(4.dp))
-            .background(MaterialTheme.colorScheme.primaryContainer)
-            .padding(horizontal = 6.dp, vertical = 2.dp)
-    )
-}
-
-private fun formatDivisionDate(dateString: String): String = try {
-    val parts = dateString.split("T").first().split("-")
-    "${parts[2]}/${parts[1]}/${parts[0]}"
-} catch (e: Exception) {
-    dateString
-}
+// TypeBadge and formatDivisionDate have been moved to UnifiedFeedCard.kt.
+// TypeBadge is now shared by all card types via the unified card.

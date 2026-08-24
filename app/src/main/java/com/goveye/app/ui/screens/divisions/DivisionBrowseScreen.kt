@@ -115,18 +115,23 @@ fun DivisionsTabContent(
 }
 
 @Composable
-fun DivisionResultBar(ayeCount: Int, noCount: Int) {
+fun DivisionResultBar(
+    ayeCount: Int,
+    noCount: Int,
+    barHeight: androidx.compose.ui.unit.Dp = 6.dp,
+    modifier: Modifier = Modifier
+) {
     val total = ayeCount + noCount
     if (total == 0) return
     val ayeFraction = ayeCount.toFloat() / total
     val noFraction = 1f - ayeFraction
     val shape = RoundedCornerShape(4.dp)
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(shape)
             .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f))
-            .height(6.dp)
+            .height(barHeight)
     ) {
         if (ayeFraction > 0f) {
             Box(
