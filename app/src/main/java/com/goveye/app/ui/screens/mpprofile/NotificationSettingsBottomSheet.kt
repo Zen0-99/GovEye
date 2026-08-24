@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ArrowDownward
+import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.HowToVote
 import androidx.compose.material.icons.outlined.RecordVoiceOver
 import androidx.compose.material3.Checkbox
@@ -45,9 +47,13 @@ fun NotificationSettingsBottomSheet(
     notificationsEnabled: Boolean,
     votesEnabled: Boolean,
     speechesEnabled: Boolean,
+    incomeEnabled: Boolean,
+    expensesEnabled: Boolean,
     onMasterToggle: (Boolean) -> Unit,
     onVotesToggle: (Boolean) -> Unit,
     onSpeechesToggle: (Boolean) -> Unit,
+    onIncomeToggle: (Boolean) -> Unit,
+    onExpensesToggle: (Boolean) -> Unit,
     onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -104,6 +110,20 @@ fun NotificationSettingsBottomSheet(
                 label = "Speeches",
                 checked = speechesEnabled,
                 onCheckedChange = onSpeechesToggle
+            )
+
+            NotificationTypeRow(
+                icon = Icons.Outlined.ArrowDownward,
+                label = "Income",
+                checked = incomeEnabled,
+                onCheckedChange = onIncomeToggle
+            )
+
+            NotificationTypeRow(
+                icon = Icons.Outlined.ArrowUpward,
+                label = "Expenses",
+                checked = expensesEnabled,
+                onCheckedChange = onExpensesToggle
             )
 
             Spacer(modifier = Modifier.padding(bottom = 16.dp))

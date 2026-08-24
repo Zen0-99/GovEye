@@ -324,6 +324,8 @@ fun ProfileScreen(
                 notificationsEnabled = uiState.notificationsEnabled,
                 votesEnabled = uiState.votesNotificationsEnabled,
                 speechesEnabled = uiState.speechesNotificationsEnabled,
+                incomeEnabled = uiState.incomeEnabled,
+                expensesEnabled = uiState.expensesEnabled,
                 onMasterToggle = { enabled ->
                     // Request POST_NOTIFICATIONS when turning on (Android 13+)
                     if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -345,6 +347,24 @@ fun ProfileScreen(
                 },
                 onSpeechesToggle = { enabled ->
                     viewModel.setSpeechesNotificationsEnabled(memberId, enabled)
+                },
+                onIncomeToggle = { enabled ->
+                    if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+                        PackageManager.PERMISSION_GRANTED
+                    ) {
+                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                    viewModel.setIncomeNotificationsEnabled(memberId, enabled)
+                },
+                onExpensesToggle = { enabled ->
+                    if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+                        PackageManager.PERMISSION_GRANTED
+                    ) {
+                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                    viewModel.setExpensesNotificationsEnabled(memberId, enabled)
                 },
                 onDismiss = { showNotificationSheet = false }
             )
