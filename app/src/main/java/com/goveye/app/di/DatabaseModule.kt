@@ -313,6 +313,81 @@ object DatabaseModule {
         }
     }
 
+    // Migration 20 → 21: Add written_questions table (Phase 15 — Written Questions API).
+    // The seed DB (v20) doesn't have this table; the migration creates it empty.
+    // Data is populated by the update-written-questions workflow at runtime.
+    private val MIGRATION_20_21 = object : Migration(20, 21) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS `written_questions` (
+                    `id` INTEGER NOT NULL,
+                    `memberId` INTEGER NOT NULL,
+                    `uin` TEXT NOT NULL,
+                    `dateTabled` TEXT NOT NULL,
+                    `answeringBodyId` INTEGER NOT NULL,
+                    `answeringBodyName` TEXT NOT NULL,
+                    `questionText` TEXT NOT NULL,
+                    `house` INTEGER NOT NULL,
+                    `lastUpdated` INTEGER NOT NULL,
+                    PRIMARY KEY(`id`)
+                )
+                """.trimIndent()
+            )
+        }
+    }
+
+    // Migration 21 → 22: Split interests buckets from 6 to 10 categories.
+    // Category 4 (Visits outside the UK) was lumped under "Gifts" → now
+    // "Overseas Visits". Category 5 (Overseas gifts) was under "Gifts" →
+    // now "Overseas Gifts". Categories 8/9/10 were under "Other" → now
+    // "Miscellaneous", "Family Employed", "Family Lobbying" respectively.
+    // Idempotent — re-running on a DB already at v22 is a no-op since
+    // the CASE only matches old bucket values.
+    private val MIGRATION_21_22 = object : Migration(21, 22) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                UPDATE interests SET bucket = CASE
+                    WHEN categoryNumber IN ('1', '1.1', '1.2') THEN 'Employment/Earnings'
+                    WHEN categoryNumber = '2' THEN 'Financial Support'
+                    WHEN categoryNumber = '3' THEN 'Gifts'
+                    WHEN categoryNumber = '4' THEN 'Overseas Visits'
+                    WHEN categoryNumber = '5' THEN 'Overseas Gifts'
+                    WHEN categoryNumber = '6' THEN 'Land/Property'
+                    WHEN categoryNumber = '7' THEN 'Shareholdings'
+                    WHEN categoryNumber = '8' THEN 'Miscellaneous'
+                    WHEN categoryNumber = '9' THEN 'Family Employed'
+                    WHEN categoryNumber = '10' THEN 'Family Lobbying'
+                    ELSE bucket
+                END
+                """.trimIndent()
+            )
+        }
+    }
+
+    // Migration 22 → 23: Add partyAbbreviation and partyColourHex columns to
+    // historical_members table (Phase 17 — historical member search fix).
+    // Idempotent — the seed DB may already include these columns if built
+    // with a newer bundled_schema.json.
+    private val MIGRATION_22_23 = object : Migration(22, 23) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            val existingColumns = db.query("PRAGMA table_info(historical_members)").use { cursor ->
+                buildList {
+                    while (cursor.moveToNext()) {
+                        add(cursor.getString(cursor.getColumnIndexOrThrow("name")))
+                    }
+                }
+            }.toSet()
+
+            if ("partyAbbreviation" !in existingColumns) {
+                db.execSQL("ALTER TABLE historical_members ADD COLUMN partyAbbreviation TEXT")
+            }
+            if ("partyColourHex" !in existingColumns) {
+                db.execSQL("ALTER TABLE historical_members ADD COLUMN partyColourHex TEXT")
+            }
+        }
+    }
+
     @Provides
     @Singleton
     fun provideBundledDatabase(@ApplicationContext context: Context): BundledDatabase {
@@ -334,7 +409,10 @@ object DatabaseModule {
                 MIGRATION_16_17,
                 MIGRATION_17_18,
                 MIGRATION_18_19,
-                MIGRATION_19_20
+                MIGRATION_19_20,
+                MIGRATION_20_21,
+                MIGRATION_21_22,
+                MIGRATION_22_23
             )
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
@@ -594,8 +672,9 @@ object DatabaseModule {
         debateSpeechDao: DebateSpeechDao,
         hansardDao: HansardDao,
         mpDao: MpDao,
-        mpStatsDao: com.goveye.app.data.local.dao.MpStatsDao
-    ): StatsRepository = StatsRepository(divisionDao, committeeDao, debateSpeechDao, hansardDao, mpDao, mpStatsDao)
+        mpStatsDao: com.goveye.app.data.local.dao.MpStatsDao,
+        bioDataDao: BioDataDao
+    ): StatsRepository = StatsRepository(divisionDao, committeeDao, debateSpeechDao, hansardDao, mpDao, mpStatsDao, bioDataDao)
 
     @Provides
     @Singleton
