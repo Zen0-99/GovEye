@@ -18,14 +18,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.outlined.TrendingUp
 import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.Business
 import androidx.compose.material.icons.outlined.CardGiftcard
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Flight
 import androidx.compose.material.icons.outlined.Groups
-import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Paid
+import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.RealEstateAgent
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -45,31 +46,41 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.goveye.app.data.local.dao.ExpenseBucketTotal
 import com.goveye.app.domain.model.Interest
+import com.goveye.app.ui.screens.feed.UnifiedFinancialCard
 import com.goveye.app.ui.theme.padding
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 
 /**
- * The 6 high-level buckets (D-04, D-05). Must match the `bucket` column
- * values written by `build_interests.py`.
+ * The 10 interest buckets, matching the Register of Members' Financial
+ * Interests categories 1–10. Must match the `bucket` column values
+ * written by `build_interests.py`.
  */
 private val BUCKET_ORDER = listOf(
     "Employment/Earnings",
     "Financial Support",
     "Gifts",
+    "Overseas Visits",
+    "Overseas Gifts",
     "Land/Property",
     "Shareholdings",
-    "Other"
+    "Miscellaneous",
+    "Family Employed",
+    "Family Lobbying"
 )
 
 private val BUCKET_ICONS: Map<String, ImageVector> = mapOf(
     "Employment/Earnings" to Icons.Outlined.Paid,
     "Financial Support" to Icons.Outlined.AccountBalance,
     "Gifts" to Icons.Outlined.CardGiftcard,
+    "Overseas Visits" to Icons.Outlined.Flight,
+    "Overseas Gifts" to Icons.Outlined.Public,
     "Land/Property" to Icons.Outlined.RealEstateAgent,
-    "Shareholdings" to Icons.Outlined.Home,
-    "Other" to Icons.Outlined.Category
+    "Shareholdings" to Icons.AutoMirrored.Outlined.TrendingUp,
+    "Miscellaneous" to Icons.Outlined.Category,
+    "Family Employed" to Icons.Outlined.Groups,
+    "Family Lobbying" to Icons.Outlined.Business
 )
 
 @Composable
@@ -85,6 +96,7 @@ fun InterestsTabContent(
     toDate: String? = null,
     onFromDateChange: (String?) -> Unit = {},
     onToDateChange: (String?) -> Unit = {},
+    partyColorHex: String? = null,
     modifier: Modifier = Modifier
 ) {
     // --- Date filter state is now lifted to the screen level so the
@@ -145,7 +157,16 @@ fun InterestsTabContent(
                 ExpenseSectionHeader()
             }
             items(expenseBucketTotals, key = { it.bucket }) { total ->
-                ExpenseBucketCard(total = total, onClick = { onNavigateToExpenseBucket(total.bucket) })
+                UnifiedFinancialCard(
+                    amount = formatPenceToGbp(total.totalPence),
+                    whoOrWhere = total.bucket,
+                    description = "Monthly total",
+                    category = total.bucket,
+                    date = "",
+                    isIncome = false,
+                    partyColorHex = partyColorHex,
+                    onClick = { onNavigateToExpenseBucket(total.bucket) }
+                )
             }
         }
         return
@@ -234,7 +255,16 @@ fun InterestsTabContent(
                 ExpenseSectionHeader()
             }
             items(expenseBucketTotals, key = { "expense_${it.bucket}" }) { total ->
-                ExpenseBucketCard(total = total, onClick = { onNavigateToExpenseBucket(total.bucket) })
+                UnifiedFinancialCard(
+                    amount = formatPenceToGbp(total.totalPence),
+                    whoOrWhere = total.bucket,
+                    description = "Monthly total",
+                    category = total.bucket,
+                    date = "",
+                    isIncome = false,
+                    partyColorHex = partyColorHex,
+                    onClick = { onNavigateToExpenseBucket(total.bucket) }
+                )
             }
         }
     }
@@ -446,13 +476,6 @@ private fun computePercentChange(current: Long, previous: Long): Float? {
 
 // --- IPSA Expense section ---
 
-private val EXPENSE_BUCKET_ICONS: Map<String, ImageVector> = mapOf(
-    "Staffing" to Icons.Outlined.Groups,
-    "Office" to Icons.Outlined.Business,
-    "Travel" to Icons.Outlined.Flight,
-    "Other" to Icons.Outlined.Category
-)
-
 @Composable
 private fun IncomeSectionHeader() {
     Text(
@@ -479,44 +502,6 @@ private fun ExpenseSectionHeader() {
             bottom = MaterialTheme.padding.small
         )
     )
-}
-
-@Composable
-private fun ExpenseBucketCard(total: ExpenseBucketTotal, onClick: () -> Unit = {}) {
-    val icon = EXPENSE_BUCKET_ICONS[total.bucket] ?: Icons.Outlined.Category
-    val formattedAmount = formatPenceToGbp(total.totalPence)
-
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-    ) {
-        Column(
-            modifier = Modifier.padding(MaterialTheme.padding.medium),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = total.bucket,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(28.dp)
-            )
-            Text(
-                text = formattedAmount,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(top = 4.dp)
-            )
-            Text(
-                text = total.bucket,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
 }
 
 private fun formatPenceToGbp(pence: Long): String {

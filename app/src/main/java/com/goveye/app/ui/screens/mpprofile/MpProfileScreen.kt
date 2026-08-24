@@ -311,7 +311,8 @@ fun ProfileScreen(
                                 fromDate = interestFromDate,
                                 toDate = interestToDate,
                                 onFromDateChange = { interestFromDate = it },
-                                onToDateChange = { interestToDate = it }
+                                onToDateChange = { interestToDate = it },
+                                partyColorHex = mp.party?.backgroundColour
                             )
                         }
                     }
