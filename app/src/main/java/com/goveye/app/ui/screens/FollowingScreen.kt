@@ -15,13 +15,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -216,87 +216,96 @@ private fun FollowedMpCard(
     onUnfollow: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var showMenu by remember { mutableStateOf(false) }
+    // Swipe-to-dismiss replaces the three-dot overflow menu (issue #11).
+    // Swiping the card either direction reveals a red "Unfollow" background
+    // and triggers the unfollow action on release.
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { it != SwipeToDismissBoxValue.Settled }
+    )
+    androidx.compose.runtime.LaunchedEffect(dismissState.currentValue) {
+        if (dismissState.currentValue != SwipeToDismissBoxValue.Settled) {
+            onUnfollow()
+        }
+    }
 
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            MpAvatar(
-                thumbnailUrl = followedMp.thumbnailUrl,
-                displayName = followedMp.displayName,
-                partyColorHex = followedMp.partyBackgroundColour,
-                size = 48.dp,
-                borderWidth = 1.dp
-            )
-
-            Column(
-                modifier = Modifier.weight(1f)
+    SwipeToDismissBox(
+        state = dismissState,
+        modifier = modifier.fillMaxWidth(),
+        backgroundContent = {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.error)
+                    .padding(horizontal = 20.dp),
+                contentAlignment = Alignment.CenterEnd
             ) {
                 Text(
-                    text = followedMp.displayName,
+                    text = "Unfollow",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    color = MaterialTheme.colorScheme.onError
                 )
-                // Party abbreviation · Constituency (directory style)
-                Text(
-                    text = "${followedMp.partyAbbreviation} · ${followedMp.constituencyName}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                // Recent vote info
-                if (followedMp.recentVoteType != null && followedMp.recentDivisionTitle != null) {
-                    Row(
-                        modifier = Modifier.padding(top = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        VoteBadge(voteType = followedMp.recentVoteType)
-                        Text(
-                            text = followedMp.recentDivisionTitle,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
             }
+        }
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick),
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surfaceContainer
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                MpAvatar(
+                    thumbnailUrl = followedMp.thumbnailUrl,
+                    displayName = followedMp.displayName,
+                    partyColorHex = followedMp.partyBackgroundColour,
+                    size = 48.dp,
+                    borderWidth = 1.dp
+                )
 
-            // Overflow menu
-            Box {
-                IconButton(onClick = { showMenu = true }) {
-                    Text(
-                        text = "···",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                DropdownMenu(
-                    expanded = showMenu,
-                    onDismissRequest = { showMenu = false }
+                Column(
+                    modifier = Modifier.weight(1f)
                 ) {
-                    DropdownMenuItem(
-                        text = { Text("Unfollow") },
-                        onClick = {
-                            showMenu = false
-                            onUnfollow()
-                        }
+                    Text(
+                        text = followedMp.displayName,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
+                    // Party abbreviation · Constituency (directory style)
+                    Text(
+                        text = "${followedMp.partyAbbreviation} · ${followedMp.constituencyName}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    // Recent vote info
+                    if (followedMp.recentVoteType != null && followedMp.recentDivisionTitle != null) {
+                        Row(
+                            modifier = Modifier.padding(top = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            VoteBadge(voteType = followedMp.recentVoteType)
+                            Text(
+                                text = followedMp.recentDivisionTitle,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
                 }
             }
         }
