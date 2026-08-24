@@ -48,3 +48,12 @@ data class CouncilRoute(val councilId: Int) : NavKey
 
 @Serializable
 data class VotingRecordRoute(val memberId: Int) : NavKey
+
+@Serializable
+data class PublicationDetailRoute(val publicationId: Int) : NavKey
+
+@Serializable
+data class StatementDetailRoute(val statementId: Int) : NavKey
+
+@Serializable
+data class LegislationDetailRoute(val legislationId: Int) : NavKey

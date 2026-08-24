@@ -70,9 +70,12 @@ import com.goveye.app.ui.navigation.DivisionDetailRoute
 import com.goveye.app.ui.navigation.FeedRoute
 import com.goveye.app.ui.navigation.FollowingRoute
 import com.goveye.app.ui.navigation.InterestBucketDetailRoute
+import com.goveye.app.ui.navigation.LegislationDetailRoute
 import com.goveye.app.ui.navigation.PartyRoute
 import com.goveye.app.ui.navigation.ProfileRoute
+import com.goveye.app.ui.navigation.PublicationDetailRoute
 import com.goveye.app.ui.navigation.SettingsRoute
+import com.goveye.app.ui.navigation.StatementDetailRoute
 import com.goveye.app.ui.navigation.TranscriptRoute
 import com.goveye.app.ui.navigation.VotingRecordRoute
 import com.goveye.app.ui.screens.FeedScreen
@@ -84,6 +87,9 @@ import com.goveye.app.ui.screens.council.CouncilScreen
 import com.goveye.app.ui.screens.directory.DirectoryScreen
 import com.goveye.app.ui.screens.divisions.DivisionDetailScreen
 import com.goveye.app.ui.screens.divisions.TranscriptScreen
+import com.goveye.app.ui.screens.feed.LegislationDetailScreen
+import com.goveye.app.ui.screens.feed.PublicationDetailScreen
+import com.goveye.app.ui.screens.feed.StatementDetailScreen
 import com.goveye.app.ui.screens.mpprofile.FinancialBucketDetailScreen
 import com.goveye.app.ui.screens.mpprofile.ProfileScreen
 import com.goveye.app.ui.screens.mpprofile.VotingRecordScreen
@@ -393,6 +399,33 @@ private fun GovEyeAppContent(
                             onNavigateToDivision = { divisionId, house ->
                                 currentBackStack.add(DivisionDetailRoute(divisionId, house))
                             },
+                            modifier = Modifier.fillMaxSize().padding(top = topBarHeight)
+                        )
+                    }
+
+                is PublicationDetailRoute ->
+                    NavEntry(key) {
+                        PublicationDetailScreen(
+                            publicationId = key.publicationId,
+                            onBack = { currentBackStack.removeLastOrNull() },
+                            modifier = Modifier.fillMaxSize().padding(top = topBarHeight)
+                        )
+                    }
+
+                is StatementDetailRoute ->
+                    NavEntry(key) {
+                        StatementDetailScreen(
+                            statementId = key.statementId,
+                            onBack = { currentBackStack.removeLastOrNull() },
+                            modifier = Modifier.fillMaxSize().padding(top = topBarHeight)
+                        )
+                    }
+
+                is LegislationDetailRoute ->
+                    NavEntry(key) {
+                        LegislationDetailScreen(
+                            legislationId = key.legislationId,
+                            onBack = { currentBackStack.removeLastOrNull() },
                             modifier = Modifier.fillMaxSize().padding(top = topBarHeight)
                         )
                     }
