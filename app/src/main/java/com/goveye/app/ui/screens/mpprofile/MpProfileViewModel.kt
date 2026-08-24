@@ -8,6 +8,7 @@ import com.goveye.app.data.local.entity.BioDataEntity
 import com.goveye.app.data.local.entity.ExpenseEntity
 import com.goveye.app.data.local.entity.MpEntity
 import com.goveye.app.data.local.entity.MpLinkEntity
+import com.goveye.app.data.preference.ActivityFilterPreferences
 import com.goveye.app.data.repo.BioDataRepository
 import com.goveye.app.data.repo.CommitteesRepository
 import com.goveye.app.data.repo.ExpensesRepository
@@ -18,6 +19,9 @@ import com.goveye.app.data.repo.MpLinksRepository
 import com.goveye.app.data.repo.NotificationPreferenceRepository
 import com.goveye.app.data.repo.StatsRepository
 import com.goveye.app.data.repo.VotesRepository
+import com.goveye.app.data.repo.WrittenQuestionsRepository
+import com.goveye.app.domain.model.ActivityEntry
+import com.goveye.app.domain.model.ActivityEntryType
 import com.goveye.app.domain.model.BiographyExperience
 import com.goveye.app.domain.model.Committee
 import com.goveye.app.domain.model.Contact
@@ -31,6 +35,7 @@ import com.goveye.app.domain.stats.RebellionCalculator
 import com.goveye.app.domain.stats.RebellionStats
 import com.goveye.app.domain.stats.TraitBar
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.LocalDate
 import javax.inject.Inject
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -67,11 +72,9 @@ data class ProfileUiState(
     val speechesNotificationsEnabled: Boolean = false,
     val syncStatus: SyncStatus = SyncStatus.EMPTY,
     val isLoading: Boolean = true,
-    // Activity tab — paginated voting with search
-    val activityVotes: List<MemberVoteWithDivision> = emptyList(),
-    val activitySearchQuery: String = "",
-    val activityIsLoadingMore: Boolean = false,
-    val activityHasMore: Boolean = true,
+    // Activity tab — mixed chronological feed (D-01)
+    val activityEntries: List<ActivityEntry> = emptyList(),
+    val activityEnabledTypes: Set<ActivityEntryType> = ActivityEntryType.entries.toSet(),
     val activityTotalCount: Int = 0
 )
 
@@ -87,7 +90,9 @@ class ProfileViewModel @Inject constructor(
     private val bioDataRepository: BioDataRepository,
     private val expensesRepository: ExpensesRepository,
     private val mpLinksRepository: MpLinksRepository,
-    private val statsRepository: StatsRepository
+    private val statsRepository: StatsRepository,
+    private val writtenQuestionsRepository: WrittenQuestionsRepository,
+    private val activityFilterPreferences: ActivityFilterPreferences
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -227,8 +232,8 @@ class ProfileViewModel @Inject constructor(
                 }
             }
 
-            // 3. Load first page of activity votes (separate — paginated)
-            loadActivityVotes(memberId)
+            // 3. Load the mixed activity feed (votes, questions, income, expenses, committee, career)
+            loadActivityFeed(memberId)
         }
     }
 
@@ -294,62 +299,330 @@ class ProfileViewModel @Inject constructor(
         // No-op — DB is pre-populated and updated via patches (D-09, D-10a)
     }
 
-    // --- Activity tab — paginated voting with search ---
-
-    private val activityPageSize = 30
+    // --- Activity tab — mixed chronological feed (D-01) ---
 
     /**
-     * Load the first page of activity votes. Called when the Activity tab is first shown.
-     * If a search query is active, searches by division title; otherwise loads most recent.
+     * Load all activity types and merge into a chronological feed.
+     *
+     * Loads votes, written questions, income declarations, expense claims,
+     * committee memberships, and career milestones in parallel, then merges
+     * them into a single list sorted by date descending. Applies the 6-month
+     * activity window (D-09) and the activity type filter (D-05, D-06).
      */
-    fun loadActivityVotes(memberId: Int) {
+    fun loadActivityFeed(memberId: Int) {
         viewModelScope.launch {
-            val query = _uiState.value.activitySearchQuery
-            val (votes, total) = if (query.isBlank()) {
-                votesRepository.getPagedMemberVoting(memberId, activityPageSize, 0) to
-                    votesRepository.countVotesForMember(memberId)
-            } else {
-                votesRepository.searchPagedMemberVoting(memberId, query, activityPageSize, 0) to
-                    votesRepository.countSearchVotesForMember(memberId, query)
+            // Load persisted filter preferences
+            val enabledTypeStrings = activityFilterPreferences.enabledActivityTypes.first()
+            val enabledTypes = enabledTypeStrings.mapNotNull { name ->
+                runCatching { ActivityEntryType.valueOf(name) }.getOrNull()
+            }.toSet()
+            _uiState.value = _uiState.value.copy(activityEnabledTypes = enabledTypes)
+
+            val sixMonthsAgo = LocalDate.now().minusMonths(6).toString()
+            val state = _uiState.value
+
+            coroutineScope {
+                val votesDeferred = async { loadVoteEntries(memberId, sixMonthsAgo, state.memberVotes) }
+                val questionsDeferred = async { loadQuestionEntries(memberId, sixMonthsAgo) }
+                val incomeDeferred = async { loadIncomeEntries(memberId, sixMonthsAgo, state.interests) }
+                val expenseDeferred = async { loadExpenseEntries(memberId, sixMonthsAgo, state.expenses) }
+                val committeeDeferred = async { loadCommitteeEntries(memberId, sixMonthsAgo, state.committees) }
+                val careerDeferred = async { loadCareerEntries(memberId, sixMonthsAgo, state.bioData) }
+
+                val allEntries = (
+                    votesDeferred.await() +
+                        questionsDeferred.await() +
+                        incomeDeferred.await() +
+                        expenseDeferred.await() +
+                        committeeDeferred.await() +
+                        careerDeferred.await()
+                    )
+                    .filter { it.date.take(10) >= sixMonthsAgo }
+                    .filter { it.entryType in enabledTypes }
+                    .sortedByDescending { it.date }
+
+                _uiState.value = _uiState.value.copy(
+                    activityEntries = allEntries,
+                    activityTotalCount = allEntries.size
+                )
             }
-            _uiState.value = _uiState.value.copy(
-                activityVotes = votes,
-                activityTotalCount = total,
-                activityHasMore = votes.size < total,
-                activityIsLoadingMore = false
+        }
+    }
+
+    private fun loadVoteEntries(
+        memberId: Int,
+        sixMonthsAgo: String,
+        memberVotes: List<MemberVoteWithDivision>
+    ): List<ActivityEntry> = memberVotes
+        .filter { it.divisionDate.take(10) >= sixMonthsAgo }
+        .map { vote ->
+            ActivityEntry(
+                entryType = ActivityEntryType.VOTE,
+                id = "vote_${vote.divisionId}",
+                date = vote.divisionDate,
+                summary = vote.divisionTitle,
+                divisionTitle = vote.divisionTitle,
+                divisionId = vote.divisionId,
+                voteResult = when (vote.vote) {
+                    com.goveye.app.domain.model.VoteType.AYE -> "Aye"
+                    com.goveye.app.domain.model.VoteType.NO -> "No"
+                    com.goveye.app.domain.model.VoteType.NO_VOTE_RECORDED -> "—"
+                },
+                house = vote.house
             )
+        }
+
+    private suspend fun loadQuestionEntries(memberId: Int, sixMonthsAgo: String): List<ActivityEntry> = runCatching {
+        writtenQuestionsRepository.getQuestionsByMemberAndDateRange(memberId, sixMonthsAgo)
+            .map { q ->
+                ActivityEntry(
+                    entryType = ActivityEntryType.QUESTION,
+                    id = "question_${q.id}",
+                    date = q.dateTabled,
+                    summary = q.questionText.take(100),
+                    questionText = q.questionText,
+                    answeringBodyName = q.answeringBodyName,
+                    uin = q.uin
+                )
+            }
+    }.getOrDefault(emptyList())
+
+    private suspend fun loadIncomeEntries(
+        memberId: Int,
+        sixMonthsAgo: String,
+        interests: List<Interest>
+    ): List<ActivityEntry> = runCatching {
+        interests
+            .filter { it.registrationDate != null && it.registrationDate!!.take(10) >= sixMonthsAgo }
+            .map { interest ->
+                ActivityEntry(
+                    entryType = ActivityEntryType.INCOME,
+                    id = "income_${interest.id}",
+                    date = interest.registrationDate!!,
+                    summary = interest.summary,
+                    categoryName = interest.categoryName,
+                    amountPence = interest.parsedAmountPence,
+                    bucket = interest.bucket
+                )
+            }
+    }.getOrDefault(emptyList())
+
+    private suspend fun loadExpenseEntries(
+        memberId: Int,
+        sixMonthsAgo: String,
+        expenses: List<ExpenseEntity>
+    ): List<ActivityEntry> = runCatching {
+        // Group by bucket + month (from claimDate), aggregate total + count (D-11)
+        expenses
+            .filter { it.claimDate != null && it.claimDate!!.take(10) >= sixMonthsAgo }
+            .groupBy { e -> e.bucket to e.claimDate!!.take(7) } // bucket + "YYYY-MM"
+            .map { (key, claims) ->
+                val (bucket, month) = key
+                val total = claims.sumOf { it.amountPence }
+                // Use the last day of the month as the event date
+                val monthEndDate = monthEndDate(month)
+                ActivityEntry(
+                    entryType = ActivityEntryType.EXPENSE,
+                    id = "expense_${bucket}_$month",
+                    date = monthEndDate,
+                    summary = "$bucket: £${total / 100} (${claims.size} claims)",
+                    bucketLabel = bucket,
+                    totalAmountPence = total,
+                    claimCount = claims.size
+                )
+            }
+    }.getOrDefault(emptyList())
+
+    private fun monthEndDate(ym: String): String = try {
+        val parts = ym.split("-")
+        val year = parts[0].toInt()
+        val month = parts[1].toInt()
+        val lastDay = java.time.YearMonth.of(year, month).lengthOfMonth()
+        "%04d-%02d-%02d".format(year, month, lastDay)
+    } catch (e: Exception) {
+        ym
+    }
+
+    private suspend fun loadCommitteeEntries(
+        memberId: Int,
+        sixMonthsAgo: String,
+        committees: List<Committee>
+    ): List<ActivityEntry> = runCatching {
+        committees.flatMap { committee ->
+            val entries = mutableListOf<ActivityEntry>()
+            // Join event on committee startDate (or lastUpdated if no startDate)
+            val joinDate = committee.startDate
+            if (joinDate != null && joinDate.take(10) >= sixMonthsAgo) {
+                entries.add(
+                    ActivityEntry(
+                        entryType = ActivityEntryType.COMMITTEE,
+                        id = "committee_join_${committee.id}",
+                        date = joinDate,
+                        summary = committee.name,
+                        committeeName = committee.name,
+                        isJoin = true
+                    )
+                )
+            }
+            // Leave event if committee is inactive and has an endDate
+            if (!committee.isActive && committee.endDate != null && committee.endDate!!.take(10) >= sixMonthsAgo) {
+                entries.add(
+                    ActivityEntry(
+                        entryType = ActivityEntryType.COMMITTEE,
+                        id = "committee_leave_${committee.id}",
+                        date = committee.endDate!!,
+                        summary = committee.name,
+                        committeeName = committee.name,
+                        isJoin = false
+                    )
+                )
+            }
+            entries
+        }
+    }.getOrDefault(emptyList())
+
+    private suspend fun loadCareerEntries(
+        memberId: Int,
+        sixMonthsAgo: String,
+        bioData: BioDataEntity?
+    ): List<ActivityEntry> = runCatching {
+        if (bioData == null) return@runCatching emptyList<ActivityEntry>()
+        val entries = mutableListOf<ActivityEntry>()
+
+        // Parse postsJson — government/opposition posts (D-04)
+        if (bioData.postsJson != null) {
+            try {
+                val posts = org.json.JSONArray(bioData.postsJson)
+                (0 until posts.length()).forEach { i ->
+                    val post = posts.getJSONObject(i)
+                    val startDate = post.optStringOrNull("startDate")
+                    if (startDate != null && startDate.take(10) >= sixMonthsAgo) {
+                        entries.add(
+                            ActivityEntry(
+                                entryType = ActivityEntryType.CAREER,
+                                id = "career_post_$i",
+                                date = startDate,
+                                summary = post.optStringOrNull("title") ?: "",
+                                roleTitle = post.optStringOrNull("title"),
+                                contextLine = post.optStringOrNull("department"),
+                                milestoneType = "POST"
+                            )
+                        )
+                    }
+                }
+            } catch (_: Exception) {
+                // Malformed JSON — skip
+            }
+        }
+
+        // Maiden speech event
+        if (bioData.maidenSpeechDate != null && bioData.maidenSpeechDate!!.take(10) >= sixMonthsAgo) {
+            entries.add(
+                ActivityEntry(
+                    entryType = ActivityEntryType.CAREER,
+                    id = "career_maiden",
+                    date = bioData.maidenSpeechDate!!,
+                    summary = "Maiden Speech",
+                    roleTitle = "Maiden Speech",
+                    contextLine = "First speech in Parliament",
+                    milestoneType = "MAIDEN_SPEECH"
+                )
+            )
+        }
+
+        // Parse honoursJson
+        if (bioData.honoursJson != null) {
+            try {
+                val honours = org.json.JSONArray(bioData.honoursJson)
+                (0 until honours.length()).forEach { i ->
+                    val honour = honours.getJSONObject(i)
+                    val date = honour.optStringOrNull("date")
+                    if (date != null && date.take(10) >= sixMonthsAgo) {
+                        entries.add(
+                            ActivityEntry(
+                                entryType = ActivityEntryType.CAREER,
+                                id = "career_honour_$i",
+                                date = date,
+                                summary = honour.optStringOrNull("title") ?: "Honour",
+                                roleTitle = honour.optStringOrNull("title"),
+                                contextLine = honour.optStringOrNull("type"),
+                                milestoneType = "HONOUR"
+                            )
+                        )
+                    }
+                }
+            } catch (_: Exception) {
+                // Malformed JSON — skip
+            }
+        }
+
+        entries
+    }.getOrDefault(emptyList())
+
+    /**
+     * Toggle an activity type in the filter and persist via DataStore (D-05, D-06).
+     * Re-filters the already-loaded entries — no need to re-fetch.
+     */
+    fun toggleActivityFilter(memberId: Int, type: ActivityEntryType) {
+        val current = _uiState.value.activityEnabledTypes
+        val newTypes = if (type in current) current - type else current + type
+        _uiState.value = _uiState.value.copy(activityEnabledTypes = newTypes)
+        viewModelScope.launch {
+            activityFilterPreferences.setEnabledActivityTypes(newTypes.map { it.name }.toSet())
+            // Re-filter from already-loaded data
+            val sixMonthsAgo = LocalDate.now().minusMonths(6).toString()
+            val allEntries = _uiState.value.activityEntries
+            // Re-apply filter: we need to re-derive from the full set, but since
+            // activityEntries is already filtered, we need to reload from source.
+            // Instead, reload the feed which re-fetches and re-filters.
+            reloadFilteredEntries(memberId, newTypes, sixMonthsAgo)
         }
     }
 
     /**
-     * Load the next page of activity votes (infinite scroll).
+     * Clear the activity filter — re-enable all 6 types (D-05).
      */
-    fun loadMoreActivityVotes(memberId: Int) {
-        val state = _uiState.value
-        if (state.activityIsLoadingMore || !state.activityHasMore) return
-        _uiState.value = state.copy(activityIsLoadingMore = true)
+    fun clearActivityFilter(memberId: Int) {
+        val allTypes = ActivityEntryType.entries.toSet()
+        _uiState.value = _uiState.value.copy(activityEnabledTypes = allTypes)
         viewModelScope.launch {
-            val offset = state.activityVotes.size
-            val query = state.activitySearchQuery
-            val more = if (query.isBlank()) {
-                votesRepository.getPagedMemberVoting(memberId, activityPageSize, offset)
-            } else {
-                votesRepository.searchPagedMemberVoting(memberId, query, activityPageSize, offset)
-            }
-            _uiState.value = _uiState.value.copy(
-                activityVotes = state.activityVotes + more,
-                activityHasMore = (offset + more.size) < state.activityTotalCount,
-                activityIsLoadingMore = false
-            )
+            activityFilterPreferences.clearFilter()
+            val sixMonthsAgo = LocalDate.now().minusMonths(6).toString()
+            reloadFilteredEntries(memberId, allTypes, sixMonthsAgo)
         }
     }
 
-    /**
-     * Update the activity search query and reload from page 0.
-     */
-    fun updateActivitySearchQuery(memberId: Int, query: String) {
-        _uiState.value = _uiState.value.copy(activitySearchQuery = query)
-        loadActivityVotes(memberId)
+    private suspend fun reloadFilteredEntries(
+        memberId: Int,
+        enabledTypes: Set<ActivityEntryType>,
+        sixMonthsAgo: String
+    ) {
+        coroutineScope {
+            val state = _uiState.value
+            val votesDeferred = async { loadVoteEntries(memberId, sixMonthsAgo, state.memberVotes) }
+            val questionsDeferred = async { loadQuestionEntries(memberId, sixMonthsAgo) }
+            val incomeDeferred = async { loadIncomeEntries(memberId, sixMonthsAgo, state.interests) }
+            val expenseDeferred = async { loadExpenseEntries(memberId, sixMonthsAgo, state.expenses) }
+            val committeeDeferred = async { loadCommitteeEntries(memberId, sixMonthsAgo, state.committees) }
+            val careerDeferred = async { loadCareerEntries(memberId, sixMonthsAgo, state.bioData) }
+
+            val allEntries = (
+                votesDeferred.await() +
+                    questionsDeferred.await() +
+                    incomeDeferred.await() +
+                    expenseDeferred.await() +
+                    committeeDeferred.await() +
+                    careerDeferred.await()
+                )
+                .filter { it.date.take(10) >= sixMonthsAgo }
+                .filter { it.entryType in enabledTypes }
+                .sortedByDescending { it.date }
+
+            _uiState.value = _uiState.value.copy(
+                activityEntries = allEntries,
+                activityTotalCount = allEntries.size
+            )
+        }
     }
 
     fun toggleFollow(memberId: Int) {

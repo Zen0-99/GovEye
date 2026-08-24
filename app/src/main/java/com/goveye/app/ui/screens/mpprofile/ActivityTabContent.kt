@@ -1,5 +1,7 @@
 package com.goveye.app.ui.screens.mpprofile
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -14,43 +16,44 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.goveye.app.domain.model.MemberVoteWithDivision
-import com.goveye.app.domain.model.VoteType
-import com.goveye.app.domain.stats.DivisionWeightCalculator
-import com.goveye.app.domain.stats.RebellionStats
+import com.goveye.app.domain.model.ActivityEntry
+import com.goveye.app.domain.model.ActivityEntryType
+import com.goveye.app.ui.components.VoteColors
+import com.goveye.app.ui.screens.feed.FeedDateHeader
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 /**
- * Per-MP activity timeline with search and pagination.
+ * Mixed chronological activity feed for the MP profile Activity tab (D-01).
  *
- * Shows the member's voting activity with per-event weight badges (D-08).
- * Votes are loaded in pages (30 at a time) via [onLoadMore] for infinite scroll.
- * A search bar filters by division title via [onSearchQueryChange].
+ * Shows all MP activity types — votes, written questions, income declarations,
+ * expense claims, committee joins/leaves, and career milestones — sorted by
+ * date descending and grouped by date headers ([FeedDateHeader]).
+ *
+ * Each activity type has a distinct card layout (variable height per D-01).
+ * Vote cards are simplified per D-02 (no weight score or rebellion indicator —
+ * those are on [VotingRecordScreen]).
+ *
+ * The feed covers the last 6 months of activity (D-09).
  */
 @Composable
 fun ActivityTabContent(
-    memberVotes: List<MemberVoteWithDivision>,
-    rebellionStats: RebellionStats?,
-    @Suppress("UNUSED_PARAMETER") allVotesByDivision: Map<Int, List<com.goveye.app.domain.model.DivisionVote>>,
-    @Suppress("UNUSED_PARAMETER") memberPartyName: String?,
-    searchQuery: String,
-    isLoadingMore: Boolean,
-    hasMore: Boolean,
+    activityEntries: List<ActivityEntry>,
+    @Suppress("UNUSED_PARAMETER") enabledTypes: Set<ActivityEntryType>,
     totalCount: Int,
-    onSearchQueryChange: (String) -> Unit,
-    onLoadMore: () -> Unit,
+    @Suppress("UNUSED_PARAMETER") onFilterClick: () -> Unit,
     onNavigateToDivision: (Int, Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -63,7 +66,7 @@ fun ActivityTabContent(
         if (totalCount > 0) {
             item {
                 Text(
-                    text = "$totalCount vote${if (totalCount != 1) "s" else ""}",
+                    text = "$totalCount activit${if (totalCount != 1) "ies" else "y"}",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(vertical = 4.dp)
@@ -71,75 +74,53 @@ fun ActivityTabContent(
             }
         }
 
-        if (memberVotes.isEmpty() && !isLoadingMore) {
+        if (activityEntries.isEmpty()) {
             item {
                 Box(
                     modifier = Modifier.fillMaxWidth().padding(32.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = if (searchQuery.isBlank()) {
-                            "No recent activity"
-                        } else {
-                            "No votes found for \"$searchQuery\""
-                        },
+                        text = "No recent activity",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
         } else {
-            items(memberVotes, key = { it.divisionId }) { vote ->
-                val isRebellion = isRebellionDivision(vote.divisionId, rebellionStats)
-                val total = vote.ayeCount + vote.noCount
-                val closeness = if (total > 0) {
-                    1.0 - kotlin.math.abs(vote.ayeCount - vote.noCount).toDouble() / total
-                } else {
-                    0.0
+            // Group entries by date and render with FeedDateHeader
+            val grouped = activityEntries.groupBy { it.date.take(10) }
+            grouped.forEach { (dateKey, entries) ->
+                item(key = "header_$dateKey") {
+                    FeedDateHeader(dateHeader = formatDateHeader(dateKey))
                 }
-                val weight = DivisionWeightCalculator.compute(
-                    mpVote = vote.vote,
-                    isRebellion = isRebellion,
-                    divisionCloseness = closeness
-                )
-                ActivityRow(
-                    vote = vote,
-                    isRebellion = isRebellion,
-                    score = weight.score,
-                    onClick = { onNavigateToDivision(vote.divisionId, vote.house) }
-                )
-            }
+                items(entries, key = { it.id }) { entry ->
+                    when (entry.entryType) {
+                        ActivityEntryType.VOTE -> ActivityVoteCard(
+                            entry,
+                            onClick = { onNavigateToDivision(entry.divisionId!!, entry.house!!) }
+                        )
 
-            // Load more trigger + loading indicator
-            if (hasMore) {
-                item {
-                    LaunchedEffect(memberVotes.size) {
-                        onLoadMore()
+                        ActivityEntryType.QUESTION -> ActivityQuestionCard(entry)
+
+                        ActivityEntryType.INCOME -> ActivityIncomeCard(entry)
+
+                        ActivityEntryType.EXPENSE -> ActivityExpenseCard(entry)
+
+                        ActivityEntryType.COMMITTEE -> ActivityCommitteeCard(entry)
+
+                        ActivityEntryType.CAREER -> ActivityCareerCard(entry)
                     }
-                    Box(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                    }
-                }
-            } else if (memberVotes.isNotEmpty()) {
-                item {
-                    Text(
-                        text = "End of activity",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                    )
                 }
             }
         }
     }
 }
 
+// --- Vote card (D-02 — simplified: division title, aye/no badge, date only) ---
+
 @Composable
-private fun ActivityRow(vote: MemberVoteWithDivision, isRebellion: Boolean, score: Double, onClick: () -> Unit) {
+fun ActivityVoteCard(entry: ActivityEntry, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -150,28 +131,24 @@ private fun ActivityRow(vote: MemberVoteWithDivision, isRebellion: Boolean, scor
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Vote badge — Aye (teal) / No (orange), No-vote-recorded shows "—"
-        val ayeColor = com.goveye.app.ui.components.VoteColors.aye
-        val noColor = com.goveye.app.ui.components.VoteColors.no
+        val ayeColor = VoteColors.aye
+        val noColor = VoteColors.no
+        val result = entry.voteResult ?: "—"
         Box(
             modifier = Modifier
                 .size(32.dp)
                 .clip(RoundedCornerShape(6.dp))
                 .background(
-                    when (vote.vote) {
-                        VoteType.AYE -> ayeColor
-                        VoteType.NO -> noColor
-                        VoteType.NO_VOTE_RECORDED -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                    when (result) {
+                        "Aye" -> ayeColor
+                        "No" -> noColor
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
                     }
                 ),
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = when (vote.vote) {
-                    VoteType.AYE -> "Aye"
-                    VoteType.NO -> "No"
-                    VoteType.NO_VOTE_RECORDED -> "—"
-                },
+                text = result,
                 style = MaterialTheme.typography.labelSmall,
                 color = Color.White,
                 fontWeight = FontWeight.Bold
@@ -179,7 +156,186 @@ private fun ActivityRow(vote: MemberVoteWithDivision, isRebellion: Boolean, scor
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = vote.divisionTitle,
+                text = entry.divisionTitle ?: entry.summary,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = formatActivityDate(entry.date),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+// --- Question card (D-03 — truncated question text, answering body, date tabled) ---
+
+@Composable
+fun ActivityQuestionCard(entry: ActivityEntry) {
+    val context = LocalContext.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .clickable {
+                entry.uin?.let { uin ->
+                    runCatching {
+                        val intent = Intent(
+                            Intent.ACTION_VIEW,
+                            Uri.parse("https://www.theyworkforyou.com/wrans/?id=$uin")
+                        )
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        context.startActivity(intent)
+                    }
+                }
+            }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = entry.questionText ?: entry.summary,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                entry.answeringBodyName?.let { body ->
+                    Text(
+                        text = body,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Text(
+                    text = formatActivityDate(entry.date),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+// --- Income card (D-10 — all interests as events on registration date) ---
+
+@Composable
+fun ActivityIncomeCard(entry: ActivityEntry) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = entry.summary,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                entry.categoryName?.let { category ->
+                    Text(
+                        text = category,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                entry.amountPence?.let { pence ->
+                    Text(
+                        text = formatAmount(pence),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Text(
+                    text = formatActivityDate(entry.date),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+// --- Expense card (D-11 — monthly bucket totals with claim count) ---
+
+@Composable
+fun ActivityExpenseCard(entry: ActivityEntry) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "${entry.bucketLabel ?: entry.summary}",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                entry.totalAmountPence?.let { pence ->
+                    Text(
+                        text = formatAmount(pence),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                entry.claimCount?.let { count ->
+                    Text(
+                        text = "$count claim${if (count != 1) "s" else ""}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Text(
+                    text = formatActivityDate(entry.date),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+// --- Committee card (committee name, joined/left indicator, date) ---
+
+@Composable
+fun ActivityCommitteeCard(entry: ActivityEntry) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = entry.committeeName ?: entry.summary,
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
@@ -189,61 +345,75 @@ private fun ActivityRow(vote: MemberVoteWithDivision, isRebellion: Boolean, scor
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = formatActivityDate(vote.divisionDate),
+                    text = if (entry.isJoin == true) "Joined" else "Left",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = formatActivityDate(entry.date),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Text(
-                    text = if (vote.house == 2) "Lords" else "Commons",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.Bold
-                )
-                if (isRebellion) {
-                    Text(
-                        text = "Rebel",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.error,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
             }
         }
-        WeightBadge(score = score)
     }
 }
 
-/**
- * Numeric weight badge — color-coded green/yellow/red per D-08.
- */
+// --- Career card (D-04 — role title, context line, date) ---
+
 @Composable
-private fun WeightBadge(score: Double, modifier: Modifier = Modifier) {
-    val color = when {
-        score >= 7.0 -> Color(0xFF2E7D32)
-        score >= 4.0 -> Color(0xFFF57F17)
-        else -> MaterialTheme.colorScheme.error
-    }
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(8.dp),
-        color = color.copy(alpha = 0.12f)
+fun ActivityCareerCard(entry: ActivityEntry) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = String.format("%.1f", score),
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
-            color = color,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = entry.roleTitle ?: entry.summary,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            entry.contextLine?.let { context ->
+                Text(
+                    text = context,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Text(
+                text = formatActivityDate(entry.date),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
-private fun isRebellionDivision(divisionId: Int, rebellionStats: RebellionStats?): Boolean =
-    rebellionStats?.rebellionInstances?.any { it.divisionId == divisionId } == true
+// --- Helpers ---
 
 private fun formatActivityDate(dateString: String): String = try {
     val parts = dateString.split("T").first().split("-")
     "${parts[2]}/${parts[1]}/${parts[0]}"
 } catch (e: Exception) {
     dateString
+}
+
+private fun formatDateHeader(dateKey: String): String = try {
+    val date = LocalDate.parse(dateKey)
+    date.format(DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.UK))
+} catch (e: Exception) {
+    dateKey
+}
+
+private fun formatAmount(pence: Long): String {
+    val pounds = pence / 100.0
+    return "£${String.format(Locale.UK, "%,.0f", pounds)}"
 }

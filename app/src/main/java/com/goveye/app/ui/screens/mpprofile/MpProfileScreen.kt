@@ -111,6 +111,7 @@ fun ProfileScreen(
     }
 
     var showInterestFilterSheet by remember { mutableStateOf(false) }
+    var showActivityFilterSheet by remember { mutableStateOf(false) }
 
     // Track current tab index for search bar config and filter sheet
     var currentPage by remember { mutableIntStateOf(0) }
@@ -138,29 +139,32 @@ fun ProfileScreen(
     // it here so:
     // - On the Interests tab: the filter icon triggers the date filter sheet,
     //   and hasActiveFilters reflects whether a date range is set.
-    // - On the Activity tab: the search field searches votes by division title.
+    // - On the Activity tab: the filter icon triggers the activity type filter
+    //   sheet (D-05). No search on the mixed feed — search is on VotingRecordScreen.
     // - On other tabs: the search bar is visible but inactive (no filter).
-    val activitySearchQuery = uiState.activitySearchQuery
     com.goveye.app.ui.components.ConfigureSearchBar(
         config = com.goveye.app.ui.components.SearchBarConfig(
             isVisible = true,
-            query = if (isActivityTab) activitySearchQuery else "",
+            query = "",
             placeholder = when {
-                isActivityTab -> "Search votes…"
+                isActivityTab -> "Activity feed"
                 isInterestsTab -> "Search entries…"
                 else -> "Search…"
             },
-            onQueryChange = { query ->
-                if (isActivityTab) {
-                    viewModel.updateActivitySearchQuery(memberId, query)
+            onQueryChange = { },
+            onFilterClick = when {
+                isInterestsTab -> {
+                    { showInterestFilterSheet = true }
                 }
+
+                isActivityTab -> {
+                    { showActivityFilterSheet = true }
+                }
+
+                else -> null
             },
-            onFilterClick = if (isInterestsTab) {
-                { showInterestFilterSheet = true }
-            } else {
-                null
-            },
-            hasActiveFilters = isInterestsTab && interestHasActiveFilter
+            hasActiveFilters = (isActivityTab && uiState.activityEnabledTypes.size < 6) ||
+                (isInterestsTab && interestHasActiveFilter)
         )
     )
 
@@ -282,20 +286,10 @@ fun ProfileScreen(
                             )
 
                             ProfileTab.ACTIVITY -> ActivityTabContent(
-                                memberVotes = uiState.activityVotes,
-                                rebellionStats = uiState.rebellionStats,
-                                allVotesByDivision = uiState.allVotesByDivision,
-                                memberPartyName = uiState.memberPartyName,
-                                searchQuery = uiState.activitySearchQuery,
-                                isLoadingMore = uiState.activityIsLoadingMore,
-                                hasMore = uiState.activityHasMore,
+                                activityEntries = uiState.activityEntries,
+                                enabledTypes = uiState.activityEnabledTypes,
                                 totalCount = uiState.activityTotalCount,
-                                onSearchQueryChange = { query ->
-                                    viewModel.updateActivitySearchQuery(memberId, query)
-                                },
-                                onLoadMore = {
-                                    viewModel.loadMoreActivityVotes(memberId)
-                                },
+                                onFilterClick = { showActivityFilterSheet = true },
                                 onNavigateToDivision = { divisionId, house ->
                                     onNavigateToDivision(divisionId, house)
                                 }
@@ -353,6 +347,20 @@ fun ProfileScreen(
                     viewModel.setSpeechesNotificationsEnabled(memberId, enabled)
                 },
                 onDismiss = { showNotificationSheet = false }
+            )
+        }
+
+        // Activity type filter bottom sheet (D-05, D-06)
+        if (showActivityFilterSheet) {
+            ActivityFilterBottomSheet(
+                enabledTypes = uiState.activityEnabledTypes,
+                onTypeToggle = { type ->
+                    viewModel.toggleActivityFilter(memberId, type)
+                },
+                onClearFilters = {
+                    viewModel.clearActivityFilter(memberId)
+                },
+                onDismiss = { showActivityFilterSheet = false }
             )
         }
     }

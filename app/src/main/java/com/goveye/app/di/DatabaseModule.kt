@@ -472,6 +472,10 @@ object DatabaseModule {
     fun provideSourceRecommendationDao(database: BundledDatabase): SourceRecommendationDao =
         database.sourceRecommendationDao()
 
+    @Provides
+    fun provideWrittenQuestionDao(database: BundledDatabase): com.goveye.app.data.local.dao.WrittenQuestionDao =
+        database.writtenQuestionDao()
+
     // ── User-data DAOs (from LocalDatabase) ────────────────────────────
 
     @Provides
