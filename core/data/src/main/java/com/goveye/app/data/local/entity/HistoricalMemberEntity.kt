@@ -12,6 +12,8 @@ data class HistoricalMemberEntity(
     val displayName: String,
     val alternateNames: String? = null,
     val party: String? = null,
+    val partyAbbreviation: String? = null,
+    val partyColourHex: String? = null,
     val house: Int,
     val startDate: String? = null,
     val endDate: String? = null,
