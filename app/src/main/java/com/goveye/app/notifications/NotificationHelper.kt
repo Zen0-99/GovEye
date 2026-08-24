@@ -31,16 +31,22 @@ class NotificationHelper @Inject constructor(@ApplicationContext private val con
         const val VOTES_CHANNEL_ID = "votes"
         const val SPEECHES_CHANNEL_ID = "speeches"
         const val BILLS_CHANNEL_ID = "bills"
+        const val INCOME_CHANNEL_ID = "income"
+        const val EXPENSE_CHANNEL_ID = "expenses"
         const val DOWNLOAD_CHANNEL_ID = "download"
         const val UPDATE_CHANNEL_ID = "updates"
         const val VOTES_CHANNEL_NAME = "Vote Notifications"
         const val SPEECHES_CHANNEL_NAME = "Speech Notifications"
         const val BILLS_CHANNEL_NAME = "Bill Notifications"
+        const val INCOME_CHANNEL_NAME = "Income Notifications"
+        const val EXPENSE_CHANNEL_NAME = "Expense Notifications"
         const val DOWNLOAD_CHANNEL_NAME = "Data Download"
         const val UPDATE_CHANNEL_NAME = "Data Updates"
         const val VOTES_CHANNEL_DESC = "Notifications when followed MPs vote"
         const val SPEECHES_CHANNEL_DESC = "Notifications when followed MPs speak (coming soon)"
         const val BILLS_CHANNEL_DESC = "Notifications when followed bills change stage"
+        const val INCOME_CHANNEL_DESC = "Notifications when followed MPs declare new income"
+        const val EXPENSE_CHANNEL_DESC = "Notifications when followed MPs submit expense claims"
         const val DOWNLOAD_CHANNEL_DESC = "Foreground service notification during database download"
         const val UPDATE_CHANNEL_DESC = "Notifications when parliamentary data has been updated"
 
@@ -87,6 +93,20 @@ class NotificationHelper @Inject constructor(@ApplicationContext private val con
                 description = BILLS_CHANNEL_DESC
                 enableVibration(true)
             }
+            val incomeChannel = NotificationChannel(
+                INCOME_CHANNEL_ID,
+                INCOME_CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_DEFAULT
+            ).apply {
+                description = INCOME_CHANNEL_DESC
+            }
+            val expenseChannel = NotificationChannel(
+                EXPENSE_CHANNEL_ID,
+                EXPENSE_CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_DEFAULT
+            ).apply {
+                description = EXPENSE_CHANNEL_DESC
+            }
             val downloadChannel = NotificationChannel(
                 DOWNLOAD_CHANNEL_ID,
                 DOWNLOAD_CHANNEL_NAME,
@@ -111,6 +131,8 @@ class NotificationHelper @Inject constructor(@ApplicationContext private val con
             nm.createNotificationChannel(votesChannel)
             nm.createNotificationChannel(speechesChannel)
             nm.createNotificationChannel(billsChannel)
+            nm.createNotificationChannel(incomeChannel)
+            nm.createNotificationChannel(expenseChannel)
             nm.createNotificationChannel(downloadChannel)
             nm.createNotificationChannel(updateChannel)
         }
@@ -176,6 +198,60 @@ class NotificationHelper @Inject constructor(@ApplicationContext private val con
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .build()
+
+        try {
+            notificationManager.notify(nextNotificationId++, notification)
+        } catch (e: SecurityException) {
+            // POST_NOTIFICATIONS not granted — silently skip
+        }
+    }
+
+    /**
+     * Shows a notification when a followed MP declares new income (issue #8).
+     *
+     * @param memberId The MP's member ID (used for the deep-link request code).
+     * @param mpName The MP's display name (notification title).
+     * @param amount The income amount (e.g. "£5,000").
+     * @param source The payer or source of the income (notification body).
+     */
+    fun showIncomeNotification(memberId: Int, mpName: String, amount: String, source: String) {
+        val body = "New income: $amount from $source"
+
+        val notification = NotificationCompat.Builder(context, INCOME_CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle(mpName)
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .build()
+
+        try {
+            notificationManager.notify(nextNotificationId++, notification)
+        } catch (e: SecurityException) {
+            // POST_NOTIFICATIONS not granted — silently skip
+        }
+    }
+
+    /**
+     * Shows a notification when a followed MP submits an expense claim (issue #8).
+     *
+     * @param memberId The MP's member ID (used for the deep-link request code).
+     * @param mpName The MP's display name (notification title).
+     * @param amount The expense amount (e.g. "£1,200").
+     * @param category The expense category/bucket (notification body).
+     */
+    fun showExpenseNotification(memberId: Int, mpName: String, amount: String, category: String) {
+        val body = "New expense: $amount — $category"
+
+        val notification = NotificationCompat.Builder(context, EXPENSE_CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle(mpName)
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .build()
 
         try {
