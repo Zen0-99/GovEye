@@ -70,6 +70,8 @@ data class ProfileUiState(
     val notificationsEnabled: Boolean = false,
     val votesNotificationsEnabled: Boolean = false,
     val speechesNotificationsEnabled: Boolean = false,
+    val incomeEnabled: Boolean = false,
+    val expensesEnabled: Boolean = false,
     val syncStatus: SyncStatus = SyncStatus.EMPTY,
     val isLoading: Boolean = true,
     // Activity tab — mixed chronological feed (D-01)
@@ -136,7 +138,9 @@ class ProfileViewModel @Inject constructor(
                     _uiState.value = _uiState.value.copy(
                         notificationsEnabled = notifPref.notificationsEnabled,
                         votesNotificationsEnabled = notifPref.votesEnabled,
-                        speechesNotificationsEnabled = notifPref.speechesEnabled
+                        speechesNotificationsEnabled = notifPref.speechesEnabled,
+                        incomeEnabled = notifPref.incomeEnabled,
+                        expensesEnabled = notifPref.expensesEnabled
                     )
                 }
                 launch {
@@ -626,13 +630,36 @@ class ProfileViewModel @Inject constructor(
     }
 
     fun toggleFollow(memberId: Int) {
+        // Optimistic UI: flip the follow icon immediately so the user sees
+        // the change without waiting for the repository round-trip (issue #7).
+        val wasFollowing = _uiState.value.isFollowing
+        _uiState.value = _uiState.value.copy(isFollowing = !wasFollowing)
+        // When following, auto-enable vote notifications optimistically
+        if (!wasFollowing) {
+            _uiState.value = _uiState.value.copy(
+                votesNotificationsEnabled = true,
+                notificationsEnabled = true
+            )
+        }
         viewModelScope.launch {
-            if (_uiState.value.isFollowing) {
-                followRepository.unfollow(memberId)
-            } else {
-                followRepository.follow(memberId)
-                // Auto-enable vote notifications when following (FotMob behavior)
-                notificationPrefRepository.setVotesEnabled(memberId, true)
+            try {
+                if (wasFollowing) {
+                    followRepository.unfollow(memberId)
+                } else {
+                    followRepository.follow(memberId)
+                    // Auto-enable vote notifications when following (FotMob behavior)
+                    notificationPrefRepository.setVotesEnabled(memberId, true)
+                }
+            } catch (e: Exception) {
+                // Revert on failure to avoid stale state
+                _uiState.value = _uiState.value.copy(isFollowing = wasFollowing)
+                if (!wasFollowing) {
+                    _uiState.value = _uiState.value.copy(
+                        votesNotificationsEnabled = _uiState.value.votesNotificationsEnabled,
+                        notificationsEnabled = _uiState.value.notificationsEnabled
+                    )
+                }
+                android.util.Log.e("GovEye/Profile", "toggleFollow failed", e)
             }
         }
     }
@@ -640,20 +667,82 @@ class ProfileViewModel @Inject constructor(
     // --- Notification preferences ---
 
     fun setNotificationsEnabled(memberId: Int, enabled: Boolean) {
+        // Optimistic UI: update the master toggle and derived type states
+        // immediately (issue #7).
+        val previous = _uiState.value
+        _uiState.value = if (enabled) {
+            _uiState.value.copy(
+                notificationsEnabled = true,
+                votesNotificationsEnabled = true
+            )
+        } else {
+            _uiState.value.copy(
+                notificationsEnabled = false,
+                votesNotificationsEnabled = false,
+                speechesNotificationsEnabled = false,
+                incomeEnabled = false,
+                expensesEnabled = false
+            )
+        }
         viewModelScope.launch {
-            notificationPrefRepository.setNotificationsEnabled(memberId, enabled)
+            try {
+                notificationPrefRepository.setNotificationsEnabled(memberId, enabled)
+            } catch (e: Exception) {
+                _uiState.value = previous
+                android.util.Log.e("GovEye/Profile", "setNotificationsEnabled failed", e)
+            }
         }
     }
 
     fun setVotesNotificationsEnabled(memberId: Int, enabled: Boolean) {
+        val previous = _uiState.value.votesNotificationsEnabled
+        _uiState.value = _uiState.value.copy(votesNotificationsEnabled = enabled)
         viewModelScope.launch {
-            notificationPrefRepository.setVotesEnabled(memberId, enabled)
+            try {
+                notificationPrefRepository.setVotesEnabled(memberId, enabled)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(votesNotificationsEnabled = previous)
+                android.util.Log.e("GovEye/Profile", "setVotesNotificationsEnabled failed", e)
+            }
         }
     }
 
     fun setSpeechesNotificationsEnabled(memberId: Int, enabled: Boolean) {
+        val previous = _uiState.value.speechesNotificationsEnabled
+        _uiState.value = _uiState.value.copy(speechesNotificationsEnabled = enabled)
         viewModelScope.launch {
-            notificationPrefRepository.setSpeechesEnabled(memberId, enabled)
+            try {
+                notificationPrefRepository.setSpeechesEnabled(memberId, enabled)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(speechesNotificationsEnabled = previous)
+                android.util.Log.e("GovEye/Profile", "setSpeechesNotificationsEnabled failed", e)
+            }
+        }
+    }
+
+    fun setIncomeNotificationsEnabled(memberId: Int, enabled: Boolean) {
+        val previous = _uiState.value.incomeEnabled
+        _uiState.value = _uiState.value.copy(incomeEnabled = enabled)
+        viewModelScope.launch {
+            try {
+                notificationPrefRepository.setIncomeEnabled(memberId, enabled)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(incomeEnabled = previous)
+                android.util.Log.e("GovEye/Profile", "setIncomeNotificationsEnabled failed", e)
+            }
+        }
+    }
+
+    fun setExpensesNotificationsEnabled(memberId: Int, enabled: Boolean) {
+        val previous = _uiState.value.expensesEnabled
+        _uiState.value = _uiState.value.copy(expensesEnabled = enabled)
+        viewModelScope.launch {
+            try {
+                notificationPrefRepository.setExpensesEnabled(memberId, enabled)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(expensesEnabled = previous)
+                android.util.Log.e("GovEye/Profile", "setExpensesNotificationsEnabled failed", e)
+            }
         }
     }
 
