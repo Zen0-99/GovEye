@@ -10,6 +10,9 @@ interface BioDataDao {
     @Query("SELECT * FROM bio_data WHERE mpId = :mpId")
     suspend fun getByMpId(mpId: Int): BioDataEntity?
 
+    @Query("SELECT maidenSpeechDate FROM bio_data WHERE mpId = :mpId")
+    suspend fun getMaidenSpeechDate(mpId: Int): String?
+
     @Upsert
     suspend fun upsertAll(data: List<BioDataEntity>)
 }

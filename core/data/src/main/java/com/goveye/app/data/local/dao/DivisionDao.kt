@@ -219,6 +219,19 @@ interface DivisionDao {
     @Query("SELECT divisionId FROM division_votes WHERE memberId = :memberId")
     suspend fun getDivisionIdsForMember(memberId: Int): List<Int>
 
+    @Query("SELECT COUNT(*) FROM divisions WHERE house = :house AND date >= :startDate")
+    suspend fun countDivisionsByHouseSince(house: Int, startDate: String): Int
+
+    @Query(
+        """
+        SELECT DISTINCT dv.divisionId
+        FROM division_votes dv
+        INNER JOIN divisions d ON dv.divisionId = d.id
+        WHERE dv.memberId = :memberId AND d.house = :house AND d.date >= :startDate
+        """
+    )
+    suspend fun getDivisionIdsForMemberSince(memberId: Int, house: Int, startDate: String): List<Int>
+
     @Query(
         """
         SELECT

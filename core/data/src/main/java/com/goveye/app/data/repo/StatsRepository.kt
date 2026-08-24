@@ -1,6 +1,7 @@
 package com.goveye.app.data.repo
 
 import android.util.Log
+import com.goveye.app.data.local.dao.BioDataDao
 import com.goveye.app.data.local.dao.CommitteeDao
 import com.goveye.app.data.local.dao.DebateSpeechDao
 import com.goveye.app.data.local.dao.DivisionDao
@@ -42,7 +43,8 @@ class StatsRepository @Inject constructor(
     private val debateSpeechDao: DebateSpeechDao,
     private val hansardDao: HansardDao,
     private val mpDao: MpDao,
-    private val mpStatsDao: MpStatsDao
+    private val mpStatsDao: MpStatsDao,
+    private val bioDataDao: BioDataDao
 ) {
     companion object {
         private const val TAG = "GovEye/Stats"
@@ -51,6 +53,10 @@ class StatsRepository @Inject constructor(
         // Approximation: typical rebellion rate across all MPs is ~5%.
         // Used for peer rebellion rates in fallback mode to avoid 650 × full-vote-fetch.
         private const val TYPICAL_REBELLION_RATE = 0.05f
+
+        // Default tenure start when no maidenSpeechDate is available — preserves
+        // the previous behaviour's implicit 2016 cutoff.
+        private const val DEFAULT_TENURE_START = "2016-01-01"
     }
 
     @Volatile
@@ -84,8 +90,11 @@ class StatsRepository @Inject constructor(
         if (usePrecomputed()) {
             return mpStatsDao.getStats(memberId)?.voteParticipationRate ?: 0f
         }
-        val votedCount = divisionDao.getDivisionIdsForMember(memberId).size
-        val totalDivisions = divisionDao.getAllDivisionsByHouse(house).size
+        // Tenure-aware fallback: only count divisions from the MP's tenure start
+        // so new MPs are not penalized for divisions they couldn't vote in.
+        val startDate = bioDataDao.getMaidenSpeechDate(memberId) ?: DEFAULT_TENURE_START
+        val votedCount = divisionDao.getDivisionIdsForMemberSince(memberId, house, startDate).size
+        val totalDivisions = divisionDao.countDivisionsByHouseSince(house, startDate)
         if (totalDivisions == 0) return 0f
         return votedCount.toFloat() / totalDivisions
     }
