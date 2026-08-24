@@ -55,6 +55,7 @@ interface DatabaseUpdateApi {
         const val HISTORICAL_MEMBERS_TAG = "historical-members-latest"
         const val GOV_PUBLICATIONS_TAG = "gov-publications-latest"
         const val WRITTEN_STATEMENTS_TAG = "written-statements-latest"
+        const val WRITTEN_QUESTIONS_TAG = "written-questions-latest"
         const val LEGISLATION_TAG = "legislation-latest"
 
         private const val OWNER = "Zen0-99"

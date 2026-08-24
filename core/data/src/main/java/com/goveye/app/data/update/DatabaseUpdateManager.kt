@@ -24,6 +24,7 @@ import com.goveye.app.data.local.entity.PartyManifestoEntity
 import com.goveye.app.data.local.entity.PartyStatsEntity
 import com.goveye.app.data.local.entity.RecessDateEntity
 import com.goveye.app.data.local.entity.RecessDatesMetaEntity
+import com.goveye.app.data.local.entity.WrittenQuestionEntity
 import com.goveye.app.data.preference.DatabasePreferences
 import com.goveye.app.data.preference.DownloadPreferences
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -466,6 +467,12 @@ class DatabaseUpdateManager @Inject constructor(
                         json.decodeFromJsonElement<PartyStatsEntity>(it)
                     }
                 )
+
+                "written_questions" -> updateDao.upsertWrittenQuestions(
+                    upsertList.map {
+                        json.decodeFromJsonElement<WrittenQuestionEntity>(it)
+                    }
+                )
                 // mps_fts is NOT handled — auto-synced by FTS4 triggers (Pitfall 2)
             }
         }
@@ -521,6 +528,8 @@ class DatabaseUpdateManager @Inject constructor(
                 "party_manifestos" -> updateDao.deleteManifesto(obj["partyId"]!!.jsonPrimitive.intOrNull!!)
 
                 "party_stats" -> updateDao.deletePartyStats(obj["partyId"]!!.jsonPrimitive.intOrNull!!)
+
+                "written_questions" -> updateDao.deleteWrittenQuestion(obj["id"]!!.jsonPrimitive.intOrNull!!)
             }
         }
     }
@@ -548,6 +557,7 @@ class DatabaseUpdateManager @Inject constructor(
         DatabaseUpdateApi.HISTORICAL_MEMBERS_TAG to "historical-members",
         DatabaseUpdateApi.GOV_PUBLICATIONS_TAG to "gov-publications",
         DatabaseUpdateApi.WRITTEN_STATEMENTS_TAG to "written-statements",
+        DatabaseUpdateApi.WRITTEN_QUESTIONS_TAG to "written-questions",
         DatabaseUpdateApi.LEGISLATION_TAG to "legislation"
     )
 
@@ -588,6 +598,7 @@ class DatabaseUpdateManager @Inject constructor(
         "historical-members" -> "historical_members.db"
         "gov-publications" -> "gov_publications.db"
         "written-statements" -> "written_statements.db"
+        "written-questions" -> "written_questions.db"
         "legislation" -> "legislation.db"
         else -> "$streamName.db"
     }
@@ -613,6 +624,7 @@ class DatabaseUpdateManager @Inject constructor(
         "historical-members" -> listOf("historical_members", "historical_members_fts4")
         "gov-publications" -> listOf("government_publications")
         "written-statements" -> listOf("written_statements")
+        "written-questions" -> listOf("written_questions")
         "legislation" -> listOf("legislation")
         else -> emptyList()
     }
@@ -637,6 +649,7 @@ class DatabaseUpdateManager @Inject constructor(
         "debates" -> preferences.debatesVersion.first()
         "gov-publications" -> preferences.govPublicationsVersion.first()
         "written-statements" -> preferences.writtenStatementsVersion.first()
+        "written-questions" -> preferences.writtenQuestionsVersion.first()
         "legislation" -> preferences.legislationVersion.first()
         else -> null
     }
@@ -662,6 +675,7 @@ class DatabaseUpdateManager @Inject constructor(
             "debates" -> preferences.setDebatesVersion(version)
             "gov-publications" -> preferences.setGovPublicationsVersion(version)
             "written-statements" -> preferences.setWrittenStatementsVersion(version)
+            "written-questions" -> preferences.setWrittenQuestionsVersion(version)
             "legislation" -> preferences.setLegislationVersion(version)
         }
     }

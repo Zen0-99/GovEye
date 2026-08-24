@@ -32,6 +32,7 @@ import com.goveye.app.data.local.dao.RecessDateDao
 import com.goveye.app.data.local.dao.SearchDao
 import com.goveye.app.data.local.dao.SourceRecommendationDao
 import com.goveye.app.data.local.dao.TagDao
+import com.goveye.app.data.local.dao.WrittenQuestionDao
 import com.goveye.app.data.local.dao.WrittenStatementDao
 import com.goveye.app.data.local.entity.BillEntity
 import com.goveye.app.data.local.entity.BillStageEntity
@@ -72,6 +73,7 @@ import com.goveye.app.data.local.entity.RecessDatesMetaEntity
 import com.goveye.app.data.local.entity.SourceRecommendationEntity
 import com.goveye.app.data.local.entity.StatementTagEntity
 import com.goveye.app.data.local.entity.TagMetadataEntity
+import com.goveye.app.data.local.entity.WrittenQuestionEntity
 import com.goveye.app.data.local.entity.WrittenStatementEntity
 
 /**
@@ -123,6 +125,7 @@ import com.goveye.app.data.local.entity.WrittenStatementEntity
         TagMetadataEntity::class,
         MpApiIdEntity::class,
         WrittenStatementEntity::class,
+        WrittenQuestionEntity::class,
         GovernmentPublicationEntity::class,
         LegislationEntity::class,
         PublicationTagEntity::class,
@@ -132,7 +135,7 @@ import com.goveye.app.data.local.entity.WrittenStatementEntity
         PartyLeaderEntity::class,
         SourceRecommendationEntity::class
     ],
-    version = 20,
+    version = 21,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -160,6 +163,7 @@ abstract class BundledDatabase : RoomDatabase() {
     abstract fun tagDao(): TagDao
     abstract fun mpApiIdDao(): MpApiIdDao
     abstract fun writtenStatementDao(): WrittenStatementDao
+    abstract fun writtenQuestionDao(): WrittenQuestionDao
     abstract fun governmentPublicationDao(): GovernmentPublicationDao
     abstract fun legislationDao(): LegislationDao
     abstract fun announcementTagDao(): AnnouncementTagDao

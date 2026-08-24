@@ -80,6 +80,9 @@ class DatabasePreferences @Inject constructor(@Named("database") private val dat
     /** Current local written-statements stream version, or null if never updated. */
     val writtenStatementsVersion: Flow<Int?> = dataStore.data.map { it[WRITTEN_STATEMENTS_VERSION_KEY] }
 
+    /** Current local written-questions stream version, or null if never updated. */
+    val writtenQuestionsVersion: Flow<Int?> = dataStore.data.map { it[WRITTEN_QUESTIONS_VERSION_KEY] }
+
     /** Current local legislation stream version, or null if never updated. */
     val legislationVersion: Flow<Int?> = dataStore.data.map { it[LEGISLATION_VERSION_KEY] }
 
@@ -153,6 +156,10 @@ class DatabasePreferences @Inject constructor(@Named("database") private val dat
         dataStore.edit { it[WRITTEN_STATEMENTS_VERSION_KEY] = version }
     }
 
+    suspend fun setWrittenQuestionsVersion(version: Int) {
+        dataStore.edit { it[WRITTEN_QUESTIONS_VERSION_KEY] = version }
+    }
+
     suspend fun setLegislationVersion(version: Int) {
         dataStore.edit { it[LEGISLATION_VERSION_KEY] = version }
     }
@@ -200,6 +207,7 @@ class DatabasePreferences @Inject constructor(@Named("database") private val dat
         val DEBATES_VERSION_KEY = intPreferencesKey("debates_version")
         val GOV_PUBLICATIONS_VERSION_KEY = intPreferencesKey("gov_publications_version")
         val WRITTEN_STATEMENTS_VERSION_KEY = intPreferencesKey("written_statements_version")
+        val WRITTEN_QUESTIONS_VERSION_KEY = intPreferencesKey("written_questions_version")
         val LEGISLATION_VERSION_KEY = intPreferencesKey("legislation_version")
         val SEED_VERSION_KEY = intPreferencesKey("seed_version")
         val LAST_NOTIFIED_DIVISION_ID_KEY = intPreferencesKey("last_notified_division_id")

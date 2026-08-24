@@ -22,6 +22,7 @@ import com.goveye.app.data.local.entity.PartyManifestoEntity
 import com.goveye.app.data.local.entity.PartyStatsEntity
 import com.goveye.app.data.local.entity.RecessDateEntity
 import com.goveye.app.data.local.entity.RecessDatesMetaEntity
+import com.goveye.app.data.local.entity.WrittenQuestionEntity
 
 /**
  * DAO for applying JSON diff patches from the goveye-data repo (D-05, D-10a).
@@ -159,4 +160,11 @@ interface DatabaseUpdateDao {
 
     @Query("DELETE FROM party_stats WHERE partyId = :partyId")
     suspend fun deletePartyStats(partyId: Int)
+
+    // ── written_questions (PK: id) ────────────────────────────────────
+    @Upsert
+    suspend fun upsertWrittenQuestions(questions: List<WrittenQuestionEntity>)
+
+    @Query("DELETE FROM written_questions WHERE id = :id")
+    suspend fun deleteWrittenQuestion(id: Int)
 }
