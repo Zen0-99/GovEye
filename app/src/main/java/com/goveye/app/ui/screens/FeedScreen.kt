@@ -32,15 +32,12 @@ import com.goveye.app.ui.screens.directory.FilterBottomSheet
 import com.goveye.app.ui.screens.directory.FilterTabType
 import com.goveye.app.ui.screens.divisions.TagMicroviewDialog
 import com.goveye.app.ui.screens.feed.FeedDateHeader
-import com.goveye.app.ui.screens.feed.FeedDivisionCard
 import com.goveye.app.ui.screens.feed.FeedItem
-import com.goveye.app.ui.screens.feed.FeedLegislationCard
 import com.goveye.app.ui.screens.feed.FeedNoActivityEmptyState
 import com.goveye.app.ui.screens.feed.FeedNoFollowsEmptyState
-import com.goveye.app.ui.screens.feed.FeedPublicationCard
 import com.goveye.app.ui.screens.feed.FeedRecessEmptyState
-import com.goveye.app.ui.screens.feed.FeedStatementCard
 import com.goveye.app.ui.screens.feed.FeedViewModel
+import com.goveye.app.ui.screens.feed.UnifiedFeedCard
 
 /**
  * Feed tab — chronological mixed feed with sticky date headers,
@@ -51,6 +48,9 @@ import com.goveye.app.ui.screens.feed.FeedViewModel
 @Composable
 fun FeedScreen(
     onNavigateToDivision: (Int, Int) -> Unit,
+    onNavigateToPublicationDetail: (Int) -> Unit,
+    onNavigateToStatementDetail: (Int) -> Unit,
+    onNavigateToLegislationDetail: (Int) -> Unit,
     showInfoCards: Boolean = true,
     modifier: Modifier = Modifier,
     viewModel: FeedViewModel = hiltViewModel()
@@ -145,6 +145,9 @@ fun FeedScreen(
                                 item = item,
                                 state = state,
                                 onNavigateToDivision = onNavigateToDivision,
+                                onNavigateToPublicationDetail = onNavigateToPublicationDetail,
+                                onNavigateToStatementDetail = onNavigateToStatementDetail,
+                                onNavigateToLegislationDetail = onNavigateToLegislationDetail,
                                 onTagClick = { tag -> selectedTag = tag }
                             )
                         }
@@ -186,52 +189,43 @@ fun FeedScreen(
 }
 
 /**
- * Renders the appropriate card composable for a [FeedItem] subtype.
+ * Renders the [UnifiedFeedCard] for any [FeedItem] subtype. The unified card
+ * extracts per-type data (image, title, type pill, by-who, division bar,
+ * source, date, tags) internally — no per-type branching is needed here.
  */
 @Composable
 private fun FeedItemCard(
     item: FeedItem,
     state: com.goveye.app.ui.screens.feed.FeedUiState,
     onNavigateToDivision: (Int, Int) -> Unit,
+    onNavigateToPublicationDetail: (Int) -> Unit,
+    onNavigateToStatementDetail: (Int) -> Unit,
+    onNavigateToLegislationDetail: (Int) -> Unit,
     onTagClick: (String) -> Unit
 ) {
-    when (item) {
+    val hasFollowedVotes = item is FeedItem.DivisionItem &&
+        item.division.id in state.divisionsWithFollowedVotes
+    val onClick: () -> Unit = when (item) {
         is FeedItem.DivisionItem -> {
-            val hasFollowed = item.division.id in state.divisionsWithFollowedVotes
-            FeedDivisionCard(
-                division = item.division,
-                hasFollowedVotes = hasFollowed,
-                onClick = { onNavigateToDivision(item.division.id, item.division.house) },
-                tags = item.tags,
-                onTagClick = onTagClick
-            )
+            { onNavigateToDivision(item.division.id, item.division.house) }
         }
 
         is FeedItem.PublicationItem -> {
-            FeedPublicationCard(
-                publication = item.publication,
-                onClick = { /* TODO: navigate to publication detail */ },
-                tags = item.tags,
-                onTagClick = onTagClick
-            )
+            { onNavigateToPublicationDetail(item.publication.id) }
         }
 
         is FeedItem.StatementItem -> {
-            FeedStatementCard(
-                statement = item.statement,
-                onClick = { /* TODO: navigate to statement detail */ },
-                tags = item.tags,
-                onTagClick = onTagClick
-            )
+            { onNavigateToStatementDetail(item.statement.id) }
         }
 
         is FeedItem.LegislationItem -> {
-            FeedLegislationCard(
-                legislation = item.legislation,
-                onClick = { /* TODO: navigate to legislation detail */ },
-                tags = item.tags,
-                onTagClick = onTagClick
-            )
+            { onNavigateToLegislationDetail(item.legislation.id) }
         }
     }
+    UnifiedFeedCard(
+        item = item,
+        hasFollowedVotes = hasFollowedVotes,
+        onClick = onClick,
+        onTagClick = onTagClick
+    )
 }

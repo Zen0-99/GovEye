@@ -231,6 +231,15 @@ private fun GovEyeAppContent(
                             onNavigateToDivision = { divisionId, house ->
                                 currentBackStack.add(DivisionDetailRoute(divisionId, house))
                             },
+                            onNavigateToPublicationDetail = { publicationId ->
+                                currentBackStack.add(PublicationDetailRoute(publicationId))
+                            },
+                            onNavigateToStatementDetail = { statementId ->
+                                currentBackStack.add(StatementDetailRoute(statementId))
+                            },
+                            onNavigateToLegislationDetail = { legislationId ->
+                                currentBackStack.add(LegislationDetailRoute(legislationId))
+                            },
                             showInfoCards = showInfoCards,
                             modifier = Modifier
                                 .fillMaxSize()
