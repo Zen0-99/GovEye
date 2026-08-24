@@ -37,6 +37,8 @@ import com.goveye.app.ui.screens.feed.FeedNoActivityEmptyState
 import com.goveye.app.ui.screens.feed.FeedNoFollowsEmptyState
 import com.goveye.app.ui.screens.feed.FeedRecessEmptyState
 import com.goveye.app.ui.screens.feed.FeedViewModel
+import com.goveye.app.ui.screens.feed.FeedFinancialCard
+import com.goveye.app.ui.screens.feed.FeedSpeechCard
 import com.goveye.app.ui.screens.feed.UnifiedFeedCard
 
 /**
@@ -203,37 +205,47 @@ private fun FeedItemCard(
     onNavigateToLegislationDetail: (Int) -> Unit,
     onTagClick: (String) -> Unit
 ) {
-    val hasFollowedVotes = item is FeedItem.DivisionItem &&
-        item.division.id in state.divisionsWithFollowedVotes
-    val onClick: () -> Unit = when (item) {
+    when (item) {
+        is FeedItem.FinancialItem -> FeedFinancialCard(
+            item = item,
+            onClick = { /* navigate to financial detail */ }
+        )
+
+        is FeedItem.SpeechItem -> FeedSpeechCard(
+            item = item,
+            onClick = { onNavigateToDivision(item.divisionId, 1) },
+            onTagClick = onTagClick
+        )
+
         is FeedItem.DivisionItem -> {
-            { onNavigateToDivision(item.division.id, item.division.house) }
+            val hasFollowedVotes = item.division.id in state.divisionsWithFollowedVotes
+            UnifiedFeedCard(
+                item = item,
+                hasFollowedVotes = hasFollowedVotes,
+                onClick = { onNavigateToDivision(item.division.id, item.division.house) },
+                onTagClick = onTagClick
+            )
         }
 
-        is FeedItem.PublicationItem -> {
-            { onNavigateToPublicationDetail(item.publication.id) }
-        }
+        is FeedItem.PublicationItem -> UnifiedFeedCard(
+            item = item,
+            hasFollowedVotes = false,
+            onClick = { onNavigateToPublicationDetail(item.publication.id) },
+            onTagClick = onTagClick
+        )
 
-        is FeedItem.StatementItem -> {
-            { onNavigateToStatementDetail(item.statement.id) }
-        }
+        is FeedItem.StatementItem -> UnifiedFeedCard(
+            item = item,
+            hasFollowedVotes = false,
+            onClick = { onNavigateToStatementDetail(item.statement.id) },
+            onTagClick = onTagClick
+        )
 
-        is FeedItem.LegislationItem -> {
-            { onNavigateToLegislationDetail(item.legislation.id) }
-        }
-
-        is FeedItem.FinancialItem -> {
-            { /* navigate to financial detail — wired in 17-02-07 */ }
-        }
-
-        is FeedItem.SpeechItem -> {
-            { onNavigateToDivision(item.divisionId, 1) }
-        }
+        is FeedItem.LegislationItem -> UnifiedFeedCard(
+            item = item,
+            hasFollowedVotes = false,
+            onClick = { onNavigateToLegislationDetail(item.legislation.id) },
+            onTagClick = onTagClick
+        )
     }
-    UnifiedFeedCard(
-        item = item,
-        hasFollowedVotes = hasFollowedVotes,
-        onClick = onClick,
-        onTagClick = onTagClick
-    )
 }
