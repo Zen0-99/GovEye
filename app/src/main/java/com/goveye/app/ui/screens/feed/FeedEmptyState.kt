@@ -56,8 +56,8 @@ fun FeedRecessEmptyState(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(lastDivisions, key = { it.id }) { division ->
-                    FeedDivisionCard(
-                        division = division,
+                    UnifiedFeedCard(
+                        item = FeedItem.DivisionItem(division = division),
                         hasFollowedVotes = false,
                         onClick = { onDivisionClick(division.id, division.house) }
                     )

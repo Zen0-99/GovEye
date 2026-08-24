@@ -101,10 +101,12 @@ fun DivisionsTabContent(
                 }
                 items(state.divisions, key = { it.id }, contentType = { "division_card" }) { division ->
                     val tags = state.divisionTags[division.id] ?: emptyList()
-                    com.goveye.app.ui.screens.feed.FeedDivisionCard(
-                        division = division,
+                    com.goveye.app.ui.screens.feed.UnifiedFeedCard(
+                        item = com.goveye.app.ui.screens.feed.FeedItem.DivisionItem(
+                            division = division,
+                            tags = tags
+                        ),
                         hasFollowedVotes = false,
-                        tags = tags,
                         onClick = { onNavigateToDivision(division.id, division.house) },
                         onTagClick = onTagClick
                     )

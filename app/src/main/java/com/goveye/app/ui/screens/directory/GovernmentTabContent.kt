@@ -29,9 +29,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.goveye.app.ui.components.StickyInfoCard
 import com.goveye.app.ui.screens.feed.FeedItem
-import com.goveye.app.ui.screens.feed.FeedLegislationCard
-import com.goveye.app.ui.screens.feed.FeedPublicationCard
-import com.goveye.app.ui.screens.feed.FeedStatementCard
+import com.goveye.app.ui.screens.feed.UnifiedFeedCard
 
 /**
  * Source type filter for the Government tab.
@@ -197,8 +195,9 @@ fun GovernmentTabContent(
                         key = { "publication-${it.id}" },
                         contentType = { "feed_publication" }
                     ) { publication ->
-                        FeedPublicationCard(
-                            publication = publication,
+                        UnifiedFeedCard(
+                            item = FeedItem.PublicationItem(publication = publication),
+                            hasFollowedVotes = false,
                             onClick = { onPublicationClick(publication.id) },
                             onTagClick = onTagClick
                         )
@@ -210,8 +209,9 @@ fun GovernmentTabContent(
                         key = { "statement-${it.id}" },
                         contentType = { "feed_statement" }
                     ) { statement ->
-                        FeedStatementCard(
-                            statement = statement,
+                        UnifiedFeedCard(
+                            item = FeedItem.StatementItem(statement = statement),
+                            hasFollowedVotes = false,
                             onClick = { onStatementClick(statement.id) },
                             onTagClick = onTagClick
                         )
@@ -223,8 +223,9 @@ fun GovernmentTabContent(
                         key = { "legislation-${it.id}" },
                         contentType = { "feed_legislation" }
                     ) { legislation ->
-                        FeedLegislationCard(
-                            legislation = legislation,
+                        UnifiedFeedCard(
+                            item = FeedItem.LegislationItem(legislation = legislation),
+                            hasFollowedVotes = false,
                             onClick = { onLegislationClick(legislation.id) },
                             onTagClick = onTagClick
                         )
