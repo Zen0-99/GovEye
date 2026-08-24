@@ -33,7 +33,7 @@ import com.goveye.app.data.local.entity.MpNotificationPreferenceEntity
         MpNotificationPreferenceEntity::class,
         CachedPublicationEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = true
 )
 abstract class LocalDatabase : RoomDatabase() {

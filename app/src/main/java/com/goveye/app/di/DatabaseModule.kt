@@ -440,6 +440,15 @@ object DatabaseModule {
         }
     }
 
+    // Migration 2 → 3 for LocalDatabase: Add incomeEnabled and expensesEnabled
+    // columns to mp_notification_prefs (issue #8 — Income and Expenses notification types).
+    private val LOCAL_MIGRATION_2_3 = object : Migration(2, 3) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE mp_notification_prefs ADD COLUMN incomeEnabled INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE mp_notification_prefs ADD COLUMN expensesEnabled INTEGER NOT NULL DEFAULT 0")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideLocalDatabase(@ApplicationContext context: Context): LocalDatabase {
@@ -451,7 +460,7 @@ object DatabaseModule {
                 LocalDatabase::class.java,
                 LocalDatabase.DATABASE_NAME
             )
-            .addMigrations(LOCAL_MIGRATION_1_2)
+            .addMigrations(LOCAL_MIGRATION_1_2, LOCAL_MIGRATION_2_3)
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
     }
