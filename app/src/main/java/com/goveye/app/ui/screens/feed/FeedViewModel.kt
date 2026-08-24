@@ -3,12 +3,20 @@ package com.goveye.app.ui.screens.feed
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.goveye.app.data.local.dao.DebateSpeechDao
+import com.goveye.app.data.local.dao.SpeechWithDivision
+import com.goveye.app.data.local.entity.MpEntity
 import com.goveye.app.data.local.entity.RecessDateEntity
+import com.goveye.app.data.repo.ExpensesRepository
 import com.goveye.app.data.repo.FeedRepository
 import com.goveye.app.data.repo.GovernmentAnnouncementsRepository
+import com.goveye.app.data.repo.InterestsRepository
+import com.goveye.app.data.repo.MembersRepository
 import com.goveye.app.domain.model.Division
+import com.goveye.app.domain.model.Interest
 import com.goveye.app.domain.util.DateUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.util.Locale
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -16,6 +24,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -40,7 +49,11 @@ private data class FilterQuad<A, B, C, D>(val a: A, val b: B, val c: C, val d: D
 @HiltViewModel
 class FeedViewModel @Inject constructor(
     private val feedRepository: FeedRepository,
-    private val governmentAnnouncementsRepository: GovernmentAnnouncementsRepository
+    private val governmentAnnouncementsRepository: GovernmentAnnouncementsRepository,
+    private val interestsRepository: InterestsRepository,
+    private val expensesRepository: ExpensesRepository,
+    private val membersRepository: MembersRepository,
+    private val debateSpeechDao: DebateSpeechDao
 ) : ViewModel() {
 
     private val followingOnlyState = MutableStateFlow(false)
@@ -190,11 +203,120 @@ class FeedViewModel @Inject constructor(
                     allItems.addAll(legislationItems)
                 }
 
+                // --- Followed MP financial activity + speeches (17-02-06) ---
+                // Income (registered interests), expenses, and debate speeches
+                // for followed MPs are merged into the feed as FinancialItem
+                // and SpeechItem cards.
+                val followedIds = feedData.followedMemberIds
+                val financialItems = mutableListOf<FeedItem.FinancialItem>()
+                val speechItems = mutableListOf<FeedItem.SpeechItem>()
+                if (followedIds.isNotEmpty()) {
+                    // Load MP profile data (name, party color, photo) for followed members
+                    val memberProfiles: Map<Int, MpEntity> = try {
+                        membersRepository.getMpsByIds(followedIds.toList()).associateBy { it.id }
+                    } catch (e: Exception) {
+                        Log.w("GovEye/Feed", "Failed to load followed MP profiles", e)
+                        emptyMap()
+                    }
+
+                    // Income — registered interests per followed member
+                    followedIds.forEach { memberId ->
+                        val profile = memberProfiles[memberId] ?: return@forEach
+                        try {
+                            val interests: List<Interest> =
+                                interestsRepository.observeInterestsForMember(memberId).first().data
+                            interests.take(20).forEach { interest ->
+                                val pence = interest.parsedAmountPence ?: return@forEach
+                                financialItems.add(
+                                    FeedItem.FinancialItem(
+                                        memberId = memberId,
+                                        memberName = profile.nameDisplayAs,
+                                        memberPartyColorHex = profile.partyBackgroundColour,
+                                        memberPhotoUrl = profile.thumbnailUrl,
+                                        amount = formatFeedPence(pence),
+                                        whoOrWhere = interest.summary,
+                                        description = interest.summary,
+                                        category = interest.categoryName,
+                                        isIncome = true,
+                                        date = interest.publishedDate ?: interest.registrationDate ?: ""
+                                    )
+                                )
+                            }
+                        } catch (e: Exception) {
+                            Log.w("GovEye/Feed", "Failed to load interests for member $memberId", e)
+                        }
+                    }
+
+                    // Expenses — recent expense claims per followed member
+                    followedIds.forEach { memberId ->
+                        val profile = memberProfiles[memberId] ?: return@forEach
+                        try {
+                            val expenses = expensesRepository.getExpenses(memberId)
+                            expenses.take(20).forEach { expense ->
+                                financialItems.add(
+                                    FeedItem.FinancialItem(
+                                        memberId = memberId,
+                                        memberName = profile.nameDisplayAs,
+                                        memberPartyColorHex = profile.partyBackgroundColour,
+                                        memberPhotoUrl = profile.thumbnailUrl,
+                                        amount = formatFeedPence(expense.amountPence),
+                                        whoOrWhere = expense.bucket,
+                                        description = expense.shortDescription ?: expense.category,
+                                        category = expense.bucket,
+                                        isIncome = false,
+                                        date = expense.claimDate ?: expense.supplyMonth ?: ""
+                                    )
+                                )
+                            }
+                        } catch (e: Exception) {
+                            Log.w("GovEye/Feed", "Failed to load expenses for member $memberId", e)
+                        }
+                    }
+
+                    // Speeches — batch query for all followed members
+                    try {
+                        val speeches: List<SpeechWithDivision> =
+                            debateSpeechDao.getSpeechesByMemberIds(followedIds.toList(), 100)
+                        speeches.forEach { speech ->
+                            val profile = memberProfiles[speech.memberId] ?: return@forEach
+                            speechItems.add(
+                                FeedItem.SpeechItem(
+                                    memberId = speech.memberId,
+                                    memberName = profile.nameDisplayAs,
+                                    memberPartyColorHex = profile.partyBackgroundColour,
+                                    memberPhotoUrl = profile.thumbnailUrl,
+                                    speechText = speech.speechText,
+                                    divisionId = speech.divisionId,
+                                    divisionTitle = speech.divisionTitle,
+                                    date = speech.divisionDate,
+                                    tags = feedData.divisionTags[speech.divisionId] ?: emptyList()
+                                )
+                            )
+                        }
+                    } catch (e: Exception) {
+                        Log.w("GovEye/Feed", "Failed to load speeches for followed MPs", e)
+                    }
+                }
+
+                if (filter.typeFilter.isEmpty() || CardType.FINANCIAL in filter.typeFilter) {
+                    allItems.addAll(financialItems)
+                }
+                if (filter.typeFilter.isEmpty() || CardType.SPEECH in filter.typeFilter) {
+                    allItems.addAll(speechItems)
+                }
+
+                // Limit feed to a reasonable size (200 items) to avoid performance
+                // issues — sort by date descending first so the most recent items
+                // are retained.
+                val cappedItems = allItems
+                    .sortedByDescending { it.date }
+                    .take(200)
+
                 // Group by date (substring 0,10 of ISO date).
                 // Some items (e.g. legislation without a CreationDate) may have
                 // an empty date string — group them under "Unknown" instead of
                 // crashing on substring.
-                val dateGroups = allItems
+                val dateGroups = cappedItems
                     .groupBy { if (it.date.length >= 10) it.date.substring(0, 10) else "Unknown" }
                     .entries
                     .sortedByDescending { it.key }
@@ -207,7 +329,7 @@ class FeedViewModel @Inject constructor(
                     }
 
                 // Determine empty state
-                val isEmpty = allItems.isEmpty() && !feedData.isLoading
+                val isEmpty = cappedItems.isEmpty() && !feedData.isLoading
                 val isRecessEmpty = isEmpty && recess != null && filter.query.isBlank()
                 val recentForRecess = if (isRecessEmpty) {
                     feedData.divisions.take(3)
@@ -221,7 +343,8 @@ class FeedViewModel @Inject constructor(
                     "GovEye/Feed",
                     "State built — dateGroups=${dateGroups.size} divisions=${divisionItems.size} " +
                         "publications=${publicationItems.size} statements=${statementItems.size} " +
-                        "legislation=${legislationItems.size} isEmpty=$isEmpty " +
+                        "legislation=${legislationItems.size} financial=${financialItems.size} " +
+                        "speeches=${speechItems.size} isEmpty=$isEmpty " +
                         "isRecessEmpty=$isRecessEmpty hasMore=$hasMore processingTime=${processingTime}ms"
                 )
                 FeedUiState(
@@ -294,4 +417,13 @@ class FeedViewModel @Inject constructor(
     fun loadMore() {
         feedLimit.value += 50
     }
+}
+
+/**
+ * Formats pence as a GBP string for feed financial cards (e.g. 123456 -> "£1,235").
+ * Matches the [com.goveye.app.ui.screens.mpprofile] formatAmount helper.
+ */
+private fun formatFeedPence(pence: Long): String {
+    val pounds = pence / 100.0
+    return "£${String.format(Locale.UK, "%,.0f", pounds)}"
 }
