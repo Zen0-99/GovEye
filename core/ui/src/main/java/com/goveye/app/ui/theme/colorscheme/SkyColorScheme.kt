@@ -103,10 +103,10 @@ internal object SkyColorScheme : BaseColorScheme() {
             outlineVariant = Color(0xFFD0D8E0),
             scrim = Color(0xFF000000),
             surfaceContainerLowest = Color(0xFFFFFFFF),
-            surfaceContainerLow = Color(0xFFF5F5F5),
-            surfaceContainer = Color(0xFFF0F0F0),
-            surfaceContainerHigh = Color(0xFFEBEBEB),
-            surfaceContainerHighest = Color(0xFFE5E5E5),
+            surfaceContainerLow = Color(0xFFF0F0F0),
+            surfaceContainer = Color(0xFFE8E8E8),
+            surfaceContainerHigh = Color(0xFFE2E2E2),
+            surfaceContainerHighest = Color(0xFFDCDCDC),
             surfaceBright = Color(0xFFFAFAFA),
             surfaceDim = Color(0xFFE0E0E0)
         )
