@@ -15,6 +15,9 @@ interface AnnouncementTagDao {
     @Query("SELECT tag FROM publication_tags WHERE publicationId = :publicationId ORDER BY hitCount DESC")
     fun observeTagsForPublication(publicationId: Int): Flow<List<String>>
 
+    @Query("SELECT tag FROM publication_tags WHERE publicationId = :publicationId ORDER BY hitCount DESC")
+    suspend fun getTagsForPublication(publicationId: Int): List<String>
+
     @Query("SELECT publicationId FROM publication_tags WHERE tag = :tag")
     suspend fun getPublicationIdsForTag(tag: String): List<Int>
 
@@ -26,6 +29,9 @@ interface AnnouncementTagDao {
     @Query("SELECT tag FROM statement_tags WHERE statementId = :statementId ORDER BY hitCount DESC")
     fun observeTagsForStatement(statementId: Int): Flow<List<String>>
 
+    @Query("SELECT tag FROM statement_tags WHERE statementId = :statementId ORDER BY hitCount DESC")
+    suspend fun getTagsForStatement(statementId: Int): List<String>
+
     @Query("SELECT statementId FROM statement_tags WHERE tag = :tag")
     suspend fun getStatementIdsForTag(tag: String): List<Int>
 
@@ -36,6 +42,9 @@ interface AnnouncementTagDao {
 
     @Query("SELECT tag FROM legislation_tags WHERE legislationId = :legislationId ORDER BY hitCount DESC")
     fun observeTagsForLegislation(legislationId: Int): Flow<List<String>>
+
+    @Query("SELECT tag FROM legislation_tags WHERE legislationId = :legislationId ORDER BY hitCount DESC")
+    suspend fun getTagsForLegislation(legislationId: Int): List<String>
 
     @Query("SELECT legislationId FROM legislation_tags WHERE tag = :tag")
     suspend fun getLegislationIdsForTag(tag: String): List<Int>

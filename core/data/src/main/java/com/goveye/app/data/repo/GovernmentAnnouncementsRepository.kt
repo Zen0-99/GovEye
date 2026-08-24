@@ -120,11 +120,20 @@ class GovernmentAnnouncementsRepository @Inject constructor(
     fun observeTagsForPublication(publicationId: Int): Flow<List<String>> =
         announcementTagDao.observeTagsForPublication(publicationId)
 
+    suspend fun getTagsForPublication(publicationId: Int): List<String> =
+        announcementTagDao.getTagsForPublication(publicationId)
+
     fun observeTagsForStatement(statementId: Int): Flow<List<String>> =
         announcementTagDao.observeTagsForStatement(statementId)
 
+    suspend fun getTagsForStatement(statementId: Int): List<String> =
+        announcementTagDao.getTagsForStatement(statementId)
+
     fun observeTagsForLegislation(legislationId: Int): Flow<List<String>> =
         announcementTagDao.observeTagsForLegislation(legislationId)
+
+    suspend fun getTagsForLegislation(legislationId: Int): List<String> =
+        announcementTagDao.getTagsForLegislation(legislationId)
 
     suspend fun getPublicationIdsForTag(tag: String): List<Int> = announcementTagDao.getPublicationIdsForTag(tag)
 

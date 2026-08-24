@@ -134,34 +134,44 @@ class FeedViewModel @Inject constructor(
                     }
 
                 // Build publication items (filter-based, soft — D-12)
+                // Tags loaded per-item from the announcement tag tables (17-01-02)
+                val publicationTagsMap = mutableMapOf<String, List<String>>()
                 val publicationItems = publications
                     .filter { filter.query.isBlank() || it.title.contains(filter.query, ignoreCase = true) }
                     .filter { filter.departmentFilter.isEmpty() || it.organisationSlug in filter.departmentFilter }
                     .map { publication ->
+                        val tags = governmentAnnouncementsRepository.getTagsForPublication(publication.id)
+                        publicationTagsMap["publication-${publication.id}"] = tags
                         FeedItem.PublicationItem(
                             publication = publication,
-                            tags = emptyList() // Tags loaded per-card from announcementTags map
+                            tags = tags
                         )
                     }
 
                 // Build statement items (filter-based, soft — D-12)
+                val statementTagsMap = mutableMapOf<String, List<String>>()
                 val statementItems = statements
                     .filter { filter.query.isBlank() || it.title.contains(filter.query, ignoreCase = true) }
                     .filter { filter.departmentFilter.isEmpty() || it.answeringBodyName in filter.departmentFilter }
                     .map { statement ->
+                        val tags = governmentAnnouncementsRepository.getTagsForStatement(statement.id)
+                        statementTagsMap["statement-${statement.id}"] = tags
                         FeedItem.StatementItem(
                             statement = statement,
-                            tags = emptyList()
+                            tags = tags
                         )
                     }
 
                 // Build legislation items (filter-based, soft — D-12)
+                val legislationTagsMap = mutableMapOf<String, List<String>>()
                 val legislationItems = legislation
                     .filter { filter.query.isBlank() || it.title.contains(filter.query, ignoreCase = true) }
                     .map { legislation ->
+                        val tags = governmentAnnouncementsRepository.getTagsForLegislation(legislation.id)
+                        legislationTagsMap["legislation-${legislation.id}"] = tags
                         FeedItem.LegislationItem(
                             legislation = legislation,
-                            tags = emptyList()
+                            tags = tags
                         )
                     }
 
@@ -180,9 +190,12 @@ class FeedViewModel @Inject constructor(
                     allItems.addAll(legislationItems)
                 }
 
-                // Group by date (substring 0,10 of ISO date)
+                // Group by date (substring 0,10 of ISO date).
+                // Some items (e.g. legislation without a CreationDate) may have
+                // an empty date string — group them under "Unknown" instead of
+                // crashing on substring.
                 val dateGroups = allItems
-                    .groupBy { it.date.substring(0, 10) }
+                    .groupBy { if (it.date.length >= 10) it.date.substring(0, 10) else "Unknown" }
                     .entries
                     .sortedByDescending { it.key }
                     .map { (dateKey, items) ->
@@ -216,6 +229,7 @@ class FeedViewModel @Inject constructor(
                     followedMemberIds = feedData.followedMemberIds,
                     divisionsWithFollowedVotes = feedData.divisionsWithFollowedVotes,
                     divisionTags = feedData.divisionTags,
+                    announcementTags = publicationTagsMap + statementTagsMap + legislationTagsMap,
                     followingOnly = filter.followingOnly,
                     searchQuery = filter.query,
                     houseFilter = filter.house,
