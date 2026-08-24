@@ -38,6 +38,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.goveye.app.ui.components.MpAvatar
+import com.goveye.app.ui.components.SubTab
+import com.goveye.app.ui.components.SubTabPager
 import com.goveye.app.ui.components.VoteColors
 import com.goveye.app.ui.screens.directory.FilterBottomSheet
 import com.goveye.app.ui.screens.directory.FilterTabType
@@ -86,86 +88,28 @@ fun FollowingScreen(
             }
         }
 
-        uiState.followedMps.isEmpty() && uiState.searchQuery.isBlank() && !uiState.filterState.hasActiveFilters -> {
-            // Empty state — no followed entities yet
-            Box(
-                modifier = modifier.fillMaxSize().padding(MaterialTheme.padding.large),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "Following\n\nFollow MPs, parties, sources, and tags to track " +
-                        "their votes and activity in your feed.",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
-
-        uiState.followedMps.isEmpty() -> {
-            // No results (from search or filters)
-            Box(
-                modifier = modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "No followed MPs match your filters",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-
         else -> {
-            // Sectioned list — Officials, Parties, Sources, Tags (D-14)
-            LazyColumn(
-                modifier = modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // --- Officials section (existing followed MPs) ---
-                item(key = "section-officials-header") {
-                    SectionHeader("Officials")
-                }
-                if (uiState.followedMps.isEmpty()) {
-                    item(key = "section-officials-empty") {
-                        SectionEmptyHint("No followed MPs yet")
-                    }
-                } else {
-                    items(
-                        items = uiState.followedMps,
-                        key = { "official-${it.memberId}" }
-                    ) { followedMp ->
-                        FollowedMpCard(
-                            followedMp = followedMp,
-                            onClick = { onNavigateToProfile(followedMp.memberId) },
-                            onUnfollow = { viewModel.unfollow(followedMp.memberId) }
-                        )
-                    }
-                }
-
-                // --- Parties section (framework — follow data layer not yet implemented) ---
-                item(key = "section-parties-header") {
-                    SectionHeader("Parties")
-                }
-                item(key = "section-parties-empty") {
-                    SectionEmptyHint("No followed parties yet")
-                }
-
-                // --- Sources section (framework — follow data layer not yet implemented) ---
-                item(key = "section-sources-header") {
-                    SectionHeader("Sources")
-                }
-                item(key = "section-sources-empty") {
-                    SectionEmptyHint("No followed sources yet")
-                }
-
-                // --- Tags section (framework — follow data layer not yet implemented) ---
-                item(key = "section-tags-header") {
-                    SectionHeader("Tags")
-                }
-                item(key = "section-tags-empty") {
-                    SectionEmptyHint("No followed tags yet")
+            // Sub-tab pager — Officials, Parties, Sources, Tags (issue #10)
+            SubTabPager(
+                tabs = listOf(
+                    SubTab("Officials", uiState.followedMps.size.takeIf { it > 0 }),
+                    SubTab("Parties", null),
+                    SubTab("Sources", null),
+                    SubTab("Tags", null)
+                ),
+                modifier = modifier,
+                scrollable = true,
+                edgePadding = 16.dp
+            ) { page ->
+                when (page) {
+                    0 -> OfficialsTabContent(
+                        uiState = uiState,
+                        onNavigateToProfile = onNavigateToProfile,
+                        onUnfollow = viewModel::unfollow
+                    )
+                    1 -> TabEmptyHint("No followed parties yet")
+                    2 -> TabEmptyHint("No followed sources yet")
+                    3 -> TabEmptyHint("No followed tags yet")
                 }
             }
         }
@@ -184,6 +128,83 @@ fun FollowingScreen(
             onViewModeChange = viewModel::setViewMode,
             onClearFilters = viewModel::clearFilters,
             onDismiss = { showFilterSheet = false }
+        )
+    }
+}
+
+@Composable
+private fun OfficialsTabContent(
+    uiState: FollowingUiState,
+    onNavigateToProfile: (Int) -> Unit,
+    onUnfollow: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    when {
+        // Global empty state — no follows at all
+        uiState.followedMps.isEmpty() && uiState.searchQuery.isBlank() && !uiState.filterState.hasActiveFilters -> {
+            Box(
+                modifier = modifier.fillMaxSize().padding(MaterialTheme.padding.large),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Following\n\nFollow MPs, parties, sources, and tags to track " +
+                        "their votes and activity in your feed.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+
+        // No results from search or filters
+        uiState.followedMps.isEmpty() -> {
+            Box(
+                modifier = modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "No followed MPs match your filters",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        else -> {
+            LazyColumn(
+                modifier = modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(
+                    items = uiState.followedMps,
+                    key = { "official-${it.memberId}" }
+                ) { followedMp ->
+                    FollowedMpCard(
+                        followedMp = followedMp,
+                        onClick = { onNavigateToProfile(followedMp.memberId) },
+                        onUnfollow = { onUnfollow(followedMp.memberId) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Empty hint shown on framework tabs (Parties, Sources, Tags) that have no
+ * followed entities yet.
+ */
+@Composable
+private fun TabEmptyHint(text: String, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -377,29 +398,3 @@ private fun FollowedMpGridCard(followedMp: FollowedMpUi, onClick: () -> Unit, mo
     }
 }
 
-/**
- * Section header for grouped followed entities (D-14).
- */
-@Composable
-private fun SectionHeader(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.titleSmall,
-        fontWeight = FontWeight.SemiBold,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
-    )
-}
-
-/**
- * Empty hint for a followed entity section with no followed items.
- */
-@Composable
-private fun SectionEmptyHint(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(bottom = 4.dp)
-    )
-}
