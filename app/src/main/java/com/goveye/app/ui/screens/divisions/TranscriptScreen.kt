@@ -413,13 +413,19 @@ private fun SpeechCard(
     val microviewPartyName = when {
         mpInfo != null -> mpInfo.partyName
 
+        !historicalMember?.partyAbbreviation.isNullOrBlank() -> historicalMember!!.partyAbbreviation!!
+
         !historicalMember?.party.isNullOrBlank() -> historicalMember!!.party!!.replace("-", " ").replaceFirstChar {
             it.uppercase()
         }
 
         else -> null
     }
-    val microviewPartyColour = mpInfo?.partyBackgroundColour
+    val microviewPartyColour = when {
+        mpInfo != null -> mpInfo.partyBackgroundColour
+        !historicalMember?.partyColourHex.isNullOrBlank() -> historicalMember!!.partyColourHex
+        else -> null
+    }
     val microviewConstituency = when {
         mpInfo != null -> mpInfo.constituencyName
         !historicalMember?.constituency.isNullOrBlank() -> historicalMember!!.constituency
@@ -470,7 +476,8 @@ private fun SpeechCard(
                     MpAvatar(
                         photoBytes = historicalMember.photo,
                         displayName = speech.speakerName,
-                        partyColorHex = com.goveye.app.ui.theme.partyNameToColorHex(historicalMember.party),
+                        partyColorHex = historicalMember.partyColourHex
+                            ?: com.goveye.app.ui.theme.partyNameToColorHex(historicalMember.party),
                         size = 36.dp,
                         borderWidth = 2.dp,
                         modifier = if (canOpenMicroview) Modifier.clickable { openMicroview() } else Modifier
@@ -479,7 +486,8 @@ private fun SpeechCard(
                     MpAvatar(
                         thumbnailUrl = null,
                         displayName = speech.speakerName,
-                        partyColorHex = com.goveye.app.ui.theme.partyNameToColorHex(historicalMember.party),
+                        partyColorHex = historicalMember.partyColourHex
+                            ?: com.goveye.app.ui.theme.partyNameToColorHex(historicalMember.party),
                         size = 36.dp,
                         borderWidth = 2.dp,
                         modifier = if (canOpenMicroview) Modifier.clickable { openMicroview() } else Modifier

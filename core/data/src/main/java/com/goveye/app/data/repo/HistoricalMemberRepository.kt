@@ -25,4 +25,7 @@ class HistoricalMemberRepository @Inject constructor(private val historicalMembe
     suspend fun count(): Int = historicalMemberDao.count()
 
     suspend fun currentCount(): Int = historicalMemberDao.currentCount()
+
+    suspend fun searchByDisplayName(name: String): List<HistoricalMemberEntity> =
+        historicalMemberDao.searchByDisplayName(name)
 }

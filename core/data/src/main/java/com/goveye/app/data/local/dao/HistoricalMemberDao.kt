@@ -37,4 +37,14 @@ interface HistoricalMemberDao {
 
     @Query("SELECT COUNT(*) FROM historical_members WHERE isCurrent = 1")
     suspend fun currentCount(): Int
+
+    @Query(
+        """
+        SELECT * FROM historical_members
+        WHERE displayName LIKE '%' || :name || '%'
+        ORDER BY isCurrent DESC, displayName
+        LIMIT 10
+        """
+    )
+    suspend fun searchByDisplayName(name: String): List<HistoricalMemberEntity>
 }
