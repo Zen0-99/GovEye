@@ -115,7 +115,7 @@ class MembersRepository @Inject constructor(
             val currentIds = currentMps.map { it.id }.toSet()
             val historical = try {
                 historicalMemberDao.search(sanitized)
-                    .filter { it.parliamentMemberId != null && it.parliamentMemberId !in currentIds }
+                    .filter { it.parliamentMemberId == null || it.parliamentMemberId !in currentIds }
                     .take(50 - currentMps.size)
             } catch (e: Exception) {
                 emptyList()
@@ -151,12 +151,24 @@ class MembersRepository @Inject constructor(
         nameDisplayAs = displayName,
         nameFullTitle = null,
         gender = null,
-        party = party?.let { com.goveye.app.domain.model.Party(0, it, it, "#808080", "#FFFFFF") },
+        party = party?.let {
+            com.goveye.app.domain.model.Party(
+                0,
+                it,
+                partyAbbreviation ?: it,
+                partyColourHex ?: "#808080",
+                "#FFFFFF"
+            )
+        },
         constituency = constituency?.let { com.goveye.app.domain.model.Constituency(0, it) },
         house = house,
         membershipStartDate = startDate,
         isActive = isCurrent == 1,
-        thumbnailUrl = null
+        thumbnailUrl = if (parliamentMemberId != null) {
+            "https://members-api.parliament.uk/api/Members/$parliamentMemberId/Portrait"
+        } else {
+            null
+        }
     )
 
     /**
