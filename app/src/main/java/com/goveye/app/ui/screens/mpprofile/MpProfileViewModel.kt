@@ -449,7 +449,7 @@ class ProfileViewModel @Inject constructor(
                     entryType = ActivityEntryType.EXPENSE,
                     id = "expense_${bucket}_$month",
                     date = monthEndDate,
-                    summary = "$bucket: £${total / 100} (${claims.size} claims)",
+                    summary = "$bucket: £${total / 100}",
                     bucketLabel = bucket,
                     totalAmountPence = total,
                     claimCount = claims.size

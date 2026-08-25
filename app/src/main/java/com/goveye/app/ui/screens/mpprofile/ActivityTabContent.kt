@@ -34,9 +34,10 @@ import com.goveye.app.domain.model.ActivityEntry
 import com.goveye.app.domain.model.ActivityEntryType
 import com.goveye.app.ui.components.VoteColors
 import com.goveye.app.ui.screens.feed.FeedDateHeader
+import com.goveye.app.ui.screens.feed.FinancialDetailField
 import com.goveye.app.ui.screens.feed.TagPillRow
 import com.goveye.app.ui.screens.feed.UnifiedFinancialCard
-import com.goveye.app.ui.screens.feed.formatInterestStructuredDetail
+import com.goveye.app.ui.screens.feed.formatInterestStructuredFields
 import com.goveye.app.ui.screens.feed.interestDescriptionLine
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -59,7 +60,7 @@ import java.util.Locale
 fun ActivityTabContent(
     activityEntries: List<ActivityEntry>,
     @Suppress("UNUSED_PARAMETER") enabledTypes: Set<ActivityEntryType>,
-    totalCount: Int,
+    @Suppress("UNUSED_PARAMETER") totalCount: Int,
     @Suppress("UNUSED_PARAMETER") onFilterClick: () -> Unit,
     onNavigateToDivision: (Int, Int) -> Unit,
     partyColorHex: String? = null,
@@ -70,18 +71,6 @@ fun ActivityTabContent(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Result count
-        if (totalCount > 0) {
-            item {
-                Text(
-                    text = "$totalCount activit${if (totalCount != 1) "ies" else "y"}",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(vertical = 4.dp)
-                )
-            }
-        }
-
         if (activityEntries.isEmpty()) {
             item {
                 Box(
@@ -119,7 +108,7 @@ fun ActivityTabContent(
                                 entry.visitPurpose,
                                 entry.organisationDescription
                             ) ?: ""
-                            val detail = formatInterestStructuredDetail(
+                            val structuredFields = formatInterestStructuredFields(
                                 entry.donorName, entry.paymentType, entry.paymentDescription,
                                 entry.donorStatus, entry.donorAddress, entry.donorCompanyIdentifier,
                                 entry.destination, entry.visitPurpose, entry.organisationName,
@@ -135,8 +124,13 @@ fun ActivityTabContent(
                                 date = formatActivityDate(entry.date),
                                 isIncome = true,
                                 partyColorHex = partyColorHex,
-                                expandableContent = detail.takeIf { it.isNotBlank() }
-                                    ?: entry.summary.takeIf { it.length > 80 },
+                                expandableFields = structuredFields.takeIf { it.isNotEmpty() },
+                                expandableContent = if (structuredFields.isEmpty()) {
+                                    entry.summary.takeIf { it.length > 80 }
+                                } else {
+                                    null
+                                },
+                                bucket = entry.bucket,
                                 onClick = { /* navigate to income detail */ }
                             )
                         }
@@ -149,6 +143,7 @@ fun ActivityTabContent(
                             date = formatActivityDate(entry.date),
                             isIncome = false,
                             partyColorHex = partyColorHex,
+                            bucket = entry.bucketLabel,
                             onClick = { /* navigate to expense detail */ }
                         )
 

@@ -25,8 +25,13 @@ fun FeedFinancialCard(item: FeedItem.FinancialItem, onClick: () -> Unit, modifie
         showProfileIcon = true,
         profileImageUrl = item.memberPhotoUrl,
         profileInitials = item.memberName.take(2).uppercase(),
-        expandableContent = item.structuredDetail
-            ?: item.description.takeIf { it.length > 80 },
+        expandableFields = item.expandableFields,
+        expandableContent = if (item.expandableFields == null) {
+            item.description.takeIf { it.length > 80 }
+        } else {
+            null
+        },
+        bucket = item.bucket,
         onClick = onClick,
         modifier = modifier
     )

@@ -232,7 +232,7 @@ class FeedViewModel @Inject constructor(
                                     interest.visitPurpose,
                                     interest.organisationDescription
                                 )
-                                val detail = formatInterestStructuredDetail(
+                                val structuredFields = formatInterestStructuredFields(
                                     interest.donorName, interest.paymentType, interest.paymentDescription,
                                     interest.donorStatus, interest.donorAddress, interest.donorCompanyIdentifier,
                                     interest.destination, interest.visitPurpose, interest.organisationName,
@@ -253,7 +253,8 @@ class FeedViewModel @Inject constructor(
                                         category = interest.categoryName,
                                         isIncome = true,
                                         date = interest.publishedDate ?: interest.registrationDate ?: "",
-                                        structuredDetail = detail.takeIf { it.isNotBlank() }
+                                        expandableFields = structuredFields.takeIf { it.isNotEmpty() },
+                                        bucket = interest.bucket
                                     )
                                 )
                             }

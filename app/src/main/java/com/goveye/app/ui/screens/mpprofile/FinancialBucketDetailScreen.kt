@@ -32,9 +32,10 @@ import com.goveye.app.domain.model.Interest
 import com.goveye.app.ui.components.ConfigureDetailTopBar
 import com.goveye.app.ui.components.ConfigureSearchBar
 import com.goveye.app.ui.components.SearchBarConfig
+import com.goveye.app.ui.screens.feed.FinancialDetailField
 import com.goveye.app.ui.screens.feed.UnifiedFinancialCard
 import com.goveye.app.ui.screens.feed.formatDivisionDate
-import com.goveye.app.ui.screens.feed.formatInterestStructuredDetail
+import com.goveye.app.ui.screens.feed.formatInterestStructuredFields
 import com.goveye.app.ui.screens.feed.interestDescriptionLine
 import com.goveye.app.ui.theme.padding
 import java.time.LocalDate
@@ -397,10 +398,10 @@ private fun FinancialEntryCard(entry: FinancialEntry) {
 
     val whoOrWhere: String
     val description: String
-    val expandable: String?
+    val expandableContent: String?
+    val expandableFields: List<FinancialDetailField>?
 
     if (isIncome) {
-        // Structured fields available → use them; fall back to summary
         whoOrWhere = entry.donorName?.takeIf { it.isNotBlank() }
             ?: entry.summary.lineSequence().firstOrNull()?.take(80) ?: ""
         description = interestDescriptionLine(
@@ -408,7 +409,7 @@ private fun FinancialEntryCard(entry: FinancialEntry) {
             entry.visitPurpose,
             entry.organisationDescription
         ) ?: ""
-        val structuredDetail = formatInterestStructuredDetail(
+        val structuredFields = formatInterestStructuredFields(
             entry.donorName, entry.paymentType, entry.paymentDescription,
             entry.donorStatus, entry.donorAddress, entry.donorCompanyIdentifier,
             entry.destination, entry.visitPurpose, entry.organisationName,
@@ -416,12 +417,13 @@ private fun FinancialEntryCard(entry: FinancialEntry) {
             entry.hoursWorked, entry.familyMemberName,
             entry.familyMemberRelationship, entry.familyMemberRole
         )
-        expandable = structuredDetail.takeIf { it.isNotBlank() }
-            ?: entry.summary.takeIf { it.length > 80 }
+        expandableFields = structuredFields.takeIf { it.isNotEmpty() }
+        expandableContent = if (expandableFields == null) entry.summary.takeIf { it.length > 80 } else null
     } else {
         whoOrWhere = entry.categoryName ?: entry.bucket ?: ""
         description = ""
-        expandable = buildExpenseDetail(entry).takeIf { it.isNotBlank() }
+        expandableContent = buildExpenseDetail(entry).takeIf { it.isNotBlank() }
+        expandableFields = null
     }
 
     UnifiedFinancialCard(
@@ -432,7 +434,9 @@ private fun FinancialEntryCard(entry: FinancialEntry) {
         date = date,
         isIncome = isIncome,
         partyColorHex = null,
-        expandableContent = expandable,
+        expandableContent = expandableContent,
+        expandableFields = expandableFields,
+        bucket = entry.bucket,
         onClick = {}
     )
 }

@@ -77,8 +77,9 @@ sealed interface FeedItem {
         override val date: String,
         override val id: Int = listOf(memberId, amount, date).hashCode(),
         val tags: List<String> = emptyList(),
-        // Phase 18: structured detail for expandable content
-        val structuredDetail: String? = null
+        // Phase 18: structured detail fields for expandable content
+        val expandableFields: List<FinancialDetailField>? = null,
+        val bucket: String? = null
     ) : FeedItem {
         override val typePrefix: String = "financial"
         override val cardType: CardType = CardType.FINANCIAL
