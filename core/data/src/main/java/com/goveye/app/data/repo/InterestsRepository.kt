@@ -45,6 +45,22 @@ class InterestsRepository @Inject constructor(private val interestDao: InterestD
         fieldsJson = fieldsJson,
         parsedAmountPence = parsedAmountPence,
         currencyCode = currencyCode,
-        bucket = bucket
+        bucket = bucket,
+        donorName = donorName,
+        paymentType = paymentType,
+        paymentDescription = paymentDescription,
+        donorStatus = donorStatus,
+        donorAddress = donorAddress,
+        donorCompanyIdentifier = donorCompanyIdentifier,
+        destination = destination,
+        visitPurpose = visitPurpose,
+        organisationName = organisationName,
+        organisationDescription = organisationDescription,
+        propertyLocation = propertyLocation,
+        propertyType = propertyType,
+        hoursWorked = hoursWorked,
+        familyMemberName = familyMemberName,
+        familyMemberRelationship = familyMemberRelationship,
+        familyMemberRole = familyMemberRole
     )
 }

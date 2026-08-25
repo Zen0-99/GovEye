@@ -388,6 +388,46 @@ object DatabaseModule {
         }
     }
 
+    // Migration 23 → 24: Add 16 structured interest fields (Phase 18).
+    // Idempotent — the seed DB may already include these columns if built
+    // with a newer bundled_schema.json.
+    private val MIGRATION_23_24 = object : Migration(23, 24) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            val existingColumns = db.query("PRAGMA table_info(interests)").use { cursor ->
+                buildList {
+                    while (cursor.moveToNext()) {
+                        add(cursor.getString(cursor.getColumnIndexOrThrow("name")))
+                    }
+                }
+            }.toSet()
+
+            val newColumns = listOf(
+                "donorName",
+                "paymentType",
+                "paymentDescription",
+                "donorStatus",
+                "donorAddress",
+                "donorCompanyIdentifier",
+                "destination",
+                "visitPurpose",
+                "organisationName",
+                "organisationDescription",
+                "propertyLocation",
+                "propertyType",
+                "hoursWorked",
+                "familyMemberName",
+                "familyMemberRelationship",
+                "familyMemberRole"
+            )
+
+            for (colName in newColumns) {
+                if (colName !in existingColumns) {
+                    db.execSQL("ALTER TABLE interests ADD COLUMN `$colName` TEXT")
+                }
+            }
+        }
+    }
+
     @Provides
     @Singleton
     fun provideBundledDatabase(@ApplicationContext context: Context): BundledDatabase {
@@ -412,7 +452,8 @@ object DatabaseModule {
                 MIGRATION_19_20,
                 MIGRATION_20_21,
                 MIGRATION_21_22,
-                MIGRATION_22_23
+                MIGRATION_22_23,
+                MIGRATION_23_24
             )
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
@@ -683,7 +724,8 @@ object DatabaseModule {
         mpDao: MpDao,
         mpStatsDao: com.goveye.app.data.local.dao.MpStatsDao,
         bioDataDao: BioDataDao
-    ): StatsRepository = StatsRepository(divisionDao, committeeDao, debateSpeechDao, hansardDao, mpDao, mpStatsDao, bioDataDao)
+    ): StatsRepository =
+        StatsRepository(divisionDao, committeeDao, debateSpeechDao, hansardDao, mpDao, mpStatsDao, bioDataDao)
 
     @Provides
     @Singleton
