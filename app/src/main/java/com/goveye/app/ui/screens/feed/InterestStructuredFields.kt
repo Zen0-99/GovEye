@@ -30,19 +30,35 @@ fun formatInterestStructuredFields(
 ): List<FinancialDetailField> {
     val fields = mutableListOf<FinancialDetailField>()
     // donorName is shown in "by X" — skip
-    paymentType?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Payment type", it)) }
+    paymentType?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Payment type", it, "Payment")) }
     // paymentDescription / visitPurpose / organisationDescription shown in description line — skip
-    donorStatus?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Donor status", it)) }
-    donorAddress?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Address", it)) }
-    donorCompanyIdentifier?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Company ID", it)) }
-    destination?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Destination", it)) }
-    organisationName?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Organisation", it)) }
-    propertyLocation?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Location", it)) }
-    propertyType?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Property type", it)) }
-    hoursWorked?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Hours", it)) }
-    familyMemberName?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Name", it)) }
-    familyMemberRelationship?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Relationship", it)) }
-    familyMemberRole?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Role", it)) }
+    if (donorStatus?.isNotBlank() == true || donorAddress?.isNotBlank() == true ||
+        donorCompanyIdentifier?.isNotBlank() == true
+    ) {
+        donorStatus?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Donor status", it, "Donor")) }
+        donorAddress?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Address", it, "Donor")) }
+        donorCompanyIdentifier?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Company ID", it, "Donor")) }
+    }
+    destination?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Destination", it, "Visit")) }
+    if (organisationName?.isNotBlank() == true) {
+        organisationName?.let {
+            if (it.isNotBlank()) fields.add(FinancialDetailField("Organisation", it, "Organisation"))
+        }
+    }
+    if (propertyLocation?.isNotBlank() == true || propertyType?.isNotBlank() == true) {
+        propertyLocation?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Location", it, "Property")) }
+        propertyType?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Property type", it, "Property")) }
+    }
+    hoursWorked?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Hours", it, "Work")) }
+    if (familyMemberName?.isNotBlank() == true || familyMemberRelationship?.isNotBlank() == true ||
+        familyMemberRole?.isNotBlank() == true
+    ) {
+        familyMemberName?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Name", it, "Family")) }
+        familyMemberRelationship?.let {
+            if (it.isNotBlank()) fields.add(FinancialDetailField("Relationship", it, "Family"))
+        }
+        familyMemberRole?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Role", it, "Family")) }
+    }
     return fields
 }
 

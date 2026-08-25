@@ -32,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.goveye.app.data.local.dao.ExpenseBucketTotal
@@ -158,20 +159,34 @@ fun InterestsTabContent(
     }
 
     // --- Compute dashboard data ---
-    val totalPence = remember(filteredInterests) {
-        filteredInterests.sumOf { it.parsedAmountPence ?: 0L }
+    // Deduplicate interests: the Parliament API re-registers the same interest
+    // on amendment (same donor + amount + category). Keep only the latest
+    // registration per unique (donorName, parsedAmountPence, categoryNumber) triple.
+    val dedupedInterests = remember(filteredInterests) {
+        deduplicateInterests(filteredInterests)
+    }
+
+    val totalPence = remember(dedupedInterests) {
+        dedupedInterests.sumOf { it.parsedAmountPence ?: 0L }
     }
 
     // Monthly data: interests in the selected month + previous month for trend
+    // Uses registrationDate (when the interest was actually declared), not
+    // publishedDate (which can be much later due to re-publication)
     val selectedMonth = if (monthsWithData.isNotEmpty()) monthsWithData[selectedMonthIndex] else YearMonth.now()
     val previousMonth = selectedMonth.minusMonths(1)
-    val currentMonthPence = sumPenceForMonth(filteredInterests, selectedMonth)
-    val previousMonthPence = sumPenceForMonth(filteredInterests, previousMonth)
+    val currentMonthPence = sumPenceForMonth(dedupedInterests, selectedMonth)
+    val previousMonthPence = sumPenceForMonth(dedupedInterests, previousMonth)
     val percentChange = computePercentChange(currentMonthPence, previousMonthPence)
 
-    // Bucket summaries (from filtered interests)
-    val bucketSummaries = remember(filteredInterests) {
-        computeBucketSummaries(filteredInterests)
+    // Bucket summaries (from deduplicated interests)
+    val bucketSummaries = remember(dedupedInterests) {
+        computeBucketSummaries(dedupedInterests)
+    }
+
+    // Count only entries with a parsed monetary amount (non-null)
+    val monetaryEntryCount = remember(dedupedInterests) {
+        dedupedInterests.count { it.parsedAmountPence != null }
     }
 
     LazyVerticalGrid(
@@ -188,7 +203,7 @@ fun InterestsTabContent(
         item(span = { GridItemSpan(2) }) {
             InterestsDashboardHeader(
                 totalPence = totalPence,
-                totalEntryCount = filteredInterests.size,
+                totalEntryCount = monetaryEntryCount,
                 selectedMonth = selectedMonth,
                 currentMonthPence = currentMonthPence,
                 percentChange = percentChange,
@@ -353,6 +368,7 @@ private fun BucketSummaryCard(summary: BucketSummary, onClick: () -> Unit) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surfaceContainer
@@ -394,6 +410,7 @@ private fun ExpenseBucketSummaryCard(bucketLabel: String, totalPence: Long, onCl
     Surface(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surfaceContainer
@@ -429,6 +446,19 @@ private fun ExpenseBucketSummaryCard(bucketLabel: String, totalPence: Long, onCl
 private data class BucketSummary(val bucketLabel: String, val totalPence: Long, val entryCount: Int)
 
 /**
+ * Deduplicates interests that the Parliament API re-registers on amendment.
+ * Same donor + amount + category = same interest; keep only the latest
+ * (by publishedDate, falling back to registrationDate).
+ */
+private fun deduplicateInterests(interests: List<Interest>): List<Interest> = interests
+    .groupBy { Triple(it.donorName ?: it.summary, it.parsedAmountPence, it.categoryNumber) }
+    .mapValues { (_, group) ->
+        group.maxByOrNull { it.publishedDate ?: it.registrationDate ?: "" } ?: group.first()
+    }
+    .values
+    .sortedByDescending { it.publishedDate ?: it.registrationDate ?: "" }
+
+/**
  * Groups interests by their `bucket` field and computes per-bucket totals.
  * Buckets with no entries are omitted from the result.
  */
@@ -445,18 +475,20 @@ private fun computeBucketSummaries(interests: List<Interest>): List<BucketSummar
 
 /**
  * Extracts the sorted list of YearMonth values that have at least one interest,
- * based on `publishedDate`.
+ * based on `registrationDate` (when the interest was actually declared),
+ * NOT `publishedDate` (which can be much later due to re-publication).
  */
-private fun extractMonths(interests: List<Interest>): List<YearMonth> = interests.mapNotNull { it.publishedDate }
+private fun extractMonths(interests: List<Interest>): List<YearMonth> = interests.mapNotNull { it.registrationDate }
     .mapNotNull { runCatching { YearMonth.from(LocalDate.parse(it.substring(0, 10))) }.getOrNull() }
     .distinct()
     .sorted()
 
 /**
- * Sums `parsedAmountPence` for interests whose `publishedDate` falls in the given month.
+ * Sums `parsedAmountPence` for interests whose `registrationDate` falls in the given month.
+ * Uses registrationDate (actual declaration date) not publishedDate.
  */
 private fun sumPenceForMonth(interests: List<Interest>, month: YearMonth): Long = interests.filter { interest ->
-    val date = interest.publishedDate
+    val date = interest.registrationDate
     date != null && runCatching {
         YearMonth.from(LocalDate.parse(date.substring(0, 10)))
     }.getOrNull() == month
@@ -515,9 +547,11 @@ private fun formatPenceToGbp(pence: Long): String {
  */
 private fun formatPence(pence: Long): String {
     val pounds = pence / 100.0
+    val prefix = if (pence < 0) "-£" else "£"
+    val absPounds = kotlin.math.abs(pounds)
     return if (pence % 100 == 0L) {
-        "£${"%,.0f".format(pounds)}"
+        "$prefix${"%,.0f".format(absPounds)}"
     } else {
-        "£${"%,.2f".format(pounds)}"
+        "$prefix${"%,.2f".format(absPounds)}"
     }
 }

@@ -1,7 +1,8 @@
 package com.goveye.app.ui.screens.feed
 
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -13,8 +14,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowDownward
-import androidx.compose.material.icons.outlined.ArrowUpward
+import androidx.compose.material.icons.automirrored.outlined.TrendingDown
+import androidx.compose.material.icons.automirrored.outlined.TrendingUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -26,9 +27,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
@@ -39,22 +41,24 @@ import com.goveye.app.ui.components.VoteColors
 /**
  * A label-value pair for the expandable detail section of a financial card.
  * The [label] is rendered in bold, the [value] in normal weight.
+ * The optional [group] renders as a sub-heading above the field.
  */
-data class FinancialDetailField(val label: String, val value: String)
+data class FinancialDetailField(val label: String, val value: String, val group: String? = null)
 
 /**
  * Unified financial card — renders income and expense entries with a
  * consistent layout across the activity feed, main feed, and detail views.
  *
  * Layout (top to bottom):
- * 1. Amount (bodyLarge/Bold) + arrow pill (top-right, Aye green for income
- *    / No red for expense — no text, just the arrow icon)
+ * 1. Amount (bodyLarge/Bold) + trend pill (top-right, green TrendingUp for
+ *    income / red TrendingDown for expense — no text, just the stock icon)
  * 2. "by X" / "for X" subtext — "by "/"for " in normal weight, name in bold
  * 3. Short description if available (bodySmall, 2 lines, truncated)
  * 4. Category icon (gray, varies per category) + category text (left) + Date (right)
  * 5. [Expandable] Extra detail section — collapsed by default. Uses
- *    [animateContentSize] for smooth height transitions (no jump).
- *    Detail fields rendered as bold-label: value pairs.
+ *    AnimatedVisibility with pure expandVertically/shrinkVertically (no fade)
+ *    per SyncStone convention for smooth height morph without jump.
+ *    Detail fields rendered as bold-label: value pairs with visual grouping.
  *
  * When [showProfileIcon] is true (feed variant), an [MpAvatar] with a
  * party-colored border renders in-line before the amount text.
@@ -77,9 +81,7 @@ fun UnifiedFinancialCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val arrowColor = if (isIncome) VoteColors.aye else VoteColors.no
-    // Use bucket for icon lookup (maps to distinct icons per category);
-    // fall back to category text, then generic icon
+    val trendColor = if (isIncome) VoteColors.aye else VoteColors.no
     val categoryIcon = bucketIcon(bucket ?: category)
     val hasExpandable = !expandableContent.isNullOrBlank() || !expandableFields.isNullOrEmpty()
     var expanded by remember { mutableStateOf(false) }
@@ -87,12 +89,7 @@ fun UnifiedFinancialCard(
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .animateContentSize(
-                animationSpec = spring(
-                    dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
-                    stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
-                )
-            )
+            .clip(RoundedCornerShape(16.dp))
             .clickable(onClick = {
                 if (hasExpandable) expanded = !expanded
                 onClick()
@@ -106,7 +103,7 @@ fun UnifiedFinancialCard(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // 1. Amount + arrow pill row
+            // 1. Amount + trend pill row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -134,15 +131,20 @@ fun UnifiedFinancialCard(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                // Arrow pill — income = ArrowUpward (green), expense = ArrowDownward (red)
+                // Trend pill — income = TrendingUp (green), expense = TrendingDown (red)
                 Surface(
                     shape = RoundedCornerShape(50),
-                    color = arrowColor.copy(alpha = 0.12f)
+                    color = trendColor.copy(alpha = 0.12f)
                 ) {
+                    val trendIcon = if (isIncome) {
+                        Icons.AutoMirrored.Outlined.TrendingUp
+                    } else {
+                        Icons.AutoMirrored.Outlined.TrendingDown
+                    }
                     Icon(
-                        imageVector = if (isIncome) Icons.Outlined.ArrowUpward else Icons.Outlined.ArrowDownward,
+                        imageVector = trendIcon,
                         contentDescription = if (isIncome) "Income" else "Expense",
-                        tint = arrowColor,
+                        tint = trendColor,
                         modifier = Modifier
                             .padding(4.dp)
                             .size(18.dp)
@@ -171,11 +173,11 @@ fun UnifiedFinancialCard(
                 }
             }
 
-            // 3. Short description (2 lines, truncated)
+            // 3. Short description (2 lines, truncated) — italic for context
             if (description.isNotBlank()) {
                 Text(
                     text = description,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodySmall.copy(fontStyle = FontStyle.Italic),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
@@ -218,30 +220,57 @@ fun UnifiedFinancialCard(
                 }
             }
 
-            // 5. Expandable detail — structured fields with bold labels
-            if (expanded && hasExpandable) {
-                if (!expandableFields.isNullOrEmpty()) {
-                    expandableFields.forEach { field ->
-                        Text(
-                            text = buildAnnotatedString {
-                                withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                                    append("${field.label}: ")
-                                }
-                                append(field.value)
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 2.dp)
-                        )
+            // 5. Expandable detail — pure height morph (no fade) per SyncStone convention
+            AnimatedVisibility(
+                visible = expanded && hasExpandable,
+                enter = expandVertically(),
+                exit = shrinkVertically()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    if (!expandableFields.isNullOrEmpty()) {
+                        // Thin separator before detail fields
+                        Spacer(modifier = Modifier.size(4.dp))
+                        // Group fields by their `group` label; render sub-headings
+                        var currentGroup: String? = null
+                        expandableFields.forEach { field ->
+                            // Render group sub-heading when group changes
+                            if (field.group != null && field.group != currentGroup) {
+                                currentGroup = field.group
+                                Spacer(modifier = Modifier.size(2.dp))
+                                Text(
+                                    text = field.group,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            Text(
+                                text = buildAnnotatedString {
+                                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                                        append("${field.label}: ")
+                                    }
+                                    append(field.value)
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    } else if (!expandableContent.isNullOrBlank()) {
+                        // Fallback: split plain text into paragraphs for readability
+                        Spacer(modifier = Modifier.size(4.dp))
+                        expandableContent.split("\n").filter { it.isNotBlank() }.forEach { line ->
+                            Text(
+                                text = line.trim(),
+                                style = MaterialTheme.typography.bodySmall.copy(fontStyle = FontStyle.Italic),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
-                } else if (!expandableContent.isNullOrBlank()) {
-                    // Fallback: plain text (for entries without structured fields)
-                    Text(
-                        text = expandableContent,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
                 }
             }
         }

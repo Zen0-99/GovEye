@@ -437,12 +437,18 @@ class ProfileViewModel @Inject constructor(
         expenses: List<ExpenseEntity>
     ): List<ActivityEntry> = runCatching {
         // Group by bucket + month (from claimDate), aggregate total + count (D-11)
+        // claimDate is in DD/MM/YYYY format — normalize to YYYY-MM-DD for comparison
+        // and YYYY-MM for grouping
         expenses
-            .filter { it.claimDate != null && it.claimDate!!.take(10) >= sixMonthsAgo }
-            .groupBy { e -> e.bucket to e.claimDate!!.take(7) } // bucket + "YYYY-MM"
-            .map { (key, claims) ->
+            .mapNotNull { e ->
+                val isoDate = normalizeDdMmYyyyToIso(e.claimDate) ?: return@mapNotNull null
+                Triple(e, isoDate, isoDate.take(7)) // (expense, ISO date, YYYY-MM)
+            }
+            .filter { (_, isoDate, _) -> isoDate >= sixMonthsAgo }
+            .groupBy { (e, _, month) -> e.bucket to month }
+            .map { (key, triples) ->
                 val (bucket, month) = key
-                val total = claims.sumOf { it.amountPence }
+                val total = triples.sumOf { it.first.amountPence }
                 // Use the last day of the month as the event date
                 val monthEndDate = monthEndDate(month)
                 ActivityEntry(
@@ -452,10 +458,21 @@ class ProfileViewModel @Inject constructor(
                     summary = "$bucket: £${total / 100}",
                     bucketLabel = bucket,
                     totalAmountPence = total,
-                    claimCount = claims.size
+                    claimCount = triples.size
                 )
             }
     }.getOrDefault(emptyList())
+
+    /**
+     * Convert DD/MM/YYYY to YYYY-MM-DD. Returns null if the input doesn't match.
+     */
+    private fun normalizeDdMmYyyyToIso(date: String?): String? {
+        if (date == null) return null
+        val parts = date.split("/")
+        if (parts.size != 3) return null
+        val (day, month, year) = parts
+        return "$year-${month.padStart(2, '0')}-${day.padStart(2, '0')}"
+    }
 
     private fun monthEndDate(ym: String): String = try {
         val parts = ym.split("-")
