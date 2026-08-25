@@ -56,13 +56,14 @@ data class FinancialDetailField(val label: String, val value: String, val group:
  *    income / red TrendingDown for expense — no text, just the stock icon)
  * 2. "by X" / "for X" subtext — "by "/"for " in normal weight, name in bold
  * 3. Short description if available (bodySmall, 2 lines, truncated, italic)
- * 4. Category icon (gray, varies per category) + short category text (left) + Date (right)
- * 5. [Expandable] Extra detail section — collapsed by default. Uses
+ * 4. [Expandable] Extra detail section — collapsed by default. Uses
  *    AnimatedVisibility with pure expandVertically/shrinkVertically (no fade)
  *    per SyncStone convention for smooth height morph.
- *    Shows full category name as a sub-heading, then structured fields
- *    with bold labels grouped by category (Payment, Donor, Visit, etc.),
- *    with thin dividers between groups, or fallback plain text.
+ *    Shows structured fields with bold labels grouped by category
+ *    (Payment, Donor, Visit, etc.) with thin dividers between groups,
+ *    or fallback plain text.
+ * 5. Category icon (gray, varies per category) + short category text (left) + Date (right)
+ *    — stays at the bottom, expanding with the card.
  *
  * When [showProfileIcon] is true (feed variant), an [MpAvatar] with a
  * party-colored border renders in-line before the amount text.
@@ -196,7 +197,70 @@ fun UnifiedFinancialCard(
                 )
             }
 
-            // 4. Category icon + short text (left) + Date (right)
+            // 4. [Expandable] Extra detail — pure height morph (no fade) per SyncStone
+            // convention. Placed BETWEEN description and category/date row so the
+            // category/date stays at the bottom and expands with the card.
+            AnimatedVisibility(
+                visible = expanded && hasExpandable,
+                enter = expandVertically(),
+                exit = shrinkVertically()
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    if (!expandableFields.isNullOrEmpty()) {
+                        // Render fields with group sub-headings.
+                        // Sub-headings use onSurface (darker) color, semibold,
+                        // with a thin divider above (except the first group).
+                        var currentGroup: String? = null
+                        var groupIndex = 0
+                        expandableFields.forEach { field ->
+                            if (field.group != null && field.group != currentGroup) {
+                                if (groupIndex > 0) {
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(top = 2.dp),
+                                        thickness = 0.5.dp,
+                                        color = MaterialTheme.colorScheme.outlineVariant
+                                    )
+                                }
+                                currentGroup = field.group
+                                groupIndex++
+                                Text(
+                                    text = field.group,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                            Text(
+                                text = buildAnnotatedString {
+                                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                                        append("${field.label}: ")
+                                    }
+                                    append(field.value)
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    } else if (!expandableContent.isNullOrBlank()) {
+                        // Fallback: split plain text into paragraphs for readability.
+                        // The full summary is shown here — the card's description
+                        // line is a truncated preview.
+                        expandableContent.split("\n").filter { it.isNotBlank() }.forEach { line ->
+                            Text(
+                                text = line.trim(),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+
+            // 5. Category icon + short text (left) + Date (right)
+            // Stays at the bottom, expanding with the card.
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -229,81 +293,6 @@ fun UnifiedFinancialCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1
                     )
-                }
-            }
-
-            // 5. Expandable detail — pure height morph (no fade) per SyncStone convention.
-            // No Spacer or extra padding inside — the AnimatedVisibility handles the
-            // height transition cleanly. Extra padding after animation causes the
-            // height adjustment jump the user reported.
-            AnimatedVisibility(
-                visible = expanded && hasExpandable,
-                enter = expandVertically(),
-                exit = shrinkVertically()
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    // Full category name as a sub-heading (only if different from short)
-                    val fullCat = fullCategoryName(category)
-                    if (fullCat != category && fullCat.isNotBlank()) {
-                        Text(
-                            text = fullCat,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-
-                    if (!expandableFields.isNullOrEmpty()) {
-                        // Render fields with group sub-headings.
-                        // Sub-headings are styled: small, semibold, primary color,
-                        // with a thin divider above (except the first group).
-                        // This distinguishes them from plain field text.
-                        var currentGroup: String? = null
-                        var groupIndex = 0
-                        expandableFields.forEach { field ->
-                            if (field.group != null && field.group != currentGroup) {
-                                if (groupIndex > 0) {
-                                    HorizontalDivider(
-                                        modifier = Modifier.padding(top = 2.dp),
-                                        thickness = 0.5.dp,
-                                        color = MaterialTheme.colorScheme.outlineVariant
-                                    )
-                                }
-                                currentGroup = field.group
-                                groupIndex++
-                                Text(
-                                    text = field.group,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                            Text(
-                                text = buildAnnotatedString {
-                                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                                        append("${field.label}: ")
-                                    }
-                                    append(field.value)
-                                },
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    } else if (!expandableContent.isNullOrBlank()) {
-                        // Fallback: split plain text into paragraphs for readability.
-                        // The full summary is shown here — the card's description
-                        // line is a truncated preview.
-                        expandableContent.split("\n").filter { it.isNotBlank() }.forEach { line ->
-                            Text(
-                                text = line.trim(),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
                 }
             }
         }

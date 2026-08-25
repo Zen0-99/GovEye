@@ -392,7 +392,8 @@ private fun StickyDateHeader(dateKey: String, entryCount: Int) {
 @Composable
 private fun FinancialEntryCard(entry: FinancialEntry) {
     val isIncome = entry.entryType == FinancialEntryType.INCOME
-    val amount = entry.amountPence?.let { formatPencePublic(it) } ?: ""
+    val amount = entry.amountPence?.let { formatPencePublic(it) }
+        ?: if (isIncome) "Unpaid" else ""
     val date = entry.date?.let { formatDivisionDate(it) } ?: ""
     val category = entry.categoryName ?: entry.bucket ?: ""
 

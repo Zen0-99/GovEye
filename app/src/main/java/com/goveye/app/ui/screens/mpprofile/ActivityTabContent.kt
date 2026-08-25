@@ -117,7 +117,7 @@ fun ActivityTabContent(
                                 entry.familyMemberRelationship, entry.familyMemberRole
                             )
                             UnifiedFinancialCard(
-                                amount = entry.amountPence?.let { formatAmount(it) } ?: "£0",
+                                amount = entry.amountPence?.let { formatAmount(it) } ?: "Unpaid",
                                 whoOrWhere = whoOrWhere,
                                 description = descLine,
                                 category = entry.categoryName ?: "",
