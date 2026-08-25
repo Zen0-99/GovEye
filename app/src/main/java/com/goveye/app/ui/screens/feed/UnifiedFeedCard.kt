@@ -15,6 +15,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Article
+import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.Gavel
+import androidx.compose.material.icons.outlined.HowToVote
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -22,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -47,7 +54,8 @@ private data class CardTypeData(
     val source: String,
     val date: String,
     val tags: List<String>,
-    val divisionData: DivisionData?
+    val divisionData: DivisionData?,
+    val cardTypeIcon: ImageVector? = null
 )
 
 private data class DivisionData(val ayeCount: Int, val noCount: Int)
@@ -201,20 +209,33 @@ fun UnifiedFeedCard(
                         }
                     }
 
-                    // 5. Source (left) + Date (right) row
+                    // 5. Source icon + source (left) + Date (right) row
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = data.source,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.weight(1f)
-                        )
+                        ) {
+                            if (data.cardTypeIcon != null) {
+                                Icon(
+                                    imageVector = data.cardTypeIcon,
+                                    contentDescription = data.typeLabel,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                            }
+                            Text(
+                                text = data.source,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = data.date,
@@ -288,7 +309,8 @@ private fun getCardTypeData(item: FeedItem): CardTypeData = when (item) {
             source = if (division.house == 2) "Lords" else "Commons",
             date = formatDivisionDate(division.date),
             tags = item.tags,
-            divisionData = DivisionData(ayeCount = division.ayeCount, noCount = division.noCount)
+            divisionData = DivisionData(ayeCount = division.ayeCount, noCount = division.noCount),
+            cardTypeIcon = Icons.Outlined.HowToVote
         )
     }
 
@@ -302,7 +324,8 @@ private fun getCardTypeData(item: FeedItem): CardTypeData = when (item) {
             source = publication.organisation,
             date = formatDivisionDate(publication.firstPublishedAt),
             tags = item.tags,
-            divisionData = null
+            divisionData = null,
+            cardTypeIcon = Icons.Outlined.Article
         )
     }
 
@@ -316,7 +339,8 @@ private fun getCardTypeData(item: FeedItem): CardTypeData = when (item) {
             source = statement.answeringBodyName,
             date = formatDivisionDate(statement.dateMade),
             tags = item.tags,
-            divisionData = null
+            divisionData = null,
+            cardTypeIcon = Icons.Outlined.Description
         )
     }
 
@@ -330,7 +354,8 @@ private fun getCardTypeData(item: FeedItem): CardTypeData = when (item) {
             source = legislation.type,
             date = formatDivisionDate(legislation.date),
             tags = item.tags,
-            divisionData = null
+            divisionData = null,
+            cardTypeIcon = Icons.Outlined.Gavel
         )
     }
 

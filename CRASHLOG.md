@@ -147,3 +147,16 @@
 4. Updated source DB's `room_master_table` identity hash to match v25 schema (`dd8ec5c317bd490cc1934365b8772b26`) and set `user_version = 24` so the migration runs.
 **Files:** `DatabaseModule.kt`, `InterestEntity.kt`, `Interest.kt`, `InterestsRepository.kt`, `goveye-data/goveye.db`
 
+## Bug: Delta patch system never worked — 3 root causes
+**Date:** 2026-08-25
+**Symptom:** App detects patches are available (manifest version mismatch) and logs "Applying N patches" but patch application fails silently. Preferences never update to the new version.
+**Root causes:**
+1. **Room entities lacked @Serializable:** `applyTableChanges()` uses `json.decodeFromJsonElement<MpEntity>(it)` which requires kotlinx.serialization. The `kotlin.serialization` plugin was applied but none of the 45 @Entity-annotated data classes had the `@Serializable` annotation. Error: `Serializer for class 'MpEntity' is not found.`
+2. **SQLite boolean 0/1 vs JSON true/false:** `diff_db.py` reads SQLite rows where Boolean columns (isActive, isDeferred, isAct, isDefeated, isTeller, isIntervention, isPreferred, isWebAddress, isRecommended, isMuted) are stored as INTEGER 0/1. The patch JSON contained `"isActive": 1` but kotlinx.serialization expects `"isActive": true` for Boolean fields. Error: `Failed to parse literal '1' as a boolean value at path: $.isActive`
+3. **App reinstall clears DataStore preferences:** `installDebug` or `pm clear` wipes the DataStore protobuf file. On next launch, `seedVersion == null` → `isFirstLaunch() == true` → app forces a full 600MB redownload even though the DB file already exists at the correct schema version.
+**Fix:**
+1. Added `@Serializable` annotation + `import kotlinx.serialization.Serializable` to all 45 @Entity-annotated data classes across 42 files in `core/data/.../entity/`.
+2. Fixed `diff_db.py` `get_table_rows()` to convert 0/1 to Python `bool` for columns whose name starts with `is`, so `json.dump` emits `true`/`false`.
+3. Added reinstall recovery in `DatabaseUpdateManager.checkForUpdates()`: if `seedVersion == null` but the DB file exists, set `seedVersion = CURRENT_SEED_VERSION` and fall through to the patch check instead of forcing `NeedsFullDownload`. Same fix in `isFirstLaunch()`.
+**Files:** `core/data/.../entity/*.kt` (42 files), `core/data/.../update/DatabaseUpdateManager.kt`, `goveye-data/diff_db.py`
+

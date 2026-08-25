@@ -158,13 +158,16 @@ class DatabaseUpdateManager @Inject constructor(
 
                 when {
                     // Local version null — stream was never tracked (new stream
-                    // or version key was missing from a prior first-launch).
-                    // Skip it so it doesn't block patches for other streams.
-                    // The data may already be in the DB from the first-launch
-                    // merge — it's just untracked. On the next full download,
-                    // the version will be set properly.
+                    // or version key was missing from a prior first-launch /
+                    // app reinstall). The data is already in the DB from the
+                    // original first-launch merge. Mark it as up to date at the
+                    // current manifest version — applying all patches for all
+                    // untracked streams at once would OOM the heap. The next
+                    // real patch (when new data is published) will apply
+                    // normally since the version is now tracked.
                     localVersion == null -> {
-                        Log.w(TAG, "Stream $streamName has no local version — skipping (untracked)")
+                        Log.w(TAG, "Stream $streamName untracked — marking as v${manifest.version}")
+                        setStreamVersion(streamName, manifest.version)
                     }
 
                     manifest.version == localVersion -> {
