@@ -11,11 +11,11 @@ last_activity: 2026-08-25
 last_activity_desc: Phase 17 execution complete — all 7 plans built, build verified
 progress:
   total_phases: 16
-  completed_phases: 10
+  completed_phases: 11
   total_plans: 63
-  completed_plans: 41
+  completed_plans: 46
 total_phases: 12
-completed_phases: 10
+completed_phases: 11
 ---
 
 # Project State
@@ -25,16 +25,20 @@ completed_phases: 10
 See: .planning/PROJECT.md (updated 2026-08-16)
 
 **Core value:** Make UK government activity as easy to follow as a football team — so anyone, especially younger voters, can see what their representatives are actually doing.
-**Current focus:** Phase 17 — polish-bug-fixes-feature-completion (COMPLETE)
+**Current focus:** Phase 17 complete — next is Phase 15 execution (planned, never executed) or Phase 16 planning
 
 ## Current Position
 
 Phase: 17 (polish-bug-fixes-feature-completion) — COMPLETE
 Plans: 17-01 through 17-07 all COMPLETE (7/7)
-Status: Phase 17 execution complete, build verified
+Status: Phase 17 execution complete, build verified. Phases 15 (planned, not executed) and 16 (not planned) remain.
 Last activity: 2026-08-25 — Phase 17 execution complete
 
 Progress: [█████████████████░] 83% (10 of 12 phases complete)
+- Phases 1-9, 11-14, 17: COMPLETE
+- Phase 10: partially complete (6/9 plans)
+- Phase 15: planned (3 plans), never executed
+- Phase 16: not planned (no directory)
 
 ## Performance Metrics
 
