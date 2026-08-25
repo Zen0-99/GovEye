@@ -111,19 +111,20 @@ fun ActivityTabContent(
 
                         ActivityEntryType.INCOME -> UnifiedFinancialCard(
                             amount = entry.amountPence?.let { formatAmount(it) } ?: "£0",
-                            whoOrWhere = entry.summary,
-                            description = entry.summary,
+                            whoOrWhere = entry.summary.take(80),
+                            description = "",
                             category = entry.categoryName ?: "",
                             date = formatActivityDate(entry.date),
                             isIncome = true,
                             partyColorHex = partyColorHex,
+                            expandableContent = entry.summary,
                             onClick = { /* navigate to income detail */ }
                         )
 
                         ActivityEntryType.EXPENSE -> UnifiedFinancialCard(
                             amount = entry.totalAmountPence?.let { formatAmount(it) } ?: "£0",
                             whoOrWhere = entry.bucketLabel ?: "",
-                            description = "${entry.claimCount ?: 0} claims",
+                            description = "",
                             category = entry.bucketLabel ?: "",
                             date = formatActivityDate(entry.date),
                             isIncome = false,

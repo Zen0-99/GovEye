@@ -13,11 +13,7 @@ import androidx.compose.ui.Modifier
  * [formatDivisionDate].
  */
 @Composable
-fun FeedFinancialCard(
-    item: FeedItem.FinancialItem,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
+fun FeedFinancialCard(item: FeedItem.FinancialItem, onClick: () -> Unit, modifier: Modifier = Modifier) {
     UnifiedFinancialCard(
         amount = item.amount,
         whoOrWhere = item.whoOrWhere,
@@ -29,6 +25,7 @@ fun FeedFinancialCard(
         showProfileIcon = true,
         profileImageUrl = item.memberPhotoUrl,
         profileInitials = item.memberName.take(2).uppercase(),
+        expandableContent = item.description.takeIf { it.length > 80 },
         onClick = onClick,
         modifier = modifier
     )

@@ -1,5 +1,10 @@
 package com.goveye.app.ui.screens.feed
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -13,36 +18,43 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
+import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.goveye.app.ui.components.MpAvatar
-import com.goveye.app.ui.theme.parsePartyColor
+import com.goveye.app.ui.components.VoteColors
 
 /**
- * Unified financial card — renders income and expense entries with the
- * UI-SPEC Section 2 LOCKED layout.
+ * Unified financial card — renders income and expense entries with a
+ * consistent layout across the activity feed, main feed, and detail views.
  *
  * Layout (top to bottom):
- * 1. Amount (bodyLarge/Bold, weight(1f)) + "Income"/"Expense" label + icon
- *    (top-right, tinted with the official's party color). When
- *    [showProfileIcon] is true (feed variant), an [MpAvatar] with a
- *    party-colored border renders in-line before the amount text.
- * 2. Who/where subtext (bodySmall, onSurfaceVariant, single line)
- * 3. Short description (bodySmall, onSurfaceVariant, 2 lines, truncated)
- * 4. Category (left) + Date (right, DD/MM/YYYY) — Row, SpaceBetween
+ * 1. Amount (bodyLarge/Bold) + arrow pill (top-right, Aye green for income
+ *    / No red for expense — no text, just the arrow icon)
+ * 2. "by X" / "for X" subtext (bodySmall, single line)
+ * 3. Short description if available (bodySmall, 2 lines, truncated)
+ * 4. Category icon (gray) + category text (left) + Date (right)
+ * 5. [Expandable] Extra detail section — collapsed by default. Only
+ *    shown when [expandableContent] is non-null. Tapping the card toggles
+ *    expansion; an expand-more icon rotates when expanded.
  *
- * Reused in: MP activity tab, income view, expense view, and the feed
- * (single composable with the [showProfileIcon] parameter).
+ * When [showProfileIcon] is true (feed variant), an [MpAvatar] with a
+ * party-colored border renders in-line before the amount text.
  *
- * Replaces: ActivityIncomeCard, ActivityExpenseCard, ExpenseBucketCard.
+ * Reused in: MP activity tab, income/expense detail views, and the feed
+ * (single composable with parameters — no duplicated card code).
  */
 @Composable
 fun UnifiedFinancialCard(
@@ -56,16 +68,22 @@ fun UnifiedFinancialCard(
     showProfileIcon: Boolean = false,
     profileImageUrl: String? = null,
     profileInitials: String = "",
+    expandableContent: String? = null,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val partyColor = partyColorHex?.let { parsePartyColor(it) }
-        ?: MaterialTheme.colorScheme.primary
+    val arrowColor = if (isIncome) VoteColors.aye else VoteColors.no
+    val categoryIcon = bucketIcon(category)
+    val hasExpandable = !expandableContent.isNullOrBlank()
+    var expanded by remember { mutableStateOf(false) }
 
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .clickable(onClick = {
+                if (hasExpandable) expanded = !expanded
+                onClick()
+            }),
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surfaceContainer
     ) {
@@ -75,7 +93,7 @@ fun UnifiedFinancialCard(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // 1. Amount + label/icon row
+            // 1. Amount + arrow pill row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -103,63 +121,106 @@ fun UnifiedFinancialCard(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                // Arrow pill — Aye green (income) / No red (expense), no text
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = arrowColor.copy(alpha = 0.12f)
                 ) {
-                    Text(
-                        text = if (isIncome) "Income" else "Expense",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = partyColor
-                    )
                     Icon(
                         imageVector = if (isIncome) Icons.Outlined.ArrowDownward else Icons.Outlined.ArrowUpward,
                         contentDescription = if (isIncome) "Income" else "Expense",
-                        tint = partyColor,
-                        modifier = Modifier.size(18.dp)
+                        tint = arrowColor,
+                        modifier = Modifier
+                            .padding(4.dp)
+                            .size(18.dp)
                     )
                 }
             }
 
-            // 2. Who/where subtext
-            Text(
-                text = whoOrWhere,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            // 2. "by X" / "for X" subtext
+            if (whoOrWhere.isNotBlank()) {
+                val prefix = if (isIncome) "by " else "for "
+                Text(
+                    text = prefix + whoOrWhere,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
 
             // 3. Short description (2 lines, truncated)
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
+            if (description.isNotBlank()) {
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
 
-            // 4. Category (left) + Date (right)
+            // 4. Category icon + text (left) + Date (right)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = category,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.weight(1f)
-                )
+                ) {
+                    Icon(
+                        imageVector = categoryIcon,
+                        contentDescription = category,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = category,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = date,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                if (date.isNotBlank()) {
+                    Text(
+                        text = date,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
+                    )
+                }
+            }
+
+            // 5. Expandable extra detail
+            if (hasExpandable) {
+                AnimatedVisibility(
+                    visible = expanded,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically()
+                ) {
+                    Text(
+                        text = expandableContent,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.ExpandMore,
+                        contentDescription = if (expanded) "Show less" else "Show more",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
     }

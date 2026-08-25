@@ -18,16 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.outlined.TrendingUp
-import androidx.compose.material.icons.outlined.AccountBalance
-import androidx.compose.material.icons.outlined.Business
-import androidx.compose.material.icons.outlined.CardGiftcard
 import androidx.compose.material.icons.outlined.Category
-import androidx.compose.material.icons.outlined.Flight
-import androidx.compose.material.icons.outlined.Groups
-import androidx.compose.material.icons.outlined.Paid
-import androidx.compose.material.icons.outlined.Public
-import androidx.compose.material.icons.outlined.RealEstateAgent
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -41,47 +32,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.goveye.app.data.local.dao.ExpenseBucketTotal
 import com.goveye.app.domain.model.Interest
-import com.goveye.app.ui.screens.feed.UnifiedFinancialCard
+import com.goveye.app.ui.screens.feed.BUCKET_ICONS
+import com.goveye.app.ui.screens.feed.BUCKET_ORDER
+import com.goveye.app.ui.screens.feed.bucketIcon
 import com.goveye.app.ui.theme.padding
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 
-/**
- * The 10 interest buckets, matching the Register of Members' Financial
- * Interests categories 1–10. Must match the `bucket` column values
- * written by `build_interests.py`.
- */
-private val BUCKET_ORDER = listOf(
-    "Employment/Earnings",
-    "Financial Support",
-    "Gifts",
-    "Overseas Visits",
-    "Overseas Gifts",
-    "Land/Property",
-    "Shareholdings",
-    "Miscellaneous",
-    "Family Employed",
-    "Family Lobbying"
-)
+/*
 
-private val BUCKET_ICONS: Map<String, ImageVector> = mapOf(
-    "Employment/Earnings" to Icons.Outlined.Paid,
-    "Financial Support" to Icons.Outlined.AccountBalance,
-    "Gifts" to Icons.Outlined.CardGiftcard,
-    "Overseas Visits" to Icons.Outlined.Flight,
-    "Overseas Gifts" to Icons.Outlined.Public,
-    "Land/Property" to Icons.Outlined.RealEstateAgent,
-    "Shareholdings" to Icons.AutoMirrored.Outlined.TrendingUp,
-    "Miscellaneous" to Icons.Outlined.Category,
-    "Family Employed" to Icons.Outlined.Groups,
-    "Family Lobbying" to Icons.Outlined.Business
-)
+Bucket icons and order are now shared from FinancialBucketIcons.kt
+ */
 
 @Composable
 fun InterestsTabContent(
@@ -157,14 +123,9 @@ fun InterestsTabContent(
                 ExpenseSectionHeader()
             }
             items(expenseBucketTotals, key = { it.bucket }) { total ->
-                UnifiedFinancialCard(
-                    amount = formatPenceToGbp(total.totalPence),
-                    whoOrWhere = total.bucket,
-                    description = "Monthly total",
-                    category = total.bucket,
-                    date = "",
-                    isIncome = false,
-                    partyColorHex = partyColorHex,
+                ExpenseBucketSummaryCard(
+                    bucketLabel = total.bucket,
+                    totalPence = total.totalPence,
                     onClick = { onNavigateToExpenseBucket(total.bucket) }
                 )
             }
@@ -249,20 +210,15 @@ fun InterestsTabContent(
             )
         }
 
-        // --- Expenses section (IPSA) ---
+        // --- Expenses section (IPSA) — centered cards matching income style ---
         if (expenseBucketTotals.isNotEmpty()) {
             item(span = { GridItemSpan(2) }) {
                 ExpenseSectionHeader()
             }
             items(expenseBucketTotals, key = { "expense_${it.bucket}" }) { total ->
-                UnifiedFinancialCard(
-                    amount = formatPenceToGbp(total.totalPence),
-                    whoOrWhere = total.bucket,
-                    description = "Monthly total",
-                    category = total.bucket,
-                    date = "",
-                    isIncome = false,
-                    partyColorHex = partyColorHex,
+                ExpenseBucketSummaryCard(
+                    bucketLabel = total.bucket,
+                    totalPence = total.totalPence,
                     onClick = { onNavigateToExpenseBucket(total.bucket) }
                 )
             }
@@ -420,6 +376,47 @@ private fun BucketSummaryCard(summary: BucketSummary, onClick: () -> Unit) {
             )
             Text(
                 text = summary.bucketLabel,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+/**
+ * Centered expense bucket card — matches the income BucketSummaryCard style
+ * (icon, amount, label all centered). Used in the Finances tab grid.
+ */
+@Composable
+private fun ExpenseBucketSummaryCard(bucketLabel: String, totalPence: Long, onClick: () -> Unit) {
+    val icon = bucketIcon(bucketLabel)
+    val formattedAmount = formatPence(totalPence)
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer
+    ) {
+        Column(
+            modifier = Modifier.padding(MaterialTheme.padding.medium),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = bucketLabel,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(28.dp)
+            )
+            Text(
+                text = formattedAmount,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+            Text(
+                text = bucketLabel,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

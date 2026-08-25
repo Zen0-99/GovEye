@@ -1,10 +1,8 @@
 package com.goveye.app.ui.screens.mpprofile
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -24,7 +21,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -36,6 +32,8 @@ import com.goveye.app.domain.model.Interest
 import com.goveye.app.ui.components.ConfigureDetailTopBar
 import com.goveye.app.ui.components.ConfigureSearchBar
 import com.goveye.app.ui.components.SearchBarConfig
+import com.goveye.app.ui.screens.feed.UnifiedFinancialCard
+import com.goveye.app.ui.screens.feed.formatDivisionDate
 import com.goveye.app.ui.theme.padding
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -180,7 +178,7 @@ fun FinancialBucketDetailScreen(
                     // Entries are pre-sorted within each group (see groupedByDate above).
                     // No sub-grouping — each row shows its own category label.
                     items(entries, key = { "${it.entryType}_${it.id}" }) { entry ->
-                        FinancialEntryRow(entry = entry)
+                        FinancialEntryCard(entry = entry)
                     }
                 }
             }
@@ -365,119 +363,100 @@ private fun StickyDateHeader(dateKey: String, entryCount: Int) {
     }
 }
 
+/**
+ * Renders a financial entry using the unified card design with expand/collapse.
+ * Income entries: "by X" shows the donor/payer (extracted from summary), full
+ * summary text is in the expandable section.
+ * Expense entries: "for X" shows the bucket/category, journey and payment
+ * details are in the expandable section.
+ */
 @Composable
-private fun FinancialEntryRow(entry: FinancialEntry) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainer)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        // Category label — shown once per row, not as a separate sub-group header
-        entry.categoryName?.let { name ->
-            if (name.isNotBlank()) {
-                Text(
-                    text = name,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-        }
-        // Summary (description)
-        if (entry.summary.isNotBlank() && entry.summary != entry.categoryName) {
-            Text(
-                text = entry.summary,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        }
-        // Journey details (expenses only)
-        if (entry.entryType == FinancialEntryType.EXPENSE) {
-            entry.journeyFrom?.let { from ->
-                entry.journeyTo?.let { to ->
-                    if (from.isNotBlank() && to.isNotBlank()) {
-                        Text(
-                            text = buildString {
-                                append("Journey: $from \u2192 $to")
-                                entry.journeyType?.let { if (it.isNotBlank()) append(" ($it)") }
-                                entry.mileage?.let { if (it.isNotBlank()) append(" \u00b7 $it miles") }
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+private fun FinancialEntryCard(entry: FinancialEntry) {
+    val isIncome = entry.entryType == FinancialEntryType.INCOME
+    val amount = entry.amountPence?.let { formatPencePublic(it) } ?: ""
+    val date = entry.date?.let { formatDivisionDate(it) } ?: ""
+    val category = entry.categoryName ?: entry.bucket ?: ""
+
+    // For income: whoOrWhere is a short excerpt of the summary (first line / donor name)
+    // For expenses: whoOrWhere is the expense category/bucket
+    val whoOrWhere = if (isIncome) {
+        // Extract first line of summary as the "by X" text
+        entry.summary.lineSequence().firstOrNull()?.take(80) ?: ""
+    } else {
+        entry.categoryName ?: entry.bucket ?: ""
+    }
+
+    // Expandable content: full summary for income, journey+payment details for expenses
+    val expandable = if (isIncome) {
+        entry.summary.takeIf { it.length > 80 } // Only expandable if there's more than the first line
+    } else {
+        buildExpenseDetail(entry).takeIf { it.isNotBlank() }
+    }
+
+    UnifiedFinancialCard(
+        amount = amount,
+        whoOrWhere = whoOrWhere,
+        description = "",
+        category = category,
+        date = date,
+        isIncome = isIncome,
+        partyColorHex = null,
+        expandableContent = expandable,
+        onClick = {}
+    )
+}
+
+/**
+ * Builds the expandable detail text for expense entries — journey info,
+ * payment breakdown, claim status.
+ */
+private fun buildExpenseDetail(entry: FinancialEntry): String {
+    val parts = mutableListOf<String>()
+
+    // Summary text
+    if (entry.summary.isNotBlank()) {
+        parts.add(entry.summary)
+    }
+
+    // Journey details
+    entry.journeyFrom?.let { from ->
+        entry.journeyTo?.let { to ->
+            if (from.isNotBlank() && to.isNotBlank()) {
+                val journey = buildString {
+                    append("Journey: $from \u2192 $to")
+                    entry.journeyType?.let { if (it.isNotBlank()) append(" ($it)") }
+                    entry.mileage?.let { if (it.isNotBlank()) append(" \u00b7 $it miles") }
                 }
-            }
-            // Payment breakdown
-            val paymentText = buildPaymentBreakdown(entry)
-            if (paymentText.isNotBlank()) {
-                Text(
-                    text = paymentText,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            // Reason if not paid
-            entry.reasonIfNotPaid?.let { reason ->
-                if (reason.isNotBlank()) {
-                    Text(
-                        text = "Not paid: $reason",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
-            }
-            // Claim number + status
-            val metaText = buildString {
-                entry.claimNumber?.let { if (it.isNotBlank()) append("Claim #$it") }
-                entry.status?.let {
-                    if (it.isNotBlank()) {
-                        if (isNotEmpty()) append(" \u00b7 ")
-                        append(it)
-                    }
-                }
-            }
-            if (metaText.isNotBlank()) {
-                Text(
-                    text = metaText,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-        // Date + amount row
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            formatDateDisplay(entry.date)?.let { date ->
-                Text(
-                    text = date,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            entry.amountPence?.let { pence ->
-                Text(
-                    text = formatPencePublic(pence),
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                parts.add(journey)
             }
         }
     }
-}
 
-private fun buildPaymentBreakdown(entry: FinancialEntry): String {
-    val parts = mutableListOf<String>()
-    entry.amountPaidPence?.let { if (it > 0) parts.add("Paid: ${formatPencePublic(it)}") }
-    entry.amountNotPaidPence?.let { if (it > 0) parts.add("Not paid: ${formatPencePublic(it)}") }
-    entry.amountRepaidPence?.let { if (it > 0) parts.add("Repaid: ${formatPencePublic(it)}") }
-    return parts.joinToString(" \u00b7 ")
+    // Payment breakdown
+    val paymentParts = mutableListOf<String>()
+    entry.amountPaidPence?.let { if (it > 0) paymentParts.add("Paid: ${formatPencePublic(it)}") }
+    entry.amountNotPaidPence?.let { if (it > 0) paymentParts.add("Not paid: ${formatPencePublic(it)}") }
+    entry.amountRepaidPence?.let { if (it > 0) paymentParts.add("Repaid: ${formatPencePublic(it)}") }
+    if (paymentParts.isNotEmpty()) parts.add(paymentParts.joinToString(" \u00b7 "))
+
+    // Reason if not paid
+    entry.reasonIfNotPaid?.let { reason ->
+        if (reason.isNotBlank()) parts.add("Not paid: $reason")
+    }
+
+    // Claim number + status
+    val metaText = buildString {
+        entry.claimNumber?.let { if (it.isNotBlank()) append("Claim #$it") }
+        entry.status?.let {
+            if (it.isNotBlank()) {
+                if (isNotEmpty()) append(" \u00b7 ")
+                append(it)
+            }
+        }
+    }
+    if (metaText.isNotBlank()) parts.add(metaText)
+
+    return parts.joinToString("\n")
 }
 
 private fun formatPencePublic(pence: Long): String {

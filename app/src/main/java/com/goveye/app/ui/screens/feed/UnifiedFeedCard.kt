@@ -272,11 +272,18 @@ fun TypeBadge(text: String, modifier: Modifier = Modifier) {
  * Moved from FeedDivisionCard.kt — shared by all card types via
  * [UnifiedFeedCard].
  */
-fun formatDivisionDate(dateString: String): String = try {
-    val parts = dateString.split("T").first().split("-")
-    "${parts[2]}/${parts[1]}/${parts[0]}"
-} catch (e: Exception) {
-    dateString
+fun formatDivisionDate(dateString: String): String {
+    if (dateString.isBlank()) return ""
+    val cleaned = dateString.split("T").first()
+    // Already DD/MM/YYYY?
+    if (cleaned.matches(Regex("\\d{2}/\\d{2}/\\d{4}"))) return cleaned
+    // ISO format YYYY-MM-DD → DD/MM/YYYY
+    return try {
+        val parts = cleaned.split("-")
+        "${parts[2]}/${parts[1]}/${parts[0]}"
+    } catch (e: Exception) {
+        cleaned
+    }
 }
 
 /**
