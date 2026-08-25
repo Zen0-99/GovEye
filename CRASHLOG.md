@@ -134,3 +134,16 @@
 **Fix:** Removed the Spacer and extra padding from inside the `AnimatedVisibility`. The `Column` inside uses `Arrangement.spacedBy(4.dp)` for spacing, which handles it cleanly.
 **File:** `UnifiedFinancialCard.kt`
 
+## Crash: App crash on launch — Room migration failed for fullCategoryName + written_questions
+**Date:** 2026-08-25
+**Symptom:** App crashed on launch with `IllegalStateException: Migration didn't properly handle: interests` and `written_questions`.
+**Root cause:** Two issues:
+1. The source DB had a `fullCategoryName` column in `interests` (added by the dedup fix script) but the Room entity didn't declare it, and the migration didn't add it. Room saw an extra column and failed validation.
+2. The `written_questions` table didn't exist in the source DB (it was added to the app entities but never built in goveye-data). Room expected the table but found nothing.
+**Fix:**
+1. Added `fullCategoryName` to `InterestEntity`, `Interest` domain model, and `InterestsRepository.toDomain()`.
+2. Updated `MIGRATION_24_25` to add `fullCategoryName` to `interests` if missing (idempotent).
+3. Updated `MIGRATION_24_25` to create `written_questions` table if it doesn't exist.
+4. Updated source DB's `room_master_table` identity hash to match v25 schema (`dd8ec5c317bd490cc1934365b8772b26`) and set `user_version = 24` so the migration runs.
+**Files:** `DatabaseModule.kt`, `InterestEntity.kt`, `Interest.kt`, `InterestsRepository.kt`, `goveye-data/goveye.db`
+
