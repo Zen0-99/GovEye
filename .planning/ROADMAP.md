@@ -20,7 +20,7 @@ GovEye is a free, open-source Android app that makes UK Parliament as followable
 - [ ] **Phase 12: Unified Precomputed Database** - Single post-merge build script (build_precompute.py) produces precomputed stats tables (mp_stats, peer_averages) and fixes N+1 query paths with SQL JOINs. Eliminates 5,500+ runtime DAO calls per profile open. App reads precomputed rows instead of aggregating at runtime.
 - [x] **Phase 13: Expense Detail** - Rebuild IPSA parser to capture claim descriptions, add ExpenseBucketDetailScreen with per-claim detail view (following InterestBucketDetailScreen pattern) (completed 2026-08-23, verified in code)
 - [x] **Phase 14: Government Announcements** - Track executive/regulatory action from GOV.UK Content API, Parliament Written Statements API, legislation.gov.uk API. Feed cards + Directory sub-tab. Tag personalization + 5-step onboarding redesign. All bundled DB (build-time, no live API).
-- [ ] **Phase 15: MP Activity Feed Redesign** - Transform Activity tab from votes-only to mixed feed (votes + questions + income + expenses + committee + career). Store written question text. Move bulk votes to Stats tab as summary + VotingRecordScreen.
+- [x] **Phase 15: MP Activity Feed Redesign** - Transform Activity tab from votes-only to mixed feed (votes + questions + income + expenses + committee + career). Store written question text. Move bulk votes to Stats tab as summary + VotingRecordScreen.
 - [ ] **Phase 16: Debates Directory Redesign** - Replace 'Bills' directory tab with 'Debates' — umbrella for all parliamentary business (bills, SIs, motions, treaties). Each card = one work package (Level 1). Rename current 'Debate' code to 'Division'. Data layer for all types (Procedure Browser CSV for SIs/treaties, bill publications + news articles). Bills UI first, SIs/motions/treaties UI in a later phase.
 - [x] **Phase 17: Polish, Bug Fixes & Feature Completion** - UAT-driven polish pass: unified feed card design (image/title/type pill/by-who/source+date/tags), clickable detail views for all card types, income/expense card redesign with party-colored icons, MP activity in feed, attendance rate fix (tenure-aware), historical member search fix (party names/images/click targets), follow/notification icon reactivity, notification expansion (income/expenses), Following screen sub-tabs, searchbar transition animation fix, light mode card color tweak, speaker matching fix in transcripts, speech cards in activity + feed.
 
@@ -371,13 +371,17 @@ Plans:
   6. New VotingRecordScreen — full voting record (relocated from Activity tab), accessible from Stats tab "See all" link
   7. Written questions show the actual question text, answering body, and date tabled
 
-**Plans**: 3 plans (tentative — will be detailed when phase is planned)
+**Plans**: 1/3 plans executed (15-02 and 15-03 superseded by Phase 17)
 
 Plans:
 
-- [ ] 15-01: Written question text storage — modify build_hansard.py to capture questionText/answerText from mySociety CSV, 255-char truncation fallback, new schema columns or written_questions table
-- [ ] 15-02: Activity feed redesign — mixed activity feed on MP profile (votes + questions + income + expenses + committee + career), distinct card designs per type, date grouping, activity type filter
-- [ ] 15-03: Votes relocation to Stats tab — Recent votes summary below vote map, VotingRecordScreen (full voting record), navigation wiring
+- [x] 15-01-PLAN.md
+- [~] 15-02-PLAN.md (superseded — Phase 17 built mixed activity feed with distinct card types, date grouping, activity type filter)
+- [~] 15-03-PLAN.md (superseded — Phase 17 added recent votes summary and activity feed rendering)
+
+- [x] 15-01: Written question text storage — modify build_hansard.py to capture questionText/answerText from mySociety CSV, 255-char truncation fallback, new schema columns or written_questions table
+- [~] 15-02: Activity feed redesign — SUPERSEDED by Phase 17 (mixed activity feed with distinct card types, date grouping, activity type filter already built)
+- [~] 15-03: Votes relocation to Stats tab — SUPERSEDED by Phase 17 (recent votes summary and activity feed already built)
 
 ### Phase 16: Debates Directory Redesign
 
@@ -436,7 +440,7 @@ Phases execute in numeric order: 1 â†’ 2 â†’ 3 â†’ 4 â†’ 5 �
 | 12. Unified Precomputed Database | 4/4 | Complete (build passes) | 2026-08-22 |
 | 13. Expense Detail | 2/2 | Complete (verified in code) | 2026-08-23 |
 | 14. Government Announcements | 5/5 | Complete | 2026-08-24 |
-| 15. MP Activity Feed Redesign | 0/3 | Not planned | - |
+| 15. MP Activity Feed Redesign | 1/3 | Complete (15-02/15-03 superseded by Phase 17) | 2026-08-25 |
 | 16. Debates Directory Redesign | 0/6 | Not planned | - |
 | 17. Polish, Bug Fixes & Feature Completion | 7/7 | Complete | 2026-08-25 |
 
