@@ -10,11 +10,16 @@ import androidx.room.PrimaryKey
  * `questions-statements-api.parliament.uk/api/writtenquestions/questions`.
  * Stored in the bundled DB (read-only, build-time data).
  *
+ * Unlike `HansardContributionEntity` which only stores per-MP question
+ * *counts*, this entity stores the actual question text, answering body,
+ * date tabled, and UIN for each individual question — enabling the MP
+ * activity feed (Phase 15) to display question content.
+ *
  * Fields mirror the API response shape:
  * - id: Parliament question ID
- * - memberId: the MP/peer who asked the question (askingMemberId)
+ * - memberId: the MP who asked the question (askingMemberId in API)
  * - uin: Unique Identification Number
- * - dateTabled: ISO date string
+ * - dateTabled: ISO date string (when the question was tabled)
  * - answeringBodyId / answeringBodyName: the government department
  * - questionText: the full question text (255-char truncation fallback applied)
  * - house: 1 (Commons) or 2 (Lords)
