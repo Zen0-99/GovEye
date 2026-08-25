@@ -79,4 +79,12 @@ interface DebateSpeechDao {
         """
     )
     suspend fun getSpeechesByMemberIds(memberIds: List<Int>, limit: Int = 100): List<SpeechWithDivision>
+
+    /**
+     * Alias for [getSpeechesByMemberIds] — fetches recent speeches for a
+     * set of followed members, joined with the parent division's title
+     * and date. Used by the feed to render [FeedItem.SpeechItem] cards.
+     */
+    suspend fun getSpeechesByFollowedMembers(memberIds: List<Int>, limit: Int = 100): List<SpeechWithDivision> =
+        getSpeechesByMemberIds(memberIds, limit)
 }
