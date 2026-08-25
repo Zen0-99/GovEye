@@ -108,3 +108,29 @@
 **Fix:** Added `.clip(RoundedCornerShape(Ndp))` before `.clickable()` on all financial card Surfaces so the ripple is clipped to the card's rounded shape.
 **Files:** `UnifiedFinancialCard.kt`, `InterestsTabContent.kt` (BucketSummaryCard, ExpenseBucketSummaryCard)
 
+## Bug: Financial card logic leaps — source DB fix (round 2)
+**Date:** 2026-08-25
+**Symptom:** App-side dedup didn't fix the total — user still saw £246k for Hannah Spencer. The fix needed to be at the source DB level, not in the app.
+**Root cause:** The Parliament API re-registers the same interest on amendment, producing multiple entries with different `id`s but same donor+amount+category. `INSERT OR REPLACE` uses `id` as primary key, so all entries were kept. The app-side dedup was correct logic but the user wanted it fixed at the source.
+**Fix:**
+1. Ran `fix_interests_source.py` against `goveye.db` — deleted 7,362 duplicate interests (45,359 → 37,997). Hannah Spencer's total dropped from £246,123 to £123,644.
+2. Shortened category names in the DB (e.g. "Donations and other support (including loans) for activities as an MP" → "Donations"). Full names stored in new `fullCategoryName` column.
+3. Added dedup logic to `build_interests.py` `insert_interests()` for future builds — groups by (memberId, donorName/summary, parsedAmountPence, categoryNumber) and keeps latest by publishedDate.
+4. Added `SHORT_CATEGORY_NAMES` mapping and `get_short_category_name()` to `build_interests.py`.
+5. Pushed fixed DB to device via adb.
+**Files:** `goveye-data/build_interests.py`, `goveye-data/goveye.db`
+
+## Bug: Expandable detail showed everything in italics
+**Date:** 2026-08-25
+**Symptom:** When expanding a financial card, all content was rendered in italic plain text instead of structured bold-label: value fields.
+**Root cause:** `formatInterestStructuredFields()` skipped `paymentDescription`, `visitPurpose`, and `organisationDescription` (assuming they were shown in the card's description line). But the description line is truncated to 2 lines, and for most interests these were the ONLY populated structured fields. So the structured fields list was empty, and the card fell back to `expandableContent` (the full summary) which was rendered as italic paragraphs.
+**Fix:** Include `paymentDescription`, `visitPurpose`, and `organisationDescription` in the expandable fields list (with "Description" / "Purpose" labels). The card's description line still shows a truncated version; the expansion shows the full text.
+**File:** `InterestStructuredFields.kt`
+
+## Bug: Card collapse had extra height adjustment after animation
+**Date:** 2026-08-25
+**Symptom:** When collapsing a financial card, the animation finished and then the card height adjusted one more time (a small jump).
+**Root cause:** A `Spacer(modifier = Modifier.size(4.dp))` was placed inside the `AnimatedVisibility` content, before the fields. When the animation finished and the content was removed, the spacer's height was removed too, causing the extra adjustment.
+**Fix:** Removed the Spacer and extra padding from inside the `AnimatedVisibility`. The `Column` inside uses `Arrangement.spacedBy(4.dp)` for spacing, which handles it cleanly.
+**File:** `UnifiedFinancialCard.kt`
+

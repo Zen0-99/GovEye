@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -53,12 +54,13 @@ data class FinancialDetailField(val label: String, val value: String, val group:
  * 1. Amount (bodyLarge/Bold) + trend pill (top-right, green TrendingUp for
  *    income / red TrendingDown for expense — no text, just the stock icon)
  * 2. "by X" / "for X" subtext — "by "/"for " in normal weight, name in bold
- * 3. Short description if available (bodySmall, 2 lines, truncated)
- * 4. Category icon (gray, varies per category) + category text (left) + Date (right)
+ * 3. Short description if available (bodySmall, 2 lines, truncated, italic)
+ * 4. Category icon (gray, varies per category) + short category text (left) + Date (right)
  * 5. [Expandable] Extra detail section — collapsed by default. Uses
  *    AnimatedVisibility with pure expandVertically/shrinkVertically (no fade)
- *    per SyncStone convention for smooth height morph without jump.
- *    Detail fields rendered as bold-label: value pairs with visual grouping.
+ *    per SyncStone convention for smooth height morph.
+ *    Shows full category name as a sub-heading, then structured fields
+ *    with bold labels grouped by category, or fallback plain text.
  *
  * When [showProfileIcon] is true (feed variant), an [MpAvatar] with a
  * party-colored border renders in-line before the amount text.
@@ -85,15 +87,23 @@ fun UnifiedFinancialCard(
     val categoryIcon = bucketIcon(bucket ?: category)
     val hasExpandable = !expandableContent.isNullOrBlank() || !expandableFields.isNullOrEmpty()
     var expanded by remember { mutableStateOf(false) }
+    // Low-ripple interaction source for subtler press feedback
+    val interactionSource = remember { MutableInteractionSource() }
 
     Surface(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .clickable(onClick = {
-                if (hasExpandable) expanded = !expanded
-                onClick()
-            }),
+            .clickable(
+                interactionSource = interactionSource,
+                indication = androidx.compose.material3.ripple(
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
+                ),
+                onClick = {
+                    if (hasExpandable) expanded = !expanded
+                    onClick()
+                }
+            ),
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surfaceContainer
     ) {
@@ -173,7 +183,7 @@ fun UnifiedFinancialCard(
                 }
             }
 
-            // 3. Short description (2 lines, truncated) — italic for context
+            // 3. Short description (2 lines, truncated, italic for context)
             if (description.isNotBlank()) {
                 Text(
                     text = description,
@@ -184,7 +194,7 @@ fun UnifiedFinancialCard(
                 )
             }
 
-            // 4. Category icon + text (left) + Date (right)
+            // 4. Category icon + short text (left) + Date (right)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -220,28 +230,36 @@ fun UnifiedFinancialCard(
                 }
             }
 
-            // 5. Expandable detail — pure height morph (no fade) per SyncStone convention
+            // 5. Expandable detail — pure height morph (no fade) per SyncStone convention.
+            // No Spacer or extra padding inside — the AnimatedVisibility handles the
+            // height transition cleanly. Extra padding after animation causes the
+            // height adjustment jump the user reported.
             AnimatedVisibility(
                 visible = expanded && hasExpandable,
                 enter = expandVertically(),
                 exit = shrinkVertically()
             ) {
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
+                    // Full category name as a sub-heading (only if different from short)
+                    val fullCat = fullCategoryName(category)
+                    if (fullCat != category && fullCat.isNotBlank()) {
+                        Text(
+                            text = fullCat,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
                     if (!expandableFields.isNullOrEmpty()) {
-                        // Thin separator before detail fields
-                        Spacer(modifier = Modifier.size(4.dp))
                         // Group fields by their `group` label; render sub-headings
                         var currentGroup: String? = null
                         expandableFields.forEach { field ->
-                            // Render group sub-heading when group changes
                             if (field.group != null && field.group != currentGroup) {
                                 currentGroup = field.group
-                                Spacer(modifier = Modifier.size(2.dp))
                                 Text(
                                     text = field.group,
                                     style = MaterialTheme.typography.labelSmall,
@@ -262,11 +280,10 @@ fun UnifiedFinancialCard(
                         }
                     } else if (!expandableContent.isNullOrBlank()) {
                         // Fallback: split plain text into paragraphs for readability
-                        Spacer(modifier = Modifier.size(4.dp))
                         expandableContent.split("\n").filter { it.isNotBlank() }.forEach { line ->
                             Text(
                                 text = line.trim(),
-                                style = MaterialTheme.typography.bodySmall.copy(fontStyle = FontStyle.Italic),
+                                style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }

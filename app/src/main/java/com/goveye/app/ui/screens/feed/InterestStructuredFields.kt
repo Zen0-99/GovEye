@@ -3,9 +3,11 @@ package com.goveye.app.ui.screens.feed
 /**
  * Build the expandable detail fields for income entries from structured fields.
  *
- * Returns a list of [FinancialDetailField] pairs (label, value) for the
- * secondary structured fields — excludes donorName (shown in "by X") and
- * the description line (paymentDescription / visitPurpose / organisationDescription).
+ * Returns a list of [FinancialDetailField] pairs (label, value) for all
+ * available structured fields. donorName is excluded (shown in "by X" line).
+ * paymentDescription / visitPurpose / organisationDescription ARE included
+ * here (the description line on the card is truncated to 2 lines, so the
+ * full text belongs in the expansion).
  *
  * Returns empty list if no structured fields are available (caller falls
  * back to the full summary text via expandableContent).
@@ -31,7 +33,13 @@ fun formatInterestStructuredFields(
     val fields = mutableListOf<FinancialDetailField>()
     // donorName is shown in "by X" — skip
     paymentType?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Payment type", it, "Payment")) }
-    // paymentDescription / visitPurpose / organisationDescription shown in description line — skip
+    // Include paymentDescription / visitPurpose / organisationDescription in expansion
+    // (the card's description line is truncated to 2 lines; full text goes here)
+    paymentDescription?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Description", it, "Payment")) }
+    visitPurpose?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Purpose", it, "Visit")) }
+    organisationDescription?.let {
+        if (it.isNotBlank()) fields.add(FinancialDetailField("Description", it, "Organisation"))
+    }
     if (donorStatus?.isNotBlank() == true || donorAddress?.isNotBlank() == true ||
         donorCompanyIdentifier?.isNotBlank() == true
     ) {

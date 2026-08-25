@@ -49,3 +49,27 @@ val BUCKET_ICONS: Map<String, ImageVector> = mapOf(
  * category icon if the bucket is not recognized.
  */
 fun bucketIcon(bucketLabel: String?): ImageVector = BUCKET_ICONS[bucketLabel] ?: Icons.Outlined.Category
+
+/**
+ * Maps short category names (stored in the DB) back to their full
+ * Parliament API names, for display in the expanded card view.
+ */
+val FULL_CATEGORY_NAMES: Map<String, String> = mapOf(
+    "Employment" to "Employment and earnings",
+    "Employment (Ad hoc)" to "Employment and earnings - Ad hoc payments",
+    "Employment (Ongoing)" to "Employment and earnings - Ongoing paid employment",
+    "Donations" to "Donations and other support (including loans) for activities as an MP",
+    "Gifts (UK)" to "Gifts, benefits and hospitality from UK sources",
+    "Gifts (Non-UK)" to "Gifts and benefits from sources outside the UK",
+    "Overseas Visits" to "Visits outside the UK",
+    "Property" to "Land and property (within or outside the UK)",
+    "Shareholdings" to "Shareholdings",
+    "Miscellaneous" to "Miscellaneous",
+    "Family (Employed)" to "Family members employed and receiving benefit from the Exchequer",
+    "Family (Business)" to "Family business interests"
+)
+
+/**
+ * Returns the full category name for a short name, or the input if no mapping exists.
+ */
+fun fullCategoryName(shortName: String?): String = shortName?.let { FULL_CATEGORY_NAMES[it] } ?: shortName ?: ""
