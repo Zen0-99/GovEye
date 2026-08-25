@@ -428,6 +428,25 @@ object DatabaseModule {
         }
     }
 
+    // Migration 24 → 25: Add bodyText column to government_publications.
+    // Idempotent — the seed DB may already include this column if built
+    // with a newer bundled_schema.json.
+    private val MIGRATION_24_25 = object : Migration(24, 25) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            val existingColumns = db.query("PRAGMA table_info(government_publications)").use { cursor ->
+                buildList {
+                    while (cursor.moveToNext()) {
+                        add(cursor.getString(cursor.getColumnIndexOrThrow("name")))
+                    }
+                }
+            }.toSet()
+
+            if ("bodyText" !in existingColumns) {
+                db.execSQL("ALTER TABLE government_publications ADD COLUMN `bodyText` TEXT")
+            }
+        }
+    }
+
     @Provides
     @Singleton
     fun provideBundledDatabase(@ApplicationContext context: Context): BundledDatabase {
@@ -453,7 +472,8 @@ object DatabaseModule {
                 MIGRATION_20_21,
                 MIGRATION_21_22,
                 MIGRATION_22_23,
-                MIGRATION_23_24
+                MIGRATION_23_24,
+                MIGRATION_24_25
             )
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()

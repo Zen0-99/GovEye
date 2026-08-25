@@ -202,7 +202,8 @@ class GovernmentAnnouncementsRepository @Inject constructor(
         organisationSlug = organisationSlug,
         firstPublishedAt = firstPublishedAt,
         publicUpdatedAt = publicUpdatedAt,
-        imageUrl = imageUrl
+        imageUrl = imageUrl,
+        bodyText = bodyText
     )
 
     private fun LegislationEntity.toDomain(): Legislation = Legislation(

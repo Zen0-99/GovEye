@@ -10,5 +10,6 @@ data class GovernmentPublication(
     val organisationSlug: String,
     val firstPublishedAt: String,
     val publicUpdatedAt: String,
-    val imageUrl: String?
+    val imageUrl: String?,
+    val bodyText: String?
 )
