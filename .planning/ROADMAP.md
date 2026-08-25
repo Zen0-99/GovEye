@@ -492,7 +492,10 @@ Plans:
 **Goal:** Parse raw interest entry summary text into structured fields (donorName, payerName, paymentType, paymentDescription, donorStatus, donorAddress, etc.) in build_interests.py so the seed DB ships with fully structured data. Update Android entity/mapper/UI to read the new columns and render them in the unified financial card design. Two format generations handled: Format A (simple/legacy single-line) and Format B (structured multi-line with field labels).
 **Requirements**: FEED-02 (structured financial data in activity feed), MPDIR-08 (rich MP profile data)
 **Depends on:** Phase 17 (unified financial card design), Phase 9 (interests data layer), Phase 11 (build-time data enrichment)
-**Plans:** 0 plans
+**Plans:** 3 plans
+- 18-01: Python parser + DB schema for 16 structured interest fields (wave 1)
+- 18-02: Android entity + Room migration v23→v24 + domain model + mapper (wave 1, depends on 18-01)
+- 18-03: Card UI integration — structured fields in feed, activity, and detail cards (wave 2, depends on 18-02)
 
 Plans:
 
