@@ -123,6 +123,7 @@ fun ActivityTabContent(
                                 category = entry.categoryName ?: "",
                                 date = formatActivityDate(entry.date),
                                 isIncome = true,
+                                isUnpaid = entry.amountPence == null,
                                 partyColorHex = partyColorHex,
                                 expandableFields = structuredFields.takeIf { it.isNotEmpty() },
                                 expandableContent = if (structuredFields.isEmpty()) {

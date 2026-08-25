@@ -434,6 +434,7 @@ private fun FinancialEntryCard(entry: FinancialEntry) {
         category = category,
         date = date,
         isIncome = isIncome,
+        isUnpaid = isIncome && entry.amountPence == null,
         partyColorHex = null,
         expandableContent = expandableContent,
         expandableFields = expandableFields,

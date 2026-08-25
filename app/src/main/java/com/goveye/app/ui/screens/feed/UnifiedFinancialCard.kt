@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.TrendingDown
 import androidx.compose.material.icons.automirrored.outlined.TrendingUp
+import androidx.compose.material.icons.outlined.HorizontalRule
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -83,10 +84,12 @@ fun UnifiedFinancialCard(
     expandableContent: String? = null,
     expandableFields: List<FinancialDetailField>? = null,
     bucket: String? = null,
+    isUnpaid: Boolean = false,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val trendColor = if (isIncome) VoteColors.aye else VoteColors.no
+    val pillColor = if (isUnpaid) MaterialTheme.colorScheme.onSurfaceVariant else trendColor
     val categoryIcon = bucketIcon(bucket ?: category)
     val hasExpandable = !expandableContent.isNullOrBlank() || !expandableFields.isNullOrEmpty()
     var expanded by remember { mutableStateOf(false) }
@@ -144,20 +147,25 @@ fun UnifiedFinancialCard(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                // Trend pill — income = TrendingUp (green), expense = TrendingDown (red)
+                // Trend pill — income = TrendingUp (green), expense = TrendingDown (red),
+                // unpaid = gray HorizontalRule (dash)
                 Surface(
                     shape = RoundedCornerShape(50),
-                    color = trendColor.copy(alpha = 0.12f)
+                    color = pillColor.copy(alpha = 0.12f)
                 ) {
-                    val trendIcon = if (isIncome) {
-                        Icons.AutoMirrored.Outlined.TrendingUp
-                    } else {
-                        Icons.AutoMirrored.Outlined.TrendingDown
+                    val trendIcon = when {
+                        isUnpaid -> Icons.Outlined.HorizontalRule
+                        isIncome -> Icons.AutoMirrored.Outlined.TrendingUp
+                        else -> Icons.AutoMirrored.Outlined.TrendingDown
                     }
                     Icon(
                         imageVector = trendIcon,
-                        contentDescription = if (isIncome) "Income" else "Expense",
-                        tint = trendColor,
+                        contentDescription = when {
+                            isUnpaid -> "Unpaid"
+                            isIncome -> "Income"
+                            else -> "Expense"
+                        },
+                        tint = pillColor,
                         modifier = Modifier
                             .padding(4.dp)
                             .size(18.dp)
