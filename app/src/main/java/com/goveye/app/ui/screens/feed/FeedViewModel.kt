@@ -227,6 +227,19 @@ class FeedViewModel @Inject constructor(
                                 interestsRepository.observeInterestsForMember(memberId).first().data
                             interests.take(20).forEach { interest ->
                                 val pence = interest.parsedAmountPence ?: return@forEach
+                                val descLine = interestDescriptionLine(
+                                    interest.paymentDescription,
+                                    interest.visitPurpose,
+                                    interest.organisationDescription
+                                )
+                                val detail = formatInterestStructuredDetail(
+                                    interest.donorName, interest.paymentType, interest.paymentDescription,
+                                    interest.donorStatus, interest.donorAddress, interest.donorCompanyIdentifier,
+                                    interest.destination, interest.visitPurpose, interest.organisationName,
+                                    interest.organisationDescription, interest.propertyLocation, interest.propertyType,
+                                    interest.hoursWorked, interest.familyMemberName,
+                                    interest.familyMemberRelationship, interest.familyMemberRole
+                                )
                                 financialItems.add(
                                     FeedItem.FinancialItem(
                                         memberId = memberId,
@@ -234,11 +247,13 @@ class FeedViewModel @Inject constructor(
                                         memberPartyColorHex = profile.partyBackgroundColour,
                                         memberPhotoUrl = profile.thumbnailUrl,
                                         amount = formatFeedPence(pence),
-                                        whoOrWhere = interest.summary,
-                                        description = interest.summary,
+                                        whoOrWhere = interest.donorName?.takeIf { it.isNotBlank() }
+                                            ?: interest.summary.lineSequence().firstOrNull()?.take(80) ?: "",
+                                        description = descLine ?: "",
                                         category = interest.categoryName,
                                         isIncome = true,
-                                        date = interest.publishedDate ?: interest.registrationDate ?: ""
+                                        date = interest.publishedDate ?: interest.registrationDate ?: "",
+                                        structuredDetail = detail.takeIf { it.isNotBlank() }
                                     )
                                 )
                             }

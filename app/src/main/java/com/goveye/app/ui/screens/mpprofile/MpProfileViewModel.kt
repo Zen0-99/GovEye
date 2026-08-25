@@ -410,7 +410,23 @@ class ProfileViewModel @Inject constructor(
                     summary = interest.summary,
                     categoryName = interest.categoryName,
                     amountPence = interest.parsedAmountPence,
-                    bucket = interest.bucket
+                    bucket = interest.bucket,
+                    donorName = interest.donorName,
+                    paymentType = interest.paymentType,
+                    paymentDescription = interest.paymentDescription,
+                    donorStatus = interest.donorStatus,
+                    donorAddress = interest.donorAddress,
+                    donorCompanyIdentifier = interest.donorCompanyIdentifier,
+                    destination = interest.destination,
+                    visitPurpose = interest.visitPurpose,
+                    organisationName = interest.organisationName,
+                    organisationDescription = interest.organisationDescription,
+                    propertyLocation = interest.propertyLocation,
+                    propertyType = interest.propertyType,
+                    hoursWorked = interest.hoursWorked,
+                    familyMemberName = interest.familyMemberName,
+                    familyMemberRelationship = interest.familyMemberRelationship,
+                    familyMemberRole = interest.familyMemberRole
                 )
             }
     }.getOrDefault(emptyList())

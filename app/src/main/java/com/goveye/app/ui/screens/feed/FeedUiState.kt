@@ -76,7 +76,9 @@ sealed interface FeedItem {
         val isIncome: Boolean,
         override val date: String,
         override val id: Int = listOf(memberId, amount, date).hashCode(),
-        val tags: List<String> = emptyList()
+        val tags: List<String> = emptyList(),
+        // Phase 18: structured detail for expandable content
+        val structuredDetail: String? = null
     ) : FeedItem {
         override val typePrefix: String = "financial"
         override val cardType: CardType = CardType.FINANCIAL

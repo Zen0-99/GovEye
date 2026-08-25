@@ -36,6 +36,8 @@ import com.goveye.app.ui.components.VoteColors
 import com.goveye.app.ui.screens.feed.FeedDateHeader
 import com.goveye.app.ui.screens.feed.TagPillRow
 import com.goveye.app.ui.screens.feed.UnifiedFinancialCard
+import com.goveye.app.ui.screens.feed.formatInterestStructuredDetail
+import com.goveye.app.ui.screens.feed.interestDescriptionLine
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -109,17 +111,35 @@ fun ActivityTabContent(
 
                         ActivityEntryType.QUESTION -> ActivityQuestionCard(entry)
 
-                        ActivityEntryType.INCOME -> UnifiedFinancialCard(
-                            amount = entry.amountPence?.let { formatAmount(it) } ?: "£0",
-                            whoOrWhere = entry.summary.take(80),
-                            description = "",
-                            category = entry.categoryName ?: "",
-                            date = formatActivityDate(entry.date),
-                            isIncome = true,
-                            partyColorHex = partyColorHex,
-                            expandableContent = entry.summary,
-                            onClick = { /* navigate to income detail */ }
-                        )
+                        ActivityEntryType.INCOME -> {
+                            val whoOrWhere = entry.donorName?.takeIf { it.isNotBlank() }
+                                ?: entry.summary.lineSequence().firstOrNull()?.take(80) ?: ""
+                            val descLine = interestDescriptionLine(
+                                entry.paymentDescription,
+                                entry.visitPurpose,
+                                entry.organisationDescription
+                            ) ?: ""
+                            val detail = formatInterestStructuredDetail(
+                                entry.donorName, entry.paymentType, entry.paymentDescription,
+                                entry.donorStatus, entry.donorAddress, entry.donorCompanyIdentifier,
+                                entry.destination, entry.visitPurpose, entry.organisationName,
+                                entry.organisationDescription, entry.propertyLocation, entry.propertyType,
+                                entry.hoursWorked, entry.familyMemberName,
+                                entry.familyMemberRelationship, entry.familyMemberRole
+                            )
+                            UnifiedFinancialCard(
+                                amount = entry.amountPence?.let { formatAmount(it) } ?: "£0",
+                                whoOrWhere = whoOrWhere,
+                                description = descLine,
+                                category = entry.categoryName ?: "",
+                                date = formatActivityDate(entry.date),
+                                isIncome = true,
+                                partyColorHex = partyColorHex,
+                                expandableContent = detail.takeIf { it.isNotBlank() }
+                                    ?: entry.summary.takeIf { it.length > 80 },
+                                onClick = { /* navigate to income detail */ }
+                            )
+                        }
 
                         ActivityEntryType.EXPENSE -> UnifiedFinancialCard(
                             amount = entry.totalAmountPence?.let { formatAmount(it) } ?: "£0",

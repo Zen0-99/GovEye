@@ -34,6 +34,8 @@ import com.goveye.app.ui.components.ConfigureSearchBar
 import com.goveye.app.ui.components.SearchBarConfig
 import com.goveye.app.ui.screens.feed.UnifiedFinancialCard
 import com.goveye.app.ui.screens.feed.formatDivisionDate
+import com.goveye.app.ui.screens.feed.formatInterestStructuredDetail
+import com.goveye.app.ui.screens.feed.interestDescriptionLine
 import com.goveye.app.ui.theme.padding
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -196,7 +198,23 @@ private fun Interest.toFinancialEntry(): FinancialEntry = FinancialEntry(
     categoryNumber = categoryNumber,
     date = publishedDate, // already YYYY-MM-DD
     amountPence = parsedAmountPence,
-    bucket = bucket ?: ""
+    bucket = bucket ?: "",
+    donorName = donorName,
+    paymentType = paymentType,
+    paymentDescription = paymentDescription,
+    donorStatus = donorStatus,
+    donorAddress = donorAddress,
+    donorCompanyIdentifier = donorCompanyIdentifier,
+    destination = destination,
+    visitPurpose = visitPurpose,
+    organisationName = organisationName,
+    organisationDescription = organisationDescription,
+    propertyLocation = propertyLocation,
+    propertyType = propertyType,
+    hoursWorked = hoursWorked,
+    familyMemberName = familyMemberName,
+    familyMemberRelationship = familyMemberRelationship,
+    familyMemberRole = familyMemberRole
 )
 
 private fun ExpenseEntity.toFinancialEntry(): FinancialEntry {
@@ -377,26 +395,39 @@ private fun FinancialEntryCard(entry: FinancialEntry) {
     val date = entry.date?.let { formatDivisionDate(it) } ?: ""
     val category = entry.categoryName ?: entry.bucket ?: ""
 
-    // For income: whoOrWhere is a short excerpt of the summary (first line / donor name)
-    // For expenses: whoOrWhere is the expense category/bucket
-    val whoOrWhere = if (isIncome) {
-        // Extract first line of summary as the "by X" text
-        entry.summary.lineSequence().firstOrNull()?.take(80) ?: ""
-    } else {
-        entry.categoryName ?: entry.bucket ?: ""
-    }
+    val whoOrWhere: String
+    val description: String
+    val expandable: String?
 
-    // Expandable content: full summary for income, journey+payment details for expenses
-    val expandable = if (isIncome) {
-        entry.summary.takeIf { it.length > 80 } // Only expandable if there's more than the first line
+    if (isIncome) {
+        // Structured fields available → use them; fall back to summary
+        whoOrWhere = entry.donorName?.takeIf { it.isNotBlank() }
+            ?: entry.summary.lineSequence().firstOrNull()?.take(80) ?: ""
+        description = interestDescriptionLine(
+            entry.paymentDescription,
+            entry.visitPurpose,
+            entry.organisationDescription
+        ) ?: ""
+        val structuredDetail = formatInterestStructuredDetail(
+            entry.donorName, entry.paymentType, entry.paymentDescription,
+            entry.donorStatus, entry.donorAddress, entry.donorCompanyIdentifier,
+            entry.destination, entry.visitPurpose, entry.organisationName,
+            entry.organisationDescription, entry.propertyLocation, entry.propertyType,
+            entry.hoursWorked, entry.familyMemberName,
+            entry.familyMemberRelationship, entry.familyMemberRole
+        )
+        expandable = structuredDetail.takeIf { it.isNotBlank() }
+            ?: entry.summary.takeIf { it.length > 80 }
     } else {
-        buildExpenseDetail(entry).takeIf { it.isNotBlank() }
+        whoOrWhere = entry.categoryName ?: entry.bucket ?: ""
+        description = ""
+        expandable = buildExpenseDetail(entry).takeIf { it.isNotBlank() }
     }
 
     UnifiedFinancialCard(
         amount = amount,
         whoOrWhere = whoOrWhere,
-        description = "",
+        description = description,
         category = category,
         date = date,
         isIncome = isIncome,

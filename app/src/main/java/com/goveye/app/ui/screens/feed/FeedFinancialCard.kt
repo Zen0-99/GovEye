@@ -25,7 +25,8 @@ fun FeedFinancialCard(item: FeedItem.FinancialItem, onClick: () -> Unit, modifie
         showProfileIcon = true,
         profileImageUrl = item.memberPhotoUrl,
         profileInitials = item.memberName.take(2).uppercase(),
-        expandableContent = item.description.takeIf { it.length > 80 },
+        expandableContent = item.structuredDetail
+            ?: item.description.takeIf { it.length > 80 },
         onClick = onClick,
         modifier = modifier
     )
