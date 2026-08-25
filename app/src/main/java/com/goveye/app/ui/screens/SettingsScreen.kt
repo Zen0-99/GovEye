@@ -9,11 +9,16 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -29,6 +34,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.goveye.app.domain.ThemeMode
 import com.goveye.app.ui.settings.DownloadSettingsViewModel
+import com.goveye.app.ui.settings.UpdateCheckViewModel
 import com.goveye.app.ui.theme.ThemeViewModel
 import com.goveye.app.ui.theme.padding
 import com.goveye.app.work.WorkScheduler
@@ -50,6 +56,8 @@ import com.goveye.app.work.WorkScheduler
 @Composable
 fun SettingsScreen(themeViewModel: ThemeViewModel, modifier: Modifier = Modifier, onTestOnboarding: () -> Unit = {}) {
     val downloadSettingsViewModel: DownloadSettingsViewModel = hiltViewModel()
+    val updateCheckViewModel: UpdateCheckViewModel = hiltViewModel()
+    val isCheckingUpdates by updateCheckViewModel.isChecking.collectAsStateWithLifecycle()
 
     com.goveye.app.ui.components.ConfigureSearchBar(
         config = com.goveye.app.ui.components.SearchBarConfig(
@@ -126,6 +134,32 @@ fun SettingsScreen(themeViewModel: ThemeViewModel, modifier: Modifier = Modifier
                     WorkScheduler.scheduleDatabaseUpdateCheck(context, wifiOnly = enabled)
                 }
             )
+
+            SettingsDivider()
+
+            // Manual update check — fetches manifests, downloads + applies
+            // patches if any stream has a version bump. Shows a snackbar
+            // with the result (SyncStone convention: snackbar, no Toast).
+            SettingsRow(
+                label = "Check for updates",
+                onClick = {
+                    if (!isCheckingUpdates) updateCheckViewModel.checkForUpdates()
+                }
+            ) {
+                if (isCheckingUpdates) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Outlined.Refresh,
+                        contentDescription = "Check for updates",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
         }
 
         // --- Testing ---

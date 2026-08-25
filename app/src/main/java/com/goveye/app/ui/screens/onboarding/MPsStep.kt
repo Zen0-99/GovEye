@@ -265,6 +265,7 @@ private fun PartyLeaderCard(leader: PartyLeaderInfo, isFollowed: Boolean, onFoll
             text = leader.name,
             style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onBackground,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -302,6 +303,7 @@ private fun RecommendedMpRow(mp: Mp, isFollowed: Boolean, onFollowToggle: () -> 
                 text = mp.nameDisplayAs,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onBackground,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -341,6 +343,7 @@ private fun MpListRowWithFollow(mp: Mp, isFollowed: Boolean, onFollowToggle: () 
             Text(
                 text = mp.nameDisplayAs,
                 style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onBackground,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )

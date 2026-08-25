@@ -233,71 +233,82 @@ class FeedViewModel @Inject constructor(
                         emptyMap()
                     }
 
-                    // Income — registered interests per followed member
+                    // Income — registered interests per followed member.
+                    // Only include interests from 2026 onwards so the feed
+                    // shows recent activity, not historical entries from 2024/2025.
                     followedIds.forEach { memberId ->
                         val profile = memberProfiles[memberId] ?: return@forEach
                         try {
                             val interests: List<Interest> =
                                 interestsRepository.observeInterestsForMember(memberId).first().data
-                            interests.take(20).forEach { interest ->
-                                val pence = interest.parsedAmountPence ?: return@forEach
-                                val descLine = interestDescriptionLine(
-                                    interest.paymentDescription,
-                                    interest.visitPurpose,
-                                    interest.organisationDescription
-                                )
-                                val structuredFields = formatInterestStructuredFields(
-                                    interest.donorName, interest.paymentType, interest.paymentDescription,
-                                    interest.donorStatus, interest.donorAddress, interest.donorCompanyIdentifier,
-                                    interest.destination, interest.visitPurpose, interest.organisationName,
-                                    interest.organisationDescription, interest.propertyLocation, interest.propertyType,
-                                    interest.hoursWorked, interest.familyMemberName,
-                                    interest.familyMemberRelationship, interest.familyMemberRole
-                                )
-                                financialItems.add(
-                                    FeedItem.FinancialItem(
-                                        memberId = memberId,
-                                        memberName = profile.nameDisplayAs,
-                                        memberPartyColorHex = profile.partyBackgroundColour,
-                                        memberPhotoUrl = profile.thumbnailUrl,
-                                        amount = formatFeedPence(pence),
-                                        whoOrWhere = interest.donorName?.takeIf { it.isNotBlank() }
-                                            ?: interest.summary.lineSequence().firstOrNull()?.take(80) ?: "",
-                                        description = descLine ?: "",
-                                        category = interest.categoryName,
-                                        isIncome = true,
-                                        date = interest.publishedDate ?: interest.registrationDate ?: "",
-                                        expandableFields = structuredFields.takeIf { it.isNotEmpty() },
-                                        bucket = interest.bucket
+                            interests
+                                .filter {
+                                    it.publishedDate?.take(4) == "2026" || it.registrationDate?.take(4) == "2026"
+                                }
+                                .take(10)
+                                .forEach { interest ->
+                                    val pence = interest.parsedAmountPence ?: return@forEach
+                                    val descLine = interestDescriptionLine(
+                                        interest.paymentDescription,
+                                        interest.visitPurpose,
+                                        interest.organisationDescription
                                     )
-                                )
-                            }
+                                    val structuredFields = formatInterestStructuredFields(
+                                        interest.donorName, interest.paymentType, interest.paymentDescription,
+                                        interest.donorStatus, interest.donorAddress, interest.donorCompanyIdentifier,
+                                        interest.destination, interest.visitPurpose, interest.organisationName,
+                                        interest.organisationDescription, interest.propertyLocation,
+                                        interest.propertyType, interest.hoursWorked, interest.familyMemberName,
+                                        interest.familyMemberRelationship, interest.familyMemberRole
+                                    )
+                                    financialItems.add(
+                                        FeedItem.FinancialItem(
+                                            memberId = memberId,
+                                            memberName = profile.nameDisplayAs,
+                                            memberPartyColorHex = profile.partyBackgroundColour,
+                                            memberPhotoUrl = profile.thumbnailUrl,
+                                            amount = formatFeedPence(pence),
+                                            whoOrWhere = interest.donorName?.takeIf { it.isNotBlank() }
+                                                ?: interest.summary.lineSequence().firstOrNull()?.take(80) ?: "",
+                                            description = descLine ?: "",
+                                            category = interest.categoryName,
+                                            isIncome = true,
+                                            date = interest.publishedDate ?: interest.registrationDate ?: "",
+                                            expandableFields = structuredFields.takeIf { it.isNotEmpty() },
+                                            bucket = interest.bucket
+                                        )
+                                    )
+                                }
                         } catch (e: Exception) {
                             Log.w("GovEye/Feed", "Failed to load interests for member $memberId", e)
                         }
                     }
 
-                    // Expenses — recent expense claims per followed member
+                    // Expenses — recent expense claims per followed member.
+                    // Only include 2026 claims to keep the feed current.
                     followedIds.forEach { memberId ->
                         val profile = memberProfiles[memberId] ?: return@forEach
                         try {
                             val expenses = expensesRepository.getExpenses(memberId)
-                            expenses.take(20).forEach { expense ->
-                                financialItems.add(
-                                    FeedItem.FinancialItem(
-                                        memberId = memberId,
-                                        memberName = profile.nameDisplayAs,
-                                        memberPartyColorHex = profile.partyBackgroundColour,
-                                        memberPhotoUrl = profile.thumbnailUrl,
-                                        amount = formatFeedPence(expense.amountPence),
-                                        whoOrWhere = expense.bucket,
-                                        description = expense.shortDescription ?: expense.category,
-                                        category = expense.bucket,
-                                        isIncome = false,
-                                        date = expense.claimDate ?: expense.supplyMonth ?: ""
+                            expenses
+                                .filter { (it.claimDate ?: it.supplyMonth ?: "").take(4) == "2026" }
+                                .take(10)
+                                .forEach { expense ->
+                                    financialItems.add(
+                                        FeedItem.FinancialItem(
+                                            memberId = memberId,
+                                            memberName = profile.nameDisplayAs,
+                                            memberPartyColorHex = profile.partyBackgroundColour,
+                                            memberPhotoUrl = profile.thumbnailUrl,
+                                            amount = formatFeedPence(expense.amountPence),
+                                            whoOrWhere = expense.bucket,
+                                            description = expense.shortDescription ?: expense.category,
+                                            category = expense.bucket,
+                                            isIncome = false,
+                                            date = expense.claimDate ?: expense.supplyMonth ?: ""
+                                        )
                                     )
-                                )
-                            }
+                                }
                         } catch (e: Exception) {
                             Log.w("GovEye/Feed", "Failed to load expenses for member $memberId", e)
                         }

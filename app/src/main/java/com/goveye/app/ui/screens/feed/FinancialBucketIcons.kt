@@ -45,10 +45,30 @@ val BUCKET_ICONS: Map<String, ImageVector> = mapOf(
 )
 
 /**
- * Returns the icon for a given bucket label, falling back to a generic
- * category icon if the bucket is not recognized.
+ * Maps short category names (stored in the DB) to icons — used when the
+ * bucket label is null but the short category name is available.
  */
-fun bucketIcon(bucketLabel: String?): ImageVector = BUCKET_ICONS[bucketLabel] ?: Icons.Outlined.Category
+val CATEGORY_ICONS: Map<String, ImageVector> = mapOf(
+    "Employment" to Icons.Outlined.Paid,
+    "Employment (Ad hoc)" to Icons.Outlined.Paid,
+    "Employment (Ongoing)" to Icons.Outlined.Paid,
+    "Donations" to Icons.Outlined.AccountBalance,
+    "Gifts (UK)" to Icons.Outlined.CardGiftcard,
+    "Gifts (Non-UK)" to Icons.Outlined.Public,
+    "Overseas Visits" to Icons.Outlined.Flight,
+    "Property" to Icons.Outlined.RealEstateAgent,
+    "Shareholdings" to Icons.AutoMirrored.Outlined.TrendingUp,
+    "Miscellaneous" to Icons.Outlined.Category,
+    "Family (Employed)" to Icons.Outlined.Groups,
+    "Family (Business)" to Icons.Outlined.Business
+)
+
+/**
+ * Returns the icon for a given bucket label, falling back to the short
+ * category name mapping, then to a generic category icon.
+ */
+fun bucketIcon(bucketLabel: String?): ImageVector =
+    BUCKET_ICONS[bucketLabel] ?: CATEGORY_ICONS[bucketLabel] ?: Icons.Outlined.Category
 
 /**
  * Maps short category names (stored in the DB) back to their full

@@ -31,6 +31,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -94,6 +98,8 @@ import com.goveye.app.ui.screens.mpprofile.FinancialBucketDetailScreen
 import com.goveye.app.ui.screens.mpprofile.ProfileScreen
 import com.goveye.app.ui.screens.mpprofile.VotingRecordScreen
 import com.goveye.app.ui.screens.party.PartyScreen
+import com.goveye.app.ui.settings.UpdateCheckViewModel
+import com.goveye.app.ui.settings.UpdateSnackbarMessage
 import com.goveye.app.ui.theme.ThemeViewModel
 
 /**
@@ -127,6 +133,33 @@ private fun GovEyeAppContent(
 ) {
     val searchConfig by searchStateHolder.config
     val showInfoCards by themeViewModel.showInfoCards.collectAsStateWithLifecycle()
+
+    // Snackbar host for update-check notifications (SyncStone convention:
+    // in-app snackbar, no Toasts). The UpdateCheckViewModel is scoped to
+    // the Activity so the snackbar host survives navigation between tabs.
+    val updateCheckViewModel: UpdateCheckViewModel = hiltViewModel()
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(updateCheckViewModel) {
+        updateCheckViewModel.snackbarMessages.collect { message ->
+            val (text, duration) = when (message) {
+                is UpdateSnackbarMessage.AlreadyUpToDate ->
+                    "Database is up to date" to SnackbarDuration.Short
+
+                is UpdateSnackbarMessage.Success -> {
+                    val plural = if (message.streamCount > 1) "s" else ""
+                    "Updated ${message.streamCount} stream$plural: ${message.streamNames}" to
+                        SnackbarDuration.Long
+                }
+
+                is UpdateSnackbarMessage.FullDownloadRequired ->
+                    "A full database download is required — restart the app" to SnackbarDuration.Long
+
+                is UpdateSnackbarMessage.Error ->
+                    "Update failed: ${message.message}" to SnackbarDuration.Long
+            }
+            snackbarHostState.showSnackbar(text, duration = duration)
+        }
+    }
     // Per-tab back stacks (D-20)
     val feedBackStack = rememberNavBackStack(FeedRoute)
     val directoryBackStack = rememberNavBackStack(DirectoryRoute)
@@ -514,6 +547,7 @@ private fun GovEyeAppContent(
         // This is the Miko pattern: the nav bar is not part of the Scaffold
         // layout, so showing/hiding it doesn't resize the content area.
         // Detail screens slide in at full height and cover where the bar was.
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             // Unified top bar — the FloatingSearchBar is always rendered
             // in the same tree position so it persists (not rebuilt) across

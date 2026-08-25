@@ -160,3 +160,24 @@
 3. Added reinstall recovery in `DatabaseUpdateManager.checkForUpdates()`: if `seedVersion == null` but the DB file exists, set `seedVersion = CURRENT_SEED_VERSION` and fall through to the patch check instead of forcing `NeedsFullDownload`. Same fix in `isFirstLaunch()`.
 **Files:** `core/data/.../entity/*.kt` (42 files), `core/data/.../update/DatabaseUpdateManager.kt`, `goveye-data/diff_db.py`
 
+## Crash: Feed scroll crash — duplicate LazyColumn keys
+**Date:** 2026-08-25
+**Symptom:** App crashed when scrolling to a certain point in the feed.
+**Root cause:** `FeedItem.FinancialItem.id` was `listOf(memberId, amount, date).hashCode()`. Two expenses from the same MP with the same amount and date (e.g. two £0.00 claims on the same day) produced the same `id`, causing duplicate keys in the LazyColumn `key = { item -> "${item.typePrefix}-${item.id}" }` parameter. Compose throws `IllegalArgumentException: Key "financial-123" was already used` on duplicate keys.
+**Fix:** Added `whoOrWhere` and `description` to the hashCode inputs for `FinancialItem`, and `speechText.take(50)` for `SpeechItem`, making the IDs unique even when multiple items share the same member/date/amount.
+**Files:** `FeedUiState.kt`
+
+## Bug: MP names black in dark mode on onboarding follow screen
+**Date:** 2026-08-25
+**Symptom:** MP names in the onboarding "Follow MPs" step appeared black in dark mode instead of white.
+**Root cause:** The onboarding screen uses `.background(MaterialTheme.colorScheme.background)` instead of `Surface`, so `LocalContentColor` is never set to `onBackground`. The `Text` components for MP names in `RecommendedMpRow`, `MpListRowWithFollow`, and `PartyLeaderCard` had no explicit `color` parameter, so they defaulted to the unset `LocalContentColor` (black).
+**Fix:** Added explicit `color = MaterialTheme.colorScheme.onBackground` to all MP name `Text` components in `MPsStep.kt`.
+**Files:** `MPsStep.kt`
+
+## Bug: Feed showing 2024/2025 MP financial activity
+**Date:** 2026-08-25
+**Symptom:** The feed showed MP interest entries from 2024 and 2025, mixed in with 2026 content.
+**Root cause:** `interests.take(20)` and `expenses.take(20)` took the first 20 entries regardless of date — these could be historical entries from years ago.
+**Fix:** Filtered interests and expenses to only include 2026 entries (`publishedDate.take(4) == "2026"` for interests, `claimDate.take(4) == "2026"` for expenses), and reduced the take limit from 20 to 10.
+**Files:** `FeedViewModel.kt`
+

@@ -111,7 +111,7 @@ fun UnifiedFinancialCard(
                 }
             ),
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer
+        color = pillColor.copy(alpha = 0.08f)
     ) {
         Column(
             modifier = Modifier
@@ -147,30 +147,24 @@ fun UnifiedFinancialCard(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                // Trend pill — income = TrendingUp (green), expense = TrendingDown (red),
-                // unpaid = gray HorizontalRule (dash)
-                Surface(
-                    shape = RoundedCornerShape(50),
-                    color = pillColor.copy(alpha = 0.12f)
-                ) {
-                    val trendIcon = when {
-                        isUnpaid -> Icons.Outlined.HorizontalRule
-                        isIncome -> Icons.AutoMirrored.Outlined.TrendingUp
-                        else -> Icons.AutoMirrored.Outlined.TrendingDown
-                    }
-                    Icon(
-                        imageVector = trendIcon,
-                        contentDescription = when {
-                            isUnpaid -> "Unpaid"
-                            isIncome -> "Income"
-                            else -> "Expense"
-                        },
-                        tint = pillColor,
-                        modifier = Modifier
-                            .padding(4.dp)
-                            .size(18.dp)
-                    )
+                // Trend icon — income = TrendingUp (green), expense = TrendingDown (red),
+                // unpaid = gray HorizontalRule (dash). No circle — the whole card
+                // is tinted with the trend color instead.
+                val trendIcon = when {
+                    isUnpaid -> Icons.Outlined.HorizontalRule
+                    isIncome -> Icons.AutoMirrored.Outlined.TrendingUp
+                    else -> Icons.AutoMirrored.Outlined.TrendingDown
                 }
+                Icon(
+                    imageVector = trendIcon,
+                    contentDescription = when {
+                        isUnpaid -> "Unpaid"
+                        isIncome -> "Income"
+                        else -> "Expense"
+                    },
+                    tint = pillColor,
+                    modifier = Modifier.size(20.dp)
+                )
             }
 
             // 2. "by X" / "for X" subtext — prefix normal, name bold

@@ -75,7 +75,7 @@ sealed interface FeedItem {
         val category: String,
         val isIncome: Boolean,
         override val date: String,
-        override val id: Int = listOf(memberId, amount, date).hashCode(),
+        override val id: Int = listOf(memberId, amount, date, whoOrWhere, description).hashCode(),
         val tags: List<String> = emptyList(),
         // Phase 18: structured detail fields for expandable content
         val expandableFields: List<FinancialDetailField>? = null,
@@ -99,7 +99,7 @@ sealed interface FeedItem {
         val divisionId: Int,
         val divisionTitle: String,
         override val date: String,
-        override val id: Int = listOf(memberId, divisionId).hashCode(),
+        override val id: Int = listOf(memberId, divisionId, speechText.take(50)).hashCode(),
         val tags: List<String> = emptyList()
     ) : FeedItem {
         override val typePrefix: String = "speech"
