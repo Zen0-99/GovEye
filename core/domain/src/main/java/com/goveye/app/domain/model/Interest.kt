@@ -5,6 +5,7 @@ data class Interest(
     val memberId: Int,
     val summary: String,
     val categoryName: String,
+    val fullCategoryName: String? = null,
     val categoryNumber: String,
     val registrationDate: String?,
     val publishedDate: String?,

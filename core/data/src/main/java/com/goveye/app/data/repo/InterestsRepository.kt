@@ -39,6 +39,7 @@ class InterestsRepository @Inject constructor(private val interestDao: InterestD
         memberId = memberId,
         summary = summary,
         categoryName = categoryName,
+        fullCategoryName = fullCategoryName,
         categoryNumber = categoryNumber,
         registrationDate = registrationDate,
         publishedDate = publishedDate,

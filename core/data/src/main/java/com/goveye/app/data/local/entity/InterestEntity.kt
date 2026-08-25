@@ -11,6 +11,7 @@ data class InterestEntity(
     val categoryId: Int,
     val categoryNumber: String,
     val categoryName: String,
+    val fullCategoryName: String? = null,
     val registrationDate: String? = null,
     val publishedDate: String? = null,
     val rectified: Boolean,

@@ -428,12 +428,13 @@ object DatabaseModule {
         }
     }
 
-    // Migration 24 → 25: Add bodyText column to government_publications.
-    // Idempotent — the seed DB may already include this column if built
+    // Migration 24 → 25: Add bodyText to government_publications + fullCategoryName to interests.
+    // Idempotent — the seed DB may already include these columns if built
     // with a newer bundled_schema.json.
     private val MIGRATION_24_25 = object : Migration(24, 25) {
         override fun migrate(db: SupportSQLiteDatabase) {
-            val existingColumns = db.query("PRAGMA table_info(government_publications)").use { cursor ->
+            // bodyText on government_publications
+            val pubColumns = db.query("PRAGMA table_info(government_publications)").use { cursor ->
                 buildList {
                     while (cursor.moveToNext()) {
                         add(cursor.getString(cursor.getColumnIndexOrThrow("name")))
@@ -441,8 +442,43 @@ object DatabaseModule {
                 }
             }.toSet()
 
-            if ("bodyText" !in existingColumns) {
+            if ("bodyText" !in pubColumns) {
                 db.execSQL("ALTER TABLE government_publications ADD COLUMN `bodyText` TEXT")
+            }
+
+            // fullCategoryName on interests (short category name in categoryName,
+            // full Parliament API name in fullCategoryName)
+            val interestColumns = db.query("PRAGMA table_info(interests)").use { cursor ->
+                buildList {
+                    while (cursor.moveToNext()) {
+                        add(cursor.getString(cursor.getColumnIndexOrThrow("name")))
+                    }
+                }
+            }.toSet()
+
+            if ("fullCategoryName" !in interestColumns) {
+                db.execSQL("ALTER TABLE interests ADD COLUMN `fullCategoryName` TEXT")
+            }
+
+            // written_questions table may not exist in older seed DBs
+            val tableExists = db.query(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='written_questions'"
+            ).use { it.moveToFirst() }
+
+            if (!tableExists) {
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS `written_questions` (
+                        `id` INTEGER NOT NULL PRIMARY KEY,
+                        `memberId` INTEGER NOT NULL,
+                        `uin` TEXT NOT NULL,
+                        `dateTabled` TEXT NOT NULL,
+                        `answeringBodyId` INTEGER NOT NULL,
+                        `answeringBodyName` TEXT NOT NULL,
+                        `questionText` TEXT NOT NULL,
+                        `house` INTEGER NOT NULL,
+                        `lastUpdated` INTEGER NOT NULL
+                    )"""
+                )
             }
         }
     }
