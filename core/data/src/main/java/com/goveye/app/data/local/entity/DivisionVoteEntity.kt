@@ -1,7 +1,9 @@
 package com.goveye.app.data.local.entity
 
 import androidx.room.Entity
+import kotlinx.serialization.Serializable
 
+@Serializable
 @Entity(tableName = "division_votes", primaryKeys = ["divisionId", "memberId"])
 data class DivisionVoteEntity(
     val divisionId: Int,

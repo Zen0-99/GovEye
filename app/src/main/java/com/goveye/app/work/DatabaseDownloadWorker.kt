@@ -1,6 +1,8 @@
 package com.goveye.app.work
 
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -9,6 +11,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import com.goveye.app.MainActivity
 import com.goveye.app.R
 import com.goveye.app.data.update.DatabaseUpdateManager
 import com.goveye.app.data.update.DatabaseUpdateState
@@ -77,52 +80,72 @@ class DatabaseDownloadWorker @AssistedInject constructor(
         // app is backgrounded — setForegroundSafely() catches that.
         setForegroundSafely()
 
-        // Report initial progress
-        setProgress(workDataOf(KEY_PROGRESS to 0f))
+        // Acquire a partial wake lock so the CPU stays awake during the
+        // download even when the screen is off. The foreground service
+        // should handle this, but some OEMs have aggressive battery
+        // management that can still throttle background work.
+        val powerManager = applicationContext.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+        // 10 min max — safety cap so the lock is never held indefinitely.
+        val wakeLock = powerManager.newWakeLock(
+            android.os.PowerManager.PARTIAL_WAKE_LOCK,
+            "GovEye:DatabaseDownload"
+        ).apply { acquire(10 * 60 * 1000L) }
 
-        var lastNotificationUpdate = 0f
+        try {
+            // Report initial progress
+            setProgress(workDataOf(KEY_PROGRESS to 0f))
 
-        val result = databaseUpdateManager.downloadSeedDb { progress ->
-            Log.d(TAG, "Download progress: ${(progress * 100).toInt()}%")
+            var lastNotificationUpdate = 0f
 
-            // Report progress to WorkInfo for UI observation.
-            // Use the suspend setProgress (not setProgressAsync) so
-            // updates are delivered reliably to the observer in MainActivity.
-            setProgress(workDataOf(KEY_PROGRESS to progress))
+            val result = try {
+                databaseUpdateManager.downloadSeedDb { progress ->
+                    Log.d(TAG, "Download progress: ${(progress * 100).toInt()}%")
 
-            // Update the notification periodically (avoid flooding)
-            if (progress - lastNotificationUpdate >= NOTIFICATION_UPDATE_THRESHOLD || progress >= 1f) {
-                lastNotificationUpdate = progress
-                updateForegroundNotification(progress)
-            }
-        }
+                    // Report progress to WorkInfo for UI observation.
+                    // Use the suspend setProgress (not setProgressAsync) so
+                    // updates are delivered reliably to the observer in MainActivity.
+                    setProgress(workDataOf(KEY_PROGRESS to progress))
 
-        return when (result) {
-            is DatabaseUpdateState.UpToDate -> {
-                Log.i(TAG, "Download and merge complete — waiting for user to restart")
-                updateForegroundNotification(1f, "Download complete")
-                // Don't auto-relaunch the Activity. The UI observes
-                // WorkInfo.State.SUCCEEDED and shows a "Restart" button.
-                // The user taps it to recreate the Activity, which gives
-                // all ViewModels fresh Room connections (InvalidationTracker
-                // is broken from database.close() during the download).
-                Result.success()
-            }
-
-            is DatabaseUpdateState.NeedsWifi -> {
-                Log.w(TAG, "Download deferred — metered connection")
-                Result.failure(workDataOf("reason" to "needs_wifi"))
-            }
-
-            is DatabaseUpdateState.Failed -> {
-                Log.e(TAG, "Download failed: ${result.message}")
-                Result.failure(workDataOf("reason" to "failed", "message" to result.message))
+                    // Update the notification periodically (avoid flooding)
+                    if (progress - lastNotificationUpdate >= NOTIFICATION_UPDATE_THRESHOLD || progress >= 1f) {
+                        lastNotificationUpdate = progress
+                        updateForegroundNotification(progress)
+                    }
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                Log.i(TAG, "Download cancelled by user")
+                return Result.failure(workDataOf("reason" to "cancelled"))
             }
 
-            else -> {
-                Log.w(TAG, "Unexpected state: $result")
-                Result.success()
+            return when (result) {
+                is DatabaseUpdateState.UpToDate -> {
+                    Log.i(TAG, "Download and merge complete — waiting for user to restart")
+                    updateForegroundNotification(1f, "Download complete")
+                    // Don't auto-relaunch the Activity. The UI observes
+                    // WorkInfo.State.SUCCEEDED and shows a "Restart" button.
+                    // The user taps it to recreate the Activity, which gives
+                    // all ViewModels fresh Room connections (InvalidationTracker
+                    // is broken from database.close() during the download).
+                    Result.success()
+                }
+
+                is DatabaseUpdateState.NeedsWifi -> {
+                    Log.w(TAG, "Download deferred — metered connection")
+                    Result.failure(workDataOf("reason" to "needs_wifi"))
+                }
+
+                is DatabaseUpdateState.Failed -> {
+                    Log.e(TAG, "Download failed: ${result.message}")
+                    Result.failure(workDataOf("reason" to "failed", "message" to result.message))
+                }
+
+                else -> {
+                    Log.w(TAG, "Unexpected state: $result")
+                    Result.success()
+                }
             }
+        } finally {
+            if (wakeLock.isHeld) wakeLock.release()
         }
     }
 
@@ -130,20 +153,17 @@ class DatabaseDownloadWorker @AssistedInject constructor(
      * Builds the [ForegroundInfo] for [setForeground] — promotes this worker
      * to a foreground service with a dataSync type so it runs even when the
      * app is in the background (Android 12+).
+     *
+     * The notification includes:
+     * - A content intent that opens [MainActivity] when the notification bar
+     *   is tapped (navigates the user back into the app).
+     * - A "Cancel" action button that sends a broadcast to
+     *   [CancelDownloadReceiver], which instantly cancels the download
+     *   (no confirmation dialog — that's only in the in-app UI).
      */
     private fun createForegroundInfo(progress: Float): ForegroundInfo {
         val percent = (progress * 100).toInt()
-        val notification = NotificationCompat.Builder(
-            applicationContext,
-            NotificationHelper.DOWNLOAD_CHANNEL_ID
-        )
-            .setSmallIcon(android.R.drawable.stat_sys_download)
-            .setContentTitle("GovEye")
-            .setContentText("Downloading parliamentary data… $percent%")
-            .setProgress(100, percent, false)
-            .setOngoing(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .build()
+        val notification = buildDownloadNotification(percent, null)
 
         return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
             ForegroundInfo(
@@ -160,23 +180,55 @@ class DatabaseDownloadWorker @AssistedInject constructor(
     private fun updateForegroundNotification(progress: Float, text: String? = null) {
         try {
             val percent = (progress * 100).toInt()
-            val notification = NotificationCompat.Builder(
-                applicationContext,
-                NotificationHelper.DOWNLOAD_CHANNEL_ID
-            )
-                .setSmallIcon(android.R.drawable.stat_sys_download)
-                .setContentTitle("GovEye")
-                .setContentText(text ?: "Downloading parliamentary data… $percent%")
-                .setProgress(100, percent, false)
-                .setOngoing(true)
-                .setPriority(NotificationCompat.PRIORITY_LOW)
-                .build()
+            val notification = buildDownloadNotification(percent, text)
 
             val nm = applicationContext.getSystemService(android.app.NotificationManager::class.java)
             nm?.notify(NOTIFICATION_ID, notification)
         } catch (e: Exception) {
             Log.w(TAG, "Could not update notification: ${e.message}")
         }
+    }
+
+    /**
+     * Builds the download notification with content intent (opens app) and
+     * cancel action button (instant cancel via [CancelDownloadReceiver]).
+     */
+    private fun buildDownloadNotification(percent: Int, text: String?): android.app.Notification {
+        // Content intent — opens MainActivity when the notification is tapped
+        val contentIntent = Intent(applicationContext, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val contentPendingIntent = PendingIntent.getActivity(
+            applicationContext,
+            0,
+            contentIntent,
+            PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // Cancel action — broadcasts to CancelDownloadReceiver
+        val cancelIntent = Intent(applicationContext, CancelDownloadReceiver::class.java).apply {
+            action = CancelDownloadReceiver.ACTION_CANCEL_DOWNLOAD
+        }
+        val cancelPendingIntent = PendingIntent.getBroadcast(
+            applicationContext,
+            1,
+            cancelIntent,
+            PendingIntent.FLAG_IMMUTABLE
+        )
+
+        return NotificationCompat.Builder(
+            applicationContext,
+            NotificationHelper.DOWNLOAD_CHANNEL_ID
+        )
+            .setSmallIcon(android.R.drawable.stat_sys_download)
+            .setContentTitle("GovEye")
+            .setContentText(text ?: "Downloading parliamentary data… $percent%")
+            .setProgress(100, percent, false)
+            .setOngoing(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setContentIntent(contentPendingIntent)
+            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Cancel", cancelPendingIntent)
+            .build()
     }
 
     /**

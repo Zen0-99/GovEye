@@ -1,6 +1,7 @@
 package com.goveye.app.data.local.entity
 
 import androidx.room.Entity
+import kotlinx.serialization.Serializable
 
 /**
  * Tag attached to an MP, derived from recency-weighted tag hits across
@@ -11,6 +12,7 @@ import androidx.room.Entity
  *
  * Composite key: (memberId, tag).
  */
+@Serializable
 @Entity(
     tableName = "mp_tags",
     primaryKeys = ["memberId", "tag"]

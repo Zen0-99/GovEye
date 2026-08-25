@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Wifi
@@ -68,6 +69,8 @@ import com.goveye.app.data.update.DatabaseUpdateState
  * @param onWaitForWifi Called when the user chooses to wait for Wi-Fi.
  * @param onRetry Called when the user taps Retry after a download failure.
  * @param onRestart Called when the user taps Restart after download completes.
+ * @param onCancel Called when the user confirms cancellation of the download.
+ * @param onRedownload Called when the user taps Download after a cancellation.
  */
 @Composable
 fun DatabaseLoadingScreen(
@@ -76,9 +79,12 @@ fun DatabaseLoadingScreen(
     onWaitForWifi: () -> Unit = {},
     onRetry: () -> Unit = {},
     onRestart: () -> Unit = {},
+    onCancel: () -> Unit = {},
+    onRedownload: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showWifiDialog by remember { mutableStateOf(state is DatabaseUpdateState.NeedsWifi) }
+    var showCancelDialog by remember { mutableStateOf(false) }
 
     val isProgressState = state is DatabaseUpdateState.Downloading ||
         state is DatabaseUpdateState.Checking ||
@@ -87,6 +93,7 @@ fun DatabaseLoadingScreen(
         state is DatabaseUpdateState.NeedsFullDownload
 
     val isRestartState = state is DatabaseUpdateState.NeedsRestart
+    val isCanceledState = state is DatabaseUpdateState.Canceled
 
     val subtitle = when (state) {
         is DatabaseUpdateState.Downloading -> "Downloading parliamentary data"
@@ -97,6 +104,7 @@ fun DatabaseLoadingScreen(
         is DatabaseUpdateState.NeedsWifi -> "Waiting for Wi-Fi"
         is DatabaseUpdateState.Failed -> "Download failed"
         is DatabaseUpdateState.NeedsRestart -> "Download complete"
+        is DatabaseUpdateState.Canceled -> "Download Canceled"
         else -> "Loading"
     }
 
@@ -140,6 +148,16 @@ fun DatabaseLoadingScreen(
             CircularProgressWithPercentage(state)
         }
 
+        // Canceled state — unfilled circle with X icon
+        AnimatedVisibility(
+            visible = isCanceledState,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.Center)
+        ) {
+            CanceledCircle()
+        }
+
         AnimatedVisibility(
             visible = state is DatabaseUpdateState.Failed,
             enter = fadeIn(),
@@ -161,20 +179,31 @@ fun DatabaseLoadingScreen(
             WifiNeededSection(onDownloadAnyway = { showWifiDialog = true })
         }
 
-        // ── Bottom: hint (during download) or restart button (after) ──
+        // ── Bottom: hint + cancel button (during download) ───────────
         AnimatedVisibility(
             visible = isProgressState,
             enter = fadeIn(),
             exit = fadeOut(),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 80.dp)
+                .padding(bottom = 32.dp, start = 24.dp, end = 24.dp)
         ) {
-            Text(
-                text = "You can minimise the app",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-            )
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = "You can minimise the app",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                )
+                OutlinedButton(
+                    onClick = { showCancelDialog = true },
+                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                ) {
+                    Text("Cancel")
+                }
+            }
         }
 
         // Restart button — same design as onboarding Continue button.
@@ -192,6 +221,23 @@ fun DatabaseLoadingScreen(
                 modifier = Modifier.fillMaxWidth().height(48.dp)
             ) {
                 Text("Restart GovEye")
+            }
+        }
+
+        // Download button — shown after cancellation, same design as Restart.
+        AnimatedVisibility(
+            visible = isCanceledState,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(start = 24.dp, end = 24.dp, bottom = 32.dp)
+        ) {
+            Button(
+                onClick = onRedownload,
+                modifier = Modifier.fillMaxWidth().height(48.dp)
+            ) {
+                Text("Download")
             }
         }
     }
@@ -223,6 +269,32 @@ fun DatabaseLoadingScreen(
                     onWaitForWifi()
                 }) {
                     Text("Wait for Wi-Fi")
+                }
+            }
+        )
+    }
+
+    // Cancel download confirmation dialog
+    if (showCancelDialog) {
+        AlertDialog(
+            onDismissRequest = { showCancelDialog = false },
+            title = { Text("Cancel download?") },
+            text = {
+                Text(
+                    "The download will stop and any progress so far will be discarded. You can restart it at any time."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showCancelDialog = false
+                    onCancel()
+                }) {
+                    Text("Yes, cancel")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCancelDialog = false }) {
+                    Text("Keep downloading")
                 }
             }
         )
@@ -371,6 +443,35 @@ private fun CircularProgressWithPercentage(state: DatabaseUpdateState) {
                 strokeCap = StrokeCap.Round
             )
         }
+    }
+}
+
+/**
+ * Canceled state — unfilled progress circle (track only, no progress ring)
+ * with an X icon in the center. Same 280dp size as the download circle so
+ * the layout doesn't jump.
+ */
+@Composable
+private fun CanceledCircle() {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier.size(280.dp)
+    ) {
+        // Background track only — no progress ring (unfilled)
+        CircularProgressIndicator(
+            progress = { 1f },
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.surfaceContainerHighest,
+            strokeWidth = 12.dp,
+            trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
+        )
+        // X icon in center
+        Icon(
+            imageVector = Icons.Outlined.Close,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(80.dp)
+        )
     }
 }
 

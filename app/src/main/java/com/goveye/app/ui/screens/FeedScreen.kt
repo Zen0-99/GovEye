@@ -32,13 +32,13 @@ import com.goveye.app.ui.screens.directory.FilterBottomSheet
 import com.goveye.app.ui.screens.directory.FilterTabType
 import com.goveye.app.ui.screens.divisions.TagMicroviewDialog
 import com.goveye.app.ui.screens.feed.FeedDateHeader
+import com.goveye.app.ui.screens.feed.FeedFinancialCard
 import com.goveye.app.ui.screens.feed.FeedItem
 import com.goveye.app.ui.screens.feed.FeedNoActivityEmptyState
 import com.goveye.app.ui.screens.feed.FeedNoFollowsEmptyState
 import com.goveye.app.ui.screens.feed.FeedRecessEmptyState
-import com.goveye.app.ui.screens.feed.FeedViewModel
-import com.goveye.app.ui.screens.feed.FeedFinancialCard
 import com.goveye.app.ui.screens.feed.FeedSpeechCard
+import com.goveye.app.ui.screens.feed.FeedViewModel
 import com.goveye.app.ui.screens.feed.UnifiedFeedCard
 
 /**

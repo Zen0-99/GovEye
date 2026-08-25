@@ -2,6 +2,7 @@ package com.goveye.app.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 
 /**
  * Cached historical government publication for on-demand fetch (D-02).
@@ -19,6 +20,7 @@ import androidx.room.PrimaryKey
  * - firstPublishedAt: ISO timestamp
  * - fetchedAt: epoch millis when this cache entry was created (for TTL cleanup)
  */
+@Serializable
 @Entity(tableName = "cached_publications")
 data class CachedPublicationEntity(
     @PrimaryKey val url: String,

@@ -11,3 +11,13 @@
 - `.\gradlew.bat spotlessApply :app:installDebug` — build, format, install on device
 - `adb shell pm clear com.goveye.app` — clear app data (simulate first launch)
 - `adb logcat -d -s GovEye/DbUpdate:I GovEye/MainActivity:I AndroidRuntime:E` — check logs
+
+## Data Pipeline
+The bundled seed DB is built in the [goveye-data](https://github.com/Zen0-99/goveye-data) repo.
+See `goveye-data/AGENTS.md` for the full pipeline guide — build scripts, per-API DBs, merge order,
+and the critical "when NOT to run a build script" decision guide (derived column changes vs
+source data changes).
+
+When adding a Room migration that changes derived data (e.g. re-mapping a `bucket` column),
+the same SQL should be run against the local per-API DB in goveye-data — do NOT re-run the
+build script (it re-fetches all 650 MPs from the API unnecessarily).

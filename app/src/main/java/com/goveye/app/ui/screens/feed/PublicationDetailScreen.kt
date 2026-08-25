@@ -151,14 +151,6 @@ fun PublicationDetailScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    if (publication.documentType.isNotBlank()) {
-                        Text(
-                            text = publication.documentType,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
                 }
             }
 
@@ -166,6 +158,14 @@ fun PublicationDetailScreen(
             if (publication.summary.isNotBlank()) {
                 item {
                     DetailSectionCard(title = "Summary", body = publication.summary)
+                }
+            }
+
+            // Full body text (HTML-stripped plain text from build_gov_publications.py)
+            val bodyText = publication.bodyText
+            if (!bodyText.isNullOrBlank()) {
+                item {
+                    DetailSectionCard(title = "Full text", body = bodyText)
                 }
             }
 

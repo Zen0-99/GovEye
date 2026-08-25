@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 25,
-    "identityHash": "2e82e578942387bc941dd451c16d0927",
+    "identityHash": "dd8ec5c317bd490cc1934365b8772b26",
     "entities": [
       {
         "tableName": "mps",
@@ -720,7 +720,7 @@
       },
       {
         "tableName": "interests",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `memberId` INTEGER NOT NULL, `summary` TEXT NOT NULL, `categoryId` INTEGER NOT NULL, `categoryNumber` TEXT NOT NULL, `categoryName` TEXT NOT NULL, `registrationDate` TEXT, `publishedDate` TEXT, `rectified` INTEGER NOT NULL, `fieldsJson` TEXT NOT NULL, `lastUpdated` INTEGER NOT NULL, `parsedAmountPence` INTEGER, `currencyCode` TEXT, `bucket` TEXT, `donorName` TEXT, `paymentType` TEXT, `paymentDescription` TEXT, `donorStatus` TEXT, `donorAddress` TEXT, `donorCompanyIdentifier` TEXT, `destination` TEXT, `visitPurpose` TEXT, `organisationName` TEXT, `organisationDescription` TEXT, `propertyLocation` TEXT, `propertyType` TEXT, `hoursWorked` TEXT, `familyMemberName` TEXT, `familyMemberRelationship` TEXT, `familyMemberRole` TEXT, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `memberId` INTEGER NOT NULL, `summary` TEXT NOT NULL, `categoryId` INTEGER NOT NULL, `categoryNumber` TEXT NOT NULL, `categoryName` TEXT NOT NULL, `fullCategoryName` TEXT, `registrationDate` TEXT, `publishedDate` TEXT, `rectified` INTEGER NOT NULL, `fieldsJson` TEXT NOT NULL, `lastUpdated` INTEGER NOT NULL, `parsedAmountPence` INTEGER, `currencyCode` TEXT, `bucket` TEXT, `donorName` TEXT, `paymentType` TEXT, `paymentDescription` TEXT, `donorStatus` TEXT, `donorAddress` TEXT, `donorCompanyIdentifier` TEXT, `destination` TEXT, `visitPurpose` TEXT, `organisationName` TEXT, `organisationDescription` TEXT, `propertyLocation` TEXT, `propertyType` TEXT, `hoursWorked` TEXT, `familyMemberName` TEXT, `familyMemberRelationship` TEXT, `familyMemberRole` TEXT, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -757,6 +757,11 @@
             "columnName": "categoryName",
             "affinity": "TEXT",
             "notNull": true
+          },
+          {
+            "fieldPath": "fullCategoryName",
+            "columnName": "fullCategoryName",
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "registrationDate",
@@ -2526,7 +2531,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '2e82e578942387bc941dd451c16d0927')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'dd8ec5c317bd490cc1934365b8772b26')"
     ]
   }
 }

@@ -218,6 +218,18 @@ class MainActivity : ComponentActivity() {
                         Log.i(TAG, "First launch (government=$selectedGov) — observing download worker")
                         dbState = DatabaseUpdateState.Downloading(0f, true)
 
+                        // Re-enqueue the download worker. On a true first
+                        // launch, the worker was already enqueued in
+                        // onGovernmentSelected and KEEP policy prevents
+                        // re-enqueueing. On a re-download (seed version
+                        // bump), the previous worker is in SUCCEEDED state,
+                        // so KEEP enqueues a fresh one.
+                        val wifiOnly = downloadPreferences.wifiOnly.first()
+                        WorkScheduler.enqueueDatabaseDownload(
+                            this@MainActivity,
+                            wifiOnly = wifiOnly
+                        )
+
                         // Observe the worker's progress until it reaches a
                         // terminal state. The download was already enqueued
                         // in onGovernmentSelected — this just picks up the
@@ -249,6 +261,8 @@ class MainActivity : ComponentActivity() {
                                     dbState = when (reason) {
                                         "needs_wifi" -> DatabaseUpdateState.NeedsWifi
 
+                                        "cancelled" -> DatabaseUpdateState.Canceled
+
                                         else -> DatabaseUpdateState.Failed(
                                             workInfo.outputData.getString("message")
                                                 ?: "Download failed"
@@ -257,7 +271,7 @@ class MainActivity : ComponentActivity() {
                                 }
 
                                 WorkInfo.State.CANCELLED -> {
-                                    dbState = DatabaseUpdateState.Failed("Download cancelled")
+                                    dbState = DatabaseUpdateState.Canceled
                                 }
 
                                 else -> { /* BLOCKED — ignore */ }
@@ -278,7 +292,8 @@ class MainActivity : ComponentActivity() {
                                         it.streamName
                                     }}"
                                 )
-                                databaseUpdateManager.applyPatches(patches)
+                                val result = databaseUpdateManager.applyPatches(patches)
+                                Log.i(TAG, "Patch application result: $result")
                             }
 
                             is DatabaseUpdateState.NeedsFullDownload -> {
@@ -308,7 +323,8 @@ class MainActivity : ComponentActivity() {
                     is DatabaseUpdateState.NeedsPatches,
                     is DatabaseUpdateState.Checking,
                     is DatabaseUpdateState.Failed,
-                    is DatabaseUpdateState.NeedsRestart -> {
+                    is DatabaseUpdateState.NeedsRestart,
+                    is DatabaseUpdateState.Canceled -> {
                         DatabaseLoadingScreen(
                             state = dbState,
                             onRetry = {
@@ -325,6 +341,22 @@ class MainActivity : ComponentActivity() {
                                 android.os.Process.killProcess(
                                     android.os.Process.myPid()
                                 )
+                            },
+                            onCancel = {
+                                // Cancel the WorkManager download worker.
+                                // The worker's coroutine will throw
+                                // CancellationException, clean up the temp
+                                // file, and return Result.failure with
+                                // reason="cancelled". The WorkInfo observer
+                                // above will set dbState = Canceled.
+                                WorkManager.getInstance(this@MainActivity)
+                                    .cancelUniqueWork(DatabaseDownloadWorker.WORK_NAME)
+                            },
+                            onRedownload = {
+                                // Re-enqueue the download worker. The previous
+                                // work is in FAILED state, so KEEP policy
+                                // enqueues a fresh one.
+                                retryCount++
                             }
                         )
                     }

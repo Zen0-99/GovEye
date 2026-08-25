@@ -2,6 +2,7 @@ package com.goveye.app.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 
 /**
  * Written question from the Parliament Written Questions API.
@@ -24,6 +25,7 @@ import androidx.room.PrimaryKey
  * - questionText: the full question text (255-char truncation fallback applied)
  * - house: 1 (Commons) or 2 (Lords)
  */
+@Serializable
 @Entity(tableName = "written_questions")
 data class WrittenQuestionEntity(
     @PrimaryKey val id: Int,

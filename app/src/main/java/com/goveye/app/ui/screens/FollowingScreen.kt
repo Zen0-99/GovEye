@@ -107,8 +107,11 @@ fun FollowingScreen(
                         onNavigateToProfile = onNavigateToProfile,
                         onUnfollow = viewModel::unfollow
                     )
+
                     1 -> TabEmptyHint("No followed parties yet")
+
                     2 -> TabEmptyHint("No followed sources yet")
+
                     3 -> TabEmptyHint("No followed tags yet")
                 }
             }
@@ -406,4 +409,3 @@ private fun FollowedMpGridCard(followedMp: FollowedMpUi, onClick: () -> Unit, mo
         }
     }
 }
-

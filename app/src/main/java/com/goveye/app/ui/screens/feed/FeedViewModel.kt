@@ -7,6 +7,7 @@ import com.goveye.app.data.local.dao.DebateSpeechDao
 import com.goveye.app.data.local.dao.SpeechWithDivision
 import com.goveye.app.data.local.entity.MpEntity
 import com.goveye.app.data.local.entity.RecessDateEntity
+import com.goveye.app.data.preference.OnboardingPreferences
 import com.goveye.app.data.repo.ExpensesRepository
 import com.goveye.app.data.repo.FeedRepository
 import com.goveye.app.data.repo.GovernmentAnnouncementsRepository
@@ -53,7 +54,8 @@ class FeedViewModel @Inject constructor(
     private val interestsRepository: InterestsRepository,
     private val expensesRepository: ExpensesRepository,
     private val membersRepository: MembersRepository,
-    private val debateSpeechDao: DebateSpeechDao
+    private val debateSpeechDao: DebateSpeechDao,
+    private val onboardingPreferences: OnboardingPreferences
 ) : ViewModel() {
 
     private val followingOnlyState = MutableStateFlow(false)
@@ -72,10 +74,18 @@ class FeedViewModel @Inject constructor(
     private val feedLimit = MutableStateFlow(50)
 
     init {
-        Log.i("GovEye/Feed", "FeedViewModel init — fetching recess status")
+        Log.i("GovEye/Feed", "FeedViewModel init — fetching recess status + onboarding tags")
         viewModelScope.launch {
             currentRecess.value = feedRepository.getCurrentRecess(1)
             Log.i("GovEye/Feed", "Recess status fetched: ${currentRecess.value}")
+        }
+        // Load onboarding-selected tags as the initial tag filter
+        viewModelScope.launch {
+            val savedTags = onboardingPreferences.selectedTags.first()
+            if (savedTags.isNotEmpty()) {
+                tagFilterState.value = savedTags
+                Log.i("GovEye/Feed", "Loaded ${savedTags.size} onboarding tags: $savedTags")
+            }
         }
     }
 
@@ -145,6 +155,7 @@ class FeedViewModel @Inject constructor(
                             tags = feedData.divisionTags[division.id] ?: emptyList()
                         )
                     }
+                    .filter { filter.tagFilter.isEmpty() || it.tags.any { tag -> tag in filter.tagFilter } }
 
                 // Build publication items (filter-based, soft — D-12)
                 // Tags loaded per-item from the announcement tag tables (17-01-02)
@@ -160,6 +171,7 @@ class FeedViewModel @Inject constructor(
                             tags = tags
                         )
                     }
+                    .filter { filter.tagFilter.isEmpty() || it.tags.any { tag -> tag in filter.tagFilter } }
 
                 // Build statement items (filter-based, soft — D-12)
                 val statementTagsMap = mutableMapOf<String, List<String>>()
@@ -174,6 +186,7 @@ class FeedViewModel @Inject constructor(
                             tags = tags
                         )
                     }
+                    .filter { filter.tagFilter.isEmpty() || it.tags.any { tag -> tag in filter.tagFilter } }
 
                 // Build legislation items (filter-based, soft — D-12)
                 val legislationTagsMap = mutableMapOf<String, List<String>>()
@@ -187,6 +200,7 @@ class FeedViewModel @Inject constructor(
                             tags = tags
                         )
                     }
+                    .filter { filter.tagFilter.isEmpty() || it.tags.any { tag -> tag in filter.tagFilter } }
 
                 // Apply type filter
                 val allItems = mutableListOf<FeedItem>()

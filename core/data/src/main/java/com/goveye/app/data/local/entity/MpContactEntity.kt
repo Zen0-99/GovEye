@@ -1,6 +1,7 @@
 package com.goveye.app.data.local.entity
 
 import androidx.room.Entity
+import kotlinx.serialization.Serializable
 
 /**
  * Pre-fetched MP contact entry from the Members API.
@@ -10,6 +11,7 @@ import androidx.room.Entity
  * Composite primary key (mpId, typeId) — an MP can have at most one
  * contact per typeId (e.g. one "Constituency Address", one "Website").
  */
+@Serializable
 @Entity(
     tableName = "mp_contacts",
     primaryKeys = ["mpId", "typeId"]

@@ -1,11 +1,13 @@
 package com.goveye.app.data.local.entity
 
 import androidx.room.Entity
+import kotlinx.serialization.Serializable
 
 /**
  * Tag attached to a bill, derived from the bill title + aggregated tags
  * from all divisions related to that bill. Produced by build_tags.py.
  */
+@Serializable
 @Entity(
     tableName = "bill_tags",
     primaryKeys = ["billId", "tag"]

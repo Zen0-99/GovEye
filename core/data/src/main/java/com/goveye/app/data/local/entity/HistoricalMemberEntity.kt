@@ -4,7 +4,9 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Fts4
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 
+@Serializable
 @Entity(tableName = "historical_members")
 data class HistoricalMemberEntity(
     @PrimaryKey val twfyPersonId: Int,
@@ -32,6 +34,7 @@ data class HistoricalMemberEntity(
 }
 
 @Fts4(contentEntity = HistoricalMemberEntity::class)
+@Serializable
 @Entity(tableName = "historical_members_fts4")
 data class HistoricalMemberFts4Entity(
     val displayName: String,

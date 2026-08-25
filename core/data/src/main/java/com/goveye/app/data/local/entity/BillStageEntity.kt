@@ -2,7 +2,9 @@ package com.goveye.app.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 
+@Serializable
 @Entity(tableName = "bill_stages", primaryKeys = ["billId", "stageId"])
 data class BillStageEntity(
     val billId: Int,

@@ -2,6 +2,7 @@ package com.goveye.app.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 
 /**
  * Written ministerial statement from the Parliament Written Statements API.
@@ -20,6 +21,7 @@ import androidx.room.PrimaryKey
  * - title / text: statement content
  * - house: 1 (Commons) or 2 (Lords)
  */
+@Serializable
 @Entity(tableName = "written_statements")
 data class WrittenStatementEntity(
     @PrimaryKey val id: Int,

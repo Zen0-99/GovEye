@@ -1,6 +1,7 @@
 package com.goveye.app.data.local.entity
 
 import androidx.room.Entity
+import kotlinx.serialization.Serializable
 
 /**
  * Source recommendation: tag → department mapping for onboarding source
@@ -12,6 +13,7 @@ import androidx.room.Entity
  *
  * Composite key: (tag, organisationSlug).
  */
+@Serializable
 @Entity(
     tableName = "source_recommendations",
     primaryKeys = ["tag", "organisationSlug"]

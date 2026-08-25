@@ -54,6 +54,13 @@ sealed interface DatabaseUpdateState {
      * collectors get fresh Room connections.
      */
     data object NeedsRestart : DatabaseUpdateState
+
+    /**
+     * User cancelled the seed download. The UI shows an unfilled progress
+     * circle with an X icon, "Download Canceled" subtitle, and a "Download"
+     * button to re-start. The partial temp file has been cleaned up.
+     */
+    data object Canceled : DatabaseUpdateState
 }
 
 /**

@@ -13,7 +13,9 @@ interface WrittenQuestionDao {
     @Query("SELECT * FROM written_questions WHERE house = :house ORDER BY dateTabled DESC LIMIT :limit")
     fun observeQuestionsByHouse(house: Int, limit: Int = 50): Flow<List<WrittenQuestionEntity>>
 
-    @Query("SELECT * FROM written_questions WHERE questionText LIKE '%' || :query || '%' ORDER BY dateTabled DESC LIMIT :limit")
+    @Query(
+        "SELECT * FROM written_questions WHERE questionText LIKE '%' || :query || '%' ORDER BY dateTabled DESC LIMIT :limit"
+    )
     fun searchQuestions(query: String, limit: Int = 50): Flow<List<WrittenQuestionEntity>>
 
     @Query("SELECT * FROM written_questions WHERE id = :id")
@@ -24,6 +26,8 @@ interface WrittenQuestionDao {
     @Query("SELECT * FROM written_questions WHERE memberId = :memberId ORDER BY dateTabled DESC")
     suspend fun getByMemberId(memberId: Int): List<WrittenQuestionEntity>
 
-    @Query("SELECT * FROM written_questions WHERE memberId = :memberId AND dateTabled >= :startDate ORDER BY dateTabled DESC")
+    @Query(
+        "SELECT * FROM written_questions WHERE memberId = :memberId AND dateTabled >= :startDate ORDER BY dateTabled DESC"
+    )
     suspend fun getByMemberIdAndDateRange(memberId: Int, startDate: String): List<WrittenQuestionEntity>
 }

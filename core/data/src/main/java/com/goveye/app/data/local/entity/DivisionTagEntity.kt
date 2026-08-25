@@ -1,6 +1,7 @@
 package com.goveye.app.data.local.entity
 
 import androidx.room.Entity
+import kotlinx.serialization.Serializable
 
 /**
  * Tag attached to a division, derived from pattern matching on debate
@@ -9,6 +10,7 @@ import androidx.room.Entity
  * Tags allow users to filter/follow topics (e.g. "Universal Credit",
  * "Immigration", "Climate") across all divisions.
  */
+@Serializable
 @Entity(
     tableName = "division_tags",
     primaryKeys = ["divisionId", "tag"]

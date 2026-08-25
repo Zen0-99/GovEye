@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -142,32 +143,25 @@ fun UnifiedFeedCard(
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // 2. Title + Type pill row — title weight(1f) shrinks before pill
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.Top
-                    ) {
-                        Text(
-                            text = data.title,
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        TypeBadge(text = data.typeLabel)
-                    }
-
-                    // 3. "By who" line
+                    // 2. Title — full width (type badge removed per user request)
                     Text(
-                        text = data.byWho,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
+                        text = data.title,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
+
+                    // 3. "By who" line (only if non-blank)
+                    if (data.byWho.isNotBlank()) {
+                        Text(
+                            text = data.byWho,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
 
                     // 4. Division bar (4dp, only for DivisionItem) + vote counts
                     if (data.divisionData != null) {
@@ -229,14 +223,7 @@ fun UnifiedFeedCard(
                         )
                     }
 
-                    // 6. Tags
-                    if (data.tags.isNotEmpty()) {
-                        Spacer(Modifier.height(4.dp))
-                        TagPillRow(
-                            tags = data.tags,
-                            onTagClick = onTagClick
-                        )
-                    }
+                    // Tags removed from feed cards — shown only on detail screens
                 }
             }
         }
@@ -311,7 +298,7 @@ private fun getCardTypeData(item: FeedItem): CardTypeData = when (item) {
             imageUrl = publication.imageUrl,
             title = publication.title,
             typeLabel = "Publication",
-            byWho = publication.organisation,
+            byWho = "", // No "by who" line — source is already shown at the bottom
             source = publication.organisation,
             date = formatDivisionDate(publication.firstPublishedAt),
             tags = item.tags,

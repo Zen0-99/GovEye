@@ -2,6 +2,7 @@ package com.goveye.app.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 
 /**
  * Cross-API ID mapping table.
@@ -14,6 +15,7 @@ import androidx.room.PrimaryKey
  * Build scripts resolve IDs at build time and populate this table.
  * The app never needs to know which API a given ID came from.
  */
+@Serializable
 @Entity(tableName = "mp_api_ids")
 data class MpApiIdEntity(
     /** Members API ID — canonical key, matches mps.id */

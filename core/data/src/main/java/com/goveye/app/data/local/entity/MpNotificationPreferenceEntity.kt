@@ -2,6 +2,7 @@ package com.goveye.app.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 
 /**
  * Per-MP notification preferences, decoupled from follows (D-04 revised).
@@ -15,6 +16,7 @@ import androidx.room.PrimaryKey
  * Used by the NotificationSettingsBottomSheet (profile header bell icon)
  * and the VotePollingWorker (queries MPs with votesEnabled = true).
  */
+@Serializable
 @Entity(tableName = "mp_notification_prefs")
 data class MpNotificationPreferenceEntity(
     @PrimaryKey val memberId: Int,

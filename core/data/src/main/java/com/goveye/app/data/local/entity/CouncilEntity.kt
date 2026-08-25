@@ -2,6 +2,7 @@ package com.goveye.app.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 
 /**
  * UK local authority (council) entity.
@@ -12,6 +13,7 @@ import androidx.room.PrimaryKey
  *
  * Used by the Councils tab in the Directory and the CouncilScreen.
  */
+@Serializable
 @Entity(tableName = "councils")
 data class CouncilEntity(
     @PrimaryKey(autoGenerate = true)

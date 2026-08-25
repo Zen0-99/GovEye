@@ -37,6 +37,7 @@ import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -85,7 +86,11 @@ class DatabaseUpdateManager @Inject constructor(
      */
     suspend fun isFirstLaunch(): Boolean {
         val current = preferences.seedVersion.first()
-        if (current == null) return true
+        if (current == null) {
+            // App reinstall scenario: DB file may exist even though preferences
+            // were cleared. Don't force a full redownload if the DB is there.
+            return !context.getDatabasePath(BundledDatabase.DATABASE_NAME).exists()
+        }
         if (current < CURRENT_SEED_VERSION) {
             Log.i(TAG, "Seed DB outdated (v$current < v$CURRENT_SEED_VERSION) — re-downloading")
             return true
@@ -117,10 +122,22 @@ class DatabaseUpdateManager @Inject constructor(
      */
     suspend fun checkForUpdates(): DatabaseUpdateState = withContext(Dispatchers.IO) {
         return@withContext try {
-            // First launch or outdated seed — need full download
+            // First launch or outdated seed — need full download.
+            // BUT: if the DB file already exists (app reinstall scenario),
+            // recover by setting seedVersion = CURRENT_SEED_VERSION and
+            // falling through to the patch check. This avoids a pointless
+            // 600MB redownload when the app is reinstalled but data persists.
             val seedVer = preferences.seedVersion.first()
             if (seedVer == null || seedVer < CURRENT_SEED_VERSION) {
-                return@withContext DatabaseUpdateState.NeedsFullDownload(null)
+                if (context.getDatabasePath(BundledDatabase.DATABASE_NAME).exists()) {
+                    Log.i(TAG, "DB exists but seedVersion=$seedVer — recovering (app reinstall)")
+                    preferences.setSeedVersion(CURRENT_SEED_VERSION)
+                    // Fall through to patch check — stream versions may also be
+                    // missing, but checkForUpdates handles null localVersion
+                    // gracefully (skips that stream).
+                } else {
+                    return@withContext DatabaseUpdateState.NeedsFullDownload(null)
+                }
             }
 
             // Fetch all 7 manifests in parallel via direct GitHub download URLs
@@ -304,27 +321,37 @@ class DatabaseUpdateManager @Inject constructor(
 
             val tempFile = File(context.cacheDir, "goveye_seed_download.db")
             val request = Request.Builder().url(seedDbUrl).build()
-            dbDownloadClient.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) {
-                    return@withContext DatabaseUpdateState.Failed(
-                        "HTTP ${response.code} downloading seed DB"
-                    )
-                }
-                val contentLength = response.body.contentLength()
-                response.body.byteStream().use { input ->
-                    tempFile.outputStream().use { output ->
-                        val buffer = ByteArray(BUFFER_SIZE)
-                        var bytesRead: Int
-                        var totalRead = 0L
-                        while (input.read(buffer).also { bytesRead = it } != -1) {
-                            output.write(buffer, 0, bytesRead)
-                            totalRead += bytesRead
-                            if (contentLength > 0) {
-                                onProgress(totalRead.toFloat() / contentLength)
+            try {
+                dbDownloadClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        return@withContext DatabaseUpdateState.Failed(
+                            "HTTP ${response.code} downloading seed DB"
+                        )
+                    }
+                    val contentLength = response.body.contentLength()
+                    response.body.byteStream().use { input ->
+                        tempFile.outputStream().use { output ->
+                            val buffer = ByteArray(BUFFER_SIZE)
+                            var bytesRead: Int
+                            var totalRead = 0L
+                            while (input.read(buffer).also { bytesRead = it } != -1) {
+                                // Check for cancellation — WorkManager cancels
+                                // the coroutine when cancelUniqueWork is called.
+                                ensureActive()
+                                output.write(buffer, 0, bytesRead)
+                                totalRead += bytesRead
+                                if (contentLength > 0) {
+                                    onProgress(totalRead.toFloat() / contentLength)
+                                }
                             }
                         }
                     }
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                // Clean up partial download
+                tempFile.delete()
+                Log.i(TAG, "Seed download cancelled — temp file deleted")
+                throw e
             }
 
             Log.i(TAG, "Seed DB downloaded: ${tempFile.length()} bytes")
@@ -769,7 +796,7 @@ class DatabaseUpdateManager @Inject constructor(
          * corrected data). When this is higher than the user's stored
          * seedVersion, the app treats it as a first launch and re-downloads.
          */
-        const val CURRENT_SEED_VERSION = 4
+        const val CURRENT_SEED_VERSION = 6
 
         internal const val MANIFEST_ASSET_NAME = "manifest.json"
         internal const val PATCH_ASSET_NAME = "patch.json"

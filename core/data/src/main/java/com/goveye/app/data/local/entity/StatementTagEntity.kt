@@ -1,6 +1,7 @@
 package com.goveye.app.data.local.entity
 
 import androidx.room.Entity
+import kotlinx.serialization.Serializable
 
 /**
  * Tag attached to a written statement, derived from pattern matching on
@@ -8,6 +9,7 @@ import androidx.room.Entity
  *
  * Composite key: (statementId, tag).
  */
+@Serializable
 @Entity(
     tableName = "statement_tags",
     primaryKeys = ["statementId", "tag"]

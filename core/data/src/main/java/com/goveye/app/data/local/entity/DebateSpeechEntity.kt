@@ -1,6 +1,7 @@
 package com.goveye.app.data.local.entity
 
 import androidx.room.Entity
+import kotlinx.serialization.Serializable
 
 /**
  * A single speech within a parliamentary debate, scraped from TheyWorkForYou
@@ -15,6 +16,7 @@ import androidx.room.Entity
  * [twfyPersonId] is the TheyWorkForYou person ID (from the debate page HTML),
  * kept for debugging/future matching but not used at runtime.
  */
+@Serializable
 @Entity(tableName = "debate_speeches", primaryKeys = ["debateGid", "speechGid"])
 data class DebateSpeechEntity(
     val debateGid: String,

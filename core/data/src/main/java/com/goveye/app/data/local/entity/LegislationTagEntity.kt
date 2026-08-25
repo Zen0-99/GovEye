@@ -1,6 +1,7 @@
 package com.goveye.app.data.local.entity
 
 import androidx.room.Entity
+import kotlinx.serialization.Serializable
 
 /**
  * Tag attached to a legislation item, derived from pattern matching on
@@ -8,6 +9,7 @@ import androidx.room.Entity
  *
  * Composite key: (legislationId, tag).
  */
+@Serializable
 @Entity(
     tableName = "legislation_tags",
     primaryKeys = ["legislationId", "tag"]

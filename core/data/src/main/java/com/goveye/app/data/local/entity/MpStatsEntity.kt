@@ -2,6 +2,7 @@ package com.goveye.app.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 
 /**
  * Precomputed per-MP statistics — one row per MP.
@@ -16,6 +17,7 @@ import androidx.room.PrimaryKey
  * - activityScore: weighted score 0.0-10.0 (votes 4.0, questions 2.0, speeches 2.0, committees 2.0)
  * - percentiles: rank-based percentile across same-house peers
  */
+@Serializable
 @Entity(tableName = "mp_stats")
 data class MpStatsEntity(
     @PrimaryKey val memberId: Int,

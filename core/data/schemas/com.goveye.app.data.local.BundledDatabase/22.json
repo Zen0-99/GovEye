@@ -1,8 +1,8 @@
 {
   "formatVersion": 1,
   "database": {
-    "version": 24,
-    "identityHash": "2e82e578942387bc941dd451c16d0927",
+    "version": 22,
+    "identityHash": "7d6b66382548e3e90face4b9425d2e00",
     "entities": [
       {
         "tableName": "mps",
@@ -720,7 +720,7 @@
       },
       {
         "tableName": "interests",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `memberId` INTEGER NOT NULL, `summary` TEXT NOT NULL, `categoryId` INTEGER NOT NULL, `categoryNumber` TEXT NOT NULL, `categoryName` TEXT NOT NULL, `registrationDate` TEXT, `publishedDate` TEXT, `rectified` INTEGER NOT NULL, `fieldsJson` TEXT NOT NULL, `lastUpdated` INTEGER NOT NULL, `parsedAmountPence` INTEGER, `currencyCode` TEXT, `bucket` TEXT, `donorName` TEXT, `paymentType` TEXT, `paymentDescription` TEXT, `donorStatus` TEXT, `donorAddress` TEXT, `donorCompanyIdentifier` TEXT, `destination` TEXT, `visitPurpose` TEXT, `organisationName` TEXT, `organisationDescription` TEXT, `propertyLocation` TEXT, `propertyType` TEXT, `hoursWorked` TEXT, `familyMemberName` TEXT, `familyMemberRelationship` TEXT, `familyMemberRole` TEXT, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `memberId` INTEGER NOT NULL, `summary` TEXT NOT NULL, `categoryId` INTEGER NOT NULL, `categoryNumber` TEXT NOT NULL, `categoryName` TEXT NOT NULL, `registrationDate` TEXT, `publishedDate` TEXT, `rectified` INTEGER NOT NULL, `fieldsJson` TEXT NOT NULL, `lastUpdated` INTEGER NOT NULL, `parsedAmountPence` INTEGER, `currencyCode` TEXT, `bucket` TEXT, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -799,86 +799,6 @@
           {
             "fieldPath": "bucket",
             "columnName": "bucket",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "donorName",
-            "columnName": "donorName",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "paymentType",
-            "columnName": "paymentType",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "paymentDescription",
-            "columnName": "paymentDescription",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "donorStatus",
-            "columnName": "donorStatus",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "donorAddress",
-            "columnName": "donorAddress",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "donorCompanyIdentifier",
-            "columnName": "donorCompanyIdentifier",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "destination",
-            "columnName": "destination",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "visitPurpose",
-            "columnName": "visitPurpose",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "organisationName",
-            "columnName": "organisationName",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "organisationDescription",
-            "columnName": "organisationDescription",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "propertyLocation",
-            "columnName": "propertyLocation",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "propertyType",
-            "columnName": "propertyType",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "hoursWorked",
-            "columnName": "hoursWorked",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "familyMemberName",
-            "columnName": "familyMemberName",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "familyMemberRelationship",
-            "columnName": "familyMemberRelationship",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "familyMemberRole",
-            "columnName": "familyMemberRole",
             "affinity": "TEXT"
           }
         ],
@@ -2186,7 +2106,7 @@
       },
       {
         "tableName": "government_publications",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `title` TEXT NOT NULL, `summary` TEXT NOT NULL, `url` TEXT NOT NULL, `documentType` TEXT NOT NULL, `organisation` TEXT NOT NULL, `organisationSlug` TEXT NOT NULL, `firstPublishedAt` TEXT NOT NULL, `publicUpdatedAt` TEXT NOT NULL, `imageUrl` TEXT, `bodyText` TEXT, `lastUpdated` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `title` TEXT NOT NULL, `summary` TEXT NOT NULL, `url` TEXT NOT NULL, `documentType` TEXT NOT NULL, `organisation` TEXT NOT NULL, `organisationSlug` TEXT NOT NULL, `firstPublishedAt` TEXT NOT NULL, `publicUpdatedAt` TEXT NOT NULL, `imageUrl` TEXT, `lastUpdated` INTEGER NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -2245,11 +2165,6 @@
           {
             "fieldPath": "imageUrl",
             "columnName": "imageUrl",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "bodyText",
-            "columnName": "bodyText",
             "affinity": "TEXT"
           },
           {
@@ -2526,7 +2441,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '2e82e578942387bc941dd451c16d0927')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '7d6b66382548e3e90face4b9425d2e00')"
     ]
   }
 }

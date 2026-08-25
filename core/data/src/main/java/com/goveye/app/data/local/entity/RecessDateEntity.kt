@@ -2,6 +2,7 @@ package com.goveye.app.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 
 /**
  * Cached recess date from the Egg Timer API.
@@ -9,6 +10,7 @@ import androidx.room.PrimaryKey
  * Populated by build_recess.py and bundled into the seed DB. Updated via
  * the recess-latest patch stream (D-09, D-10a).
  */
+@Serializable
 @Entity(tableName = "recess_dates")
 data class RecessDateEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -23,5 +25,6 @@ data class RecessDateEntity(
 /**
  * Metadata for the recess dates cache — tracks when it was last refreshed.
  */
+@Serializable
 @Entity(tableName = "recess_dates_meta", primaryKeys = ["house"])
 data class RecessDatesMetaEntity(val house: Int, val lastRefreshedAt: Long)

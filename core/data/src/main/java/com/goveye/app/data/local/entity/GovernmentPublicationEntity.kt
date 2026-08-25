@@ -2,6 +2,7 @@ package com.goveye.app.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 
 /**
  * Government publication from the GOV.UK Content API.
@@ -20,6 +21,7 @@ import androidx.room.PrimaryKey
  * - imageUrl: from Content API details.image / details.images field (nullable)
  * - bodyText: full article body as plain text (HTML stripped via BeautifulSoup)
  */
+@Serializable
 @Entity(tableName = "government_publications")
 data class GovernmentPublicationEntity(
     @PrimaryKey val id: Int,

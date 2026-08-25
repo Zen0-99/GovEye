@@ -2,7 +2,9 @@ package com.goveye.app.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 
+@Serializable
 @Entity(tableName = "committees")
 data class CommitteeEntity(
     @PrimaryKey val id: Int,
@@ -20,5 +22,6 @@ data class CommitteeEntity(
     val lastUpdated: Long
 )
 
+@Serializable
 @Entity(tableName = "mp_committee_cross_ref", primaryKeys = ["memberId", "committeeId"])
 data class MpCommitteeCrossRef(val memberId: Int, val committeeId: Int, val lastUpdated: Long)

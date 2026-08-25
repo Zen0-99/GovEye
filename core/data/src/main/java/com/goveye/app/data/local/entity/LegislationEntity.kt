@@ -2,6 +2,7 @@ package com.goveye.app.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 
 /**
  * Legislation item from the legislation.gov.uk API.
@@ -17,6 +18,7 @@ import androidx.room.PrimaryKey
  * - date: enactment date (ISO string)
  * - url: legislation.gov.uk URL
  */
+@Serializable
 @Entity(tableName = "legislation")
 data class LegislationEntity(
     @PrimaryKey val id: Int,
