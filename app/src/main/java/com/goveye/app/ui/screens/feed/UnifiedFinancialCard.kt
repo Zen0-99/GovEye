@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.TrendingDown
 import androidx.compose.material.icons.automirrored.outlined.TrendingUp
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -42,8 +43,9 @@ import com.goveye.app.ui.components.VoteColors
 /**
  * A label-value pair for the expandable detail section of a financial card.
  * The [label] is rendered in bold, the [value] in normal weight.
+ * The optional [group] renders as a styled sub-heading above the field.
  */
-data class FinancialDetailField(val label: String, val value: String)
+data class FinancialDetailField(val label: String, val value: String, val group: String? = null)
 
 /**
  * Unified financial card — renders income and expense entries with a
@@ -59,7 +61,8 @@ data class FinancialDetailField(val label: String, val value: String)
  *    AnimatedVisibility with pure expandVertically/shrinkVertically (no fade)
  *    per SyncStone convention for smooth height morph.
  *    Shows full category name as a sub-heading, then structured fields
- *    with bold labels grouped by category, or fallback plain text.
+ *    with bold labels grouped by category (Payment, Donor, Visit, etc.),
+ *    with thin dividers between groups, or fallback plain text.
  *
  * When [showProfileIcon] is true (feed variant), an [MpAvatar] with a
  * party-colored border renders in-line before the amount text.
@@ -84,22 +87,7 @@ fun UnifiedFinancialCard(
 ) {
     val trendColor = if (isIncome) VoteColors.aye else VoteColors.no
     val categoryIcon = bucketIcon(bucket ?: category)
-
-    // Pre-filter the fallback content: skip lines that duplicate the card's
-    // description line (the description is truncated on the card, but the full
-    // text appears as the first line of the summary).
-    val descPrefix = description.takeIf { it.isNotBlank() }?.take(30)
-    val filteredContent = if (!expandableContent.isNullOrBlank()) {
-        expandableContent.split("\n")
-            .map { it.trim() }
-            .filter { it.isNotBlank() && (descPrefix == null || !it.contains(descPrefix)) }
-            .joinToString("\n")
-            .takeIf { it.isNotBlank() }
-    } else {
-        null
-    }
-
-    val hasExpandable = !filteredContent.isNullOrBlank() || !expandableFields.isNullOrEmpty()
+    val hasExpandable = !expandableContent.isNullOrBlank() || !expandableFields.isNullOrEmpty()
     var expanded by remember { mutableStateOf(false) }
     // Low-ripple interaction source for subtler press feedback
     val interactionSource = remember { MutableInteractionSource() }
@@ -269,10 +257,30 @@ fun UnifiedFinancialCard(
                     }
 
                     if (!expandableFields.isNullOrEmpty()) {
-                        // Render fields directly — no group sub-headings.
-                        // Labels (Payment type, Donor status, Address, etc.) are
-                        // self-explanatory and don't need grouping.
+                        // Render fields with group sub-headings.
+                        // Sub-headings are styled: small, semibold, primary color,
+                        // with a thin divider above (except the first group).
+                        // This distinguishes them from plain field text.
+                        var currentGroup: String? = null
+                        var groupIndex = 0
                         expandableFields.forEach { field ->
+                            if (field.group != null && field.group != currentGroup) {
+                                if (groupIndex > 0) {
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(top = 2.dp),
+                                        thickness = 0.5.dp,
+                                        color = MaterialTheme.colorScheme.outlineVariant
+                                    )
+                                }
+                                currentGroup = field.group
+                                groupIndex++
+                                Text(
+                                    text = field.group,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
                             Text(
                                 text = buildAnnotatedString {
                                     withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
@@ -284,10 +292,11 @@ fun UnifiedFinancialCard(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                    } else if (!filteredContent.isNullOrBlank()) {
+                    } else if (!expandableContent.isNullOrBlank()) {
                         // Fallback: split plain text into paragraphs for readability.
-                        // Lines duplicating the card's description are already filtered.
-                        filteredContent.split("\n").filter { it.isNotBlank() }.forEach { line ->
+                        // The full summary is shown here — the card's description
+                        // line is a truncated preview.
+                        expandableContent.split("\n").filter { it.isNotBlank() }.forEach { line ->
                             Text(
                                 text = line.trim(),
                                 style = MaterialTheme.typography.bodySmall,
