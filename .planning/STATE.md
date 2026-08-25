@@ -2,20 +2,20 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: milestone
-current_phase: 14
-current_phase_name: government-announcements
-status: executing
-stopped_at: Phase 15 context gathered
-last_updated: "2026-08-23T19:33:02.920Z"
-last_activity: 2026-08-23
-last_activity_desc: Phase 14 verified (5 plans, 4 waves, 65/65 tests, build success)
+current_phase: 17
+current_phase_name: polish-bug-fixes-feature-completion
+status: complete
+stopped_at: Phase 17 executed (7/7 plans complete, build verified)
+last_updated: "2026-08-25T00:00:00.000Z"
+last_activity: 2026-08-25
+last_activity_desc: Phase 17 execution complete — all 7 plans built, build verified
 progress:
-  total_phases: 15
-  completed_phases: 9
-  total_plans: 53
-  completed_plans: 34
+  total_phases: 16
+  completed_phases: 10
+  total_plans: 63
+  completed_plans: 41
 total_phases: 12
-completed_phases: 9
+completed_phases: 10
 ---
 
 # Project State
@@ -25,16 +25,16 @@ completed_phases: 9
 See: .planning/PROJECT.md (updated 2026-08-16)
 
 **Core value:** Make UK government activity as easy to follow as a football team — so anyone, especially younger voters, can see what their representatives are actually doing.
-**Current focus:** Phase 14 — government-announcements
+**Current focus:** Phase 17 — polish-bug-fixes-feature-completion (COMPLETE)
 
 ## Current Position
 
-Phase: 14 (government-announcements) — COMPLETE (verified)
-Plans: 14-01 (build scripts) COMPLETE, 14-02 (tag extension + post-merge scripts) COMPLETE, 14-03 (Android data layer) COMPLETE, 14-04 (Android UI) COMPLETE, 14-05 (onboarding redesign) COMPLETE
-Status: Phase 14 verified — all 5 plans done, 65 tests pass, Android compiles
-Last activity: 2026-08-23 — Phase 14 verified (5 plans, 4 waves, 65/65 tests, build success)
+Phase: 17 (polish-bug-fixes-feature-completion) — COMPLETE
+Plans: 17-01 through 17-07 all COMPLETE (7/7)
+Status: Phase 17 execution complete, build verified
+Last activity: 2026-08-25 — Phase 17 execution complete
 
-Progress: [████████████████░░] 73% (7 of 11 phases complete, Phase 9 context gathered)
+Progress: [█████████████████░] 83% (10 of 12 phases complete)
 
 ## Performance Metrics
 
@@ -106,6 +106,7 @@ Recent decisions affecting current work:
 - Phase 13 added: Expense Detail — rebuild IPSA parser, add ExpenseBucketDetailScreen
 - Phase 14 added: Government Announcements — GOV.UK Content API + Written Statements + legislation.gov.uk, tag personalization, onboarding redesign
 - Phase 15 added: MP Activity Feed Redesign — mixed activity feed, question text storage, votes relocation to Stats tab
+- Phase 17 added: Polish, Bug Fixes & Feature Completion — UAT-driven polish pass (15 issues): unified feed card design, income/expense card redesign, attendance rate tenure fix, historical member search fix, follow icon reactivity, notification expansion, Following sub-tabs, searchbar animation, light mode card color, speaker matching, speech cards in activity+feed
 
 ### Pending Todos
 
@@ -137,6 +138,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-08-23T19:33:02.854Z
-Stopped at: Phase 15 context gathered
-Resume file: .planning/phases/15-mp-activity-feed-redesign/15-CONTEXT.md
+Last session: 2026-08-25T00:00:00.000Z
+Stopped at: Phase 17 executed (7/7 plans complete, build verified)
+Resume file: .planning/phases/17-polish-bug-fixes-feature-completion/17-01-SUMMARY.md

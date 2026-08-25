@@ -22,6 +22,7 @@ GovEye is a free, open-source Android app that makes UK Parliament as followable
 - [ ] **Phase 14: Government Announcements** - Track executive/regulatory action from GOV.UK Content API, Parliament Written Statements API, legislation.gov.uk API. Feed cards + Directory sub-tab. Tag personalization + 5-step onboarding redesign. All bundled DB (build-time, no live API).
 - [ ] **Phase 15: MP Activity Feed Redesign** - Transform Activity tab from votes-only to mixed feed (votes + questions + income + expenses + committee + career). Store written question text. Move bulk votes to Stats tab as summary + VotingRecordScreen.
 - [ ] **Phase 16: Debates Directory Redesign** - Replace 'Bills' directory tab with 'Debates' — umbrella for all parliamentary business (bills, SIs, motions, treaties). Each card = one work package (Level 1). Rename current 'Debate' code to 'Division'. Data layer for all types (Procedure Browser CSV for SIs/treaties, bill publications + news articles). Bills UI first, SIs/motions/treaties UI in a later phase.
+- [x] **Phase 17: Polish, Bug Fixes & Feature Completion** - UAT-driven polish pass: unified feed card design (image/title/type pill/by-who/source+date/tags), clickable detail views for all card types, income/expense card redesign with party-colored icons, MP activity in feed, attendance rate fix (tenure-aware), historical member search fix (party names/images/click targets), follow/notification icon reactivity, notification expansion (income/expenses), Following screen sub-tabs, searchbar transition animation fix, light mode card color tweak, speaker matching fix in transcripts, speech cards in activity + feed.
 
 ## Phase Details
 
@@ -437,5 +438,47 @@ Phases execute in numeric order: 1 â†’ 2 â†’ 3 â†’ 4 â†’ 5 �
 | 14. Government Announcements | 0/5 | Not planned | - |
 | 15. MP Activity Feed Redesign | 0/3 | Not planned | - |
 | 16. Debates Directory Redesign | 0/6 | Not planned | - |
+| 17. Polish, Bug Fixes & Feature Completion | 7/7 | Complete | 2026-08-25 |
 
+### Phase 17: Polish, Bug Fixes & Feature Completion
 
+**Goal**: UAT-driven polish pass addressing 15 issues found during real-device testing. Covers unified feed card design, clickable detail views, income/expense card redesign, MP activity in feed, attendance rate calculation fix, historical member search corruption, follow/notification icon reactivity, notification type expansion, Following screen sub-tabs, searchbar animation glitches, light mode card color, speaker matching in transcripts, and speech cards in activity feed.
+**Depends on**: Phase 14 (feed card types, government announcements), Phase 15 (activity feed redesign — shares card design patterns)
+**Requirements**: FEED-01, FEED-02, MPDIR-08, FOLLOW-02, FOLLOW-04, DESIGN-04
+
+**Success Criteria** (what must be TRUE):
+
+  1. **Unified feed card design** — All feed card types (division, publication, statement, legislation) share one design top-to-bottom: (a) image if present, (b) title left + type pill (Division/Legislation/Statement etc) right, (c) "by who" line in-line, (d) division bar (thinner than division detail view) if applicable, (e) source bottom-left + date bottom-right in DD/MM/YYYY, (f) relevant tags at the bottom. Division type pill is in the same position as other types (currently inconsistent). Title does not overlap top-right icons.
+  2. **Clickable detail views** — Publication, statement, and legislation cards in the feed are clickable and navigate to a detail view (currently only division cards are clickable).
+  3. **Income/expense card redesign** — Unified card design used in MP activity tab, income view, expense view, and feed: (a) money amount as title, (b) sub-text of who/where, (c) "Income" or "Expense" text + icon top-right colored in the official's party color, (d) short description (truncated) below, (e) date bottom-right DD/MM/YYYY, (f) category name bottom-left. Clicking opens microview. When in feed, official's profile icon (with colored circle) appears in-line before the title.
+  4. **MP activity in feed** — Followed MP's income, expenses, and speeches appear in the user's feed using the unified card designs. Speech cards show three text lines of the speech + tags inherited from the parent division.
+  5. **Attendance rate fix** — Attendance rate is calculated relative to the MP's actual tenure start date (from `bio_data` or `historical_members`), not from 2016. An MP who started this year (e.g. Hannah Spencer) is not penalized for 9 years of non-attendance. Activity score logic is also tenure-aware.
+  6. **Zack Polanski added** — Green Party leader Zack Polanski is in the database (build script fix or manual data entry).
+  7. **Historical member search fix** — Searching beyond the 650 current MPs (e.g. "tony") returns correct results: proper party names (not lowercase), proper abbreviations, correct images, correct click targets (clicking "Tony Blair" opens Tony Blair, not John D.Taylor). No stray numbers appended to names. "crossbench" spelled correctly.
+  8. **Follow/notification icon reactivity** — Tapping the follow icon on an MP profile immediately updates the icon state (no need to leave and return). Same for notification toggle.
+  9. **Notification type expansion** — Notification settings include Income and Expenses in addition to votes and speeches. User can toggle per-type notifications for followed MPs.
+  10. **Following screen sub-tabs** — Following screen uses global sub-tab design (Officials, Parties, Sources, Tags) instead of the current section layout. Followed officials do not show a three-dot icon.
+  11. **Searchbar transition animation fix** — Navigating back from profile to directory: the searchbar animates smoothly (right side does not jump). Partial-back (Android predictive back) does not prematurely swap searchbar text or show the filter button. Light/dark mode toggle does not lag the searchbar behind the rest of the screen.
+  12. **Light mode card color** — Card color across the whole app in light mode is slightly darker than current.
+  13. **Speaker matching fix** — Clicking a speaker name in a transcript (e.g. "Baroness Stedman-Scott") navigates to the correct MP profile with correct name, party color, and party name (not "Deborah" with gray "conservative" pill).
+  14. **Speeches in activity + feed** — Speeches from transcripts appear in the MP's activity tab and in the feed of users following that MP, using a card design with three lines of speech text + inherited division tags.
+
+**Plans**: 7/7 plans executed
+
+Plans:
+
+- [x] 17-01-PLAN.md
+- [x] 17-02-PLAN.md
+- [x] 17-03-PLAN.md
+- [x] 17-04-PLAN.md
+- [x] 17-05-PLAN.md
+- [x] 17-06-PLAN.md
+- [x] 17-07-PLAN.md
+
+- [x] 17-01: Unified feed card redesign — single card component for all feed types (division/publication/statement/legislation), image top, title+type pill row, by-who line, division bar (thin), source+date bottom, tags bottom; fix type pill position consistency; fix title overlap with top-right icons; make all cards clickable to detail views
+- [x] 17-02: Income/expense card redesign + feed integration — unified income/expense card (amount title, who/where subtext, party-colored icon top-right, description, date, category), used in MP activity/income/expense views and feed; followed MP activity (income/expenses/speeches) appears in feed; speech cards with 3-line text + inherited tags
+- [x] 17-03: Attendance rate + activity score tenure fix — calculate attendance from MP's actual tenure start (bio_data/historical_members), not fixed 2016; make activity score tenure-aware; add Zack Polanski to Green Party leader data
+- [x] 17-04: Historical member search fix — fix party name display (proper case + abbreviations), fix images, fix click target mapping (search result → correct profile), remove stray numbers, fix "crossbench" spelling
+- [x] 17-05: Follow/notification reactivity + notification expansion + Following sub-tabs — immediate icon state update on follow/unfollow and notification toggle; add Income + Expenses notification types; Following screen sub-tabs (Officials/Parties/Sources/Tags) using global sub-tab design; remove three-dot icon from followed officials
+- [x] 17-06: Searchbar animation + light mode card color — fix right-side searchbar transition (no jump on back navigation), fix predictive-back premature text swap, fix light/dark mode searchbar lag; darken card color in light mode
+- [x] 17-07: Speaker matching fix + speech activity cards — fix transcript speaker → MP profile mapping (correct name, party color, party name); speech cards in MP activity tab and feed (3-line text + inherited division tags)
