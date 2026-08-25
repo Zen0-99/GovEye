@@ -29,6 +29,8 @@ package com.goveye.app.domain.model
  * @param roleTitle Role title, e.g. "Secretary of State for Health" (CAREER only)
  * @param contextLine Context line, e.g. department name (CAREER only)
  * @param milestoneType "POST", "MAIDEN_SPEECH", or "HONOUR" (CAREER only)
+ * @param speechText Full speech text (SPEECH only)
+ * @param speechTags Tags inherited from the parent division (SPEECH only)
  */
 data class ActivityEntry(
     val entryType: ActivityEntryType,
@@ -58,7 +60,10 @@ data class ActivityEntry(
     // Career-specific (D-04 — role title + context line from MNIS bio_data)
     val roleTitle: String? = null,
     val contextLine: String? = null,
-    val milestoneType: String? = null
+    val milestoneType: String? = null,
+    // Speech-specific (17-07 — debate speeches in activity tab)
+    val speechText: String? = null,
+    val speechTags: List<String>? = null
 )
 
-enum class ActivityEntryType { VOTE, QUESTION, INCOME, EXPENSE, COMMITTEE, CAREER }
+enum class ActivityEntryType { VOTE, QUESTION, INCOME, EXPENSE, COMMITTEE, CAREER, SPEECH }

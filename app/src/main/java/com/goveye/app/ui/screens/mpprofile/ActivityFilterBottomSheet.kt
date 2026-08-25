@@ -101,4 +101,5 @@ private fun ActivityEntryType.displayName(): String = when (this) {
     ActivityEntryType.EXPENSE -> "Expenses"
     ActivityEntryType.COMMITTEE -> "Committee"
     ActivityEntryType.CAREER -> "Career"
+    ActivityEntryType.SPEECH -> "Speeches"
 }

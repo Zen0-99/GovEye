@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.goveye.app.data.local.dao.ExpenseBucketTotal
 import com.goveye.app.data.local.dao.MpDao
+import com.goveye.app.data.local.dao.TagDao
 import com.goveye.app.data.local.entity.BioDataEntity
 import com.goveye.app.data.local.entity.ExpenseEntity
 import com.goveye.app.data.local.entity.MpEntity
@@ -94,7 +95,8 @@ class ProfileViewModel @Inject constructor(
     private val mpLinksRepository: MpLinksRepository,
     private val statsRepository: StatsRepository,
     private val writtenQuestionsRepository: WrittenQuestionsRepository,
-    private val activityFilterPreferences: ActivityFilterPreferences
+    private val activityFilterPreferences: ActivityFilterPreferences,
+    private val tagDao: TagDao
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -332,6 +334,7 @@ class ProfileViewModel @Inject constructor(
                 val expenseDeferred = async { loadExpenseEntries(memberId, sixMonthsAgo, state.expenses) }
                 val committeeDeferred = async { loadCommitteeEntries(memberId, sixMonthsAgo, state.committees) }
                 val careerDeferred = async { loadCareerEntries(memberId, sixMonthsAgo, state.bioData) }
+                val speechDeferred = async { loadSpeechEntries(memberId, sixMonthsAgo) }
 
                 val allEntries = (
                     votesDeferred.await() +
@@ -339,7 +342,8 @@ class ProfileViewModel @Inject constructor(
                         incomeDeferred.await() +
                         expenseDeferred.await() +
                         committeeDeferred.await() +
-                        careerDeferred.await()
+                        careerDeferred.await() +
+                        speechDeferred.await()
                     )
                     .filter { it.date.take(10) >= sixMonthsAgo }
                     .filter { it.entryType in enabledTypes }
@@ -563,6 +567,25 @@ class ProfileViewModel @Inject constructor(
         entries
     }.getOrDefault(emptyList())
 
+    private suspend fun loadSpeechEntries(memberId: Int, sixMonthsAgo: String): List<ActivityEntry> = runCatching {
+        val speeches = votesRepository.getSpeechesByMember(memberId, 20)
+        speeches
+            .filter { it.divisionDate.take(10) >= sixMonthsAgo }
+            .map { speech ->
+                val tags = runCatching { tagDao.getTagsForDivision(speech.divisionId) }.getOrDefault(emptyList())
+                ActivityEntry(
+                    entryType = ActivityEntryType.SPEECH,
+                    id = "speech_${speech.divisionId}_${speech.memberId}",
+                    date = speech.divisionDate,
+                    summary = speech.speechText.take(100),
+                    divisionId = speech.divisionId,
+                    divisionTitle = speech.divisionTitle,
+                    speechText = speech.speechText,
+                    speechTags = tags
+                )
+            }
+    }.getOrDefault(emptyList())
+
     /**
      * Toggle an activity type in the filter and persist via DataStore (D-05, D-06).
      * Re-filters the already-loaded entries — no need to re-fetch.
@@ -609,6 +632,7 @@ class ProfileViewModel @Inject constructor(
             val expenseDeferred = async { loadExpenseEntries(memberId, sixMonthsAgo, state.expenses) }
             val committeeDeferred = async { loadCommitteeEntries(memberId, sixMonthsAgo, state.committees) }
             val careerDeferred = async { loadCareerEntries(memberId, sixMonthsAgo, state.bioData) }
+            val speechDeferred = async { loadSpeechEntries(memberId, sixMonthsAgo) }
 
             val allEntries = (
                 votesDeferred.await() +
@@ -616,7 +640,8 @@ class ProfileViewModel @Inject constructor(
                     incomeDeferred.await() +
                     expenseDeferred.await() +
                     committeeDeferred.await() +
-                    careerDeferred.await()
+                    careerDeferred.await() +
+                    speechDeferred.await()
                 )
                 .filter { it.date.take(10) >= sixMonthsAgo }
                 .filter { it.entryType in enabledTypes }

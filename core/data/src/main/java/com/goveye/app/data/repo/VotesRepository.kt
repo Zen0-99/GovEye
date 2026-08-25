@@ -4,6 +4,7 @@ import com.goveye.app.data.local.dao.DebateSpeechDao
 import com.goveye.app.data.local.dao.DivisionDao
 import com.goveye.app.data.local.dao.MemberVoteWithDivisionRow
 import com.goveye.app.data.local.dao.PartyBreakdownRow
+import com.goveye.app.data.local.dao.SpeechWithDivision
 import com.goveye.app.data.local.entity.DebateSpeechEntity
 import com.goveye.app.data.local.entity.DivisionEntity
 import com.goveye.app.data.local.entity.DivisionVoteEntity
@@ -251,6 +252,9 @@ class VotesRepository @Inject constructor(
         debateSpeechDao.getSpeechesForDivision(divisionId).map { it.toDomain() }
 
     suspend fun countSpeechesForDivision(divisionId: Int): Int = debateSpeechDao.countSpeechesForDivision(divisionId)
+
+    suspend fun getSpeechesByMember(memberId: Int, limit: Int = 50): List<SpeechWithDivision> =
+        debateSpeechDao.getSpeechesByMember(memberId, limit)
 
     private fun DebateSpeechEntity.toDomain(): DebateSpeech = DebateSpeech(
         debateGid = debateGid,

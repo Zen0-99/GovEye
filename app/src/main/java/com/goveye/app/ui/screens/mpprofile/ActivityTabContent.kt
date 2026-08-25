@@ -9,14 +9,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -31,6 +34,7 @@ import com.goveye.app.domain.model.ActivityEntry
 import com.goveye.app.domain.model.ActivityEntryType
 import com.goveye.app.ui.components.VoteColors
 import com.goveye.app.ui.screens.feed.FeedDateHeader
+import com.goveye.app.ui.screens.feed.TagPillRow
 import com.goveye.app.ui.screens.feed.UnifiedFinancialCard
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -130,6 +134,11 @@ fun ActivityTabContent(
                         ActivityEntryType.COMMITTEE -> ActivityCommitteeCard(entry)
 
                         ActivityEntryType.CAREER -> ActivityCareerCard(entry)
+
+                        ActivityEntryType.SPEECH -> ActivitySpeechCard(
+                            entry,
+                            onClick = { onNavigateToDivision(entry.divisionId!!, 1) }
+                        )
                     }
                 }
             }
@@ -317,6 +326,41 @@ fun ActivityCareerCard(entry: ActivityEntry) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+    }
+}
+
+// --- Speech card (17-07 — 3 lines of speech text + inherited division tags) ---
+
+@Composable
+fun ActivitySpeechCard(entry: ActivityEntry, onClick: () -> Unit) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Speech text — 3 lines, truncated with ellipsis (LOCKED per UI-SPEC)
+            Text(
+                text = entry.speechText ?: entry.summary,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            // Tags inherited from the parent division
+            val tags = entry.speechTags
+            if (!tags.isNullOrEmpty()) {
+                Spacer(Modifier.height(4.dp))
+                TagPillRow(tags = tags, onTagClick = {})
+            }
         }
     }
 }
