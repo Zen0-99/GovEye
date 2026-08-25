@@ -42,9 +42,8 @@ import com.goveye.app.ui.components.VoteColors
 /**
  * A label-value pair for the expandable detail section of a financial card.
  * The [label] is rendered in bold, the [value] in normal weight.
- * The optional [group] renders as a sub-heading above the field.
  */
-data class FinancialDetailField(val label: String, val value: String, val group: String? = null)
+data class FinancialDetailField(val label: String, val value: String)
 
 /**
  * Unified financial card — renders income and expense entries with a
@@ -85,7 +84,22 @@ fun UnifiedFinancialCard(
 ) {
     val trendColor = if (isIncome) VoteColors.aye else VoteColors.no
     val categoryIcon = bucketIcon(bucket ?: category)
-    val hasExpandable = !expandableContent.isNullOrBlank() || !expandableFields.isNullOrEmpty()
+
+    // Pre-filter the fallback content: skip lines that duplicate the card's
+    // description line (the description is truncated on the card, but the full
+    // text appears as the first line of the summary).
+    val descPrefix = description.takeIf { it.isNotBlank() }?.take(30)
+    val filteredContent = if (!expandableContent.isNullOrBlank()) {
+        expandableContent.split("\n")
+            .map { it.trim() }
+            .filter { it.isNotBlank() && (descPrefix == null || !it.contains(descPrefix)) }
+            .joinToString("\n")
+            .takeIf { it.isNotBlank() }
+    } else {
+        null
+    }
+
+    val hasExpandable = !filteredContent.isNullOrBlank() || !expandableFields.isNullOrEmpty()
     var expanded by remember { mutableStateOf(false) }
     // Low-ripple interaction source for subtler press feedback
     val interactionSource = remember { MutableInteractionSource() }
@@ -255,18 +269,10 @@ fun UnifiedFinancialCard(
                     }
 
                     if (!expandableFields.isNullOrEmpty()) {
-                        // Group fields by their `group` label; render sub-headings
-                        var currentGroup: String? = null
+                        // Render fields directly — no group sub-headings.
+                        // Labels (Payment type, Donor status, Address, etc.) are
+                        // self-explanatory and don't need grouping.
                         expandableFields.forEach { field ->
-                            if (field.group != null && field.group != currentGroup) {
-                                currentGroup = field.group
-                                Text(
-                                    text = field.group,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
                             Text(
                                 text = buildAnnotatedString {
                                     withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
@@ -278,9 +284,10 @@ fun UnifiedFinancialCard(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                    } else if (!expandableContent.isNullOrBlank()) {
-                        // Fallback: split plain text into paragraphs for readability
-                        expandableContent.split("\n").filter { it.isNotBlank() }.forEach { line ->
+                    } else if (!filteredContent.isNullOrBlank()) {
+                        // Fallback: split plain text into paragraphs for readability.
+                        // Lines duplicating the card's description are already filtered.
+                        filteredContent.split("\n").filter { it.isNotBlank() }.forEach { line ->
                             Text(
                                 text = line.trim(),
                                 style = MaterialTheme.typography.bodySmall,

@@ -3,11 +3,12 @@ package com.goveye.app.ui.screens.feed
 /**
  * Build the expandable detail fields for income entries from structured fields.
  *
- * Returns a list of [FinancialDetailField] pairs (label, value) for all
- * available structured fields. donorName is excluded (shown in "by X" line).
- * paymentDescription / visitPurpose / organisationDescription ARE included
- * here (the description line on the card is truncated to 2 lines, so the
- * full text belongs in the expansion).
+ * Returns a list of [FinancialDetailField] pairs (label, value) for the
+ * SECONDARY structured fields — excludes donorName (shown in "by X" line)
+ * and paymentDescription / visitPurpose / organisationDescription (shown in
+ * the card's description line, truncated to 2 lines).
+ *
+ * No group sub-headings — field labels are self-explanatory.
  *
  * Returns empty list if no structured fields are available (caller falls
  * back to the full summary text via expandableContent).
@@ -32,41 +33,20 @@ fun formatInterestStructuredFields(
 ): List<FinancialDetailField> {
     val fields = mutableListOf<FinancialDetailField>()
     // donorName is shown in "by X" — skip
-    paymentType?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Payment type", it, "Payment")) }
-    // Include paymentDescription / visitPurpose / organisationDescription in expansion
-    // (the card's description line is truncated to 2 lines; full text goes here)
-    paymentDescription?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Description", it, "Payment")) }
-    visitPurpose?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Purpose", it, "Visit")) }
-    organisationDescription?.let {
-        if (it.isNotBlank()) fields.add(FinancialDetailField("Description", it, "Organisation"))
-    }
-    if (donorStatus?.isNotBlank() == true || donorAddress?.isNotBlank() == true ||
-        donorCompanyIdentifier?.isNotBlank() == true
-    ) {
-        donorStatus?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Donor status", it, "Donor")) }
-        donorAddress?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Address", it, "Donor")) }
-        donorCompanyIdentifier?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Company ID", it, "Donor")) }
-    }
-    destination?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Destination", it, "Visit")) }
-    if (organisationName?.isNotBlank() == true) {
-        organisationName?.let {
-            if (it.isNotBlank()) fields.add(FinancialDetailField("Organisation", it, "Organisation"))
-        }
-    }
-    if (propertyLocation?.isNotBlank() == true || propertyType?.isNotBlank() == true) {
-        propertyLocation?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Location", it, "Property")) }
-        propertyType?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Property type", it, "Property")) }
-    }
-    hoursWorked?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Hours", it, "Work")) }
-    if (familyMemberName?.isNotBlank() == true || familyMemberRelationship?.isNotBlank() == true ||
-        familyMemberRole?.isNotBlank() == true
-    ) {
-        familyMemberName?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Name", it, "Family")) }
-        familyMemberRelationship?.let {
-            if (it.isNotBlank()) fields.add(FinancialDetailField("Relationship", it, "Family"))
-        }
-        familyMemberRole?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Role", it, "Family")) }
-    }
+    // paymentDescription / visitPurpose / organisationDescription are shown in
+    // the card's description line (truncated to 2 lines) — skip to avoid duplication
+    paymentType?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Payment type", it)) }
+    donorStatus?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Donor status", it)) }
+    donorAddress?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Address", it)) }
+    donorCompanyIdentifier?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Company ID", it)) }
+    destination?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Destination", it)) }
+    organisationName?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Organisation", it)) }
+    propertyLocation?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Location", it)) }
+    propertyType?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Property type", it)) }
+    hoursWorked?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Hours", it)) }
+    familyMemberName?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Name", it)) }
+    familyMemberRelationship?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Relationship", it)) }
+    familyMemberRole?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Role", it)) }
     return fields
 }
 
