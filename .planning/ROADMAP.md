@@ -486,3 +486,14 @@ Plans:
 - [x] 17-05: Follow/notification reactivity + notification expansion + Following sub-tabs — immediate icon state update on follow/unfollow and notification toggle; add Income + Expenses notification types; Following screen sub-tabs (Officials/Parties/Sources/Tags) using global sub-tab design; remove three-dot icon from followed officials
 - [x] 17-06: Searchbar animation + light mode card color — fix right-side searchbar transition (no jump on back navigation), fix predictive-back premature text swap, fix light/dark mode searchbar lag; darken card color in light mode
 - [x] 17-07: Speaker matching fix + speech activity cards — fix transcript speaker → MP profile mapping (correct name, party color, party name); speech cards in MP activity tab and feed (3-line text + inherited division tags)
+
+### Phase 18: Interest Entry Structured Parsing
+
+**Goal:** Parse raw interest entry summary text into structured fields (donorName, payerName, paymentType, paymentDescription, donorStatus, donorAddress, etc.) in build_interests.py so the seed DB ships with fully structured data. Update Android entity/mapper/UI to read the new columns and render them in the unified financial card design. Two format generations handled: Format A (simple/legacy single-line) and Format B (structured multi-line with field labels).
+**Requirements**: FEED-02 (structured financial data in activity feed), MPDIR-08 (rich MP profile data)
+**Depends on:** Phase 17 (unified financial card design), Phase 9 (interests data layer), Phase 11 (build-time data enrichment)
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 18 to break down)

@@ -110,6 +110,7 @@ Recent decisions affecting current work:
 - Phase 14 added: Government Announcements — GOV.UK Content API + Written Statements + legislation.gov.uk, tag personalization, onboarding redesign
 - Phase 15 added: MP Activity Feed Redesign — mixed activity feed, question text storage, votes relocation to Stats tab
 - Phase 17 added: Polish, Bug Fixes & Feature Completion — UAT-driven polish pass (15 issues): unified feed card design, income/expense card redesign, attendance rate tenure fix, historical member search fix, follow icon reactivity, notification expansion, Following sub-tabs, searchbar animation, light mode card color, speaker matching, speech cards in activity+feed
+- Phase 18 added: Interest Entry Structured Parsing — parse raw summary text into structured columns in build_interests.py (Python-side), update Android entity/mapper/UI to read structured fields for unified financial card rendering
 
 ### Pending Todos
 
