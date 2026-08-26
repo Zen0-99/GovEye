@@ -49,6 +49,7 @@ import com.goveye.app.data.local.entity.HistoricalMemberEntity
 import com.goveye.app.data.local.entity.MpEntity
 import com.goveye.app.domain.model.DebateSpeech
 import com.goveye.app.ui.components.ConfigureSearchBar
+import com.goveye.app.ui.components.DelayedSpinner
 import com.goveye.app.ui.components.MpAvatar
 import com.goveye.app.ui.components.SearchBarConfig
 import com.goveye.app.ui.components.search.HighlightUtils
@@ -68,6 +69,7 @@ fun TranscriptScreen(
     divisionTitle: String,
     onBack: () -> Unit,
     onNavigateToProfile: (Int) -> Unit,
+    initialSpeechGid: String = "",
     modifier: Modifier = Modifier,
     viewModel: TranscriptViewModel = hiltViewModel()
 ) {
@@ -86,6 +88,15 @@ fun TranscriptScreen(
     // the results list. Reset to RESULTS whenever the query changes.
     var isNavigated by remember { mutableStateOf(false) }
     var pendingScrollGid by remember { mutableStateOf<String?>(null) }
+
+    // If navigated from a speech card with a speechGid, scroll to that speech
+    LaunchedEffect(initialSpeechGid, state.speeches) {
+        if (initialSpeechGid.isNotBlank() && state.speeches.isNotEmpty() && pendingScrollGid == null) {
+            pendingScrollGid = initialSpeechGid
+            isNavigated = true
+        }
+    }
+
     LaunchedEffect(state.searchQuery) {
         if (isNavigated) {
             isNavigated = false
@@ -137,12 +148,7 @@ fun TranscriptScreen(
     )
 
     if (state.isLoading) {
-        Box(
-            modifier = modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            CircularProgressIndicator()
-        }
+        DelayedSpinner(modifier = modifier)
         return
     }
 

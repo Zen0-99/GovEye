@@ -98,6 +98,11 @@ object NetworkModule {
 
     @Provides
     @Singleton
+    @Named("githubDownloadBase")
+    fun provideGithubDownloadBase(): String = "https://github.com/Zen0-99/goveye-data/releases/download"
+
+    @Provides
+    @Singleton
     @Named("membersApi")
     fun provideMembersRetrofit(okHttpClient: OkHttpClient, json: Json): Retrofit =
         buildRetrofit(MEMBERS_BASE_URL, okHttpClient, json)

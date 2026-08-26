@@ -152,7 +152,8 @@ class FeedViewModel @Inject constructor(
                     .map { division ->
                         FeedItem.DivisionItem(
                             division = division,
-                            tags = feedData.divisionTags[division.id] ?: emptyList()
+                            tags = feedData.divisionTags[division.id] ?: emptyList(),
+                            followedVotes = feedData.followedMpVotes[division.id] ?: emptyList()
                         )
                     }
                     .filter { filter.tagFilter.isEmpty() || it.tags.any { tag -> tag in filter.tagFilter } }
@@ -224,6 +225,7 @@ class FeedViewModel @Inject constructor(
                 val followedIds = feedData.followedMemberIds
                 val financialItems = mutableListOf<FeedItem.FinancialItem>()
                 val speechItems = mutableListOf<FeedItem.SpeechItem>()
+                val mpVoteItems = mutableListOf<FeedItem.MpVoteItem>()
                 if (followedIds.isNotEmpty()) {
                     // Load MP profile data (name, party color, photo) for followed members
                     val memberProfiles: Map<Int, MpEntity> = try {
@@ -259,7 +261,8 @@ class FeedViewModel @Inject constructor(
                                         interest.destination, interest.visitPurpose, interest.organisationName,
                                         interest.organisationDescription, interest.propertyLocation,
                                         interest.propertyType, interest.hoursWorked, interest.familyMemberName,
-                                        interest.familyMemberRelationship, interest.familyMemberRole
+                                        interest.familyMemberRelationship, interest.familyMemberRole,
+                                        descriptionLine = descLine
                                     )
                                     financialItems.add(
                                         FeedItem.FinancialItem(
@@ -327,6 +330,7 @@ class FeedViewModel @Inject constructor(
                                     memberPartyColorHex = profile.partyBackgroundColour,
                                     memberPhotoUrl = profile.thumbnailUrl,
                                     speechText = speech.speechText,
+                                    speechGid = speech.speechGid,
                                     divisionId = speech.divisionId,
                                     divisionTitle = speech.divisionTitle,
                                     date = speech.divisionDate,
@@ -337,6 +341,31 @@ class FeedViewModel @Inject constructor(
                     } catch (e: Exception) {
                         Log.w("GovEye/Feed", "Failed to load speeches for followed MPs", e)
                     }
+
+                    // MP votes — build individual vote cards from followedMpVotes
+                    // data (already fetched in FeedRepository). Each followed MP's
+                    // vote on a division becomes a separate card in the feed.
+                    feedData.followedMpVotes.forEach { (divisionId, votes) ->
+                        votes.forEach { vote ->
+                            val profile = memberProfiles[vote.memberId] ?: return@forEach
+                            mpVoteItems.add(
+                                FeedItem.MpVoteItem(
+                                    memberId = vote.memberId,
+                                    memberName = profile.nameDisplayAs,
+                                    memberPartyColorHex = profile.partyBackgroundColour,
+                                    memberPhotoUrl = profile.thumbnailUrl,
+                                    vote = vote.vote,
+                                    divisionId = vote.divisionId,
+                                    divisionTitle = vote.divisionTitle,
+                                    divisionHouse = vote.divisionHouse,
+                                    ayeCount = vote.ayeCount,
+                                    noCount = vote.noCount,
+                                    date = vote.divisionDate,
+                                    tags = feedData.divisionTags[vote.divisionId] ?: emptyList()
+                                )
+                            )
+                        }
+                    }
                 }
 
                 if (filter.typeFilter.isEmpty() || CardType.FINANCIAL in filter.typeFilter) {
@@ -344,6 +373,9 @@ class FeedViewModel @Inject constructor(
                 }
                 if (filter.typeFilter.isEmpty() || CardType.SPEECH in filter.typeFilter) {
                     allItems.addAll(speechItems)
+                }
+                if (filter.typeFilter.isEmpty() || CardType.MP_VOTE in filter.typeFilter) {
+                    allItems.addAll(mpVoteItems)
                 }
 
                 // Limit feed to a reasonable size (200 items) to avoid performance
@@ -385,13 +417,14 @@ class FeedViewModel @Inject constructor(
                     "State built — dateGroups=${dateGroups.size} divisions=${divisionItems.size} " +
                         "publications=${publicationItems.size} statements=${statementItems.size} " +
                         "legislation=${legislationItems.size} financial=${financialItems.size} " +
-                        "speeches=${speechItems.size} isEmpty=$isEmpty " +
+                        "speeches=${speechItems.size} mpVotes=${mpVoteItems.size} isEmpty=$isEmpty " +
                         "isRecessEmpty=$isRecessEmpty hasMore=$hasMore processingTime=${processingTime}ms"
                 )
                 FeedUiState(
                     dateGroups = dateGroups,
                     followedMemberIds = feedData.followedMemberIds,
                     divisionsWithFollowedVotes = feedData.divisionsWithFollowedVotes,
+                    followedMpVotes = feedData.followedMpVotes,
                     divisionTags = feedData.divisionTags,
                     announcementTags = publicationTagsMap + statementTagsMap + legislationTagsMap,
                     followingOnly = filter.followingOnly,

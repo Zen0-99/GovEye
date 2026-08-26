@@ -31,6 +31,7 @@ data class FeedData(
     val divisions: List<Division> = emptyList(),
     val followedMemberIds: Set<Int> = emptySet(),
     val divisionsWithFollowedVotes: Set<Int> = emptySet(),
+    val followedMpVotes: Map<Int, List<com.goveye.app.data.local.entity.FollowedMpVote>> = emptyMap(),
     val divisionTags: Map<Int, List<String>> = emptyMap(),
     val currentRecess: RecessDateEntity? = null,
     val isLoading: Boolean = true
@@ -91,9 +92,24 @@ class FeedRepository @Inject constructor(
         tagDao.observeAllDivisionTagRows()
     ) { divisionEntities, followedData, tagRows ->
         val dbStart = System.currentTimeMillis()
+        // Fetch votes only for the divisions actually in the feed (limited to `limit`),
+        // not all divisions where followed MPs ever voted.
+        val feedDivisionIds = divisionEntities.map { it.id }
+        val followedMpVotes = if (followedData.followedMemberIds.isNotEmpty() && feedDivisionIds.isNotEmpty()) {
+            divisionDao.getFollowedMpVotesForDivisions(
+                feedDivisionIds,
+                followedData.followedMemberIds.toList()
+            ).groupBy { it.divisionId }
+        } else {
+            emptyMap()
+        }
         Log.i(
             "GovEye/FeedRepo",
-            "observeFeedData emit — divisions=${divisionEntities.size} followedIds=${followedData.followedMemberIds.size} votesWithFollowed=${followedData.divisionsWithFollowedVotes.size} tagRows=${tagRows.size} limit=$limit"
+            "observeFeedData emit — divisions=${divisionEntities.size} " +
+                "followedIds=${followedData.followedMemberIds.size} " +
+                "votesWithFollowed=${followedData.divisionsWithFollowedVotes.size} " +
+                "mpVotes=${followedMpVotes.values.sumOf { it.size }} " +
+                "tagRows=${tagRows.size} limit=$limit"
         )
         // Build divisionId → tags map from tag rows
         val divisionTags = tagRows
@@ -104,13 +120,17 @@ class FeedRepository @Inject constructor(
             divisions = divisionEntities.map { it.toDomain() },
             followedMemberIds = followedData.followedMemberIds,
             divisionsWithFollowedVotes = followedData.divisionsWithFollowedVotes,
+            followedMpVotes = followedMpVotes,
             divisionTags = divisionTags,
             isLoading = false
         ).also {
             val dbTime = System.currentTimeMillis() - dbStart
             Log.i(
                 "GovEye/FeedRepo",
-                "FeedData built — ${it.divisions.size} divisions, votesWithFollowed=${it.divisionsWithFollowedVotes.size} tags=${it.divisionTags.size} dbTime=${dbTime}ms"
+                "FeedData built — ${it.divisions.size} divisions, " +
+                    "votesWithFollowed=${it.divisionsWithFollowedVotes.size} " +
+                    "mpVotes=${it.followedMpVotes.values.sumOf { v -> v.size }} " +
+                    "tags=${it.divisionTags.size} dbTime=${dbTime}ms"
             )
         }
     }.flowOn(Dispatchers.Default)

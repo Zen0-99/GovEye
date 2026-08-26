@@ -42,11 +42,28 @@ data class RecommendedMp(
     val leaderTitle: String?
 )
 
+/** Recommended MPs grouped by tag — each tag is a sub-heading with up to 5 MPs.
+ *  An MP can appear in multiple tag groups if they match multiple tags. */
+data class TagGroupedMps(val tag: String, val mps: List<RecommendedMp>)
+
+/** A recommended MP with its resolved [Mp] domain object, for UI rendering. */
+data class RecommendedMpWithDetails(
+    val memberId: Int,
+    val mp: com.goveye.app.domain.model.Mp,
+    val totalScore: Int,
+    val isPartyLeader: Boolean,
+    val leaderTitle: String?
+)
+
+/** Tag-grouped MPs with resolved MP details for direct UI rendering. */
+data class TagGroupedMpDetails(val tag: String, val mps: List<RecommendedMpWithDetails>)
+
 /** Party leader info for the MPs step "Party leaders" section (D-07). */
 data class PartyLeaderInfo(
     val memberId: Int,
     val name: String,
     val partyAbbreviation: String,
     val partyBackgroundColour: String,
-    val title: String
+    val title: String,
+    val thumbnailUrl: String? = null
 )

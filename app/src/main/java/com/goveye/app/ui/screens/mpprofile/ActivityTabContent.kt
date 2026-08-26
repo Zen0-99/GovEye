@@ -114,7 +114,8 @@ fun ActivityTabContent(
                                 entry.destination, entry.visitPurpose, entry.organisationName,
                                 entry.organisationDescription, entry.propertyLocation, entry.propertyType,
                                 entry.hoursWorked, entry.familyMemberName,
-                                entry.familyMemberRelationship, entry.familyMemberRole
+                                entry.familyMemberRelationship, entry.familyMemberRole,
+                                descriptionLine = descLine.takeIf { it.isNotBlank() }
                             )
                             UnifiedFinancialCard(
                                 amount = entry.amountPence?.let { formatAmount(it) } ?: "Unpaid",

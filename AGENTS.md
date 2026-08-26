@@ -9,7 +9,7 @@
 
 ## Build & Test
 - `.\gradlew.bat spotlessApply :app:installDebug` — build, format, install on device
-- `adb shell pm clear com.goveye.app` — clear app data (simulate first launch)
+- **NEVER run `adb shell pm clear com.goveye.app`** — it forces the user through onboarding again. Install over the existing app instead.
 - `adb logcat -d -s GovEye/DbUpdate:I GovEye/MainActivity:I AndroidRuntime:E` — check logs
 
 ## Data Pipeline

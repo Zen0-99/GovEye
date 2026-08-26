@@ -7,6 +7,7 @@ import androidx.room.Query
 import androidx.room.Upsert
 import com.goveye.app.data.local.entity.DivisionEntity
 import com.goveye.app.data.local.entity.DivisionVoteEntity
+import com.goveye.app.data.local.entity.FollowedMpVote
 import com.goveye.app.data.local.entity.MemberRecentVote
 import kotlinx.coroutines.flow.Flow
 
@@ -276,6 +277,33 @@ interface DivisionDao {
         """
     )
     suspend fun getDivisionIdsWithMemberVotes(memberIds: List<Int>): List<Int>
+
+    /**
+     * Get all votes by followed members for the given division IDs.
+     * Returns one row per (member, division) pair with the member's name and vote.
+     * Used by the feed to show Aye/No votes of followed MPs on division cards.
+     */
+    @Query(
+        """
+        SELECT dv.divisionId AS divisionId,
+               dv.memberId AS memberId,
+               dv.vote AS vote,
+               m.nameDisplayAs AS memberName,
+               m.partyAbbreviation AS partyAbbreviation,
+               m.partyBackgroundColour AS partyBackgroundColour,
+               d.title AS divisionTitle,
+               d.date AS divisionDate,
+               d.house AS divisionHouse,
+               d.ayeCount AS ayeCount,
+               d.noCount AS noCount
+        FROM division_votes dv
+        JOIN mps m ON dv.memberId = m.id
+        JOIN divisions d ON dv.divisionId = d.id
+        WHERE dv.divisionId IN (:divisionIds)
+          AND dv.memberId IN (:memberIds)
+        """
+    )
+    suspend fun getFollowedMpVotesForDivisions(divisionIds: List<Int>, memberIds: List<Int>): List<FollowedMpVote>
 
     /**
      * Aggregated party vote counts per division — used for rebellion rate

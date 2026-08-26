@@ -94,6 +94,7 @@ fun OnboardingScreen(
     val parties by viewModel.parties.collectAsStateWithLifecycle()
     val partyLeaders by viewModel.partyLeaderInfos.collectAsStateWithLifecycle()
     val recommendedMps by viewModel.recommendedMpDetails.collectAsStateWithLifecycle()
+    val tagGroupedMps by viewModel.tagGroupedMpDetails.collectAsStateWithLifecycle()
     val followedMpIds by viewModel.followedMpIds.collectAsStateWithLifecycle()
     val pagedMps = viewModel.pagedMps.collectAsLazyPagingItems()
 
@@ -167,6 +168,7 @@ fun OnboardingScreen(
             4 -> MPsStep(
                 partyLeaders = partyLeaders,
                 recommendedMps = recommendedMps,
+                tagGroupedMps = tagGroupedMps,
                 selectedTags = selectedTags,
                 followedMpIds = followedMpIds,
                 pagedMps = pagedMps,

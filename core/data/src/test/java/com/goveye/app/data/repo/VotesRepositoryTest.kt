@@ -27,7 +27,7 @@ class VotesRepositoryTest {
             RuntimeEnvironment.getApplication(),
             BundledDatabase::class.java
         ).allowMainThreadQueries().build()
-        repository = VotesRepository(database.divisionDao())
+        repository = VotesRepository(database.divisionDao(), database.debateSpeechDao())
     }
 
     @After

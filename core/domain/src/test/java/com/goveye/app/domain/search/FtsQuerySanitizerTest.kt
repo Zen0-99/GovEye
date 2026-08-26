@@ -11,25 +11,25 @@ class FtsQuerySanitizerTest {
     }
 
     @Test
-    fun singleWord_returnsAsIs() {
-        assertEquals("housing", FtsQuerySanitizer.sanitize("housing"))
+    fun singleWord_returnsWithPrefixWildcard() {
+        assertEquals("housing*", FtsQuerySanitizer.sanitize("housing"))
     }
 
     @Test
-    fun multipleWords_returnsSpaceSeparated() {
-        assertEquals("climate change", FtsQuerySanitizer.sanitize("climate change"))
+    fun multipleWords_returnsSpaceSeparatedWithWildcards() {
+        assertEquals("climate* change*", FtsQuerySanitizer.sanitize("climate change"))
     }
 
     @Test
-    fun quotedPhrase_returnsQuoted() {
-        assertEquals("\"net zero\"", FtsQuerySanitizer.sanitize("\"net zero\""))
+    fun quotedPhrase_returnsQuotedWithWildcard() {
+        assertEquals("\"net zero\"*", FtsQuerySanitizer.sanitize("\"net zero\""))
     }
 
     @Test
     fun ftsOperators_strippedOrSanitized() {
         // OR is treated as a regular token since it matches the word pattern
         val result = FtsQuerySanitizer.sanitize("housing OR education")
-        assertEquals("housing OR education", result)
+        assertEquals("housing* OR* education*", result)
     }
 
     @Test
@@ -38,14 +38,14 @@ class FtsQuerySanitizerTest {
     }
 
     @Test
-    fun mixedPhraseAndWord_returnsBoth() {
-        assertEquals("\"net zero\" housing", FtsQuerySanitizer.sanitize("\"net zero\" housing"))
+    fun mixedPhraseAndWord_returnsBothWithWildcards() {
+        assertEquals("\"net zero\"* housing*", FtsQuerySanitizer.sanitize("\"net zero\" housing"))
     }
 
     @Test
     fun wildcardStripped() {
-        // * is not part of the word pattern, so it gets stripped
+        // * is not part of the word pattern, so it gets stripped, then * is re-added
         val result = FtsQuerySanitizer.sanitize("hous*")
-        assertEquals("hous", result)
+        assertEquals("hous*", result)
     }
 }

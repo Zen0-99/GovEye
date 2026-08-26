@@ -28,5 +28,6 @@ data class LegislationEntity(
     val number: Int,
     val date: String,
     val url: String,
-    val lastUpdated: Long
+    val lastUpdated: Long,
+    val bodyText: String? = null
 )

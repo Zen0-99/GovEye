@@ -15,7 +15,8 @@ enum class CardType {
     STATEMENT,
     LEGISLATION,
     FINANCIAL,
-    SPEECH
+    SPEECH,
+    MP_VOTE
 }
 
 /**
@@ -31,7 +32,11 @@ sealed interface FeedItem {
     val typePrefix: String
     val cardType: CardType
 
-    data class DivisionItem(val division: Division, val tags: List<String> = emptyList()) : FeedItem {
+    data class DivisionItem(
+        val division: Division,
+        val tags: List<String> = emptyList(),
+        val followedVotes: List<com.goveye.app.data.local.entity.FollowedMpVote> = emptyList()
+    ) : FeedItem {
         override val date: String get() = division.date
         override val id: Int get() = division.id
         override val typePrefix: String = "division"
@@ -96,6 +101,7 @@ sealed interface FeedItem {
         val memberPartyColorHex: String?,
         val memberPhotoUrl: String?,
         val speechText: String,
+        val speechGid: String = "",
         val divisionId: Int,
         val divisionTitle: String,
         override val date: String,
@@ -104,6 +110,31 @@ sealed interface FeedItem {
     ) : FeedItem {
         override val typePrefix: String = "speech"
         override val cardType: CardType = CardType.SPEECH
+    }
+
+    /**
+     * A followed MP's vote on a division, rendered as a [FeedMpVoteCard]
+     * in the feed. Shows the MP's avatar, name, vote badge (Aye/No),
+     * division title, date, and house — similar to the MP profile's
+     * voting record row.
+     */
+    data class MpVoteItem(
+        val memberId: Int,
+        val memberName: String,
+        val memberPartyColorHex: String?,
+        val memberPhotoUrl: String?,
+        val vote: String,
+        val divisionId: Int,
+        val divisionTitle: String,
+        val divisionHouse: Int,
+        val ayeCount: Int,
+        val noCount: Int,
+        override val date: String,
+        override val id: Int = listOf(memberId, divisionId, "vote").hashCode(),
+        val tags: List<String> = emptyList()
+    ) : FeedItem {
+        override val typePrefix: String = "mp-vote"
+        override val cardType: CardType = CardType.MP_VOTE
     }
 }
 
@@ -123,6 +154,7 @@ data class FeedUiState(
     val dateGroups: List<FeedDateGroup> = emptyList(),
     val followedMemberIds: Set<Int> = emptySet(),
     val divisionsWithFollowedVotes: Set<Int> = emptySet(),
+    val followedMpVotes: Map<Int, List<com.goveye.app.data.local.entity.FollowedMpVote>> = emptyMap(),
     val divisionTags: Map<Int, List<String>> = emptyMap(),
     val announcementTags: Map<String, List<String>> = emptyMap(),
     val followingOnly: Boolean = false,

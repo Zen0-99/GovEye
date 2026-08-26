@@ -25,6 +25,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.goveye.app.domain.model.Division
 import com.goveye.app.domain.model.SyncStatus
+import com.goveye.app.ui.components.DelayedSpinner
 import com.goveye.app.ui.components.StickyInfoCard
 import com.goveye.app.ui.components.SyncStatusBanner
 import com.goveye.app.ui.theme.padding
@@ -62,13 +63,7 @@ fun DivisionsTabContent(
         }
 
         if (state.isLoading && state.divisions.isEmpty()) {
-            Row(
-                modifier = Modifier.fillMaxSize(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                CircularProgressIndicator()
-            }
+            DelayedSpinner()
         } else if (state.divisions.isEmpty()) {
             Row(
                 modifier = Modifier.fillMaxSize(),

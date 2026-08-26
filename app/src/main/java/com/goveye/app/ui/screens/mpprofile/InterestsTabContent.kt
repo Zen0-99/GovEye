@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Category
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -26,6 +27,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -91,6 +93,25 @@ fun InterestsTabContent(
                     (to == null || date <= to)
             }
         }
+    }
+
+    // Track whether data has been loaded at least once — avoids flash of
+    // "no entries" before the Flow emits its first value
+    var dataLoaded by remember { mutableStateOf(false) }
+    LaunchedEffect(interests, expenseBucketTotals) {
+        // Mark as loaded once we get any data (even empty, which means the
+        // Flow has emitted and there genuinely are no entries)
+        dataLoaded = true
+    }
+
+    if (!dataLoaded) {
+        Box(
+            modifier = modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+        return
     }
 
     if (interests.isEmpty() && expenseBucketTotals.isEmpty()) {

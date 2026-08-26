@@ -78,4 +78,82 @@ object MpCurationHelper {
         // Sort by totalScore descending (D-08 recency-weighted)
         return recommended.sortedByDescending { it.totalScore }
     }
+
+    /**
+     * Groups recommended MPs by tag, returning up to [maxPerTag] MPs per tag.
+     *
+     * Each tag that the user selected becomes a group. Within each group, MPs
+     * are sorted by their score for that specific tag (descending). An MP can
+     * appear in multiple groups if they match multiple tags — this signals to
+     * the user that the MP is a strong match across their interests.
+     *
+     * Party leaders are included in each tag group they have a match in, plus
+     * a special "Party Leaders" group if they have no tag matches.
+     *
+     * @return list of [TagGroupedMps], one per selected tag (sorted by tag name)
+     */
+    fun getTagGroupedMps(
+        selectedTags: Set<String>,
+        mpTags: List<MpTag>,
+        partyLeaders: List<PartyLeader>,
+        maxPerTag: Int = 5
+    ): List<TagGroupedMps> {
+        val leaderMemberIds = partyLeaders.map { it.memberId }.toSet()
+        val leaderByMemberId = partyLeaders.associateBy { it.memberId }
+
+        // Build per-tag score maps: tag → (memberId → score)
+        val scoresByTag = mutableMapOf<String, MutableMap<Int, Int>>()
+        if (selectedTags.isNotEmpty()) {
+            for (mpTag in mpTags) {
+                if (mpTag.tag in selectedTags) {
+                    scoresByTag
+                        .getOrPut(mpTag.tag) { mutableMapOf() }
+                        .merge(mpTag.memberId, mpTag.hitCount) { a, b -> a + b }
+                }
+            }
+        }
+
+        // Build groups
+        val groups = mutableListOf<TagGroupedMps>()
+        for (tag in selectedTags.sorted()) {
+            val tagScores = scoresByTag[tag] ?: emptyMap()
+            val mps = tagScores.entries
+                .map { (memberId, score) ->
+                    RecommendedMp(
+                        memberId = memberId,
+                        matchedTags = listOf(tag),
+                        totalScore = score,
+                        isPartyLeader = memberId in leaderMemberIds,
+                        leaderTitle = leaderByMemberId[memberId]?.title
+                    )
+                }
+                .sortedByDescending { it.totalScore }
+                .take(maxPerTag)
+            if (mps.isNotEmpty()) {
+                groups.add(TagGroupedMps(tag = tag, mps = mps))
+            }
+        }
+
+        // Add a "Party Leaders" group for leaders with no tag matches
+        val leadersWithTags = scoresByTag.values.flatMap { it.keys }.toSet()
+        val leadersWithoutTags = partyLeaders.filter { it.memberId !in leadersWithTags }
+        if (leadersWithoutTags.isNotEmpty()) {
+            groups.add(
+                TagGroupedMps(
+                    tag = "Party Leaders",
+                    mps = leadersWithoutTags.map { leader ->
+                        RecommendedMp(
+                            memberId = leader.memberId,
+                            matchedTags = emptyList(),
+                            totalScore = 0,
+                            isPartyLeader = true,
+                            leaderTitle = leader.title
+                        )
+                    }
+                )
+            )
+        }
+
+        return groups
+    }
 }

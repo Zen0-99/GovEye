@@ -35,7 +35,7 @@ data class InterestBucketDetailRoute(val memberId: Int, val bucketLabel: String,
     NavKey
 
 @Serializable
-data class TranscriptRoute(val divisionId: Int, val divisionTitle: String) : NavKey
+data class TranscriptRoute(val divisionId: Int, val divisionTitle: String, val speechGid: String = "") : NavKey
 
 @Serializable
 data class PartyRoute(val partyId: Int) : NavKey

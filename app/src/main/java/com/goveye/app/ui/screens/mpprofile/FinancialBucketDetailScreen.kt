@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -31,6 +32,7 @@ import com.goveye.app.domain.model.FinancialEntryType
 import com.goveye.app.domain.model.Interest
 import com.goveye.app.ui.components.ConfigureDetailTopBar
 import com.goveye.app.ui.components.ConfigureSearchBar
+import com.goveye.app.ui.components.DelayedLoadingContainer
 import com.goveye.app.ui.components.SearchBarConfig
 import com.goveye.app.ui.screens.feed.FinancialDetailField
 import com.goveye.app.ui.screens.feed.UnifiedFinancialCard
@@ -136,7 +138,23 @@ fun FinancialBucketDetailScreen(
             .sortedByDescending { (dateKey, _) -> dateKey }
     }
 
-    if (bucketEntries.isEmpty()) {
+    // Track whether data has been loaded at least once (avoids flash of
+    // "no entries" before the Flow emits its first value)
+    var dataLoaded by remember { mutableStateOf(false) }
+    LaunchedEffect(uiState.interests, uiState.expenses) {
+        if (uiState.interests.isNotEmpty() || uiState.expenses.isNotEmpty() || !uiState.isLoading) {
+            dataLoaded = true
+        }
+    }
+
+    if (!dataLoaded) {
+        Box(
+            modifier = modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+    } else if (bucketEntries.isEmpty()) {
         Box(
             modifier = modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
@@ -416,7 +434,8 @@ private fun FinancialEntryCard(entry: FinancialEntry) {
             entry.destination, entry.visitPurpose, entry.organisationName,
             entry.organisationDescription, entry.propertyLocation, entry.propertyType,
             entry.hoursWorked, entry.familyMemberName,
-            entry.familyMemberRelationship, entry.familyMemberRole
+            entry.familyMemberRelationship, entry.familyMemberRole,
+            descriptionLine = description.takeIf { it.isNotBlank() }
         )
         expandableFields = structuredFields.takeIf { it.isNotEmpty() }
         expandableContent = if (expandableFields == null) entry.summary.takeIf { it.length > 80 } else null

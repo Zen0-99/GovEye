@@ -26,6 +26,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.goveye.app.domain.model.Bill
 import com.goveye.app.domain.model.SyncStatus
+import com.goveye.app.ui.components.DelayedSpinner
 import com.goveye.app.ui.components.StickyInfoCard
 import com.goveye.app.ui.components.SyncStatusBanner
 import com.goveye.app.ui.theme.padding
@@ -54,12 +55,7 @@ fun BillsTabContent(
 
         when {
             state.isLoading && displayBills.isEmpty() -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
+                DelayedSpinner()
             }
 
             displayBills.isEmpty() -> {

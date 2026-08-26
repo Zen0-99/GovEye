@@ -10,5 +10,6 @@ data class WrittenStatement(
     val answeringBodyName: String,
     val title: String,
     val text: String,
-    val house: Int
+    val house: Int,
+    val url: String? = null
 )

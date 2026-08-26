@@ -58,6 +58,7 @@ import com.goveye.app.domain.stats.RebellionStats
 import com.goveye.app.domain.stats.VoteMapCalculator
 import com.goveye.app.domain.stats.VotingStatsCalculator
 import com.goveye.app.ui.components.ConfigureDetailTopBar
+import com.goveye.app.ui.components.DelayedSpinner
 import com.goveye.app.ui.components.DetailTopBarAction
 import com.goveye.app.ui.components.MpAvatar
 import com.goveye.app.ui.components.charts.AttendanceLineChart
@@ -210,12 +211,7 @@ fun ProfileScreen(
     )
 
     if (uiState.isLoading && mp == null) {
-        Box(
-            modifier = modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            CircularProgressIndicator()
-        }
+        DelayedSpinner(modifier = modifier)
     } else if (mp == null) {
         Box(
             modifier = modifier.fillMaxSize(),

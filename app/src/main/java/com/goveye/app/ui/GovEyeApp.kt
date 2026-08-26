@@ -273,6 +273,9 @@ private fun GovEyeAppContent(
                             onNavigateToLegislationDetail = { legislationId ->
                                 currentBackStack.add(LegislationDetailRoute(legislationId))
                             },
+                            onNavigateToTranscript = { divId, divTitle, speechGid ->
+                                currentBackStack.add(TranscriptRoute(divId, divTitle, speechGid))
+                            },
                             showInfoCards = showInfoCards,
                             modifier = Modifier
                                 .fillMaxSize()
@@ -389,8 +392,8 @@ private fun GovEyeAppContent(
                             onNavigateToProfile = { targetId ->
                                 currentBackStack.add(ProfileRoute(targetId))
                             },
-                            onNavigateToTranscript = { divId, divTitle ->
-                                currentBackStack.add(TranscriptRoute(divId, divTitle))
+                            onNavigateToTranscript = { divId, divTitle, speechGid ->
+                                currentBackStack.add(TranscriptRoute(divId, divTitle, speechGid))
                             },
                             modifier = Modifier.fillMaxSize().padding(top = topBarHeight)
                         )
@@ -401,6 +404,7 @@ private fun GovEyeAppContent(
                         TranscriptScreen(
                             divisionId = key.divisionId,
                             divisionTitle = key.divisionTitle,
+                            initialSpeechGid = key.speechGid,
                             onBack = { currentBackStack.removeLastOrNull() },
                             onNavigateToProfile = { targetId ->
                                 currentBackStack.add(ProfileRoute(targetId))
@@ -533,6 +537,11 @@ private fun GovEyeAppContent(
     LaunchedEffect(currentRoute) {
         committedSearchConfig = searchStateHolder.config.value
     }
+    // Sync query live so user typing updates the search bar immediately,
+    // without causing a full config swap during navigation transitions.
+    LaunchedEffect(searchConfig.query) {
+        committedSearchConfig = committedSearchConfig.copy(query = searchConfig.query)
+    }
 
     // Bottom bar is only shown on tab root screens — not on detail screens
     // pushed onto a tab's back stack.
@@ -555,14 +564,14 @@ private fun GovEyeAppContent(
             // appear alongside it, causing the search bar to morph width
             // via AnimatedVisibility expand/shrink.
             FloatingSearchBar(
-                query = searchConfig.query,
+                query = committedSearchConfig.query,
                 onQueryChange = searchConfig.onQueryChange,
                 onFilterClick = committedSearchConfig.onFilterClick,
                 hasActiveFilters = committedSearchConfig.hasActiveFilters,
                 placeholder = committedSearchConfig.placeholder,
-                filterChips = searchConfig.filterChips,
+                filterChips = committedSearchConfig.filterChips,
                 onBack = topBarOnBack,
-                segments = searchConfig.segments,
+                segments = committedSearchConfig.segments,
                 isSearchActive = searchConfig.isSearchActive,
                 onSearchActiveChange = searchConfig.onSearchActiveChange,
                 actions = topBarActions,

@@ -2,6 +2,7 @@ package com.goveye.app.work
 
 import android.content.Context
 import androidx.work.WorkerParameters
+import com.goveye.app.notifications.NotificationHelper
 import com.goveye.app.data.update.DatabaseManifest
 import com.goveye.app.data.update.DatabaseUpdateManager
 import com.goveye.app.data.update.DatabaseUpdateState
@@ -28,6 +29,7 @@ import org.robolectric.annotation.Config
 class DatabaseUpdateWorkerTest {
 
     private val databaseUpdateManager = mockk<DatabaseUpdateManager>(relaxed = true)
+    private val notificationHelper = mockk<NotificationHelper>(relaxed = true)
 
     private lateinit var context: Context
     private lateinit var workerParams: WorkerParameters
@@ -50,7 +52,8 @@ class DatabaseUpdateWorkerTest {
     private fun createWorker() = DatabaseUpdateWorker(
         context,
         workerParams,
-        databaseUpdateManager
+        databaseUpdateManager,
+        notificationHelper
     )
 
     private fun makePatch(streamName: String): PatchInfo {

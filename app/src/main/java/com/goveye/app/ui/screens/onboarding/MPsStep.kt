@@ -58,6 +58,7 @@ import com.goveye.app.ui.screens.directory.MpListRow
 fun MPsStep(
     partyLeaders: List<PartyLeaderInfo>,
     recommendedMps: List<Mp>,
+    tagGroupedMps: List<TagGroupedMpDetails>,
     selectedTags: Set<String>,
     followedMpIds: Set<Int>,
     pagedMps: LazyPagingItems<Mp>,
@@ -123,13 +124,9 @@ fun MPsStep(
                 }
             }
 
-            // Recommended for you section — only show when there are actual
-            // recommendations (mp_tags table populated in the seed DB).
-            // When tags are selected but no recommendations exist yet (e.g.
-            // the seed DB is still downloading or mp_tags is empty), skip
-            // this section entirely — the Party leaders and All MPs sections
-            // are sufficient.
-            if (recommendedMps.isNotEmpty()) {
+            // Recommended for you — grouped by tag, top 5 per tag.
+            // Each tag is a sub-heading. MPs can appear in multiple groups.
+            if (tagGroupedMps.isNotEmpty()) {
                 item {
                     Spacer(Modifier.height(16.dp))
                     Text(
@@ -139,15 +136,26 @@ fun MPsStep(
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
-                items(
-                    items = recommendedMps,
-                    key = { "rec-${it.id}" }
-                ) { mp ->
-                    RecommendedMpRow(
-                        mp = mp,
-                        isFollowed = mp.id in followedMpIds,
-                        onFollowToggle = { onFollowToggle(mp.id) }
-                    )
+                tagGroupedMps.forEach { group ->
+                    item(key = "tag-header-${group.tag}") {
+                        Text(
+                            text = group.tag,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)
+                        )
+                    }
+                    items(
+                        items = group.mps,
+                        key = { "rec-${group.tag}-${it.memberId}" }
+                    ) { recMp ->
+                        RecommendedMpRow(
+                            mp = recMp.mp,
+                            isFollowed = recMp.memberId in followedMpIds,
+                            onFollowToggle = { onFollowToggle(recMp.memberId) }
+                        )
+                    }
                 }
             }
 
@@ -254,7 +262,7 @@ private fun PartyLeaderCard(leader: PartyLeaderInfo, isFollowed: Boolean, onFoll
         modifier = Modifier.width(120.dp)
     ) {
         MpAvatar(
-            thumbnailUrl = null,
+            thumbnailUrl = leader.thumbnailUrl,
             displayName = leader.name,
             partyColorHex = leader.partyBackgroundColour,
             size = 48.dp,

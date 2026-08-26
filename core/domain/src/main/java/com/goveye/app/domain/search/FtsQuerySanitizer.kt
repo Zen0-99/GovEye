@@ -16,11 +16,19 @@ object FtsQuerySanitizer {
         for (match in tokenRegex.findAll(query)) {
             val phrase = match.groupValues[1]
             if (phrase.isNotEmpty()) {
-                tokens.add("\"${phrase.replace("\"", "\"\"")}\"")
+                // Phrase in quotes — add prefix wildcard for partial matching
+                tokens.add("\"${phrase.replace("\"", "\"\"")}\"*")
             } else {
                 val token = match.value.trim('.', '_', '-')
                 if (token.isNotEmpty()) {
-                    tokens.add(if (token.any { it in "._-" }) "\"$token\"" else token)
+                    if (token.any { it in "._-" }) {
+                        // Token with special chars — quote it and add prefix wildcard
+                        tokens.add("\"$token\"*")
+                    } else {
+                        // Plain token — add prefix wildcard for FTS prefix matching
+                        // e.g. "john" → "john*" matches "john", "johnson", "johnny"
+                        tokens.add("$token*")
+                    }
                 }
             }
         }

@@ -483,6 +483,54 @@ object DatabaseModule {
         }
     }
 
+    // Migration 25 → 26: Add bodyText to legislation table + create written_questions
+    // table (was missing from seed DB in earlier builds).
+    // Idempotent — the seed DB may already include these.
+    private val MIGRATION_25_26 = object : Migration(25, 26) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // bodyText on legislation
+            val legColumns = db.query("PRAGMA table_info(legislation)").use { cursor ->
+                buildList {
+                    while (cursor.moveToNext()) {
+                        add(cursor.getString(cursor.getColumnIndexOrThrow("name")))
+                    }
+                }
+            }.toSet()
+
+            if ("bodyText" !in legColumns) {
+                db.execSQL("ALTER TABLE legislation ADD COLUMN `bodyText` TEXT")
+            }
+
+            // written_questions table — may not exist in older seed DBs
+            val tables = db.query("SELECT name FROM sqlite_master WHERE type='table'").use { cursor ->
+                buildList {
+                    while (cursor.moveToNext()) {
+                        add(cursor.getString(0))
+                    }
+                }
+            }.toSet()
+
+            if ("written_questions" !in tables) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `written_questions` (
+                        `id` INTEGER NOT NULL,
+                        `memberId` INTEGER NOT NULL,
+                        `uin` TEXT NOT NULL,
+                        `dateTabled` TEXT NOT NULL,
+                        `answeringBodyId` INTEGER NOT NULL,
+                        `answeringBodyName` TEXT NOT NULL,
+                        `questionText` TEXT NOT NULL,
+                        `house` INTEGER NOT NULL,
+                        `lastUpdated` INTEGER NOT NULL,
+                        PRIMARY KEY(`id`)
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+    }
+
     @Provides
     @Singleton
     fun provideBundledDatabase(@ApplicationContext context: Context): BundledDatabase {
@@ -509,7 +557,8 @@ object DatabaseModule {
                 MIGRATION_21_22,
                 MIGRATION_22_23,
                 MIGRATION_23_24,
-                MIGRATION_24_25
+                MIGRATION_24_25,
+                MIGRATION_25_26
             )
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()

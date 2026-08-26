@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.goveye.app.ui.components.ConfigureDetailTopBar
+import com.goveye.app.ui.components.DelayedSpinner
 import com.goveye.app.ui.components.DetailTopBarConfig
 import com.goveye.app.ui.screens.directory.MpListRow
 
@@ -62,12 +63,7 @@ fun CouncilScreen(
     )
 
     if (uiState.isLoading && council == null) {
-        Box(
-            modifier = modifier.fillMaxSize().padding(top = contentTopPadding),
-            contentAlignment = Alignment.Center
-        ) {
-            CircularProgressIndicator()
-        }
+        DelayedSpinner(modifier = modifier.padding(top = contentTopPadding))
         return
     }
 

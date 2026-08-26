@@ -9,8 +9,7 @@ import androidx.room.Room
 import com.goveye.app.data.local.BundledDatabase
 import com.goveye.app.data.local.dao.DatabaseUpdateDao
 import com.goveye.app.data.preference.DatabasePreferences
-import io.mockk.coEvery
-import io.mockk.mockk
+import com.goveye.app.data.preference.DownloadPreferences
 import java.io.IOException
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
@@ -38,7 +37,7 @@ class DatabaseUpdateManagerTest {
     private lateinit var updateDao: DatabaseUpdateDao
     private lateinit var dataStore: DataStore<Preferences>
     private lateinit var preferences: DatabasePreferences
-    private val updateApi: DatabaseUpdateApi = mockk(relaxed = true)
+    private lateinit var downloadPreferences: DownloadPreferences
     private val json = Json {
         ignoreUnknownKeys = true
         coerceInputValues = true
@@ -62,15 +61,19 @@ class DatabaseUpdateManagerTest {
             produceFile = { context.preferencesDataStoreFile("test_db_prefs") }
         )
         preferences = DatabasePreferences(dataStore)
+        downloadPreferences = DownloadPreferences(dataStore)
         okHttpClient = OkHttpClient.Builder().build()
+        // Point the manager at the MockWebServer so manifest downloads are
+        // intercepted instead of hitting GitHub.
         manager = DatabaseUpdateManager(
-            updateApi = updateApi,
             preferences = preferences,
+            downloadPreferences = downloadPreferences,
             json = json,
             context = context,
             database = database,
             updateDao = updateDao,
-            dbDownloadClient = okHttpClient
+            dbDownloadClient = okHttpClient,
+            githubDownloadBase = server.url("/").toString().trimEnd('/')
         )
 
         // Use a Dispatcher so parallel requests get the correct response by path
@@ -94,30 +97,19 @@ class DatabaseUpdateManagerTest {
     }
 
     /**
-     * Helper: creates a GithubReleaseDto with a manifest.json asset pointing to
-     * the MockWebServer, and registers the manifest JSON body for the path.
+     * Registers a manifest.json body for the given tag's path on the MockWebServer.
+     * The manager downloads from `$githubDownloadBase/$tag/manifest.json`.
      */
-    private fun mockReleaseWithManifest(tag: String, manifestJson: String) {
-        val manifestPath = "$tag/manifest.json"
-        val manifestUrl = server.url("/$manifestPath").toString()
-        val release = GithubReleaseDto(
-            assets = listOf(
-                ReleaseAssetDto(
-                    name = "manifest.json",
-                    browserDownloadUrl = manifestUrl,
-                    size = manifestJson.length.toLong()
-                )
-            )
-        )
-        coEvery { updateApi.getReleaseByTag(tag = tag) } returns release
-        responseMap[manifestPath] = manifestJson
+    private fun mockManifest(tag: String, manifestJson: String) {
+        responseMap["$tag/manifest.json"] = manifestJson
     }
 
     /**
-     * Helper: mocks a release fetch to throw IOException for a given tag.
+     * Simulates a manifest fetch failure by not registering a response
+     * (the Dispatcher returns 404 for unregistered paths).
      */
-    private fun mockReleaseFailure(tag: String) {
-        coEvery { updateApi.getReleaseByTag(tag = tag) } throws IOException("Network error")
+    private fun mockManifestFailure(tag: String) {
+        responseMap.remove("$tag/manifest.json")
     }
 
     private fun manifestJson(version: Int, previousVersion: Int? = null): String = """
@@ -148,7 +140,7 @@ class DatabaseUpdateManagerTest {
      */
     private suspend fun mockAllStreamsUpToDate(version: Int) {
         for (tag in allTags) {
-            mockReleaseWithManifest(tag, manifestJson(version = version, previousVersion = version - 1))
+            mockManifest(tag, manifestJson(version = version, previousVersion = version - 1))
         }
         preferences.setMpsVersion(version)
         preferences.setCommonsVotesVersion(version)
@@ -169,7 +161,7 @@ class DatabaseUpdateManagerTest {
 
     @Test
     fun `all streams up to date`() = runTest {
-        preferences.setSeedVersion(1)
+        preferences.setSeedVersion(DatabaseUpdateManager.CURRENT_SEED_VERSION)
         mockAllStreamsUpToDate(5)
         val state = manager.checkForUpdates()
         assertTrue(state is DatabaseUpdateState.UpToDate)
@@ -177,9 +169,9 @@ class DatabaseUpdateManagerTest {
 
     @Test
     fun `needs patches for one stream`() = runTest {
-        preferences.setSeedVersion(1)
+        preferences.setSeedVersion(DatabaseUpdateManager.CURRENT_SEED_VERSION)
         // mps is 1 behind, others up to date
-        mockReleaseWithManifest(DatabaseUpdateApi.MPS_TAG, manifestJson(version = 6, previousVersion = 5))
+        mockManifest(DatabaseUpdateApi.MPS_TAG, manifestJson(version = 6, previousVersion = 5))
         preferences.setMpsVersion(5)
         for (tag in listOf(
             DatabaseUpdateApi.COMMONS_VOTES_TAG,
@@ -189,7 +181,7 @@ class DatabaseUpdateManagerTest {
             DatabaseUpdateApi.RECESS_TAG,
             DatabaseUpdateApi.INTERESTS_TAG
         )) {
-            mockReleaseWithManifest(tag, manifestJson(version = 5, previousVersion = 4))
+            mockManifest(tag, manifestJson(version = 5, previousVersion = 4))
         }
         preferences.setCommonsVotesVersion(5)
         preferences.setLordsVotesVersion(5)
@@ -207,10 +199,10 @@ class DatabaseUpdateManagerTest {
 
     @Test
     fun `needs patches for multiple streams`() = runTest {
-        preferences.setSeedVersion(1)
+        preferences.setSeedVersion(DatabaseUpdateManager.CURRENT_SEED_VERSION)
         // mps and commons-votes are 1 behind, others up to date
-        mockReleaseWithManifest(DatabaseUpdateApi.MPS_TAG, manifestJson(version = 6, previousVersion = 5))
-        mockReleaseWithManifest(DatabaseUpdateApi.COMMONS_VOTES_TAG, manifestJson(version = 6, previousVersion = 5))
+        mockManifest(DatabaseUpdateApi.MPS_TAG, manifestJson(version = 6, previousVersion = 5))
+        mockManifest(DatabaseUpdateApi.COMMONS_VOTES_TAG, manifestJson(version = 6, previousVersion = 5))
         preferences.setMpsVersion(5)
         preferences.setCommonsVotesVersion(5)
         for (tag in listOf(
@@ -220,7 +212,7 @@ class DatabaseUpdateManagerTest {
             DatabaseUpdateApi.RECESS_TAG,
             DatabaseUpdateApi.INTERESTS_TAG
         )) {
-            mockReleaseWithManifest(tag, manifestJson(version = 5, previousVersion = 4))
+            mockManifest(tag, manifestJson(version = 5, previousVersion = 4))
         }
         preferences.setLordsVotesVersion(5)
         preferences.setBillsVersion(5)
@@ -238,9 +230,9 @@ class DatabaseUpdateManagerTest {
 
     @Test
     fun `partial failure is graceful`() = runTest {
-        preferences.setSeedVersion(1)
-        // mps fetch fails, others succeed and are up to date
-        mockReleaseFailure(DatabaseUpdateApi.MPS_TAG)
+        preferences.setSeedVersion(DatabaseUpdateManager.CURRENT_SEED_VERSION)
+        // mps fetch fails (404), others succeed and are up to date
+        mockManifestFailure(DatabaseUpdateApi.MPS_TAG)
         for (tag in listOf(
             DatabaseUpdateApi.COMMONS_VOTES_TAG,
             DatabaseUpdateApi.LORDS_VOTES_TAG,
@@ -249,7 +241,7 @@ class DatabaseUpdateManagerTest {
             DatabaseUpdateApi.RECESS_TAG,
             DatabaseUpdateApi.INTERESTS_TAG
         )) {
-            mockReleaseWithManifest(tag, manifestJson(version = 5, previousVersion = 4))
+            mockManifest(tag, manifestJson(version = 5, previousVersion = 4))
         }
         preferences.setMpsVersion(5)
         preferences.setCommonsVotesVersion(5)
@@ -266,9 +258,9 @@ class DatabaseUpdateManagerTest {
 
     @Test
     fun `full download when stream multiple behind`() = runTest {
-        preferences.setSeedVersion(1)
+        preferences.setSeedVersion(DatabaseUpdateManager.CURRENT_SEED_VERSION)
         // mpsVersion is 3, manifest version is 5, previousVersion is 4 → multiple behind
-        mockReleaseWithManifest(DatabaseUpdateApi.MPS_TAG, manifestJson(version = 5, previousVersion = 4))
+        mockManifest(DatabaseUpdateApi.MPS_TAG, manifestJson(version = 5, previousVersion = 4))
         preferences.setMpsVersion(3)
         for (tag in listOf(
             DatabaseUpdateApi.COMMONS_VOTES_TAG,
@@ -278,7 +270,7 @@ class DatabaseUpdateManagerTest {
             DatabaseUpdateApi.RECESS_TAG,
             DatabaseUpdateApi.INTERESTS_TAG
         )) {
-            mockReleaseWithManifest(tag, manifestJson(version = 5, previousVersion = 4))
+            mockManifest(tag, manifestJson(version = 5, previousVersion = 4))
         }
         preferences.setCommonsVotesVersion(5)
         preferences.setLordsVotesVersion(5)
@@ -293,9 +285,9 @@ class DatabaseUpdateManagerTest {
 
     @Test
     fun `needs patches for interests stream`() = runTest {
-        preferences.setSeedVersion(1)
+        preferences.setSeedVersion(DatabaseUpdateManager.CURRENT_SEED_VERSION)
         // interests is 1 behind, others up to date
-        mockReleaseWithManifest(DatabaseUpdateApi.INTERESTS_TAG, manifestJson(version = 6, previousVersion = 5))
+        mockManifest(DatabaseUpdateApi.INTERESTS_TAG, manifestJson(version = 6, previousVersion = 5))
         preferences.setInterestsVersion(5)
         for (tag in listOf(
             DatabaseUpdateApi.MPS_TAG,
@@ -305,7 +297,7 @@ class DatabaseUpdateManagerTest {
             DatabaseUpdateApi.COMMITTEES_TAG,
             DatabaseUpdateApi.RECESS_TAG
         )) {
-            mockReleaseWithManifest(tag, manifestJson(version = 5, previousVersion = 4))
+            mockManifest(tag, manifestJson(version = 5, previousVersion = 4))
         }
         preferences.setMpsVersion(5)
         preferences.setCommonsVotesVersion(5)
@@ -323,10 +315,9 @@ class DatabaseUpdateManagerTest {
 
     @Test
     fun `failed on all streams network error`() = runTest {
-        preferences.setSeedVersion(1)
-        for (tag in allTags) {
-            mockReleaseFailure(tag)
-        }
+        preferences.setSeedVersion(DatabaseUpdateManager.CURRENT_SEED_VERSION)
+        // All manifests return 404 (no entries in responseMap)
+        responseMap.clear()
 
         val state = manager.checkForUpdates()
         assertTrue(state is DatabaseUpdateState.Failed)
@@ -342,7 +333,7 @@ class DatabaseUpdateManagerTest {
 
     @Test
     fun `isFirstLaunch false when seedVersion is set`() = runTest {
-        preferences.setSeedVersion(1)
+        preferences.setSeedVersion(DatabaseUpdateManager.CURRENT_SEED_VERSION)
         val dbPath = context.getDatabasePath(BundledDatabase.DATABASE_NAME)
         dbPath.parentFile?.mkdirs()
         dbPath.createNewFile()

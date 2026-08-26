@@ -3,10 +3,13 @@ package com.goveye.app.ui.screens.following
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.goveye.app.data.local.dao.DivisionDao
+import com.goveye.app.data.local.dao.MpDao
+import com.goveye.app.data.local.dao.PartySummary
 import com.goveye.app.data.local.entity.FollowedMpWithDetail
 import com.goveye.app.data.local.entity.MemberRecentVote
 import com.goveye.app.data.preference.DirectoryPreferences
 import com.goveye.app.data.preference.DirectoryViewMode
+import com.goveye.app.data.preference.OnboardingPreferences
 import com.goveye.app.data.repo.FollowRepository
 import com.goveye.app.ui.screens.directory.DirectoryFilterState
 import com.goveye.app.ui.screens.directory.PartyFilterState
@@ -18,6 +21,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -42,8 +46,18 @@ data class FollowedMpUi(
     val recentVoteDate: String?
 )
 
+/** UI model for a followed party (selected during onboarding). */
+data class FollowedPartyUi(
+    val partyId: Int,
+    val partyName: String,
+    val partyAbbreviation: String,
+    val partyBackgroundColour: String,
+    val seats: Int
+)
+
 data class FollowingUiState(
     val followedMps: List<FollowedMpUi> = emptyList(),
+    val followedParties: List<FollowedPartyUi> = emptyList(),
     val searchQuery: String = "",
     val filterState: DirectoryFilterState = DirectoryFilterState(),
     val distinctParties: List<String> = emptyList(),
@@ -56,7 +70,9 @@ data class FollowingUiState(
 class FollowingViewModel @Inject constructor(
     private val followRepository: FollowRepository,
     private val divisionDao: DivisionDao,
-    private val directoryPreferences: DirectoryPreferences
+    private val directoryPreferences: DirectoryPreferences,
+    private val onboardingPreferences: OnboardingPreferences,
+    private val mpDao: MpDao
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
@@ -68,6 +84,29 @@ class FollowingViewModel @Inject constructor(
     private val isLoading = MutableStateFlow(true)
 
     private val viewModeFlow = directoryPreferences.viewMode
+
+    /** Followed parties — resolves selected party IDs from onboarding to party details. */
+    private val followedParties: kotlinx.coroutines.flow.Flow<List<FollowedPartyUi>> =
+        onboardingPreferences.selectedParties
+            .mapLatest { partyIds ->
+                if (partyIds.isEmpty()) {
+                    emptyList()
+                } else {
+                    val allParties = mpDao.getActiveParties()
+                    allParties
+                        .filter { it.partyId in partyIds }
+                        .map { summary ->
+                            FollowedPartyUi(
+                                partyId = summary.partyId,
+                                partyName = summary.partyName,
+                                partyAbbreviation = summary.partyAbbreviation,
+                                partyBackgroundColour = summary.partyBackgroundColour,
+                                seats = summary.seats
+                            )
+                        }
+                        .sortedBy { it.partyName }
+                }
+            }
 
     private val followedWithVotes = followRepository.observeFollowedMpsWithDetails()
         .mapLatest { followed ->
@@ -87,12 +126,12 @@ class FollowingViewModel @Inject constructor(
 
     val uiState: StateFlow<FollowingUiState> =
         combine(
-            followedWithVotes,
+            combine(followedWithVotes, followedParties) { mps, parties -> mps to parties },
             _searchQuery,
             _filterState,
             viewModeFlow,
             isLoading
-        ) { followed, query, filter, viewMode, loading ->
+        ) { (followed, parties), query, filter, viewMode, loading ->
             // Extract distinct parties from the full list (before filtering)
             val distinctParties = followed
                 .map { it.partyName }
@@ -120,6 +159,7 @@ class FollowingViewModel @Inject constructor(
 
             FollowingUiState(
                 followedMps = filterFiltered,
+                followedParties = parties,
                 searchQuery = query,
                 filterState = filter,
                 distinctParties = distinctParties,
@@ -183,6 +223,13 @@ class FollowingViewModel @Inject constructor(
 
     fun unfollow(memberId: Int) {
         viewModelScope.launch { followRepository.unfollow(memberId) }
+    }
+
+    fun unfollowParty(partyId: Int) {
+        viewModelScope.launch {
+            val current = onboardingPreferences.selectedParties.first()
+            onboardingPreferences.setSelectedParties(current - partyId)
+        }
     }
 
     private fun FollowedMpWithDetail.toUi(recentVote: MemberRecentVote?): FollowedMpUi = FollowedMpUi(

@@ -181,3 +181,10 @@
 **Fix:** Filtered interests and expenses to only include 2026 entries (`publishedDate.take(4) == "2026"` for interests, `claimDate.take(4) == "2026"` for expenses), and reduced the take limit from 20 to 10.
 **Files:** `FeedViewModel.kt`
 
+## Crash: Migration 25→26 — written_questions table missing from seed DB
+**Date:** 2026-08-25
+**Symptom:** App crashed on launch with `IllegalStateException: Migration didn't properly handle: written_questions`.
+**Root cause:** The `written_questions` table was declared as a Room entity (`WrittenQuestionEntity`) but was never created in the seed DB (`goveye.db`). When the DB was upgraded from v25→v26 (to add `bodyText` to `legislation`), Room validated all registered entities and found the `written_questions` table had 0 columns.
+**Fix:** Added `CREATE TABLE IF NOT EXISTS written_questions` to `MIGRATION_25_26` in `DatabaseModule.kt`, with the full column definitions matching `WrittenQuestionEntity`.
+**Files:** `DatabaseModule.kt`, `BundledDatabase.kt` (version 25→26), `LegislationEntity.kt` (+bodyText), `Legislation.kt` (+bodyText), `GovernmentAnnouncementsRepository.kt` (mapping)
+

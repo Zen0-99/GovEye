@@ -1,10 +1,5 @@
 package com.goveye.app.ui.screens.feed
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,10 +19,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,8 +29,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import com.goveye.app.ui.components.ExpandableContent
 import com.goveye.app.ui.components.MpAvatar
 import com.goveye.app.ui.components.VoteColors
+import com.goveye.app.ui.components.cardClickable
+import com.goveye.app.ui.components.rememberExpandState
 
 /**
  * A label-value pair for the expandable detail section of a financial card.
@@ -92,24 +86,16 @@ fun UnifiedFinancialCard(
     val pillColor = if (isUnpaid) MaterialTheme.colorScheme.onSurfaceVariant else trendColor
     val categoryIcon = bucketIcon(bucket ?: category)
     val hasExpandable = !expandableContent.isNullOrBlank() || !expandableFields.isNullOrEmpty()
-    var expanded by remember { mutableStateOf(false) }
-    // Low-ripple interaction source for subtler press feedback
-    val interactionSource = remember { MutableInteractionSource() }
+    val expandState = rememberExpandState()
 
     Surface(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .clickable(
-                interactionSource = interactionSource,
-                indication = androidx.compose.material3.ripple(
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
-                ),
-                onClick = {
-                    if (hasExpandable) expanded = !expanded
-                    onClick()
-                }
-            ),
+            .cardClickable {
+                if (hasExpandable) expandState.toggle()
+                onClick()
+            },
         shape = RoundedCornerShape(16.dp),
         color = pillColor.copy(alpha = 0.08f)
     ) {
@@ -199,14 +185,10 @@ fun UnifiedFinancialCard(
                 )
             }
 
-            // 4. [Expandable] Extra detail — pure height morph (no fade) per SyncStone
+            // 4. [Expandable] Extra detail — pure height morph (no fade) per
             // convention. Placed BETWEEN description and category/date row so the
             // category/date stays at the bottom and expands with the card.
-            AnimatedVisibility(
-                visible = expanded && hasExpandable,
-                enter = expandVertically(),
-                exit = shrinkVertically()
-            ) {
+            ExpandableContent(state = expandState) {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(4.dp)

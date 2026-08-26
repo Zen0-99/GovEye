@@ -41,9 +41,11 @@ import com.goveye.app.ui.components.MpAvatar
 import com.goveye.app.ui.components.SubTab
 import com.goveye.app.ui.components.SubTabPager
 import com.goveye.app.ui.components.VoteColors
+import com.goveye.app.ui.components.cardClickable
 import com.goveye.app.ui.screens.directory.FilterBottomSheet
 import com.goveye.app.ui.screens.directory.FilterTabType
 import com.goveye.app.ui.screens.following.FollowedMpUi
+import com.goveye.app.ui.screens.following.FollowedPartyUi
 import com.goveye.app.ui.screens.following.FollowingUiState
 import com.goveye.app.ui.screens.following.FollowingViewModel
 import com.goveye.app.ui.theme.padding
@@ -93,7 +95,7 @@ fun FollowingScreen(
             SubTabPager(
                 tabs = listOf(
                     SubTab("Officials", uiState.followedMps.size.takeIf { it > 0 }),
-                    SubTab("Parties", null),
+                    SubTab("Parties", uiState.followedParties.size.takeIf { it > 0 }),
                     SubTab("Sources", null),
                     SubTab("Tags", null)
                 ),
@@ -108,7 +110,10 @@ fun FollowingScreen(
                         onUnfollow = viewModel::unfollow
                     )
 
-                    1 -> TabEmptyHint("No followed parties yet")
+                    1 -> PartiesTabContent(
+                        parties = uiState.followedParties,
+                        onUnfollow = viewModel::unfollowParty
+                    )
 
                     2 -> TabEmptyHint("No followed sources yet")
 
@@ -213,6 +218,92 @@ private fun TabEmptyHint(text: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
+private fun PartiesTabContent(
+    parties: List<FollowedPartyUi>,
+    onUnfollow: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (parties.isEmpty()) {
+        TabEmptyHint("No followed parties yet", modifier)
+    } else {
+        LazyColumn(
+            modifier = modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(
+                items = parties,
+                key = { "party-${it.partyId}" }
+            ) { party ->
+                FollowedPartyCard(
+                    party = party,
+                    onUnfollow = { onUnfollow(party.partyId) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FollowedPartyCard(party: FollowedPartyUi, onUnfollow: () -> Unit, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Party color dot
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(
+                        try {
+                            Color(android.graphics.Color.parseColor(party.partyBackgroundColour))
+                        } catch (e: Exception) {
+                            MaterialTheme.colorScheme.primary
+                        }
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = party.partyAbbreviation.take(3),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = party.partyName,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "${party.seats} seats",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Text(
+                text = "Unfollow",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.clickable { onUnfollow() }
+            )
+        }
+    }
+}
+
+@Composable
 private fun FollowedMpCard(
     followedMp: FollowedMpUi,
     onClick: () -> Unit,
@@ -255,7 +346,7 @@ private fun FollowedMpCard(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(onClick = onClick),
+                .cardClickable(onClick = onClick),
             shape = RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.surfaceContainer
         ) {
@@ -352,7 +443,7 @@ private fun FollowedMpGridCard(followedMp: FollowedMpUi, onClick: () -> Unit, mo
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .cardClickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         color = partyColor.copy(alpha = 0.08f)
     ) {

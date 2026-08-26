@@ -43,6 +43,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.goveye.app.domain.model.Bill
 import com.goveye.app.domain.model.BillStage
+import com.goveye.app.ui.components.DelayedSpinner
 import com.goveye.app.ui.components.VoteColors
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -69,12 +70,7 @@ fun BillDetailScreen(
     )
 
     if (state.isLoading && state.bill == null) {
-        Box(
-            modifier = modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            CircularProgressIndicator()
-        }
+        DelayedSpinner(modifier = modifier)
     } else if (state.bill == null) {
         Box(
             modifier = modifier.fillMaxSize(),

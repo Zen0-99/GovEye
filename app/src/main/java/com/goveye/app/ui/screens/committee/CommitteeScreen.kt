@@ -40,6 +40,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.goveye.app.domain.model.Committee
 import com.goveye.app.domain.model.Mp
 import com.goveye.app.ui.components.ConfigureDetailTopBar
+import com.goveye.app.ui.components.DelayedSpinner
 import com.goveye.app.ui.components.DetailTopBarConfig
 import com.goveye.app.ui.components.MpAvatar
 import com.goveye.app.ui.theme.padding
@@ -72,12 +73,7 @@ fun CommitteeScreen(
     )
 
     if (uiState.isLoading && committee == null) {
-        Box(
-            modifier = modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            androidx.compose.material3.CircularProgressIndicator()
-        }
+        DelayedSpinner(modifier = modifier)
     } else if (committee == null) {
         Box(
             modifier = modifier.fillMaxSize(),

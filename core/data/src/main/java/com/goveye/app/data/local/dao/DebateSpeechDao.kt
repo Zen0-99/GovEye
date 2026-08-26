@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.Flow
  */
 data class SpeechWithDivision(
     val speechText: String,
+    val speechGid: String,
     val divisionId: Int,
     val divisionTitle: String,
     val divisionDate: String,
@@ -47,7 +48,8 @@ interface DebateSpeechDao {
      */
     @Query(
         """
-        SELECT ds.speechText AS speechText, d.id AS divisionId, d.title AS divisionTitle,
+        SELECT ds.speechText AS speechText, ds.speechGid AS speechGid,
+               d.id AS divisionId, d.title AS divisionTitle,
                d.date AS divisionDate, ds.memberId AS memberId
         FROM debate_speeches ds
         JOIN divisions d ON ds.divisionId = d.id
@@ -67,7 +69,8 @@ interface DebateSpeechDao {
      */
     @Query(
         """
-        SELECT ds.speechText AS speechText, d.id AS divisionId, d.title AS divisionTitle,
+        SELECT ds.speechText AS speechText, ds.speechGid AS speechGid,
+               d.id AS divisionId, d.title AS divisionTitle,
                d.date AS divisionDate, ds.memberId AS memberId
         FROM debate_speeches ds
         JOIN divisions d ON ds.divisionId = d.id

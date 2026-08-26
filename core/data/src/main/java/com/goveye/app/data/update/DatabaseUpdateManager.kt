@@ -74,7 +74,8 @@ class DatabaseUpdateManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val database: BundledDatabase,
     private val updateDao: DatabaseUpdateDao,
-    @Named("dbDownloadClient") private val dbDownloadClient: OkHttpClient
+    @Named("dbDownloadClient") private val dbDownloadClient: OkHttpClient,
+    @Named("githubDownloadBase") private val githubDownloadBase: String = GITHUB_DOWNLOAD_BASE_DEFAULT
 ) {
     /**
      * Checks whether this is the first app launch (seed DB not yet downloaded)
@@ -177,7 +178,7 @@ class DatabaseUpdateManager @Inject constructor(
                     manifest.previousVersion == localVersion -> {
                         // Exactly 1 behind — patch available
                         val (tag, _) = streamTags[index]
-                        val patchUrl = "$GITHUB_DOWNLOAD_BASE/$tag/$PATCH_ASSET_NAME"
+                        val patchUrl = "$githubDownloadBase/$tag/$PATCH_ASSET_NAME"
                         patches.add(PatchInfo(streamName, manifest, patchUrl))
                     }
 
@@ -319,7 +320,7 @@ class DatabaseUpdateManager @Inject constructor(
             // 3. Download goveye.db from seed-latest release.
             //    URL: https://github.com/Zen0-99/goveye-data/releases/download/seed-latest/goveye.db
             val dbPath = context.getDatabasePath(BundledDatabase.DATABASE_NAME)
-            val seedDbUrl = "$GITHUB_DOWNLOAD_BASE/seed-latest/goveye.db"
+            val seedDbUrl = "$githubDownloadBase/seed-latest/goveye.db"
             Log.i(TAG, "Downloading seed DB from $seedDbUrl")
 
             val tempFile = File(context.cacheDir, "goveye_seed_download.db")
@@ -595,7 +596,7 @@ class DatabaseUpdateManager @Inject constructor(
         val deferreds = streamTags.map { (tag, streamName) ->
             async {
                 try {
-                    val manifestUrl = "$GITHUB_DOWNLOAD_BASE/$tag/$MANIFEST_ASSET_NAME"
+                    val manifestUrl = "$githubDownloadBase/$tag/$MANIFEST_ASSET_NAME"
                     val manifestJson = downloadAssetText(manifestUrl)
                     val manifest = json.decodeFromString<DatabaseManifest>(manifestJson)
                     streamName to manifest
@@ -804,7 +805,7 @@ class DatabaseUpdateManager @Inject constructor(
         internal const val MANIFEST_ASSET_NAME = "manifest.json"
         internal const val PATCH_ASSET_NAME = "patch.json"
         private const val BUFFER_SIZE = 8192
-        private const val GITHUB_DOWNLOAD_BASE =
+        private const val GITHUB_DOWNLOAD_BASE_DEFAULT =
             "https://github.com/Zen0-99/goveye-data/releases/download"
     }
 }

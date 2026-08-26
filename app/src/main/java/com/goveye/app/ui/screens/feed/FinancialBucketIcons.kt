@@ -32,6 +32,7 @@ val BUCKET_ORDER = listOf(
 )
 
 val BUCKET_ICONS: Map<String, ImageVector> = mapOf(
+    // Interest buckets (categories 1-10)
     "Employment/Earnings" to Icons.Outlined.Paid,
     "Financial Support" to Icons.Outlined.AccountBalance,
     "Gifts" to Icons.Outlined.CardGiftcard,
@@ -40,8 +41,13 @@ val BUCKET_ICONS: Map<String, ImageVector> = mapOf(
     "Land/Property" to Icons.Outlined.RealEstateAgent,
     "Shareholdings" to Icons.AutoMirrored.Outlined.TrendingUp,
     "Miscellaneous" to Icons.Outlined.Category,
+    "Other" to Icons.Outlined.Category,
     "Family Employed" to Icons.Outlined.Groups,
-    "Family Lobbying" to Icons.Outlined.Business
+    "Family Lobbying" to Icons.Outlined.Business,
+    // Expense buckets (IPSA categories)
+    "Staffing" to Icons.Outlined.Groups,
+    "Office" to Icons.Outlined.Business,
+    "Travel" to Icons.Outlined.Flight
 )
 
 /**

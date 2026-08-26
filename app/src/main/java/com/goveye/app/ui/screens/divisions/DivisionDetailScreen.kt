@@ -59,6 +59,7 @@ import com.goveye.app.domain.model.Division
 import com.goveye.app.domain.model.DivisionVote
 import com.goveye.app.domain.model.PartyBreakdown
 import com.goveye.app.domain.model.VoteType
+import com.goveye.app.ui.components.DelayedSpinner
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -165,7 +166,7 @@ fun DivisionDetailScreen(
     house: Int,
     onBack: () -> Unit,
     onNavigateToProfile: (Int) -> Unit,
-    onNavigateToTranscript: (divisionId: Int, divisionTitle: String) -> Unit = { _, _ -> },
+    onNavigateToTranscript: (divisionId: Int, divisionTitle: String, speechGid: String) -> Unit = { _, _, _ -> },
     modifier: Modifier = Modifier,
     viewModel: DivisionDetailViewModel = hiltViewModel()
 ) {
@@ -228,13 +229,7 @@ fun DivisionDetailScreen(
         contentWindowInsets = WindowInsets.navigationBars.only(WindowInsetsSides.Horizontal)
     ) { innerPadding ->
         if (state.isLoading) {
-            Row(
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                CircularProgressIndicator()
-            }
+            DelayedSpinner(modifier = Modifier.padding(innerPadding))
         } else {
             val division = state.division
             if (division == null) {
@@ -304,7 +299,7 @@ private fun DivisionDetailContent(
     division: Division,
     state: DivisionDetailState,
     onNavigateToProfile: (DivisionVote) -> Unit,
-    onNavigateToTranscript: (Int, String) -> Unit,
+    onNavigateToTranscript: (Int, String, String) -> Unit,
     searchQuery: String,
     voteFilter: VoteFilter,
     modifier: Modifier = Modifier
@@ -326,7 +321,7 @@ private fun DivisionDetailContent(
                 speechCount = state.speechCount,
                 tags = state.tags,
                 onNavigateToTranscript = {
-                    onNavigateToTranscript(division.id, division.title)
+                    onNavigateToTranscript(division.id, division.title, "")
                 }
             )
         }

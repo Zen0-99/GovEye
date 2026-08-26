@@ -41,7 +41,8 @@ class FeedRepositoryTest {
         repository = FeedRepository(
             bundledDb.divisionDao(),
             localDb.followDao(),
-            bundledDb.recessDateDao()
+            bundledDb.recessDateDao(),
+            bundledDb.tagDao()
         )
     }
 

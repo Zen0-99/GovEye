@@ -34,6 +34,7 @@ import com.goveye.app.ui.screens.divisions.TagMicroviewDialog
 import com.goveye.app.ui.screens.feed.FeedDateHeader
 import com.goveye.app.ui.screens.feed.FeedFinancialCard
 import com.goveye.app.ui.screens.feed.FeedItem
+import com.goveye.app.ui.screens.feed.FeedMpVoteCard
 import com.goveye.app.ui.screens.feed.FeedNoActivityEmptyState
 import com.goveye.app.ui.screens.feed.FeedNoFollowsEmptyState
 import com.goveye.app.ui.screens.feed.FeedRecessEmptyState
@@ -53,6 +54,7 @@ fun FeedScreen(
     onNavigateToPublicationDetail: (Int) -> Unit,
     onNavigateToStatementDetail: (Int) -> Unit,
     onNavigateToLegislationDetail: (Int) -> Unit,
+    onNavigateToTranscript: (Int, String, String) -> Unit,
     showInfoCards: Boolean = true,
     modifier: Modifier = Modifier,
     viewModel: FeedViewModel = hiltViewModel()
@@ -150,6 +152,7 @@ fun FeedScreen(
                                 onNavigateToPublicationDetail = onNavigateToPublicationDetail,
                                 onNavigateToStatementDetail = onNavigateToStatementDetail,
                                 onNavigateToLegislationDetail = onNavigateToLegislationDetail,
+                                onNavigateToTranscript = onNavigateToTranscript,
                                 onTagClick = { tag -> selectedTag = tag }
                             )
                         }
@@ -203,6 +206,7 @@ private fun FeedItemCard(
     onNavigateToPublicationDetail: (Int) -> Unit,
     onNavigateToStatementDetail: (Int) -> Unit,
     onNavigateToLegislationDetail: (Int) -> Unit,
+    onNavigateToTranscript: (Int, String, String) -> Unit,
     onTagClick: (String) -> Unit
 ) {
     when (item) {
@@ -214,7 +218,13 @@ private fun FeedItemCard(
         is FeedItem.SpeechItem -> FeedSpeechCard(
             item = item,
             onClick = { onNavigateToDivision(item.divisionId, 1) },
+            onNavigateToTranscript = onNavigateToTranscript,
             onTagClick = onTagClick
+        )
+
+        is FeedItem.MpVoteItem -> FeedMpVoteCard(
+            item = item,
+            onClick = { onNavigateToDivision(item.divisionId, item.divisionHouse) }
         )
 
         is FeedItem.DivisionItem -> {

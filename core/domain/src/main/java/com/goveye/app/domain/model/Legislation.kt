@@ -7,5 +7,6 @@ data class Legislation(
     val year: Int,
     val number: Int,
     val date: String,
-    val url: String
+    val url: String,
+    val bodyText: String? = null
 )

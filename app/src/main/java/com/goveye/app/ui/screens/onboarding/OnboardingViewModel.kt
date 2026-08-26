@@ -144,11 +144,20 @@ constructor(
             }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    /** Party leaders from precomputed party_leaders table (D-07). */
+    /** Party leaders from precomputed party_leaders table (D-07), filtered to
+     *  only the parties the user selected in the Parties step. If no parties
+     *  are selected, shows all leaders (fallback for skip). */
     val partyLeaders: StateFlow<List<PartyLeader>> =
-        governmentAnnouncementsRepository
-            .observePartyLeaders()
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+        combine(
+            governmentAnnouncementsRepository.observePartyLeaders(),
+            _selectedParties
+        ) { allLeaders, selectedPartyIds ->
+            if (selectedPartyIds.isEmpty()) {
+                allLeaders
+            } else {
+                allLeaders.filter { it.partyId in selectedPartyIds }
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Party leader info with MP details resolved from MpDao (D-07). */
     val partyLeaderInfos: StateFlow<List<PartyLeaderInfo>> =
@@ -166,7 +175,8 @@ constructor(
                             name = mp.nameDisplayAs,
                             partyAbbreviation = mp.partyAbbreviation,
                             partyBackgroundColour = mp.partyBackgroundColour,
-                            title = leader.title
+                            title = leader.title,
+                            thumbnailUrl = mp.thumbnailUrl
                         )
                     }
                 }
@@ -199,6 +209,34 @@ constructor(
                 }
             }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Recommended MPs grouped by tag (top 5 per tag), with MP details resolved. */
+    val tagGroupedMpDetails: StateFlow<List<TagGroupedMpDetails>> =
+        combine(_selectedTags, allMpTags, partyLeaders) { tags, mpTags, leaders ->
+            val groups = MpCurationHelper.getTagGroupedMps(tags, mpTags, leaders)
+            if (groups.isEmpty()) {
+                emptyList()
+            } else {
+                val allMemberIds = groups.flatMap { it.mps }.map { it.memberId }.distinct()
+                val mps = mpDao.getMpsByIds(allMemberIds)
+                val mpsById = mps.associateBy { it.id }
+                groups.map { group ->
+                    TagGroupedMpDetails(
+                        tag = group.tag,
+                        mps = group.mps.mapNotNull { rec ->
+                            val mp = mpsById[rec.memberId]?.toDomain() ?: return@mapNotNull null
+                            RecommendedMpWithDetails(
+                                memberId = rec.memberId,
+                                mp = mp,
+                                totalScore = rec.totalScore,
+                                isPartyLeader = rec.isPartyLeader,
+                                leaderTitle = rec.leaderTitle
+                            )
+                        }
+                    )
+                }
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Paged MP list for the "All MPs" section (reuses MpDao.pagingSource). */
     val pagedMps: Flow<PagingData<Mp>> = Pager(

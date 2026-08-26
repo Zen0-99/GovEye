@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.SubcomposeAsyncImage
 import com.goveye.app.domain.model.Division
 import com.goveye.app.ui.components.VoteColors
+import com.goveye.app.ui.components.cardClickable
 import com.goveye.app.ui.screens.divisions.DivisionResultBar
 
 // Theme-aware vote colors — teal for Aye, orange for No
@@ -55,10 +56,30 @@ private data class CardTypeData(
     val date: String,
     val tags: List<String>,
     val divisionData: DivisionData?,
-    val cardTypeIcon: ImageVector? = null
+    val cardTypeIcon: ImageVector? = null,
+    val followedVotes: List<com.goveye.app.data.local.entity.FollowedMpVote> = emptyList()
 )
 
 private data class DivisionData(val ayeCount: Int, val noCount: Int)
+
+/**
+ * Formats raw legislation API type strings into human-readable labels.
+ * e.g. "UnitedKingdomStatutoryInstrument" → "UK Statutory Instrument"
+ */
+fun formatLegislationType(type: String): String {
+    val map = mapOf(
+        "UnitedKingdomStatutoryInstrument" to "UK Statutory Instrument",
+        "ScottishStatutoryInstrument" to "Scottish Statutory Instrument",
+        "WelshStatutoryInstrument" to "Welsh Statutory Instrument",
+        "NorthernIrelandStatutoryRule" to "NI Statutory Rule",
+        "NorthernIrelandAct" to "NI Act",
+        "UnitedKingdomPublicGeneralAct" to "UK Public General Act",
+        "UnitedKingdomLocalAct" to "UK Local Act",
+        "UnitedKingdomChurchMeasure" to "Church Measure",
+        "UnitedKingdomMinisterialOrder" to "Ministerial Order"
+    )
+    return map[type] ?: type.replace(Regex("([a-z])([A-Z])"), "$1 $2")
+}
 
 /**
  * Unified feed card — renders all [FeedItem] subtypes (Division, Publication,
@@ -97,155 +118,227 @@ fun UnifiedFeedCard(
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .cardClickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         color = cardColor
     ) {
-        Row(modifier = Modifier.fillMaxWidth()) {
-            // Left edge strip for followed-MP highlight (division only)
-            if (hasFollowedVotes) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // 1. Image on top if available (16:9 aspect, top corners rounded)
+            if (!data.imageUrl.isNullOrBlank()) {
+                SubcomposeAsyncImage(
+                    model = data.imageUrl,
+                    contentDescription = data.title,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(16f / 9f)
+                        .clip(
+                            RoundedCornerShape(
+                                topStart = 16.dp,
+                                topEnd = 16.dp,
+                                bottomStart = 0.dp,
+                                bottomEnd = 0.dp
+                            )
+                        ),
+                    contentScale = ContentScale.Crop,
+                    loading = {
+                        // Placeholder rectangle while loading
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                        )
+                    },
+                    error = {
+                        // On error, show a colored placeholder with the category icon
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(16f / 9f)
+                                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                                .clip(
+                                    RoundedCornerShape(
+                                        topStart = 16.dp,
+                                        topEnd = 16.dp,
+                                        bottomStart = 0.dp,
+                                        bottomEnd = 0.dp
+                                    )
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (data.cardTypeIcon != null) {
+                                Icon(
+                                    imageVector = data.cardTypeIcon,
+                                    contentDescription = data.typeLabel,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                                    modifier = Modifier.size(48.dp)
+                                )
+                            }
+                        }
+                    }
+                )
+            } else if (data.cardTypeIcon != null) {
+                // No image URL — show a colored placeholder with the category icon
                 Box(
                     modifier = Modifier
-                        .width(4.dp)
-                        .height(72.dp)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
-                )
-            }
-            Column(modifier = Modifier.fillMaxWidth()) {
-                // 1. Image on top if available (16:9 aspect, top corners rounded)
-                if (!data.imageUrl.isNullOrBlank()) {
-                    SubcomposeAsyncImage(
-                        model = data.imageUrl,
-                        contentDescription = data.title,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(16f / 9f)
-                            .clip(
-                                RoundedCornerShape(
-                                    topStart = 16.dp,
-                                    topEnd = 16.dp,
-                                    bottomStart = 0.dp,
-                                    bottomEnd = 0.dp
-                                )
-                            ),
-                        contentScale = ContentScale.Crop,
-                        loading = {
-                            // Placeholder rectangle while loading
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                        .fillMaxWidth()
+                        .aspectRatio(16f / 9f)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                        .clip(
+                            RoundedCornerShape(
+                                topStart = 16.dp,
+                                topEnd = 16.dp,
+                                bottomStart = 0.dp,
+                                bottomEnd = 0.dp
                             )
-                        },
-                        error = {
-                            // On error, collapse — render nothing (zero height).
-                            // The content below fills the card naturally.
-                        }
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = data.cardTypeIcon,
+                        contentDescription = data.typeLabel,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                        modifier = Modifier.size(48.dp)
+                    )
+                }
+            }
+
+            // Content below image (or full content if no image)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // 2. Title — full width (type badge removed per user request)
+                Text(
+                    text = data.title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                // 3. "By who" line (only if non-blank AND different from source
+                // to avoid duplicate text — source is shown at the bottom-left)
+                if (data.byWho.isNotBlank() && data.byWho != data.source) {
+                    Text(
+                        text = data.byWho,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
 
-                // Content below image (or full content if no image)
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    // 2. Title — full width (type badge removed per user request)
-                    Text(
-                        text = data.title,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                // 4. Division bar (4dp, only for DivisionItem) + vote counts
+                if (data.divisionData != null) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        DivisionResultBar(
+                            ayeCount = data.divisionData.ayeCount,
+                            noCount = data.divisionData.noCount,
+                            barHeight = 4.dp,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "${data.divisionData.ayeCount}",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = AyeColor,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "-",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = "${data.divisionData.noCount}",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = NoColor,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
 
-                    // 3. "By who" line (only if non-blank)
-                    if (data.byWho.isNotBlank()) {
+                    // 4b. Followed MP votes — show each followed MP's Aye/No
+                    if (data.followedVotes.isNotEmpty()) {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            data.followedVotes.take(3).forEach { vote ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = vote.memberName,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    Text(
+                                        text = vote.vote.uppercase(),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (vote.vote.uppercase() == "AYE") AyeColor else NoColor
+                                    )
+                                }
+                            }
+                            if (data.followedVotes.size > 3) {
+                                Text(
+                                    text = "+${data.followedVotes.size - 3} more",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // 5. Source icon + source (left) + Date (right) row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        if (data.cardTypeIcon != null) {
+                            Icon(
+                                imageVector = data.cardTypeIcon,
+                                contentDescription = data.typeLabel,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                        }
                         Text(
-                            text = data.byWho,
+                            text = data.source,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
-
-                    // 4. Division bar (4dp, only for DivisionItem) + vote counts
-                    if (data.divisionData != null) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            DivisionResultBar(
-                                ayeCount = data.divisionData.ayeCount,
-                                noCount = data.divisionData.noCount,
-                                barHeight = 4.dp,
-                                modifier = Modifier.weight(1f)
-                            )
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "${data.divisionData.ayeCount}",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = AyeColor,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    text = "-",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Text(
-                                    text = "${data.divisionData.noCount}",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = NoColor,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-                    }
-
-                    // 5. Source icon + source (left) + Date (right) row
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            if (data.cardTypeIcon != null) {
-                                Icon(
-                                    imageVector = data.cardTypeIcon,
-                                    contentDescription = data.typeLabel,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                            }
-                            Text(
-                                text = data.source,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = data.date,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    // Tags removed from feed cards — shown only on detail screens
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = data.date,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
+
+                // Tags removed from feed cards — shown only on detail screens
             }
         }
     }
@@ -305,12 +398,13 @@ private fun getCardTypeData(item: FeedItem): CardTypeData = when (item) {
             imageUrl = null,
             title = division.title,
             typeLabel = "Division",
-            byWho = if (division.house == 2) "Lords" else "Commons",
+            byWho = "", // Removed — source line at bottom already shows Lords/Commons
             source = if (division.house == 2) "Lords" else "Commons",
             date = formatDivisionDate(division.date),
             tags = item.tags,
             divisionData = DivisionData(ayeCount = division.ayeCount, noCount = division.noCount),
-            cardTypeIcon = Icons.Outlined.HowToVote
+            cardTypeIcon = Icons.Outlined.HowToVote,
+            followedVotes = item.followedVotes
         )
     }
 
@@ -346,12 +440,13 @@ private fun getCardTypeData(item: FeedItem): CardTypeData = when (item) {
 
     is FeedItem.LegislationItem -> {
         val legislation = item.legislation
+        val prettyType = formatLegislationType(legislation.type)
         CardTypeData(
             imageUrl = null,
             title = legislation.title,
             typeLabel = "Legislation",
-            byWho = legislation.type,
-            source = legislation.type,
+            byWho = prettyType,
+            source = prettyType,
             date = formatDivisionDate(legislation.date),
             tags = item.tags,
             divisionData = null,
@@ -379,6 +474,19 @@ private fun getCardTypeData(item: FeedItem): CardTypeData = when (item) {
         typeLabel = "Speech",
         byWho = item.memberName,
         source = item.divisionTitle,
+        date = formatDivisionDate(item.date),
+        tags = item.tags,
+        divisionData = null
+    )
+
+    // MpVoteItem is rendered by FeedMpVoteCard, never via UnifiedFeedCard.
+    // This branch exists only to satisfy the exhaustive `when` over FeedItem.
+    is FeedItem.MpVoteItem -> CardTypeData(
+        imageUrl = null,
+        title = item.divisionTitle,
+        typeLabel = "Vote",
+        byWho = item.memberName,
+        source = if (item.divisionHouse == 2) "Lords" else "Commons",
         date = formatDivisionDate(item.date),
         tags = item.tags,
         divisionData = null

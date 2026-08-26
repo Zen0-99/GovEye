@@ -14,15 +14,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.goveye.app.domain.model.Committee
+import com.goveye.app.ui.components.rememberExpandState
 import com.goveye.app.ui.theme.padding
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -36,7 +33,7 @@ fun CommitteeChipsSection(
 
     val activeCommittees = committees.filter { it.isActive }
     val inactiveCommittees = committees.filter { !it.isActive }
-    var expanded by remember { mutableStateOf(false) }
+    val expandState = rememberExpandState()
 
     Surface(
         modifier = modifier
@@ -65,7 +62,7 @@ fun CommitteeChipsSection(
                 )
             }
 
-            val visibleCommittees = if (expanded) committees else activeCommittees.take(3)
+            val visibleCommittees = if (expandState.expanded) committees else activeCommittees.take(3)
             FlowRow(
                 modifier = Modifier.padding(top = MaterialTheme.padding.small),
                 horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
@@ -79,16 +76,16 @@ fun CommitteeChipsSection(
                 }
             }
 
-            if (!expanded && activeCommittees.size > 3) {
+            if (!expandState.expanded && activeCommittees.size > 3) {
                 TextButton(
-                    onClick = { expanded = true },
+                    onClick = { expandState.expand() },
                     modifier = Modifier.padding(top = MaterialTheme.padding.extraSmall)
                 ) {
                     Text("Show all ${committees.size}")
                 }
-            } else if (expanded) {
+            } else if (expandState.expanded) {
                 TextButton(
-                    onClick = { expanded = false },
+                    onClick = { expandState.collapse() },
                     modifier = Modifier.padding(top = MaterialTheme.padding.extraSmall)
                 ) {
                     Text("Show less")

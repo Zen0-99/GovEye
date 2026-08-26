@@ -34,24 +34,30 @@ fun formatInterestStructuredFields(
     hoursWorked: String?,
     familyMemberName: String?,
     familyMemberRelationship: String?,
-    familyMemberRole: String?
+    familyMemberRole: String?,
+    descriptionLine: String? = null
 ): List<FinancialDetailField> {
     val fields = mutableListOf<FinancialDetailField>()
     // donorName is shown in "by X" — skip
+    // paymentDescription / visitPurpose / organisationDescription are shown as
+    // the card description line — skip whichever one is used to avoid duplication
     // Payment group
     paymentType?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Payment type", it, "Payment")) }
-    paymentDescription?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Description", it, "Payment")) }
-    // Visit group
-    visitPurpose?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Purpose", it, "Visit")) }
+    // Visit group — skip visitPurpose if it's the description line
+    if (visitPurpose != descriptionLine) {
+        visitPurpose?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Purpose", it, "Visit")) }
+    }
     destination?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Destination", it, "Visit")) }
     // Donor group
     donorStatus?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Donor status", it, "Donor")) }
     donorAddress?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Address", it, "Donor")) }
     donorCompanyIdentifier?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Company ID", it, "Donor")) }
-    // Organisation group
+    // Organisation group — skip organisationDescription if it's the description line
     organisationName?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Organisation", it, "Organisation")) }
-    organisationDescription?.let {
-        if (it.isNotBlank()) fields.add(FinancialDetailField("Description", it, "Organisation"))
+    if (organisationDescription != descriptionLine) {
+        organisationDescription?.let {
+            if (it.isNotBlank()) fields.add(FinancialDetailField("Description", it, "Organisation"))
+        }
     }
     // Property group
     propertyLocation?.let { if (it.isNotBlank()) fields.add(FinancialDetailField("Location", it, "Property")) }

@@ -189,7 +189,8 @@ class GovernmentAnnouncementsRepository @Inject constructor(
         answeringBodyName = answeringBodyName,
         title = title,
         text = text,
-        house = house
+        house = house,
+        url = "https://questions-statements.parliament.uk/written-statements/detail/$uin"
     )
 
     private fun GovernmentPublicationEntity.toDomain(): GovernmentPublication = GovernmentPublication(
@@ -213,7 +214,8 @@ class GovernmentAnnouncementsRepository @Inject constructor(
         year = year,
         number = number,
         date = date,
-        url = url
+        url = url,
+        bodyText = bodyText
     )
 
     private fun PartyLeaderEntity.toDomain(): PartyLeader = PartyLeader(
