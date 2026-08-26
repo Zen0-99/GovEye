@@ -172,6 +172,13 @@
 **Symptom:** MP names in the onboarding "Follow MPs" step appeared black in dark mode instead of white.
 **Root cause:** The onboarding screen uses `.background(MaterialTheme.colorScheme.background)` instead of `Surface`, so `LocalContentColor` is never set to `onBackground`. The `Text` components for MP names in `RecommendedMpRow`, `MpListRowWithFollow`, and `PartyLeaderCard` had no explicit `color` parameter, so they defaulted to the unset `LocalContentColor` (black).
 **Fix:** Added explicit `color = MaterialTheme.colorScheme.onBackground` to all MP name `Text` components in `MPsStep.kt`.
+
+## CI Failure: Build Seed — government_publications has no column named bodyText
+**Date:** 2026-08-26
+**Symptom:** Build Seed workflow fails at "Merge per-API DBs" step with `sqlite3.OperationalError: table government_publications has no column named bodyText`.
+**Root cause:** The committed `bundled_schema.json` in goveye-data was at Room schema v24, which did not have the `bodyText` column on `government_publications`. The per-API build scripts had been updated locally to produce DBs with `bodyText` (schema v25+), but the schema JSON was never committed/pushed. The merge script creates the destination `goveye.db` from the schema JSON, then inserts source DB rows — the source had `bodyText` but the destination didn't, causing the OperationalError.
+**Fix:** Copied Room schema v26 from GovEye (`core/data/schemas/.../26.json`) to `goveye-data/schemas/bundled_schema.json`. This adds `bodyText` to both `government_publications` and `legislation` tables. Committed and pushed to goveye-data.
+**Files:** `goveye-data/schemas/bundled_schema.json`, `goveye-data/build_gov_publications.py`, `goveye-data/build_tags.py`
 **Files:** `MPsStep.kt`
 
 ## Bug: Feed showing 2024/2025 MP financial activity
