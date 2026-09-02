@@ -1,8 +1,8 @@
 package com.goveye.app.ui.screens.directory
 
 import app.cash.turbine.test
-import com.goveye.app.data.local.dao.CouncilDao
 import com.goveye.app.data.local.dao.CommitteeDao
+import com.goveye.app.data.local.dao.CouncilDao
 import com.goveye.app.data.preference.DirectoryFilterPreferences
 import com.goveye.app.data.preference.DirectoryPreferences
 import com.goveye.app.data.preference.DirectoryViewMode

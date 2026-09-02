@@ -2,11 +2,12 @@ package com.goveye.app.work
 
 import android.content.Context
 import androidx.work.WorkerParameters
-import com.goveye.app.notifications.NotificationHelper
+import com.goveye.app.data.preference.DownloadPreferences
 import com.goveye.app.data.update.DatabaseManifest
 import com.goveye.app.data.update.DatabaseUpdateManager
 import com.goveye.app.data.update.DatabaseUpdateState
 import com.goveye.app.data.update.PatchInfo
+import com.goveye.app.notifications.NotificationHelper
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -14,6 +15,7 @@ import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
 import io.mockk.verify
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertTrue
@@ -30,6 +32,7 @@ class DatabaseUpdateWorkerTest {
 
     private val databaseUpdateManager = mockk<DatabaseUpdateManager>(relaxed = true)
     private val notificationHelper = mockk<NotificationHelper>(relaxed = true)
+    private val downloadPreferences = mockk<DownloadPreferences>(relaxed = true)
 
     private lateinit var context: Context
     private lateinit var workerParams: WorkerParameters
@@ -42,6 +45,8 @@ class DatabaseUpdateWorkerTest {
         mockkObject(WorkScheduler)
         every { WorkScheduler.enqueueVotePollingOneShot(any()) } returns Unit
         every { WorkScheduler.enqueueBillPollingOneShot(any()) } returns Unit
+        every { WorkScheduler.enqueueDatabaseDownload(any(), any()) } returns Unit
+        every { downloadPreferences.wifiOnly } returns flowOf(false)
     }
 
     @After
@@ -53,7 +58,8 @@ class DatabaseUpdateWorkerTest {
         context,
         workerParams,
         databaseUpdateManager,
-        notificationHelper
+        notificationHelper,
+        downloadPreferences
     )
 
     private fun makePatch(streamName: String): PatchInfo {
@@ -162,13 +168,14 @@ class DatabaseUpdateWorkerTest {
     }
 
     @Test
-    fun `NeedsFullDownload returns success without applying patches`() = runTest {
+    fun `NeedsFullDownload enqueues download worker and returns success`() = runTest {
         coEvery { databaseUpdateManager.checkForUpdates() } returns DatabaseUpdateState.NeedsFullDownload(null)
 
         val result = createWorker().doWork()
 
         assertTrue(result is androidx.work.ListenableWorker.Result.Success)
         coVerify(exactly = 0) { databaseUpdateManager.applyPatches(any()) }
+        verify { WorkScheduler.enqueueDatabaseDownload(any(), any()) }
     }
 
     @Test

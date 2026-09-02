@@ -7,28 +7,28 @@ import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
+import com.goveye.app.data.preference.DownloadPreferences
 import com.goveye.app.data.update.DatabaseUpdateManager
 import com.goveye.app.data.update.DatabaseUpdateState
 import com.goveye.app.notifications.NotificationHelper
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 
 /**
  * Background worker that checks for DB updates every 6h (D-09, DATA-03).
  *
  * - If patches are available (up to 7 × 5-50KB = max 350KB), applies them
- *   in the background via [DatabaseUpdateManager.applyPatches].
+ *   in the background via [DatabaseUpdateManager.applyPatches] silently —
+ *   no user notification.
  * - Promotes itself to a foreground service (Stonesync pattern) with a
  *   notification while applying patches, so the user can see that an
  *   update is in progress.
- * - After patches are applied, shows an announcement notification
- *   (Miko pattern) informing the user that new data is available.
- * - If a full DB download is needed (~557MB), does NOT download — shows
- *   a "major update available" notification and defers to the foreground
- *   where the user sees progress (Pitfall 4). The next app launch via
- *   [com.goveye.app.MainActivity]'s LaunchedEffect handles the full
- *   download.
+ * - If a full DB download is needed (stream multiple versions behind),
+ *   enqueues [DatabaseDownloadWorker] to download the seed DB silently
+ *   in the background. The download worker is a foreground service so
+ *   it survives app minimization and screen-off.
  * - After applying patches, enqueues VotePollingWorker and/or
  *   BillPollingWorker as one-shot workers to detect new divisions or
  *   bill stage changes (D-09).
@@ -42,7 +42,8 @@ class DatabaseUpdateWorker @AssistedInject constructor(
     @Assisted appContext: Context,
     @Assisted params: WorkerParameters,
     private val databaseUpdateManager: DatabaseUpdateManager,
-    private val notificationHelper: NotificationHelper
+    private val notificationHelper: NotificationHelper,
+    private val downloadPreferences: DownloadPreferences
 ) : CoroutineWorker(appContext, params) {
 
     companion object {
@@ -69,12 +70,8 @@ class DatabaseUpdateWorker @AssistedInject constructor(
                         is DatabaseUpdateState.UpToDate -> {
                             Log.i(TAG, "Patches applied successfully")
 
-                            // Announce the update (Miko pattern)
-                            val streamNames = state.patches.map { it.streamName }
-                            notificationHelper.showDataUpdatedNotification(streamNames)
-
                             // Determine which streams were patched
-                            val appliedStreams = streamNames.toSet()
+                            val appliedStreams = state.patches.map { it.streamName }.toSet()
 
                             // Trigger polling workers for streams that had updates
                             if ("commons-votes" in appliedStreams || "lords-votes" in appliedStreams) {
@@ -98,11 +95,14 @@ class DatabaseUpdateWorker @AssistedInject constructor(
                 }
 
                 is DatabaseUpdateState.NeedsFullDownload -> {
-                    // Full DB downloads are deferred to foreground (Pitfall 4).
-                    // Announce that a major update is available so the user
-                    // knows to open the app (Miko pattern).
-                    Log.i(TAG, "Full DB download needed — deferring to foreground")
-                    notificationHelper.showMajorUpdateAvailableNotification()
+                    // Enqueue the download worker to download the seed DB
+                    // silently in the background. The download worker is a
+                    // foreground service so it survives app minimization
+                    // and screen-off. The wifiOnly constraint respects the
+                    // user's preference.
+                    Log.i(TAG, "Full DB download needed — enqueuing download worker")
+                    val wifiOnly = downloadPreferences.wifiOnly.first()
+                    WorkScheduler.enqueueDatabaseDownload(applicationContext, wifiOnly = wifiOnly)
                     Result.success()
                 }
 

@@ -63,14 +63,6 @@ class DatabaseDownloadWorker @AssistedInject constructor(
     override suspend fun doWork(): Result {
         Log.i(TAG, "doWork started — promoting to foreground service")
 
-        // Guard: if the seed was already downloaded (e.g. process was killed
-        // after a successful download and WorkManager retried this worker),
-        // return success immediately without re-downloading.
-        if (!databaseUpdateManager.isFirstLaunch()) {
-            Log.i(TAG, "Seed already installed — skipping download")
-            return Result.success()
-        }
-
         // Create the download notification channel (idempotent)
         notificationHelper.createChannels()
 
