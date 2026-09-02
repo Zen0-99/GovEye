@@ -75,6 +75,7 @@ import com.goveye.app.ui.navigation.FeedRoute
 import com.goveye.app.ui.navigation.FollowingRoute
 import com.goveye.app.ui.navigation.InterestBucketDetailRoute
 import com.goveye.app.ui.navigation.LegislationDetailRoute
+import com.goveye.app.ui.navigation.MpTagBrowseRoute
 import com.goveye.app.ui.navigation.PartyRoute
 import com.goveye.app.ui.navigation.ProfileRoute
 import com.goveye.app.ui.navigation.PublicationDetailRoute
@@ -95,6 +96,7 @@ import com.goveye.app.ui.screens.feed.LegislationDetailScreen
 import com.goveye.app.ui.screens.feed.PublicationDetailScreen
 import com.goveye.app.ui.screens.feed.StatementDetailScreen
 import com.goveye.app.ui.screens.mpprofile.FinancialBucketDetailScreen
+import com.goveye.app.ui.screens.mpprofile.MpTagBrowseScreen
 import com.goveye.app.ui.screens.mpprofile.ProfileScreen
 import com.goveye.app.ui.screens.mpprofile.VotingRecordScreen
 import com.goveye.app.ui.screens.party.PartyScreen
@@ -339,6 +341,9 @@ private fun GovEyeAppContent(
                             onNavigateToVotingRecord = { memberId ->
                                 currentBackStack.add(VotingRecordRoute(memberId))
                             },
+                            onNavigateToMpTagBrowse = { tag ->
+                                currentBackStack.add(MpTagBrowseRoute(tag))
+                            },
                             contentTopPadding = topBarHeight,
                             modifier = Modifier.fillMaxSize()
                         )
@@ -472,6 +477,19 @@ private fun GovEyeAppContent(
                         LegislationDetailScreen(
                             legislationId = key.legislationId,
                             onBack = { currentBackStack.removeLastOrNull() },
+                            modifier = Modifier.fillMaxSize().padding(top = topBarHeight)
+                        )
+                    }
+
+                is MpTagBrowseRoute ->
+                    NavEntry(key) {
+                        MpTagBrowseScreen(
+                            tag = key.tag,
+                            onBack = { currentBackStack.removeLastOrNull() },
+                            onNavigateToProfile = { targetId ->
+                                currentBackStack.add(ProfileRoute(targetId))
+                            },
+                            contentTopPadding = topBarHeight,
                             modifier = Modifier.fillMaxSize().padding(top = topBarHeight)
                         )
                     }

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.goveye.app.data.local.dao.ExpenseBucketTotal
 import com.goveye.app.data.local.dao.MpDao
+import com.goveye.app.data.local.dao.MpTagDao
 import com.goveye.app.data.local.dao.TagDao
 import com.goveye.app.data.local.entity.BioDataEntity
 import com.goveye.app.data.local.entity.ExpenseEntity
@@ -78,7 +79,9 @@ data class ProfileUiState(
     // Activity tab — mixed chronological feed (D-01)
     val activityEntries: List<ActivityEntry> = emptyList(),
     val activityEnabledTypes: Set<ActivityEntryType> = ActivityEntryType.entries.toSet(),
-    val activityTotalCount: Int = 0
+    val activityTotalCount: Int = 0,
+    // Topics — MP's top tags from mp_tags table (frequency + recency weighted)
+    val mpTags: List<String> = emptyList()
 )
 
 @HiltViewModel
@@ -96,7 +99,8 @@ class ProfileViewModel @Inject constructor(
     private val statsRepository: StatsRepository,
     private val writtenQuestionsRepository: WrittenQuestionsRepository,
     private val activityFilterPreferences: ActivityFilterPreferences,
-    private val tagDao: TagDao
+    private val tagDao: TagDao,
+    private val mpTagDao: MpTagDao
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -177,6 +181,12 @@ class ProfileViewModel @Inject constructor(
                 launch {
                     val committees = committeesRepository.observeCommitteesForMember(memberId).first()
                     _uiState.value = _uiState.value.copy(committees = committees.data)
+                }
+                launch {
+                    val mpTags = runCatching {
+                        mpTagDao.observeTagsForMp(memberId).first()
+                    }.getOrDefault(emptyList())
+                    _uiState.value = _uiState.value.copy(mpTags = mpTags)
                 }
                 launch {
                     val samePartyMps = partyId?.let {

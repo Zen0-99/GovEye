@@ -90,6 +90,7 @@ fun ProfileScreen(
     onNavigateToParty: (Int) -> Unit = {},
     onNavigateToCommittee: (Int) -> Unit = {},
     onNavigateToVotingRecord: (Int) -> Unit = {},
+    onNavigateToMpTagBrowse: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     contentTopPadding: Dp = 0.dp,
     viewModel: ProfileViewModel = hiltViewModel()
@@ -255,8 +256,10 @@ fun ProfileScreen(
                                 committeePeerMps = uiState.committeePeerMps,
                                 bioData = uiState.bioData,
                                 mpLinks = uiState.mpLinks,
+                                mpTags = uiState.mpTags,
                                 traitBars = uiState.traitBars,
-                                onNavigateToProfile = onNavigateToProfile
+                                onNavigateToProfile = onNavigateToProfile,
+                                onNavigateToMpTagBrowse = onNavigateToMpTagBrowse
                             )
 
                             ProfileTab.CAREER -> CareerTabContent(
@@ -481,8 +484,10 @@ private fun ProfileTabContent(
     committeePeerMps: List<com.goveye.app.domain.model.Mp>,
     bioData: com.goveye.app.data.local.entity.BioDataEntity? = null,
     mpLinks: com.goveye.app.data.local.entity.MpLinkEntity? = null,
+    mpTags: List<String> = emptyList(),
     @Suppress("UNUSED_PARAMETER") traitBars: List<com.goveye.app.domain.stats.TraitBar> = emptyList(),
-    onNavigateToProfile: (Int) -> Unit
+    onNavigateToProfile: (Int) -> Unit,
+    onNavigateToMpTagBrowse: (String) -> Unit = {}
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -495,6 +500,12 @@ private fun ProfileTabContent(
             )
         }
         item { BioSection(synopsis = synopsis) }
+        item {
+            TopicsSection(
+                tags = mpTags,
+                onTagClick = onNavigateToMpTagBrowse
+            )
+        }
         item { ContactSection(contacts = contacts, socialLinks = mpLinks) }
         item {
             RelatedMpsSection(

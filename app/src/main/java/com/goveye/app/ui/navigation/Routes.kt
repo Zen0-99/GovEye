@@ -57,3 +57,6 @@ data class StatementDetailRoute(val statementId: Int) : NavKey
 
 @Serializable
 data class LegislationDetailRoute(val legislationId: Int) : NavKey
+
+@Serializable
+data class MpTagBrowseRoute(val tag: String) : NavKey
