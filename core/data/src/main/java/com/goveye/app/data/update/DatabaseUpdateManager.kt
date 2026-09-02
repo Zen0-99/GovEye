@@ -183,8 +183,20 @@ class DatabaseUpdateManager @Inject constructor(
                     }
 
                     else -> {
-                        // Multiple versions behind — fall back to full per-API download
-                        return@withContext DatabaseUpdateState.NeedsFullDownload(null)
+                        // Multiple versions behind. If the DB file exists, skip
+                        // this stream and keep using the existing data — the user
+                        // stays on their current data until a patch brings them
+                        // back in range. Only force a full re-download on first
+                        // launch (no DB file). This prevents the app from killing
+                        // Room flows via database.close() during a background
+                        // download when the user already has perfectly good data.
+                        if (context.getDatabasePath(BundledDatabase.DATABASE_NAME).exists()) {
+                            Log.w(TAG, "Stream $streamName multiple versions behind (local=$localVersion, remote=${manifest.version}) — skipping, keeping existing data")
+                            // Mark as current so we don't re-check every launch
+                            setStreamVersion(streamName, manifest.version)
+                        } else {
+                            return@withContext DatabaseUpdateState.NeedsFullDownload(null)
+                        }
                     }
                 }
             }

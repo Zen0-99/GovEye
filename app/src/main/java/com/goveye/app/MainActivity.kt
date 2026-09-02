@@ -281,6 +281,16 @@ class MainActivity : ComponentActivity() {
                         // Subsequent launch — check for updates silently in the
                         // background. The app is already visible (UpToDate), so
                         // the user doesn't see any loading screen.
+
+                        // Cancel any stale download worker from a previous launch.
+                        // If the DB file exists, a leftover worker would call
+                        // database.close() and kill all Room flows.
+                        if (databaseUpdateManager.databaseFileExists()) {
+                            WorkManager.getInstance(this@MainActivity)
+                                .cancelUniqueWork(DatabaseDownloadWorker.WORK_NAME)
+                            Log.i(TAG, "Cancelled stale download worker (DB exists)")
+                        }
+
                         val updateState = databaseUpdateManager.checkForUpdates()
                         Log.i(TAG, "Update check result: $updateState")
                         when (updateState) {
@@ -297,9 +307,19 @@ class MainActivity : ComponentActivity() {
                             }
 
                             is DatabaseUpdateState.NeedsFullDownload -> {
-                                Log.i(TAG, "Full download needed (stream multiple behind)")
-                                val wifiOnly = downloadPreferences.wifiOnly.first()
-                                WorkScheduler.enqueueDatabaseDownload(this@MainActivity, wifiOnly = wifiOnly)
+                                // Only trigger a full download if the DB file doesn't
+                                // exist (true first launch). If the DB exists, the user
+                                // already has data — a full download would call
+                                // database.close() and kill all Room flows, causing
+                                // forever-loading spinners. The user can manually
+                                // trigger a re-download from Settings if needed.
+                                if (databaseUpdateManager.databaseFileExists()) {
+                                    Log.i(TAG, "Full download needed but DB exists — using existing data, skipping download")
+                                } else {
+                                    Log.i(TAG, "Full download needed (no DB file) — starting download")
+                                    val wifiOnly = downloadPreferences.wifiOnly.first()
+                                    WorkScheduler.enqueueDatabaseDownload(this@MainActivity, wifiOnly = wifiOnly)
+                                }
                             }
 
                             is DatabaseUpdateState.Failed -> {
