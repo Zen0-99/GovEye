@@ -537,12 +537,38 @@ object DatabaseModule {
         // Ensure the databases directory exists so that the first-launch download
         // can place the DB file at Room's expected path before Room opens (D-04).
         context.getDatabasePath(BundledDatabase.DATABASE_NAME).parentFile?.mkdirs()
+
+        // Clean up stale WAL/SHM files before Room opens the DB.
+        // After a migration (e.g. v20→v26), the WAL may be checkpointed to 0 bytes
+        // but the SHM file can be left in an inconsistent state. This causes Room's
+        // InvalidationTracker to silently block all DAO flows — the app shows
+        // loading spinners forever with no errors. Deleting the stale SHM/WAL
+        // files lets SQLite recreate them fresh on open.
+        val dbPath = context.getDatabasePath(BundledDatabase.DATABASE_NAME)
+        if (dbPath.exists()) {
+            val walFile = java.io.File(dbPath.parentFile, "${BundledDatabase.DATABASE_NAME}-wal")
+            val shmFile = java.io.File(dbPath.parentFile, "${BundledDatabase.DATABASE_NAME}-shm")
+            if (walFile.exists() && walFile.length() == 0L && shmFile.exists()) {
+                android.util.Log.w("GovEye/DbModule", "Deleting stale WAL (0 bytes) + SHM before Room opens")
+                walFile.delete()
+                shmFile.delete()
+            }
+        }
+
         return Room
             .databaseBuilder(
                 context,
                 BundledDatabase::class.java,
                 BundledDatabase.DATABASE_NAME
             )
+            .addCallback(object : androidx.room.RoomDatabase.Callback() {
+                override fun onOpen(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                    android.util.Log.i("GovEye/DbModule", "BundledDatabase onOpen — version=${db.version} path=${db.path}")
+                }
+                override fun onCreate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                    android.util.Log.i("GovEye/DbModule", "BundledDatabase onCreate")
+                }
+            })
             .addMigrations(
                 MIGRATION_11_12,
                 MIGRATION_12_13,
