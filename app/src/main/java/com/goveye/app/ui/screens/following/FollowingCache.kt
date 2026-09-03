@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 object FollowingCache {
     private val _state = MutableStateFlow<FollowingUiState?>(null)
 
+    val state: FollowingUiState? get() = _state.value
     val cached: FollowingUiState? get() = _state.value
 
     fun update(state: FollowingUiState) {

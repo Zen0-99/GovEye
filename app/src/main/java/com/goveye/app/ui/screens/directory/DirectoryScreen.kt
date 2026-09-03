@@ -35,6 +35,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -436,13 +437,84 @@ private fun OfficialsTabContent(
         }
     } else {
         val refreshState = lazyPagingItems.loadState.refresh
+
+        // Cache the first page of MPs when paging loads, so the next
+        // VM recreation (tab switch) can show them instantly instead
+        // of a spinner while paging re-queries.
+        LaunchedEffect(lazyPagingItems.itemCount) {
+            if (lazyPagingItems.itemCount > 0) {
+                val items = (0 until lazyPagingItems.itemCount).mapNotNull { idx ->
+                    lazyPagingItems[idx]
+                }
+                if (items.isNotEmpty()) {
+                    DirectoryCache.updateFirstPageMps(items)
+                }
+            }
+        }
+
         when {
             refreshState is androidx.paging.LoadState.Loading -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
+                // Show cached MPs if available — avoids the spinner on
+                // tab switch. The paging flow is re-collecting in the
+                // background and will swap in when it emits.
+                val cachedMps = DirectoryCache.firstPageMps
+                if (cachedMps != null && cachedMps.isNotEmpty()) {
+                    when (viewMode) {
+                        DirectoryViewMode.LIST -> {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                if (showInfoCards) {
+                                    stickyHeader(key = "tab-info") {
+                                        StickyInfoCard(
+                                            title = "Officials",
+                                            subtitle = "Browse all MPs and Lords in the UK Parliament."
+                                        )
+                                    }
+                                }
+                                items(cachedMps, key = { it.id }, contentType = { "mp_row" }) { mp ->
+                                    MpListRow(
+                                        mp = mp,
+                                        onClick = { onNavigateToProfile(mp.id) }
+                                    )
+                                }
+                            }
+                        }
+
+                        DirectoryViewMode.GRID -> {
+                            LazyVerticalGrid(
+                                columns = GridCells.Fixed(3),
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                if (showInfoCards) {
+                                    item(span = { GridItemSpan(3) }) {
+                                        StickyInfoCard(
+                                            title = "Officials",
+                                            subtitle = "Browse all MPs and Lords in the UK Parliament."
+                                        )
+                                    }
+                                }
+                                items(cachedMps, key = { it.id }, contentType = { "mp_grid" }) { mp ->
+                                    MpGridCard(
+                                        mp = mp,
+                                        onClick = { onNavigateToProfile(mp.id) }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // No cache — show skeleton instead of spinner
+                    com.goveye.app.ui.components.SkeletonScreen(
+                        cardType = com.goveye.app.ui.components.SkeletonCardType.MP_ROW,
+                        itemCount = 10,
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                    )
                 }
             }
 

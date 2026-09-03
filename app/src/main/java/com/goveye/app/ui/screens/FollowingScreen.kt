@@ -79,45 +79,43 @@ fun FollowingScreen(
         )
     )
 
-    when {
-        uiState.isLoading -> {
-            com.goveye.app.ui.components.SkeletonScreen(
-                cardType = com.goveye.app.ui.components.SkeletonCardType.MP_ROW,
-                itemCount = 6,
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-            )
-        }
-
-        else -> {
-            // Sub-tab pager — Officials, Parties, Sources, Tags (issue #10)
-            SubTabPager(
-                tabs = listOf(
-                    SubTab("Officials", uiState.followedMps.size.takeIf { it > 0 }),
-                    SubTab("Parties", uiState.followedParties.size.takeIf { it > 0 }),
-                    SubTab("Sources", null),
-                    SubTab("Tags", null)
-                ),
-                modifier = modifier,
-                scrollable = true,
-                edgePadding = 16.dp
-            ) { page ->
-                when (page) {
-                    0 -> OfficialsTabContent(
-                        uiState = uiState,
-                        onNavigateToProfile = onNavigateToProfile,
-                        onUnfollow = viewModel::unfollow
-                    )
-
-                    1 -> PartiesTabContent(
-                        parties = uiState.followedParties,
-                        onUnfollow = viewModel::unfollowParty
-                    )
-
-                    2 -> TabEmptyHint("No followed sources yet")
-
-                    3 -> TabEmptyHint("No followed tags yet")
-                }
+    // Sub-tab pager — Officials, Parties, Sources, Tags (issue #10)
+    // Always shown so tabs remain visible during loading. The skeleton
+    // appears inside the content area, not replacing the entire screen.
+    SubTabPager(
+        tabs = listOf(
+            SubTab("Officials", uiState.followedMps.size.takeIf { it > 0 }),
+            SubTab("Parties", uiState.followedParties.size.takeIf { it > 0 }),
+            SubTab("Sources", null),
+            SubTab("Tags", null)
+        ),
+        modifier = modifier,
+        scrollable = true,
+        edgePadding = 16.dp
+    ) { page ->
+        when {
+            uiState.isLoading -> {
+                com.goveye.app.ui.components.SkeletonScreen(
+                    cardType = com.goveye.app.ui.components.SkeletonCardType.MP_ROW,
+                    itemCount = 6,
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                )
             }
+
+            page == 0 -> OfficialsTabContent(
+                uiState = uiState,
+                onNavigateToProfile = onNavigateToProfile,
+                onUnfollow = viewModel::unfollow
+            )
+
+            page == 1 -> PartiesTabContent(
+                parties = uiState.followedParties,
+                onUnfollow = viewModel::unfollowParty
+            )
+
+            page == 2 -> TabEmptyHint("No followed sources yet")
+
+            page == 3 -> TabEmptyHint("No followed tags yet")
         }
     }
 

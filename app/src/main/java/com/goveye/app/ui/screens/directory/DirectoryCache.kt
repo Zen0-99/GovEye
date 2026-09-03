@@ -5,6 +5,7 @@ import com.goveye.app.data.local.dao.CouncilSummary
 import com.goveye.app.data.local.dao.PartySummary
 import com.goveye.app.domain.model.GovernmentPublication
 import com.goveye.app.domain.model.Legislation
+import com.goveye.app.domain.model.Mp
 import com.goveye.app.domain.model.WrittenStatement
 
 /**
@@ -38,6 +39,7 @@ object DirectoryCache {
     private var _publications: List<GovernmentPublication>? = null
     private var _statements: List<WrittenStatement>? = null
     private var _legislation: List<Legislation>? = null
+    private var _firstPageMps: List<Mp>? = null
 
     val parties: List<PartySummary>? get() = _parties
     val councils: List<CouncilSummary>? get() = _councils
@@ -45,6 +47,7 @@ object DirectoryCache {
     val publications: List<GovernmentPublication>? get() = _publications
     val statements: List<WrittenStatement>? get() = _statements
     val legislation: List<Legislation>? get() = _legislation
+    val firstPageMps: List<Mp>? get() = _firstPageMps
 
     fun updateParties(value: List<PartySummary>) {
         _parties = value
@@ -64,6 +67,9 @@ object DirectoryCache {
     fun updateLegislation(value: List<Legislation>) {
         _legislation = value
     }
+    fun updateFirstPageMps(value: List<Mp>) {
+        _firstPageMps = value
+    }
 
     fun clear() {
         _parties = null
@@ -72,5 +78,6 @@ object DirectoryCache {
         _publications = null
         _statements = null
         _legislation = null
+        _firstPageMps = null
     }
 }

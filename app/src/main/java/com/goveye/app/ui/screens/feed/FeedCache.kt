@@ -24,6 +24,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 object FeedCache {
     private val _state = MutableStateFlow<FeedUiState?>(null)
 
+    val state: FeedUiState? get() = _state.value
+
     /** The last non-loading FeedUiState, or null if no state has been cached. */
     val cached: FeedUiState? get() = _state.value
 
