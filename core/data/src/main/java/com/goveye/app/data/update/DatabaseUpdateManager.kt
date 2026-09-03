@@ -15,8 +15,11 @@ import com.goveye.app.data.local.entity.DebateSpeechEntity
 import com.goveye.app.data.local.entity.DivisionEntity
 import com.goveye.app.data.local.entity.DivisionVoteEntity
 import com.goveye.app.data.local.entity.ExpenseEntity
+import com.goveye.app.data.local.entity.GovernmentPublicationEntity
 import com.goveye.app.data.local.entity.HansardContributionEntity
+import com.goveye.app.data.local.entity.HistoricalMemberEntity
 import com.goveye.app.data.local.entity.InterestEntity
+import com.goveye.app.data.local.entity.LegislationEntity
 import com.goveye.app.data.local.entity.MpCommitteeCrossRef
 import com.goveye.app.data.local.entity.MpEntity
 import com.goveye.app.data.local.entity.MpLinkEntity
@@ -25,6 +28,7 @@ import com.goveye.app.data.local.entity.PartyStatsEntity
 import com.goveye.app.data.local.entity.RecessDateEntity
 import com.goveye.app.data.local.entity.RecessDatesMetaEntity
 import com.goveye.app.data.local.entity.WrittenQuestionEntity
+import com.goveye.app.data.local.entity.WrittenStatementEntity
 import com.goveye.app.data.preference.DatabasePreferences
 import com.goveye.app.data.preference.DownloadPreferences
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -560,6 +564,30 @@ class DatabaseUpdateManager @Inject constructor(
                         json.decodeFromJsonElement<WrittenQuestionEntity>(it)
                     }
                 )
+
+                "government_publications" -> updateDao.upsertGovernmentPublications(
+                    upsertList.map {
+                        json.decodeFromJsonElement<GovernmentPublicationEntity>(it)
+                    }
+                )
+
+                "written_statements" -> updateDao.upsertWrittenStatements(
+                    upsertList.map {
+                        json.decodeFromJsonElement<WrittenStatementEntity>(it)
+                    }
+                )
+
+                "legislation" -> updateDao.upsertLegislation(
+                    upsertList.map {
+                        json.decodeFromJsonElement<LegislationEntity>(it)
+                    }
+                )
+
+                "historical_members" -> updateDao.upsertHistoricalMembers(
+                    upsertList.map {
+                        json.decodeFromJsonElement<HistoricalMemberEntity>(it)
+                    }
+                )
                 // mps_fts is NOT handled — auto-synced by FTS4 triggers (Pitfall 2)
             }
         }
@@ -617,6 +645,18 @@ class DatabaseUpdateManager @Inject constructor(
                 "party_stats" -> updateDao.deletePartyStats(obj["partyId"]!!.jsonPrimitive.intOrNull!!)
 
                 "written_questions" -> updateDao.deleteWrittenQuestion(obj["id"]!!.jsonPrimitive.intOrNull!!)
+
+                "government_publications" -> updateDao.deleteGovernmentPublication(
+                    obj["id"]!!.jsonPrimitive.intOrNull!!
+                )
+
+                "written_statements" -> updateDao.deleteWrittenStatement(obj["id"]!!.jsonPrimitive.intOrNull!!)
+
+                "legislation" -> updateDao.deleteLegislation(obj["id"]!!.jsonPrimitive.intOrNull!!)
+
+                "historical_members" -> updateDao.deleteHistoricalMember(
+                    obj["twfyPersonId"]!!.jsonPrimitive.intOrNull!!
+                )
             }
         }
     }

@@ -13,8 +13,11 @@ import com.goveye.app.data.local.entity.DebateSpeechEntity
 import com.goveye.app.data.local.entity.DivisionEntity
 import com.goveye.app.data.local.entity.DivisionVoteEntity
 import com.goveye.app.data.local.entity.ExpenseEntity
+import com.goveye.app.data.local.entity.GovernmentPublicationEntity
 import com.goveye.app.data.local.entity.HansardContributionEntity
+import com.goveye.app.data.local.entity.HistoricalMemberEntity
 import com.goveye.app.data.local.entity.InterestEntity
+import com.goveye.app.data.local.entity.LegislationEntity
 import com.goveye.app.data.local.entity.MpCommitteeCrossRef
 import com.goveye.app.data.local.entity.MpEntity
 import com.goveye.app.data.local.entity.MpLinkEntity
@@ -23,6 +26,7 @@ import com.goveye.app.data.local.entity.PartyStatsEntity
 import com.goveye.app.data.local.entity.RecessDateEntity
 import com.goveye.app.data.local.entity.RecessDatesMetaEntity
 import com.goveye.app.data.local.entity.WrittenQuestionEntity
+import com.goveye.app.data.local.entity.WrittenStatementEntity
 
 /**
  * DAO for applying JSON diff patches from the goveye-data repo (D-05, D-10a).
@@ -167,4 +171,32 @@ interface DatabaseUpdateDao {
 
     @Query("DELETE FROM written_questions WHERE id = :id")
     suspend fun deleteWrittenQuestion(id: Int)
+
+    // ── government_publications (PK: id) ──────────────────────────────
+    @Upsert
+    suspend fun upsertGovernmentPublications(publications: List<GovernmentPublicationEntity>)
+
+    @Query("DELETE FROM government_publications WHERE id = :id")
+    suspend fun deleteGovernmentPublication(id: Int)
+
+    // ── written_statements (PK: id) ───────────────────────────────────
+    @Upsert
+    suspend fun upsertWrittenStatements(statements: List<WrittenStatementEntity>)
+
+    @Query("DELETE FROM written_statements WHERE id = :id")
+    suspend fun deleteWrittenStatement(id: Int)
+
+    // ── legislation (PK: id) ──────────────────────────────────────────
+    @Upsert
+    suspend fun upsertLegislation(legislation: List<LegislationEntity>)
+
+    @Query("DELETE FROM legislation WHERE id = :id")
+    suspend fun deleteLegislation(id: Int)
+
+    // ── historical_members (PK: twfyPersonId) ─────────────────────────
+    @Upsert
+    suspend fun upsertHistoricalMembers(members: List<HistoricalMemberEntity>)
+
+    @Query("DELETE FROM historical_members WHERE twfyPersonId = :twfyPersonId")
+    suspend fun deleteHistoricalMember(twfyPersonId: Int)
 }
