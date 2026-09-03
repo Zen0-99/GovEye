@@ -70,11 +70,13 @@ class FeedViewModel @Inject constructor(
     private val departmentFilterState = MutableStateFlow<Set<String>>(emptySet())
     private val typeFilterState = MutableStateFlow<Set<CardType>>(emptySet())
 
-    // Pagination — start with 10 for fast initial render, then increase
-    // to 50 after the first emission. The user only sees the first 5-10
-    // cards on initial load, so loading 50 upfront wastes time.
-    private val feedLimit = MutableStateFlow(10)
-    private var hasExpandedLimit = false
+    // Pagination — start with 10 for fast initial render on cold boot,
+    // then increase to 50 after the first emission. When returning to
+    // the feed with a cached state (tab switch), start at 50 directly
+    // to avoid the cached content being replaced by a smaller dataset
+    // that's missing cards the user already saw.
+    private val feedLimit = MutableStateFlow(if (FeedCache.cached != null) 50 else 10)
+    private var hasExpandedLimit = feedLimit.value >= 50
 
     init {
         Log.i("GovEye/Feed", "FeedViewModel init — fetching recess status + onboarding tags")
