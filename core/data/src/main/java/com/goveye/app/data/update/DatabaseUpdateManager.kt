@@ -124,13 +124,20 @@ class DatabaseUpdateManager @Inject constructor(
     suspend fun checkForUpdates(): DatabaseUpdateState = withContext(Dispatchers.IO) {
         return@withContext try {
             // First launch or outdated seed — need full download.
-            // BUT: if the DB file already exists (app reinstall scenario),
-            // recover by setting seedVersion = CURRENT_SEED_VERSION and
-            // falling through to the patch check. This avoids a pointless
-            // 600MB redownload when the app is reinstalled but data persists.
+            // BUT: if the DB file already exists AND seedVersion was previously
+            // set (app reinstall scenario), recover by setting seedVersion =
+            // CURRENT_SEED_VERSION and falling through to the patch check.
+            // This avoids a pointless 600MB redownload when the app is
+            // reinstalled but data persists.
+            //
+            // IMPORTANT: if seedVersion is null AND the DB exists, this is NOT
+            // a reinstall — it's an old install from a prior app version that
+            // was never properly tracked. The DB data is stale and marking
+            // streams as "up to date" would skip all patches. Force a full
+            // re-download instead.
             val seedVer = preferences.seedVersion.first()
             if (seedVer == null || seedVer < CURRENT_SEED_VERSION) {
-                if (context.getDatabasePath(BundledDatabase.DATABASE_NAME).exists()) {
+                if (seedVer != null && context.getDatabasePath(BundledDatabase.DATABASE_NAME).exists()) {
                     Log.i(TAG, "DB exists but seedVersion=$seedVer — recovering (app reinstall)")
                     preferences.setSeedVersion(CURRENT_SEED_VERSION)
                     // Fall through to patch check — stream versions may also be
@@ -156,6 +163,10 @@ class DatabaseUpdateManager @Inject constructor(
 
                 val (streamName, manifest) = result
                 val localVersion = getLocalVersion(streamName)
+                Log.i(
+                    TAG,
+                    "Stream $streamName: local=$localVersion remote=${manifest.version} prev=${manifest.previousVersion}"
+                )
 
                 when {
                     // Local version null — stream was never tracked (new stream
@@ -191,7 +202,10 @@ class DatabaseUpdateManager @Inject constructor(
                         // Room flows via database.close() during a background
                         // download when the user already has perfectly good data.
                         if (context.getDatabasePath(BundledDatabase.DATABASE_NAME).exists()) {
-                            Log.w(TAG, "Stream $streamName multiple versions behind (local=$localVersion, remote=${manifest.version}) — skipping, keeping existing data")
+                            Log.w(
+                                TAG,
+                                "Stream $streamName multiple versions behind (local=$localVersion, remote=${manifest.version}) — skipping, keeping existing data"
+                            )
                             // Mark as current so we don't re-check every launch
                             setStreamVersion(streamName, manifest.version)
                         } else {

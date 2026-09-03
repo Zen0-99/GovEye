@@ -314,7 +314,10 @@ class MainActivity : ComponentActivity() {
                                 // forever-loading spinners. The user can manually
                                 // trigger a re-download from Settings if needed.
                                 if (databaseUpdateManager.databaseFileExists()) {
-                                    Log.i(TAG, "Full download needed but DB exists — using existing data, skipping download")
+                                    Log.i(
+                                        TAG,
+                                        "Full download needed but DB exists — using existing data, skipping download"
+                                    )
                                 } else {
                                     Log.i(TAG, "Full download needed (no DB file) — starting download")
                                     val wifiOnly = downloadPreferences.wifiOnly.first()

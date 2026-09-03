@@ -563,7 +563,10 @@ object DatabaseModule {
             )
             .addCallback(object : androidx.room.RoomDatabase.Callback() {
                 override fun onOpen(db: androidx.sqlite.db.SupportSQLiteDatabase) {
-                    android.util.Log.i("GovEye/DbModule", "BundledDatabase onOpen — version=${db.version} path=${db.path}")
+                    android.util.Log.i(
+                        "GovEye/DbModule",
+                        "BundledDatabase onOpen — version=${db.version} path=${db.path}"
+                    )
                 }
                 override fun onCreate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
                     android.util.Log.i("GovEye/DbModule", "BundledDatabase onCreate")
