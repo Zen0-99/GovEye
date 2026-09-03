@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -69,9 +70,11 @@ class FeedViewModel @Inject constructor(
     private val departmentFilterState = MutableStateFlow<Set<String>>(emptySet())
     private val typeFilterState = MutableStateFlow<Set<CardType>>(emptySet())
 
-    // Pagination — start with 50 divisions, increase as user scrolls.
-    // Each loadMore() call adds 50 more.
-    private val feedLimit = MutableStateFlow(50)
+    // Pagination — start with 10 for fast initial render, then increase
+    // to 50 after the first emission. The user only sees the first 5-10
+    // cards on initial load, so loading 50 upfront wastes time.
+    private val feedLimit = MutableStateFlow(10)
+    private var hasExpandedLimit = false
 
     init {
         Log.i("GovEye/Feed", "FeedViewModel init — fetching recess status + onboarding tags")
@@ -441,6 +444,18 @@ class FeedViewModel @Inject constructor(
                         "speeches=${speechItems.size} mpVotes=${mpVoteItems.size} isEmpty=$isEmpty " +
                         "isRecessEmpty=$isRecessEmpty hasMore=$hasMore processingTime=${processingTime}ms"
                 )
+                // Progressive loading: after the first emission with the
+                // small initial limit (10), expand to 50 in the background.
+                // The user sees the first few cards quickly, then the rest
+                // loads without any additional interaction.
+                if (!hasExpandedLimit && filter.limit < 50) {
+                    hasExpandedLimit = true
+                    viewModelScope.launch {
+                        kotlinx.coroutines.delay(100)
+                        feedLimit.value = 50
+                        Log.i("GovEye/Feed", "Progressive load — expanding limit to 50")
+                    }
+                }
                 FeedUiState(
                     dateGroups = dateGroups,
                     followedMemberIds = feedData.followedMemberIds,
@@ -465,7 +480,15 @@ class FeedViewModel @Inject constructor(
                 )
             }
         }.flowOn(Dispatchers.Default)
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FeedUiState())
+            // Cache each emission so the next ViewModel instance (after tab
+            // switch) can use it as the initial state — avoids showing a
+            // loading skeleton on every navigation.
+            .onEach { state -> FeedCache.update(state) }
+            .stateIn(
+                viewModelScope,
+                SharingStarted.WhileSubscribed(5_000),
+                FeedCache.cached ?: FeedUiState()
+            )
 
     fun setFollowingOnly(value: Boolean) {
         followingOnlyState.value = value

@@ -24,18 +24,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.delay
 
 // Shared skeleton loading components for content-heavy screens.
 //
@@ -46,8 +41,9 @@ import kotlinx.coroutines.delay
 // All skeletons use a simple alpha pulse (0.3 → 0.6, 800ms) — no shimmer
 // gradient mask, keeps it lightweight for short load times.
 //
-// Skeletons are wrapped in SkeletonScreen which delays display by 500ms
-// (matching DelayedSpinner) so fast loads don't flash a skeleton.
+// Skeletons show immediately (no delay) — unlike spinners, skeletons are
+// structural and blend into the content when it loads, so a brief flash
+// on fast loads is not jarring.
 
 /** Alpha pulse animation value shared by all skeleton placeholders. */
 @Composable
@@ -177,14 +173,17 @@ fun MpRowSkeleton(alpha: Float, modifier: Modifier = Modifier) {
 /**
  * Full-screen skeleton list — shows [itemCount] skeleton cards in a LazyColumn.
  *
- * Delays display by [delayMs] (default 500ms, matching [DelayedSpinner]) so
- * fast loads don't flash a skeleton. If loading finishes before the delay,
- * the skeleton never appears.
+ * Shows immediately — no delay. Unlike spinners, skeletons are structural
+ * placeholders that blend into the content when it loads, so a brief flash
+ * on fast loads is not jarring. The previous 500ms delay caused a blank
+ * screen on warm loads (isLoading=true but skeleton not yet visible).
  *
  * @param cardType The skeleton card style — [SkeletonCardType.FEED] for
  *   image-on-top cards (feed, government tab), [SkeletonCardType.MP_ROW]
  *   for horizontal avatar+text rows (following, officials tab).
  * @param itemCount Number of skeleton cards to show (default 6).
+ * @param showDateHeader If true, shows a date header placeholder before the
+ *   cards (for feed-style screens with sticky date headers).
  * @param contentPadding Padding for the LazyColumn (defaults to feed-style
  *   12dp horizontal + 8dp vertical).
  * @param spacing Spacing between skeleton cards (default 8dp).
@@ -193,24 +192,27 @@ fun MpRowSkeleton(alpha: Float, modifier: Modifier = Modifier) {
 fun SkeletonScreen(
     cardType: SkeletonCardType,
     itemCount: Int = 6,
-    delayMs: Long = 500L,
+    showDateHeader: Boolean = false,
     contentPadding: PaddingValues = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
     spacing: Dp = 8.dp,
     modifier: Modifier = Modifier
 ) {
-    var visible by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        delay(delayMs)
-        visible = true
-    }
-    if (!visible) return
-
     val alpha = skeletonAlpha()
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(spacing)
     ) {
+        if (showDateHeader) {
+            item(key = "skeleton-header") {
+                SkeletonBlock(
+                    width = 120.dp,
+                    height = 16.dp,
+                    alpha = alpha,
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
+            }
+        }
         items(count = itemCount, key = { "skeleton-$it" }) { index ->
             when (cardType) {
                 SkeletonCardType.FEED -> FeedCardSkeleton(alpha = alpha)

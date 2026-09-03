@@ -90,7 +90,8 @@ fun FeedScreen(
             state.isLoading -> {
                 com.goveye.app.ui.components.SkeletonScreen(
                     cardType = com.goveye.app.ui.components.SkeletonCardType.FEED,
-                    itemCount = 4
+                    itemCount = 4,
+                    showDateHeader = true
                 )
             }
 
