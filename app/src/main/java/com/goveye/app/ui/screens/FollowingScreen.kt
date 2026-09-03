@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -82,12 +81,11 @@ fun FollowingScreen(
 
     when {
         uiState.isLoading -> {
-            Box(
-                modifier = modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
+            com.goveye.app.ui.components.SkeletonScreen(
+                cardType = com.goveye.app.ui.components.SkeletonCardType.MP_ROW,
+                itemCount = 6,
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+            )
         }
 
         else -> {
