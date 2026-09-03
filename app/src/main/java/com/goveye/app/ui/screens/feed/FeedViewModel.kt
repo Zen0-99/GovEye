@@ -444,7 +444,7 @@ class FeedViewModel @Inject constructor(
                 )
             }
         }.flowOn(Dispatchers.Default)
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(60_000), FeedUiState())
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FeedUiState())
 
     fun setFollowingOnly(value: Boolean) {
         followingOnlyState.value = value
