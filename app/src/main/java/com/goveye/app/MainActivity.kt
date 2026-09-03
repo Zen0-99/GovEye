@@ -42,6 +42,8 @@ import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -67,7 +69,7 @@ class MainActivity : ComponentActivity() {
         val splashScreen = installSplashScreen()
         splashScreen.setKeepOnScreenCondition { splashVisible }
         MainScope().launch(Dispatchers.Main) {
-            delay(600)
+            delay(800)
             splashVisible = false
         }
 
@@ -291,7 +293,23 @@ class MainActivity : ComponentActivity() {
                             Log.i(TAG, "Cancelled stale download worker (DB exists)")
                         }
 
+                        // Pre-warm the Room database in parallel with the update
+                        // check. This forces Room to open the DB, run migrations,
+                        // and set up the InvalidationTracker before the
+                        // FeedViewModel starts collecting flows. Without this,
+                        // the first flow emission takes ~2s because all 5 feed
+                        // flows wait for the DB to open simultaneously.
+                        val prewarmJob = coroutineScope {
+                            async(Dispatchers.IO) {
+                                databaseUpdateManager.prewarmDatabase()
+                            }
+                        }
+
                         val updateState = databaseUpdateManager.checkForUpdates()
+                        // Ensure pre-warming completes before the app shows —
+                        // checkForUpdates is network-bound (manifest fetches),
+                        // so the DB pre-warm (local I/O) usually finishes first.
+                        prewarmJob.await()
                         Log.i(TAG, "Update check result: $updateState")
                         when (updateState) {
                             is DatabaseUpdateState.NeedsPatches -> {

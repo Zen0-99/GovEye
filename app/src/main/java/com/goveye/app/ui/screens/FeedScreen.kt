@@ -1,17 +1,27 @@
 package com.goveye.app.ui.screens
 
 import android.util.Log
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,6 +31,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -90,13 +102,7 @@ fun FeedScreen(
     Column(modifier = modifier.fillMaxSize()) {
         when {
             state.isLoading -> {
-                Row(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    CircularProgressIndicator()
-                }
+                FeedSkeletonScreen()
             }
 
             state.followingOnly && state.followedMemberIds.isEmpty() -> {
@@ -258,4 +264,119 @@ private fun FeedItemCard(
             onTagClick = onTagClick
         )
     }
+}
+
+/**
+ * Skeleton loading screen for the feed — shows animated placeholder cards
+ * that mimic the feed card structure (image area + title + subtitle lines).
+ *
+ * Replaces the centered [CircularProgressIndicator] with a structural
+ * placeholder that communicates "content is loading here" rather than
+ * "the app is thinking." The shimmer animation uses a simple alpha pulse
+ * — no shimmer gradient mask (keeps it lightweight for a 1-2s load).
+ */
+@Composable
+private fun FeedSkeletonScreen() {
+    val transition = rememberInfiniteTransition(label = "skeleton")
+    val alpha by transition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 0.6f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "skeleton-alpha"
+    )
+    val placeholderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha)
+    val cardShape = RoundedCornerShape(16.dp)
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        // Date header placeholder
+        item(key = "skeleton-header") {
+            SkeletonLine(
+                width = 120.dp,
+                height = 16.dp,
+                color = placeholderColor,
+                modifier = Modifier.padding(vertical = 4.dp)
+            )
+        }
+        // 4 card placeholders — each mimics a feed card: image area + title + subtitle
+        items(count = 4, key = { "skeleton-card-$it" }) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(cardShape)
+                    .background(placeholderColor.copy(alpha = 0.1f))
+                    .padding(0.dp)
+            ) {
+                // Image placeholder (16:9 aspect ratio area)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(140.dp)
+                        .background(placeholderColor.copy(alpha = 0.15f))
+                )
+                // Content area
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Title line
+                    SkeletonLine(
+                        width = 240.dp,
+                        height = 18.dp,
+                        color = placeholderColor
+                    )
+                    // Subtitle line (shorter)
+                    SkeletonLine(
+                        width = 160.dp,
+                        height = 14.dp,
+                        color = placeholderColor
+                    )
+                    // Bottom row: source + date
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        SkeletonLine(
+                            width = 80.dp,
+                            height = 12.dp,
+                            color = placeholderColor
+                        )
+                        SkeletonLine(
+                            width = 60.dp,
+                            height = 12.dp,
+                            color = placeholderColor
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * A single skeleton placeholder line — a rounded rectangle with the given
+ * dimensions and color. Used by [FeedSkeletonScreen] to build card placeholders.
+ */
+@Composable
+private fun SkeletonLine(
+    width: androidx.compose.ui.unit.Dp,
+    height: androidx.compose.ui.unit.Dp,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .width(width)
+            .height(height)
+            .clip(RoundedCornerShape(4.dp))
+            .background(color)
+    )
 }

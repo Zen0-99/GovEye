@@ -106,6 +106,36 @@ class DatabaseUpdateManager @Inject constructor(
     fun databaseFileExists(): Boolean = context.getDatabasePath(BundledDatabase.DATABASE_NAME).exists()
 
     /**
+     * Pre-warms the Room database by running a trivial COUNT query.
+     *
+     * Forces Room to open the DB file, run any pending migrations, and
+     * initialize the InvalidationTracker before the FeedViewModel starts
+     * collecting flows. Without this, the first flow emission takes ~2s
+     * because all 5 feed flows wait for the DB to open simultaneously.
+     *
+     * Call this during the splash screen or the update check, in parallel
+     * with [checkForUpdates]. The result is discarded — the side effect
+     * (DB opened + InvalidationTracker ready) is what matters.
+     *
+     * No-op if the DB file doesn't exist (first launch — download will
+     * create it).
+     */
+    suspend fun prewarmDatabase() = withContext(Dispatchers.IO) {
+        if (!databaseFileExists()) {
+            Log.i(TAG, "prewarmDatabase — DB file doesn't exist, skipping")
+            return@withContext
+        }
+        val start = System.currentTimeMillis()
+        try {
+            val count = database.divisionDao().countDivisions()
+            val elapsed = System.currentTimeMillis() - start
+            Log.i(TAG, "prewarmDatabase — DB opened in ${elapsed}ms, divisions=$count")
+        } catch (e: Exception) {
+            Log.w(TAG, "prewarmDatabase — failed (DB will open lazily on first query)", e)
+        }
+    }
+
+    /**
      * Fetches all 7 per-API manifests in parallel and compares each against the
      * corresponding local version key (D-10, D-10a).
      *

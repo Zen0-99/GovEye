@@ -16,6 +16,15 @@ interface DivisionDao {
     @Query("SELECT * FROM divisions ORDER BY date DESC LIMIT :limit")
     fun observeDivisions(limit: Int = 50): Flow<List<DivisionEntity>>
 
+    /**
+     * Trivial query used to pre-warm the Room database during the splash
+     * screen. Forces Room to open the DB, run migrations, and set up the
+     * InvalidationTracker before the FeedViewModel starts collecting flows.
+     * Returns a count — the result is discarded, the side effect is what matters.
+     */
+    @Query("SELECT COUNT(*) FROM divisions")
+    suspend fun countDivisions(): Int
+
     @Query("SELECT * FROM divisions WHERE house = :house ORDER BY date DESC LIMIT :limit")
     fun observeDivisionsByHouse(house: Int, limit: Int = 50): Flow<List<DivisionEntity>>
 
