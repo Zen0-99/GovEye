@@ -33,6 +33,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -127,7 +128,8 @@ class DirectoryViewModel @Inject constructor(
             } catch (e: Exception) {
                 emit(emptyList())
             }
-        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+        }.onEach { DirectoryCache.updateParties(it) }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, DirectoryCache.parties ?: emptyList())
 
     // All councils — for the Councils tab.
     // Uses Eagerly so the one-shot query runs once and is cached.
@@ -138,7 +140,8 @@ class DirectoryViewModel @Inject constructor(
             } catch (e: Exception) {
                 emit(emptyList())
             }
-        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+        }.onEach { DirectoryCache.updateCouncils(it) }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, DirectoryCache.councils ?: emptyList())
 
     // All committees with member counts — for the Committees tab.
     // Uses Eagerly so the one-shot query runs once and is cached.
@@ -149,7 +152,8 @@ class DirectoryViewModel @Inject constructor(
             } catch (e: Exception) {
                 emit(emptyList())
             }
-        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+        }.onEach { DirectoryCache.updateCommittees(it) }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, DirectoryCache.committees ?: emptyList())
 
     // --- Government tab data ---
 
@@ -158,15 +162,18 @@ class DirectoryViewModel @Inject constructor(
 
     val governmentPublications: StateFlow<List<com.goveye.app.domain.model.GovernmentPublication>> =
         governmentAnnouncementsRepository.observePublications(100)
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+            .onEach { DirectoryCache.updatePublications(it) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DirectoryCache.publications ?: emptyList())
 
     val governmentStatements: StateFlow<List<com.goveye.app.domain.model.WrittenStatement>> =
         governmentAnnouncementsRepository.observeStatements(100)
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+            .onEach { DirectoryCache.updateStatements(it) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DirectoryCache.statements ?: emptyList())
 
     val governmentLegislation: StateFlow<List<com.goveye.app.domain.model.Legislation>> =
         governmentAnnouncementsRepository.observeLegislation(100)
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+            .onEach { DirectoryCache.updateLegislation(it) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DirectoryCache.legislation ?: emptyList())
 
     val governmentLoading: StateFlow<Boolean> =
         combine(governmentPublications, governmentStatements, governmentLegislation) { pubs, stmts, leg ->
@@ -175,7 +182,12 @@ class DirectoryViewModel @Inject constructor(
             // the flows have emitted at least once. We use a simple heuristic: if all three are
             // empty, it could be loading or genuinely empty. We set loading=false after first emit.
             false
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+        }.stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            // If we have cached government data, don't show loading on VM recreation.
+            DirectoryCache.publications != null
+        )
 
     fun setGovernmentSourceType(type: GovernmentSourceType) {
         _governmentSourceType.value = type

@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -166,11 +167,12 @@ class FollowingViewModel @Inject constructor(
                 viewMode = viewMode,
                 isLoading = loading && followed.isEmpty()
             )
-        }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = FollowingUiState()
-        )
+        }.onEach { state -> FollowingCache.update(state) }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = FollowingCache.cached ?: FollowingUiState()
+            )
 
     init {
         viewModelScope.launch { isLoading.value = false }
