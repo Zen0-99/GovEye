@@ -158,14 +158,35 @@ class FeedViewModel @Inject constructor(
                     }
                     .filter { filter.tagFilter.isEmpty() || it.tags.any { tag -> tag in filter.tagFilter } }
 
+                // Batch fetch all announcement tags in 3 queries (instead of
+                // 150 individual per-item queries). This eliminates N+1 query
+                // overhead — the biggest contributor to feed loading time.
+                // Tags are ordered by hitCount desc in the SQL, so grouping
+                // preserves priority order.
+                val publicationTagsById = if (publications.isNotEmpty()) {
+                    governmentAnnouncementsRepository.getTagsForPublications(publications.map { it.id })
+                } else {
+                    emptyMap()
+                }
+                val statementTagsById = if (statements.isNotEmpty()) {
+                    governmentAnnouncementsRepository.getTagsForStatements(statements.map { it.id })
+                } else {
+                    emptyMap()
+                }
+                val legislationTagsById = if (legislation.isNotEmpty()) {
+                    governmentAnnouncementsRepository.getTagsForLegislationBatch(legislation.map { it.id })
+                } else {
+                    emptyMap()
+                }
+
                 // Build publication items (filter-based, soft — D-12)
-                // Tags loaded per-item from the announcement tag tables (17-01-02)
+                // Tags fetched in batch above — no per-item DB calls here.
                 val publicationTagsMap = mutableMapOf<String, List<String>>()
                 val publicationItems = publications
                     .filter { filter.query.isBlank() || it.title.contains(filter.query, ignoreCase = true) }
                     .filter { filter.departmentFilter.isEmpty() || it.organisationSlug in filter.departmentFilter }
                     .map { publication ->
-                        val tags = governmentAnnouncementsRepository.getTagsForPublication(publication.id)
+                        val tags = publicationTagsById[publication.id] ?: emptyList()
                         publicationTagsMap["publication-${publication.id}"] = tags
                         FeedItem.PublicationItem(
                             publication = publication,
@@ -180,7 +201,7 @@ class FeedViewModel @Inject constructor(
                     .filter { filter.query.isBlank() || it.title.contains(filter.query, ignoreCase = true) }
                     .filter { filter.departmentFilter.isEmpty() || it.answeringBodyName in filter.departmentFilter }
                     .map { statement ->
-                        val tags = governmentAnnouncementsRepository.getTagsForStatement(statement.id)
+                        val tags = statementTagsById[statement.id] ?: emptyList()
                         statementTagsMap["statement-${statement.id}"] = tags
                         FeedItem.StatementItem(
                             statement = statement,
@@ -194,7 +215,7 @@ class FeedViewModel @Inject constructor(
                 val legislationItems = legislation
                     .filter { filter.query.isBlank() || it.title.contains(filter.query, ignoreCase = true) }
                     .map { legislation ->
-                        val tags = governmentAnnouncementsRepository.getTagsForLegislation(legislation.id)
+                        val tags = legislationTagsById[legislation.id] ?: emptyList()
                         legislationTagsMap["legislation-${legislation.id}"] = tags
                         FeedItem.LegislationItem(
                             legislation = legislation,

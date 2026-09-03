@@ -135,6 +135,35 @@ class GovernmentAnnouncementsRepository @Inject constructor(
     suspend fun getTagsForLegislation(legislationId: Int): List<String> =
         announcementTagDao.getTagsForLegislation(legislationId)
 
+    /**
+     * Batch fetch tags for multiple publications in a single query.
+     * Returns a map of publicationId → list of tags (ordered by hitCount desc).
+     * Use this instead of calling [getTagsForPublication] in a loop —
+     * eliminates N+1 query overhead in the feed.
+     */
+    suspend fun getTagsForPublications(ids: List<Int>): Map<Int, List<String>> =
+        announcementTagDao.getTagRowsForPublications(ids)
+            .groupBy { it.publicationId }
+            .mapValues { (_, rows) -> rows.map { it.tag } }
+
+    /**
+     * Batch fetch tags for multiple statements in a single query.
+     * Returns a map of statementId → list of tags (ordered by hitCount desc).
+     */
+    suspend fun getTagsForStatements(ids: List<Int>): Map<Int, List<String>> =
+        announcementTagDao.getTagRowsForStatements(ids)
+            .groupBy { it.statementId }
+            .mapValues { (_, rows) -> rows.map { it.tag } }
+
+    /**
+     * Batch fetch tags for multiple legislation items in a single query.
+     * Returns a map of legislationId → list of tags (ordered by hitCount desc).
+     */
+    suspend fun getTagsForLegislationBatch(ids: List<Int>): Map<Int, List<String>> =
+        announcementTagDao.getTagRowsForLegislation(ids)
+            .groupBy { it.legislationId }
+            .mapValues { (_, rows) -> rows.map { it.tag } }
+
     suspend fun getPublicationIdsForTag(tag: String): List<Int> = announcementTagDao.getPublicationIdsForTag(tag)
 
     suspend fun getStatementIdsForTag(tag: String): List<Int> = announcementTagDao.getStatementIdsForTag(tag)
