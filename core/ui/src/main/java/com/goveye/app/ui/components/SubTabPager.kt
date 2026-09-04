@@ -108,13 +108,15 @@ fun SubTabPager(
             }
         }
 
-        // Pager — only compose the current page to prevent offscreen tabs
-        // from doing work during navigation transitions.
+        // Pager — compose current + adjacent pages so mid-scroll shows both
+        // pages without pop-in. beyondViewportPageCount=1 keeps the next/prev
+        // pages composed, enabling smooth transitions. Pages further away are
+        // skipped to avoid loading all tabs at once.
         HorizontalPager(
             state = pagerState,
-            modifier = Modifier.fillMaxWidth().weight(1f)
+            modifier = Modifier.fillMaxWidth().weight(1f),
+            beyondViewportPageCount = 1
         ) { page ->
-            if (page != pagerState.currentPage) return@HorizontalPager
             content(page)
         }
     }

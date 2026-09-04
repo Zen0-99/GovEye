@@ -101,13 +101,39 @@ class ProfileViewModel @Inject constructor(
     private val writtenQuestionsRepository: WrittenQuestionsRepository,
     private val activityFilterPreferences: ActivityFilterPreferences,
     private val tagDao: TagDao,
-    private val mpTagDao: MpTagDao
+    private val mpTagDao: MpTagDao,
+    private val profileCache: ProfileCache
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
 
     fun loadProfile(memberId: Int) {
+        // Check in-memory cache first — if the user recently visited this MP,
+        // restore the full profile state instantly (isLoading=false from the
+        // first frame, no fade-in) and do a silent background refresh.
+        val cached = profileCache.get(memberId)
+        if (cached != null) {
+            // Instant restore — no optimistic loading, no fade-in
+            _uiState.value = _uiState.value.copy(
+                mp = cached.mp,
+                synopsis = cached.synopsis,
+                contacts = cached.contacts,
+                bioData = cached.bioData,
+                mpLinks = cached.mpLinks,
+                mpTags = cached.mpTags,
+                activityScore = cached.activityScore,
+                traitBars = cached.traitBars,
+                samePartyMps = cached.samePartyMps,
+                committeePeerMps = cached.committeePeerMps,
+                syncStatus = if (cached.mp != null) SyncStatus.FRESH else SyncStatus.EMPTY,
+                isLoading = false
+            )
+            // Silent background refresh to pick up any DB changes
+            refreshFromDb(memberId)
+            return
+        }
+
         // Two-stage loading to eliminate visual jumps:
         //
         // Stage 1 (before first paint): Load all header-critical data together
@@ -254,6 +280,98 @@ class ProfileViewModel @Inject constructor(
             }
 
             // 3. Load the mixed activity feed (votes, questions, income, expenses, committee, career)
+            loadActivityFeed(memberId)
+
+            // 4. Cache the profile snapshot for instant revisit
+            val state = _uiState.value
+            profileCache.put(
+                memberId,
+                CachedProfileData(
+                    mp = state.mp,
+                    synopsis = state.synopsis,
+                    contacts = state.contacts,
+                    bioData = state.bioData,
+                    mpLinks = state.mpLinks,
+                    mpTags = state.mpTags,
+                    activityScore = state.activityScore,
+                    traitBars = state.traitBars,
+                    samePartyMps = state.samePartyMps,
+                    committeePeerMps = state.committeePeerMps
+                )
+            )
+        }
+    }
+
+    /**
+     * Silent background refresh after a cache hit.
+     * Re-fetches all data from the DB and updates state without resetting
+     * isLoading (which is already false). Any changes are picked up silently.
+     */
+    private fun refreshFromDb(memberId: Int) {
+        viewModelScope.launch {
+            val mpResult = membersRepository.observeMp(memberId).first()
+            val mp = mpResult.data ?: membersRepository.fetchMemberFromApi(memberId)
+            val mpTags = runCatching {
+                mpTagDao.observeTagsForMp(memberId).first()
+            }.getOrDefault(emptyList())
+            val bioData = runCatching { bioDataRepository.getBioData(memberId) }.getOrNull()
+            val house = mp?.house ?: 1
+            val partyName = mp?.party?.name
+            val stats = runCatching {
+                statsRepository.getActivityScore(memberId, house, partyName) to
+                    statsRepository.getTraitBars(memberId, house, partyName)
+            }.getOrNull()
+
+            _uiState.value = _uiState.value.copy(
+                mp = mp,
+                mpTags = mpTags,
+                bioData = bioData,
+                activityScore = stats?.first,
+                traitBars = stats?.second ?: emptyList()
+            )
+
+            // Stage 2 in parallel
+            val partyId = mp?.party?.id
+            coroutineScope {
+                launch {
+                    val synopsis = runCatching { membersRepository.getSynopsis(memberId) }.getOrNull()
+                    _uiState.value = _uiState.value.copy(synopsis = synopsis)
+                }
+                launch {
+                    val contacts = runCatching { membersRepository.getContact(memberId) }.getOrDefault(emptyList())
+                    _uiState.value = _uiState.value.copy(contacts = contacts)
+                }
+                launch {
+                    val mpLinks = runCatching { mpLinksRepository.getLinks(memberId) }.getOrNull()
+                    _uiState.value = _uiState.value.copy(mpLinks = mpLinks)
+                }
+                launch {
+                    val samePartyMps = partyId?.let {
+                        mpDao.getMpsByParty(it, memberId).map { it.toDomainMp() }
+                    } ?: emptyList()
+                    _uiState.value = _uiState.value.copy(samePartyMps = samePartyMps)
+                }
+            }
+
+            // Update cache with refreshed data
+            val state = _uiState.value
+            profileCache.put(
+                memberId,
+                CachedProfileData(
+                    mp = state.mp,
+                    synopsis = state.synopsis,
+                    contacts = state.contacts,
+                    bioData = state.bioData,
+                    mpLinks = state.mpLinks,
+                    mpTags = state.mpTags,
+                    activityScore = state.activityScore,
+                    traitBars = state.traitBars,
+                    samePartyMps = state.samePartyMps,
+                    committeePeerMps = state.committeePeerMps
+                )
+            )
+
+            // Refresh activity feed too
             loadActivityFeed(memberId)
         }
     }
