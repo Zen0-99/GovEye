@@ -147,15 +147,25 @@ class ProfileViewModel @Inject constructor(
         //   fixed-height placeholders for these sections so their appearance
         //   doesn't cause layout reflow.
         viewModelScope.launch {
-            // === Stage 1: Header-critical data (single batch) ===
-            val mpResult = membersRepository.observeMp(memberId).first()
+            // === Stage 1: Header-critical data (parallel batch) ===
+            // All four reads run concurrently to minimize time-to-first-paint.
+            val mpDeferred = async { membersRepository.observeMp(memberId).first() }
+            val mpTagsDeferred = async {
+                runCatching { mpTagDao.observeTagsForMp(memberId).first() }.getOrDefault(emptyList())
+            }
+            val bioDataDeferred = async {
+                runCatching { bioDataRepository.getBioData(memberId) }.getOrNull()
+            }
+
+            val mpResult = mpDeferred.await()
             val mp = mpResult.data ?: membersRepository.fetchMemberFromApi(memberId)
-            val mpTags = runCatching {
-                mpTagDao.observeTagsForMp(memberId).first()
-            }.getOrDefault(emptyList())
-            val bioData = runCatching { bioDataRepository.getBioData(memberId) }.getOrNull()
+            val mpTags = mpTagsDeferred.await()
+            val bioData = bioDataDeferred.await()
             val house = mp?.house ?: 1
             val partyName = mp?.party?.name
+
+            // Stats depend on mp (house, partyName) so they start after mp resolves.
+            // But bioData and mpTags are already done by this point.
             val stats = runCatching {
                 statsRepository.getActivityScore(memberId, house, partyName) to
                     statsRepository.getTraitBars(memberId, house, partyName)

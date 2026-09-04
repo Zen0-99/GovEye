@@ -145,7 +145,7 @@ private fun ContactRow(contact: Contact) {
         modifier = Modifier
             .fillMaxWidth()
             .then(if (clickAction != null) Modifier.clickable(onClick = clickAction) else Modifier),
-        verticalAlignment = Alignment.Top,
+        verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.medium)
     ) {
         Icon(

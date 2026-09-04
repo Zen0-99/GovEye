@@ -346,13 +346,10 @@ fun ProfileScreen(
                                     mp = displayMp,
                                     synopsis = uiState.synopsis,
                                     contacts = uiState.contacts,
-                                    samePartyMps = uiState.samePartyMps,
-                                    committeePeerMps = uiState.committeePeerMps,
                                     bioData = uiState.bioData,
                                     mpLinks = uiState.mpLinks,
                                     mpTags = uiState.mpTags,
                                     traitBars = uiState.traitBars,
-                                    onNavigateToProfile = onNavigateToProfile,
                                     onNavigateToMpTagBrowse = onNavigateToMpTagBrowse,
                                     contentVisible = !isOptimistic
                                 )
@@ -640,13 +637,10 @@ private fun ProfileTabContent(
     mp: com.goveye.app.domain.model.Mp,
     synopsis: String?,
     contacts: List<com.goveye.app.domain.model.Contact>,
-    samePartyMps: List<com.goveye.app.domain.model.Mp>,
-    committeePeerMps: List<com.goveye.app.domain.model.Mp>,
     bioData: com.goveye.app.data.local.entity.BioDataEntity? = null,
     mpLinks: com.goveye.app.data.local.entity.MpLinkEntity? = null,
     mpTags: List<MpTagEntity> = emptyList(),
     @Suppress("UNUSED_PARAMETER") traitBars: List<com.goveye.app.domain.stats.TraitBar> = emptyList(),
-    onNavigateToProfile: (Int, com.goveye.app.ui.navigation.MpHeaderFallback?, Int) -> Unit,
     onNavigateToMpTagBrowse: (String) -> Unit = {},
     contentVisible: Boolean = true
 ) {
@@ -657,7 +651,6 @@ private fun ProfileTabContent(
     val alpha1 by animateFloatAsState(target, tween(250, delayMillis = 50), label = "s1")
     val alpha2 by animateFloatAsState(target, tween(250, delayMillis = 100), label = "s2")
     val alpha3 by animateFloatAsState(target, tween(250, delayMillis = 150), label = "s3")
-    val alpha4 by animateFloatAsState(target, tween(250, delayMillis = 200), label = "s4")
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -685,28 +678,19 @@ private fun ProfileTabContent(
         item {
             Box(modifier = Modifier.graphicsLayer { alpha = alpha2 }) {
                 Column {
-                    if (!synopsis.isNullOrBlank()) {
-                        SectionHeader("Biography")
-                    }
-                    BioSection(synopsis = synopsis)
-                }
-            }
-        }
-        item {
-            Box(modifier = Modifier.graphicsLayer { alpha = alpha3 }) {
-                Column {
                     SectionHeader("Contact")
                     ContactSection(contacts = contacts, socialLinks = mpLinks)
                 }
             }
         }
         item {
-            Box(modifier = Modifier.graphicsLayer { alpha = alpha4 }) {
-                RelatedMpsSection(
-                    samePartyMps = samePartyMps,
-                    committeePeerMps = committeePeerMps,
-                    onNavigateToProfile = onNavigateToProfile
-                )
+            Box(modifier = Modifier.graphicsLayer { alpha = alpha3 }) {
+                Column {
+                    if (!synopsis.isNullOrBlank()) {
+                        SectionHeader("Biography")
+                    }
+                    BioSection(synopsis = synopsis)
+                }
             }
         }
     }

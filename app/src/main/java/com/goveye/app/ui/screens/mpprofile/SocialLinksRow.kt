@@ -109,7 +109,7 @@ fun SocialLinksRow(links: MpLinkEntity?, modifier: Modifier = Modifier) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { openUrl(context, entry.url) },
-                verticalAlignment = Alignment.Top,
+                verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.medium)
             ) {
                 when (entry.iconType) {
