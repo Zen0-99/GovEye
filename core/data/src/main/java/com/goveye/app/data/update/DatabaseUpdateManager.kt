@@ -896,7 +896,7 @@ class DatabaseUpdateManager @Inject constructor(
          * corrected data). When this is higher than the user's stored
          * seedVersion, the app treats it as a first launch and re-downloads.
          */
-        const val CURRENT_SEED_VERSION = 6
+        const val CURRENT_SEED_VERSION = 7
 
         internal const val MANIFEST_ASSET_NAME = "manifest.json"
         internal const val PATCH_ASSET_NAME = "patch.json"
