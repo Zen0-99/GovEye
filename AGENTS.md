@@ -10,6 +10,7 @@
 ## Build & Test
 - `.\gradlew.bat spotlessApply :app:installDebug` — build, format, install on device
 - **NEVER run `adb shell pm clear com.goveye.app`** — it forces the user through onboarding again. Install over the existing app instead.
+- **NEVER push a goveye.db directly to the device** — the app's patch system tracks per-stream versions. A manually pushed DB (even at the right schema version) will have mismatched stream versions, causing patches to corrupt data. To update the seed on the device: upload to GitHub seed-latest release, bump `CURRENT_SEED_VERSION` in `DatabaseUpdateManager.kt`, and let the app download it. For testing only: push the DB AND clear `database_preferences.preferences_pb` so the app does a full re-download.
 - `adb logcat -d -s GovEye/DbUpdate:I GovEye/MainActivity:I AndroidRuntime:E` — check logs
 
 ## Data Pipeline
