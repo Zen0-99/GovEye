@@ -117,7 +117,7 @@ fun SocialLinksRow(links: MpLinkEntity?, modifier: Modifier = Modifier) {
                         imageVector = Icons.Outlined.Public,
                         contentDescription = "Website",
                         tint = iconTint,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(22.dp)
                     )
 
                     SocialIconType.X -> Icon(

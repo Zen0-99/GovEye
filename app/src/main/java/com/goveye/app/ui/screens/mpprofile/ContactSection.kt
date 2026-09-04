@@ -152,7 +152,7 @@ private fun ContactRow(contact: Contact) {
             imageVector = icon,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(20.dp)
+            modifier = Modifier.size(22.dp)
         )
         Column {
             val typeText = contact.type
