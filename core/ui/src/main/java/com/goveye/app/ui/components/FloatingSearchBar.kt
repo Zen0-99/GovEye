@@ -1,7 +1,7 @@
 package com.goveye.app.ui.components
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
@@ -10,7 +10,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -100,11 +99,12 @@ fun FloatingSearchBar(
     val backIconTint = iconTint ?: colorScheme.onSurface
     // Blend the party accent color into the search bar background when on
     // a detail screen (profile/party). Deeper tint — 25% party color over
-    // surfaceContainer. Direct color reference (no animateColorAsState) so
-    // it recomposes synchronously with theme changes — previously the
-    // animated color caused the search bar to lag behind the rest of the
-    // screen during light/dark mode toggle (issue #12.2).
-    val searchBarColor = if (accentColor != null) {
+    // surfaceContainer. Animated via animateColorAsState for smooth
+    // transitions when navigating to/from detail screens. The animation
+    // is keyed on the blended color, not the raw accent — so theme
+    // changes (dark mode toggle) apply instantly via recomposition while
+    // navigation transitions animate smoothly.
+    val targetSearchBarColor = if (accentColor != null) {
         androidx.compose.ui.graphics.lerp(
             colorScheme.surfaceContainer,
             accentColor,
@@ -113,6 +113,11 @@ fun FloatingSearchBar(
     } else {
         colorScheme.surfaceContainer
     }
+    val searchBarColor by animateColorAsState(
+        targetValue = targetSearchBarColor,
+        animationSpec = tween(durationMillis = 300),
+        label = "searchBarColor"
+    )
 
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
@@ -253,30 +258,29 @@ fun FloatingSearchBar(
                         }
 
                         // Filter icon — changes color when filters are active.
-                        // Wrapped in AnimatedContent with fadeIn/fadeOut and
-                        // animated width so it transitions smoothly when
-                        // navigating between list and detail screens (issue
-                        // #12). Previously the filter button appeared/
-                        // disappeared instantly, causing the right side of
-                        // the search bar to jump.
+                        // Width animates smoothly when navigating between
+                        // screens with and without filters. No AnimatedContent
+                        // crossfade — the icon is always the same FilterList,
+                        // only the click handler changes. Crossfading identical
+                        // icons caused a visual "rebuild" on every navigation
+                        // (issue #12) and a diagonal slide-to-bottom-right
+                        // when disappearing (width shrink + fadeOut combo).
                         val filterClick = onFilterClick
                         val filterButtonWidth by animateDpAsState(
                             targetValue = if (filterClick != null) 40.dp else 0.dp,
                             animationSpec = tween(durationMillis = 300),
                             label = "filterButtonWidth"
                         )
-                        AnimatedContent(
-                            targetState = filterClick,
-                            transitionSpec = {
-                                fadeIn(animationSpec = tween(200)) togetherWith
-                                    fadeOut(animationSpec = tween(200))
-                            },
-                            label = "filterButton",
-                            modifier = Modifier.size(filterButtonWidth)
-                        ) { click ->
-                            if (click != null) {
+                        // Clip to width so the icon doesn't overflow during
+                        // the width animation — prevents the diagonal slide.
+                        Box(
+                            modifier = Modifier
+                                .size(filterButtonWidth)
+                                .clip(shape)
+                        ) {
+                            if (filterClick != null) {
                                 IconButton(
-                                    onClick = click,
+                                    onClick = filterClick,
                                     modifier = Modifier.size(40.dp)
                                 ) {
                                     Icon(
@@ -355,30 +359,55 @@ fun FloatingSearchBar(
                 }
             }
 
-            // Action icons (detail screens) — animated in/out as a group
-            // so the search bar morphs width smoothly when entering/leaving
-            // detail screens. Padding is inside AnimatedVisibility so it
-            // animates away with the icons — no gap jump on exit.
-            AnimatedVisibility(
-                visible = actions.isNotEmpty(),
-                enter = expandHorizontally(animationSpec = tween(200)) + fadeIn(animationSpec = tween(200)),
-                exit = shrinkHorizontally(animationSpec = tween(200)) + fadeOut(animationSpec = tween(200))
+            // Action icons (detail screens) — width-animated as a group,
+            // same approach as the filter icon. The icons expand/collapse
+            // horizontally with a clip so they don't overflow during the
+            // animation. No fade — the icons are revealed/hidden by the
+            // width change, matching the filter icon's behavior.
+            //
+            // To make the disappearance graceful, we snapshot the last
+            // non-empty actions list and keep rendering it while the width
+            // animates to 0. Without this, the icons vanish instantly when
+            // the list becomes empty, and the empty box shrinks — no visual
+            // collapse. With the snapshot, the icons are clipped by the
+            // shrinking width, creating a smooth horizontal collapse.
+            var lastActions by remember { mutableStateOf(emptyList<DetailTopBarAction>()) }
+            LaunchedEffect(actions) {
+                if (actions.isNotEmpty()) {
+                    lastActions = actions
+                }
+            }
+            val actionsWidth by animateDpAsState(
+                targetValue = if (actions.isNotEmpty()) {
+                    (actions.size * 44).dp + 4.dp // padding
+                } else {
+                    0.dp
+                },
+                animationSpec = tween(durationMillis = 300),
+                label = "actionsWidth"
+            )
+            Box(
+                modifier = Modifier
+                    .size(width = actionsWidth, height = 44.dp)
+                    .clip(shape)
             ) {
-                Row(
-                    modifier = Modifier.padding(start = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    actions.forEach { action ->
-                        IconButton(
-                            onClick = action.onClick,
-                            modifier = Modifier.size(44.dp)
-                        ) {
-                            Icon(
-                                imageVector = action.icon,
-                                contentDescription = action.contentDescription,
-                                tint = action.tint ?: iconTint ?: colorScheme.onSurface,
-                                modifier = Modifier.size(22.dp)
-                            )
+                if (actionsWidth > 0.dp && lastActions.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier.padding(start = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        lastActions.forEach { action ->
+                            IconButton(
+                                onClick = action.onClick,
+                                modifier = Modifier.size(44.dp)
+                            ) {
+                                Icon(
+                                    imageVector = action.icon,
+                                    contentDescription = action.contentDescription,
+                                    tint = action.tint ?: iconTint ?: colorScheme.onSurface,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
                         }
                     }
                 }

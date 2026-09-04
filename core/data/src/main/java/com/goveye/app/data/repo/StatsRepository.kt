@@ -20,11 +20,19 @@ import com.goveye.app.domain.stats.PeerAverages
 import com.goveye.app.domain.stats.RebellionCalculator
 import com.goveye.app.domain.stats.TraitBar
 import com.goveye.app.domain.stats.TraitBarCalculator
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
 
 /**
  * Stats repository with build-time precomputation (Phase 12).
@@ -87,12 +95,13 @@ class StatsRepository @Inject constructor(
     // --- Per-MP metrics ---
 
     suspend fun getVoteParticipationRate(memberId: Int, house: Int): Float {
-        if (usePrecomputed()) {
-            return mpStatsDao.getStats(memberId)?.voteParticipationRate ?: 0f
-        }
-        // Tenure-aware fallback: only count divisions from the MP's tenure start
-        // so new MPs are not penalized for divisions they couldn't vote in.
-        val startDate = bioDataDao.getMaidenSpeechDate(memberId) ?: DEFAULT_TENURE_START
+        // Always compute from membershipStartDate (current unbroken tenure) so
+        // the participation rate matches the attendance chart's time window.
+        // The precomputed mp_stats.voteParticipationRate uses maidenSpeechDate
+        // which can span previous parliaments and cause a discrepancy.
+        val startDate = mpDao.observeMp(memberId).first()?.membershipStartDate?.take(10)
+            ?: bioDataDao.getMaidenSpeechDate(memberId)
+            ?: DEFAULT_TENURE_START
         val votedCount = divisionDao.getDivisionIdsForMemberSince(memberId, house, startDate).size
         val totalDivisions = divisionDao.countDivisionsByHouseSince(house, startDate)
         if (totalDivisions == 0) return 0f
@@ -250,13 +259,17 @@ class StatsRepository @Inject constructor(
         if (usePrecomputed()) {
             val stats = mpStatsDao.getStats(memberId)
             if (stats != null) {
-                val peerAverages = getPeerAverages(house)
+                val monthsSinceTenure = getMonthsSinceTenureStart(memberId)
+                val committeeTenureDays = getCommitteeTenureDays(memberId)
+                // Use live participation rate (membershipStartDate-based) so
+                // the activity score's vote contribution matches the chart.
+                val liveParticipationRate = getVoteParticipationRate(memberId, house)
                 return ActivityScoreCalculator.compute(
-                    stats.voteParticipationRate,
+                    liveParticipationRate,
                     stats.questionCount,
                     stats.speechCount,
-                    stats.committeeCount,
-                    peerAverages
+                    monthsSinceTenure,
+                    committeeTenureDays
                 )
             }
         }
@@ -265,15 +278,67 @@ class StatsRepository @Inject constructor(
         val voteParticipationRate = getVoteParticipationRate(memberId, house)
         val questionCount = getQuestionCount(memberId)
         val speechCount = getSpeechCount(memberId)
-        val committeeCount = getCommitteeCount(memberId)
-        val peerAverages = getPeerAverages(house)
+        val monthsSinceTenure = getMonthsSinceTenureStart(memberId)
+        val committeeTenureDays = getCommitteeTenureDays(memberId)
         return ActivityScoreCalculator.compute(
             voteParticipationRate,
             questionCount,
             speechCount,
-            committeeCount,
-            peerAverages
+            monthsSinceTenure,
+            committeeTenureDays
         )
+    }
+
+    /**
+     * Compute the number of months from the MP's tenure start to now.
+     * Uses membershipStartDate from mps table (current unbroken tenure),
+     * falling back to maidenSpeechDate from bio_data, then DEFAULT_TENURE_START.
+     */
+    private suspend fun getMonthsSinceTenureStart(memberId: Int): Int {
+        val startDateStr = mpDao.observeMp(memberId).first()?.membershipStartDate?.take(10)
+            ?: bioDataDao.getMaidenSpeechDate(memberId)
+            ?: DEFAULT_TENURE_START
+        return try {
+            val start = LocalDate.parse(startDateStr.take(10))
+            val now = LocalDate.now()
+            ChronoUnit.MONTHS.between(start, now).toInt().coerceAtLeast(1)
+        } catch (e: Exception) {
+            // Fallback: assume ~12 months if we can't parse
+            12
+        }
+    }
+
+    /**
+     * Compute total committee tenure days from bio_data.committeesJson.
+     * Each committee membership has a startDate and optional endDate (null = ongoing).
+     * Sums the days across all memberships to reward long-serving committee members.
+     */
+    private suspend fun getCommitteeTenureDays(memberId: Int): Int {
+        val bioData = bioDataDao.getByMpId(memberId) ?: return 0
+        val committeesJson = bioData.committeesJson ?: return 0
+        return try {
+            val jsonArray = Json.parseToJsonElement(committeesJson) as JsonArray
+            val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+            var totalDays = 0L
+            for (element in jsonArray) {
+                val obj = element as JsonObject
+                val startDateStr = obj["startDate"]?.jsonPrimitive?.contentOrNull ?: continue
+                val start = LocalDate.parse(startDateStr.take(10), dateFormatter)
+                val endDateStr = obj["endDate"]?.jsonPrimitive?.contentOrNull
+                val end = if (endDateStr != null) {
+                    LocalDate.parse(endDateStr.take(10), dateFormatter)
+                } else {
+                    LocalDate.now()
+                }
+                if (end.isAfter(start)) {
+                    totalDays += ChronoUnit.DAYS.between(start, end)
+                }
+            }
+            totalDays.toInt()
+        } catch (e: Exception) {
+            // Fallback: use committee count * 365 as rough estimate
+            getCommitteeCount(memberId) * 365
+        }
     }
 
     suspend fun getTraitBars(memberId: Int, house: Int, partyName: String?): List<TraitBar> {
@@ -281,18 +346,26 @@ class StatsRepository @Inject constructor(
             val stats = mpStatsDao.getStats(memberId)
             if (stats != null) {
                 val peerAverages = getPeerAverages(house)
+                // Override participation with live computation using
+                // membershipStartDate (current unbroken tenure) so it matches
+                // the attendance chart's time window. The precomputed
+                // voteParticipationRate uses maidenSpeechDate which can span
+                // previous parliaments.
+                val liveParticipationRate = getVoteParticipationRate(memberId, house)
                 // Build trait bars from precomputed percentiles — no peer iteration needed
+                // Loyalty = 100% - rebellionRate. Percentile is inverted:
+                // 0% rebellion = 100th percentile loyalty (most loyal).
                 return listOf(
                     TraitBar(
-                        label = "Rebellion",
-                        percentile = stats.rebellionPercentile,
-                        mpValue = stats.rebellionRate * 100,
-                        peerAverage = peerAverages.averageRebellion * 100
+                        label = "Loyalty",
+                        percentile = 100 - stats.rebellionPercentile,
+                        mpValue = (1f - stats.rebellionRate) * 100,
+                        peerAverage = (1f - peerAverages.averageRebellion) * 100
                     ),
                     TraitBar(
                         label = "Participation",
                         percentile = stats.participationPercentile,
-                        mpValue = stats.voteParticipationRate * 100,
+                        mpValue = liveParticipationRate * 100,
                         peerAverage = peerAverages.averageParticipation * 100
                     ),
                     TraitBar(

@@ -1,9 +1,12 @@
 package com.goveye.app.ui.settings
 
+import android.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.goveye.app.data.local.dao.MpDao
 import com.goveye.app.data.update.DatabaseUpdateManager
 import com.goveye.app.data.update.DatabaseUpdateState
+import com.goveye.app.notifications.NotificationHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.channels.Channel
@@ -27,7 +30,11 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class UpdateCheckViewModel
 @Inject
-constructor(private val updateManager: DatabaseUpdateManager) : ViewModel() {
+constructor(
+    private val updateManager: DatabaseUpdateManager,
+    private val notificationHelper: NotificationHelper,
+    private val mpDao: MpDao
+) : ViewModel() {
 
     private val _isChecking = MutableStateFlow(false)
     val isChecking: StateFlow<Boolean> = _isChecking
@@ -100,6 +107,80 @@ constructor(private val updateManager: DatabaseUpdateManager) : ViewModel() {
                 _isChecking.value = false
             }
         }
+    }
+
+    // --- Mock notifications (testing) ---
+
+    fun mockVoteNotification() {
+        viewModelScope.launch {
+            val mp = mpDao.getMp(4514) // Sir Keir Starmer
+            notificationHelper.showVoteNotification(
+                NotificationHelper.VoteNotificationData(
+                    mpName = mp?.nameDisplayAs ?: "Sir Keir Starmer",
+                    mpThumbnailUrl = mp?.thumbnailUrl,
+                    divisionId = 12345,
+                    divisionHouse = 1,
+                    divisionTitle = "Second Reading of the Employment Rights Bill",
+                    voteLabel = "Aye",
+                    isRebel = false,
+                    partyColor = mp?.partyBackgroundColour?.let { parsePartyColorInt(it) }
+                )
+            )
+        }
+    }
+
+    fun mockSpeechNotification() {
+        viewModelScope.launch {
+            val mp = mpDao.getMp(4031) // Rachel Reeves
+            notificationHelper.showSpeechNotification(
+                mpName = mp?.nameDisplayAs ?: "Rachel Reeves",
+                debateTitle = "Autumn Budget Statement",
+                mpThumbnailUrl = mp?.thumbnailUrl,
+                partyColor = mp?.partyBackgroundColour?.let { parsePartyColorInt(it) }
+            )
+        }
+    }
+
+    fun mockIncomeNotification() {
+        viewModelScope.launch {
+            val mp = mpDao.getMp(4483) // Rishi Sunak
+            notificationHelper.showIncomeNotification(
+                memberId = 4483,
+                mpName = mp?.nameDisplayAs ?: "Rishi Sunak",
+                amount = "£8,500",
+                source = "Corwin Holdings Ltd",
+                mpThumbnailUrl = mp?.thumbnailUrl,
+                partyColor = mp?.partyBackgroundColour?.let { parsePartyColorInt(it) }
+            )
+        }
+    }
+
+    fun mockExpenseNotification() {
+        viewModelScope.launch {
+            val mp = mpDao.getMp(4483) // Rishi Sunak
+            notificationHelper.showExpenseNotification(
+                memberId = 4483,
+                mpName = mp?.nameDisplayAs ?: "Rishi Sunak",
+                amount = "£1,200",
+                category = "Office Costs",
+                mpThumbnailUrl = mp?.thumbnailUrl,
+                partyColor = mp?.partyBackgroundColour?.let { parsePartyColorInt(it) }
+            )
+        }
+    }
+
+    /**
+     * Parse a hex party color string (e.g. "d50000") to an ARGB int
+     * for NotificationCompat.Builder.setColor().
+     */
+    private fun parsePartyColorInt(hex: String): Int = try {
+        if (hex.startsWith("#")) {
+            Color.parseColor(hex)
+        } else {
+            Color.parseColor("#$hex")
+        }
+    } catch (e: Exception) {
+        0xFF6750A4.toInt() // fallback to Material purple
     }
 }
 

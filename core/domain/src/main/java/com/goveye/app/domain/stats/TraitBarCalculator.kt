@@ -41,11 +41,13 @@ object TraitBarCalculator {
         peerCommitteeCounts: List<Int>,
         peerAverages: PeerAverages
     ): List<TraitBar> = listOf(
+        // Loyalty = 100% - rebellionRate. Percentile inverted:
+        // 0% rebellion = 100th percentile loyalty (most loyal).
         TraitBar(
-            label = "Rebellion",
-            percentile = PercentileCalculator.computePercentile(rebellionRate, peerRebellionRates),
-            mpValue = rebellionRate * 100,
-            peerAverage = (peerRebellionRates.averageOrNull() ?: 0f) * 100
+            label = "Loyalty",
+            percentile = 100 - PercentileCalculator.computePercentile(rebellionRate, peerRebellionRates),
+            mpValue = (1f - rebellionRate) * 100,
+            peerAverage = (1f - (peerRebellionRates.averageOrNull() ?: 0f)) * 100
         ),
         TraitBar(
             label = "Participation",

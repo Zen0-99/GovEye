@@ -6,6 +6,11 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Rect
+import android.graphics.RectF
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -145,7 +150,8 @@ class NotificationHelper @Inject constructor(@ApplicationContext private val con
         val divisionHouse: Int,
         val divisionTitle: String,
         val voteLabel: String,
-        val isRebel: Boolean
+        val isRebel: Boolean,
+        val partyColor: Int? = null
     )
 
     suspend fun showVoteNotification(data: VoteNotificationData) {
@@ -166,21 +172,18 @@ class NotificationHelper @Inject constructor(@ApplicationContext private val con
             data.mpName
         )
 
-        val builder = NotificationCompat.Builder(context, VOTES_CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle(data.mpName)
-            .setContentText(body)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
-            .setContentIntent(pendingIntent)
-            .setAutoCancel(true)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-
-        if (bitmap != null) {
-            builder.setLargeIcon(bitmap)
-        }
+        val notification = buildNotification(
+            channelId = VOTES_CHANNEL_ID,
+            title = data.mpName,
+            body = body,
+            pendingIntent = pendingIntent,
+            priority = NotificationCompat.PRIORITY_HIGH,
+            mpBitmap = bitmap,
+            partyColor = data.partyColor
+        )
 
         try {
-            notificationManager.notify(nextNotificationId++, builder.build())
+            notificationManager.notify(nextNotificationId++, notification)
         } catch (e: SecurityException) {
             // POST_NOTIFICATIONS not granted — silently skip
         }
@@ -214,18 +217,58 @@ class NotificationHelper @Inject constructor(@ApplicationContext private val con
      * @param mpName The MP's display name (notification title).
      * @param amount The income amount (e.g. "£5,000").
      * @param source The payer or source of the income (notification body).
+     * @param mpThumbnailUrl The MP's profile image URL (shown as large icon).
+     * @param partyColor The MP's party color (ARGB int, shown as notification accent).
      */
-    fun showIncomeNotification(memberId: Int, mpName: String, amount: String, source: String) {
+    suspend fun showIncomeNotification(
+        memberId: Int,
+        mpName: String,
+        amount: String,
+        source: String,
+        mpThumbnailUrl: String? = null,
+        partyColor: Int? = null
+    ) {
+        val bitmap = loadThumbnail(mpThumbnailUrl)
         val body = "New income: $amount from $source"
 
-        val notification = NotificationCompat.Builder(context, INCOME_CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle(mpName)
-            .setContentText(body)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
-            .setAutoCancel(true)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .build()
+        val notification = buildNotification(
+            channelId = INCOME_CHANNEL_ID,
+            title = mpName,
+            body = body,
+            pendingIntent = null,
+            priority = NotificationCompat.PRIORITY_DEFAULT,
+            mpBitmap = bitmap,
+            partyColor = partyColor
+        )
+
+        try {
+            notificationManager.notify(nextNotificationId++, notification)
+        } catch (e: SecurityException) {
+            // POST_NOTIFICATIONS not granted — silently skip
+        }
+    }
+
+    /**
+     * Shows a mock speech notification for testing (D-04 testing).
+     */
+    suspend fun showSpeechNotification(
+        mpName: String,
+        debateTitle: String,
+        mpThumbnailUrl: String? = null,
+        partyColor: Int? = null
+    ) {
+        val bitmap = loadThumbnail(mpThumbnailUrl)
+        val body = "Spoke in $debateTitle"
+
+        val notification = buildNotification(
+            channelId = SPEECHES_CHANNEL_ID,
+            title = mpName,
+            body = body,
+            pendingIntent = null,
+            priority = NotificationCompat.PRIORITY_DEFAULT,
+            mpBitmap = bitmap,
+            partyColor = partyColor
+        )
 
         try {
             notificationManager.notify(nextNotificationId++, notification)
@@ -241,18 +284,29 @@ class NotificationHelper @Inject constructor(@ApplicationContext private val con
      * @param mpName The MP's display name (notification title).
      * @param amount The expense amount (e.g. "£1,200").
      * @param category The expense category/bucket (notification body).
+     * @param mpThumbnailUrl The MP's profile image URL (shown as large icon).
+     * @param partyColor The MP's party color (ARGB int, shown as notification accent).
      */
-    fun showExpenseNotification(memberId: Int, mpName: String, amount: String, category: String) {
+    suspend fun showExpenseNotification(
+        memberId: Int,
+        mpName: String,
+        amount: String,
+        category: String,
+        mpThumbnailUrl: String? = null,
+        partyColor: Int? = null
+    ) {
+        val bitmap = loadThumbnail(mpThumbnailUrl)
         val body = "New expense: $amount — $category"
 
-        val notification = NotificationCompat.Builder(context, EXPENSE_CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle(mpName)
-            .setContentText(body)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
-            .setAutoCancel(true)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .build()
+        val notification = buildNotification(
+            channelId = EXPENSE_CHANNEL_ID,
+            title = mpName,
+            body = body,
+            pendingIntent = null,
+            priority = NotificationCompat.PRIORITY_DEFAULT,
+            mpBitmap = bitmap,
+            partyColor = partyColor
+        )
 
         try {
             notificationManager.notify(nextNotificationId++, notification)
@@ -270,13 +324,140 @@ class NotificationHelper @Inject constructor(@ApplicationContext private val con
                 .build()
             val result = loader.execute(request)
             if (result is SuccessResult) {
-                result.image.toBitmap()
+                // Force ARGB_8888 (software bitmap) — hardware bitmaps can't be
+                // drawn onto a Canvas for compositing (party ring rendering).
+                val hwBitmap = result.image.toBitmap()
+                if (hwBitmap.config == Bitmap.Config.HARDWARE) {
+                    hwBitmap.copy(Bitmap.Config.ARGB_8888, false)
+                } else {
+                    hwBitmap
+                }
             } else {
                 null
             }
         } catch (e: Exception) {
             null
         }
+    }
+
+    /**
+     * Render a square bitmap as a circular avatar with a party-colored ring,
+     * matching the directory's [MpAvatar] border style.
+     *
+     * The output is a square bitmap of [size]×[size] pixels containing:
+     *   1. A party-colored ring of [borderPx] thickness around the edge
+     *   2. The MP's photo clipped to a circle inside the ring
+     *
+     * @param src The source MP thumbnail bitmap
+     * @param partyColor ARGB int for the ring color (null = no ring)
+     * @param size Output bitmap dimension in px (default 128)
+     * @param borderPx Ring thickness in px (default 8)
+     */
+    private fun renderCircularBitmapWithBorder(
+        src: Bitmap,
+        partyColor: Int?,
+        size: Int = 128,
+        borderPx: Int = 4
+    ): Bitmap {
+        val output = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(output)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+        // 1. Draw party color ring (full circle, then photo on top leaves ring visible)
+        if (partyColor != null) {
+            paint.color = partyColor
+            paint.style = Paint.Style.FILL
+            canvas.drawCircle(size / 2f, size / 2f, size / 2f, paint)
+        }
+
+        // 2. Draw the photo clipped to a circle inside the ring
+        val innerRadius = (size / 2f) - borderPx
+        val innerLeft = (size / 2f) - innerRadius
+        val innerTop = (size / 2f) - innerRadius
+        val innerDiameter = innerRadius * 2
+        val innerRect = Rect(
+            innerLeft.toInt(),
+            innerTop.toInt(),
+            (innerLeft + innerDiameter).toInt(),
+            (innerTop + innerDiameter).toInt()
+        )
+
+        paint.reset()
+        paint.isAntiAlias = true
+        canvas.save()
+        canvas.clipPath(
+            android.graphics.Path().apply {
+                addCircle(size / 2f, size / 2f, innerRadius, android.graphics.Path.Direction.CW)
+            }
+        )
+        // Scale source bitmap to fit the inner circle
+        val srcRect = Rect(0, 0, src.width, src.height)
+        canvas.drawBitmap(src, srcRect, innerRect, paint)
+        canvas.restore()
+
+        return output
+    }
+
+    /**
+     * Build a notification showing the MP's face as a circular avatar.
+     *
+     * Uses [NotificationCompat.MessagingStyle] with a [Person] whose icon is
+     * the MP's thumbnail bitmap. This is the same approach FotMob and messaging
+     * apps use — the person's avatar appears as a circular image in the
+     * notification header, replacing the app icon position.
+     *
+     * The small icon stays as the app icon (required by Android to be a
+     * monochrome resource). The party color is applied via [setColor].
+     *
+     * @param channelId Notification channel ID
+     * @param title Notification title (MP name)
+     * @param body Notification body text
+     * @param pendingIntent Tap intent (null = no tap action)
+     * @param priority Notification priority
+     * @param mpBitmap MP's thumbnail bitmap (shown as person avatar)
+     * @param partyColor Party color ARGB int (notification accent)
+     */
+    @android.annotation.SuppressLint("NotificationPermission")
+    private fun buildNotification(
+        channelId: String,
+        title: String,
+        body: String,
+        pendingIntent: PendingIntent?,
+        priority: Int,
+        mpBitmap: Bitmap?,
+        partyColor: Int?
+    ): android.app.Notification {
+        val builder = NotificationCompat.Builder(context, channelId)
+            .setAutoCancel(true)
+            .setPriority(priority)
+
+        if (pendingIntent != null) {
+            builder.setContentIntent(pendingIntent)
+        }
+        if (partyColor != null) {
+            builder.setColor(partyColor)
+        }
+
+        if (mpBitmap != null) {
+            // FotMob-style: MP's face as a circular avatar with party-colored
+            // ring on the right side of the notification (setLargeIcon).
+            // The app icon stays as the small icon in the header — this is
+            // the standard Android layout, same as FotMob.
+            builder.setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setContentTitle(title)
+                .setContentText(body)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            val avatarBitmap = renderCircularBitmapWithBorder(mpBitmap, partyColor)
+            builder.setLargeIcon(avatarBitmap)
+        } else {
+            // Fallback: no bitmap — use BigTextStyle with the MP name as title
+            builder.setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setContentTitle(title)
+                .setContentText(body)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+        }
+
+        return builder.build()
     }
 
     private fun buildDivisionPendingIntent(divisionId: Int, house: Int, mpName: String): PendingIntent {

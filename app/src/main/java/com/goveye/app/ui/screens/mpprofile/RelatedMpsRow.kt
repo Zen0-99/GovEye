@@ -25,7 +25,7 @@ import com.goveye.app.ui.theme.padding
 fun RelatedMpsSection(
     samePartyMps: List<Mp>,
     committeePeerMps: List<Mp>,
-    onNavigateToProfile: (Int) -> Unit,
+    onNavigateToProfile: (Int, com.goveye.app.ui.navigation.MpHeaderFallback?, Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     if (samePartyMps.isEmpty() && committeePeerMps.isEmpty()) return
@@ -52,7 +52,11 @@ fun RelatedMpsSection(
 }
 
 @Composable
-private fun RelatedMpsRow(title: String, mps: List<Mp>, onNavigateToProfile: (Int) -> Unit) {
+private fun RelatedMpsRow(
+    title: String,
+    mps: List<Mp>,
+    onNavigateToProfile: (Int, com.goveye.app.ui.navigation.MpHeaderFallback?, Int) -> Unit
+) {
     Column {
         Text(
             text = title,
@@ -70,7 +74,13 @@ private fun RelatedMpsRow(title: String, mps: List<Mp>, onNavigateToProfile: (In
             items(mps, key = { it.id }) { mp ->
                 RelatedMpCard(
                     mp = mp,
-                    onClick = { onNavigateToProfile(mp.id) }
+                    onClick = {
+                        onNavigateToProfile(
+                            mp.id,
+                            com.goveye.app.ui.navigation.MpHeaderFallback.fromMp(mp),
+                            0
+                        )
+                    }
                 )
             }
         }

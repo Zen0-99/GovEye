@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
+import com.goveye.app.data.local.dao.BioDataDao
 import com.goveye.app.data.local.dao.CommitteeDao
 import com.goveye.app.data.local.dao.CommitteeSummary
 import com.goveye.app.data.local.dao.CouncilDao
@@ -14,6 +15,7 @@ import com.goveye.app.data.preference.DirectoryPreferences
 import com.goveye.app.data.preference.DirectoryViewMode
 import com.goveye.app.data.repo.MembersRepository
 import com.goveye.app.data.repo.PostcodeRepository
+import com.goveye.app.data.repo.StatsRepository
 import com.goveye.app.data.util.PostcodeDetector
 import com.goveye.app.domain.model.Mp
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -68,8 +70,23 @@ class DirectoryViewModel @Inject constructor(
     private val postcodeRepository: PostcodeRepository,
     private val councilDao: CouncilDao,
     private val committeeDao: CommitteeDao,
+    private val statsRepository: StatsRepository,
+    private val bioDataDao: BioDataDao,
     private val governmentAnnouncementsRepository: com.goveye.app.data.repo.GovernmentAnnouncementsRepository
 ) : ViewModel() {
+
+    /**
+     * Compute the activity score using the same StatsRepository method as
+     * the profile screen, so the fallback score matches exactly. Uses
+     * membershipStartDate for the participation rate (current unbroken
+     * tenure), same as Stage 1 in MpProfileViewModel. Also returns DOB
+     * so age can be shown in the optimistic header.
+     */
+    suspend fun getActivityScoreAndDob(memberId: Int, house: Int, partyName: String?): Pair<Float?, String?> {
+        val score = statsRepository.getActivityScore(memberId, house, partyName)?.score
+        val dob = bioDataDao.getByMpId(memberId)?.dateOfBirth
+        return score to dob
+    }
 
     val viewMode: StateFlow<DirectoryViewMode> =
         directoryPreferences.viewMode

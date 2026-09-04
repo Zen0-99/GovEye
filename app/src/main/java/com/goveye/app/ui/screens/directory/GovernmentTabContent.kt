@@ -26,7 +26,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.goveye.app.ui.components.StickyInfoCard
 import com.goveye.app.ui.screens.feed.FeedItem
 import com.goveye.app.ui.screens.feed.UnifiedFeedCard
 
@@ -58,7 +57,6 @@ fun GovernmentTabContent(
     statements: List<com.goveye.app.domain.model.WrittenStatement>,
     legislation: List<com.goveye.app.domain.model.Legislation>,
     isLoading: Boolean,
-    showInfoCards: Boolean = true,
     onSourceTypeChange: (GovernmentSourceType) -> Unit,
     onPublicationClick: (Int) -> Unit = {},
     onStatementClick: (Int) -> Unit = {},
@@ -165,16 +163,6 @@ fun GovernmentTabContent(
                     contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Sticky info card
-                    if (showInfoCards) {
-                        stickyHeader(key = "gov-info") {
-                            StickyInfoCard(
-                                title = "Government",
-                                subtitle = "Publications, statements, and legislation from UK government departments."
-                            )
-                        }
-                    }
-
                     // Source type filter pills
                     item(key = "source-type-filter") {
                         SourceTypeFilterPills(

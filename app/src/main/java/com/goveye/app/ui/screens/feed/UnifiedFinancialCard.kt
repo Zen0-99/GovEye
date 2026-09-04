@@ -1,5 +1,6 @@
 package com.goveye.app.ui.screens.feed
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -75,6 +76,7 @@ fun UnifiedFinancialCard(
     showProfileIcon: Boolean = false,
     profileImageUrl: String? = null,
     profileInitials: String = "",
+    onProfileClick: (() -> Unit)? = null,
     expandableContent: String? = null,
     expandableFields: List<FinancialDetailField>? = null,
     bucket: String? = null,
@@ -121,7 +123,12 @@ fun UnifiedFinancialCard(
                             displayName = profileInitials,
                             partyColorHex = partyColorHex,
                             size = 32.dp,
-                            borderWidth = 1.dp
+                            borderWidth = 1.dp,
+                            modifier = if (onProfileClick != null) {
+                                Modifier.clickable { onProfileClick() }
+                            } else {
+                                Modifier
+                            }
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                     }

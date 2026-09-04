@@ -165,7 +165,7 @@ fun DivisionDetailScreen(
     divisionId: Int,
     house: Int,
     onBack: () -> Unit,
-    onNavigateToProfile: (Int) -> Unit,
+    onNavigateToProfile: (Int, com.goveye.app.ui.navigation.MpHeaderFallback?, Int) -> Unit = { _, _, _ -> },
     onNavigateToTranscript: (divisionId: Int, divisionTitle: String, speechGid: String) -> Unit = { _, _, _ -> },
     modifier: Modifier = Modifier,
     viewModel: DivisionDetailViewModel = hiltViewModel()
@@ -275,8 +275,20 @@ fun DivisionDetailScreen(
             fallbackConstituency = fb?.constituency,
             onNavigateToFullProfile = { id ->
                 microviewMemberId = null
+                val fb = microviewFallback
                 microviewFallback = null
-                onNavigateToProfile(id)
+                onNavigateToProfile(
+                    id,
+                    fb?.let {
+                        com.goveye.app.ui.navigation.MpHeaderFallback(
+                            name = it.name,
+                            partyName = it.partyName,
+                            partyColor = it.partyColour,
+                            constituency = it.constituency
+                        )
+                    },
+                    0 // Division microview — open Profile tab
+                )
             },
             onDismiss = {
                 microviewMemberId = null

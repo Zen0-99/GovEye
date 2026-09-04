@@ -2,7 +2,7 @@ package com.goveye.app.domain.stats
 
 /**
  * Peer averages for a house (Commons or Lords).
- * Used for normalizing activity score components.
+ * Used for trait bar peer comparison (not for activity score computation).
  */
 data class PeerAverages(
     val averageQuestions: Float,
@@ -15,33 +15,35 @@ data class PeerAverages(
 
 /**
  * Breakdown of the activity score by component.
- * Each component is 0.0–max (e.g. votes 0.0–4.0, questions 0.0–2.0).
+ * Each component is 0.0–max.
  */
 data class ScoreBreakdown(
-    // 0.0-4.0
+    // 0.0-3.0 — participation rate * 3.0
     val voteParticipationContribution: Float,
-    // 0.0-2.0
+    // 0.0-2.5 — questions per month, scaled
     val questionsContribution: Float,
-    // 0.0-2.0
+    // 0.0-2.5 — speeches per month, scaled
     val speechesContribution: Float,
-    // 0.0-2.0
+    // 0.0-2.0 — committee tenure days, scaled
     val committeesContribution: Float
 )
 
 /**
  * Mechanical parliamentary activity score (0.0-10.0).
  *
- * Weights:
- * - Vote participation: 4.0
- * - Questions: 2.0
- * - Speeches: 2.0
- * - Committees: 2.0
+ * Self-performance scoring — no peer normalization. The score reflects
+ * the MP's own activity. Peer comparison happens implicitly: MP A with
+ * 7.0 vs MP B with 8.0 IS the "vs peers" comparison.
  *
- * Each component is normalized relative to the house average.
- * A count of 2× the average = full marks for that component.
+ * Weights (total 10.0):
+ * - Vote participation: 3.0 (30%) — participation rate, tenure-aware
+ * - Questions: 2.5 (25%) — per-month rate (count / months since tenure)
+ * - Speeches: 2.5 (25%) — per-month rate (count / months since tenure)
+ * - Committees: 2.0 (20%) — tenure-weighted (total committee days)
  *
- * This is a transparency tool, not an editorial judgment.
- * A higher score means more recorded activity, not better performance.
+ * Scaling for per-month rates:
+ * - Questions/speeches: 2 per month = full marks. Linear up to that.
+ * - Committees: 1000 total committee days = full marks. Linear up to that.
  */
 data class ActivityScore(val score: Float, val breakdown: ScoreBreakdown)
 
@@ -50,22 +52,57 @@ data class ActivityScore(val score: Float, val breakdown: ScoreBreakdown)
  * Pure function — no DI, no side effects.
  */
 object ActivityScoreCalculator {
-    private const val VOTE_WEIGHT = 4.0f
-    private const val QUESTIONS_WEIGHT = 2.0f
-    private const val SPEECHES_WEIGHT = 2.0f
+    private const val VOTE_WEIGHT = 3.0f
+    private const val QUESTIONS_WEIGHT = 2.5f
+    private const val SPEECHES_WEIGHT = 2.5f
     private const val COMMITTEES_WEIGHT = 2.0f
 
+    // Per-month rate that earns full marks for questions/speeches.
+    // 2 questions per month over a tenure = very active.
+    private const val FULL_MARKS_QUESTIONS_PER_MONTH = 2.0f
+    private const val FULL_MARKS_SPEECHES_PER_MONTH = 2.0f
+
+    // Total committee days that earn full marks.
+    // 1000 days ≈ ~3 years on committees = solid engagement.
+    private const val FULL_MARKS_COMMITTEE_DAYS = 1000.0f
+
+    /**
+     * Compute the activity score from self-performance metrics.
+     *
+     * @param voteParticipationRate 0.0-1.0, tenure-aware
+     * @param questionCount Total questions tabled since tenure
+     * @param speechCount Total speeches made since tenure
+     * @param monthsSinceTenureStart Number of months from tenure start to now
+     * @param committeeTenureDays Total days across all committee memberships
+     */
     fun compute(
         voteParticipationRate: Float,
         questionCount: Int,
         speechCount: Int,
-        committeeCount: Int,
-        peerAverages: PeerAverages
+        monthsSinceTenureStart: Int,
+        committeeTenureDays: Int
     ): ActivityScore {
         val voteContribution = (voteParticipationRate * VOTE_WEIGHT).coerceIn(0f, VOTE_WEIGHT)
-        val questionsContribution = normalize(questionCount, peerAverages.averageQuestions, QUESTIONS_WEIGHT)
-        val speechesContribution = normalize(speechCount, peerAverages.averageSpeeches, SPEECHES_WEIGHT)
-        val committeesContribution = normalize(committeeCount, peerAverages.averageCommittees, COMMITTEES_WEIGHT)
+
+        val questionsPerMonth = if (monthsSinceTenureStart > 0) {
+            questionCount.toFloat() / monthsSinceTenureStart
+        } else {
+            questionCount.toFloat()
+        }
+        val questionsContribution = scaleRate(questionsPerMonth, FULL_MARKS_QUESTIONS_PER_MONTH, QUESTIONS_WEIGHT)
+
+        val speechesPerMonth = if (monthsSinceTenureStart > 0) {
+            speechCount.toFloat() / monthsSinceTenureStart
+        } else {
+            speechCount.toFloat()
+        }
+        val speechesContribution = scaleRate(speechesPerMonth, FULL_MARKS_SPEECHES_PER_MONTH, SPEECHES_WEIGHT)
+
+        val committeesContribution = scaleRate(
+            committeeTenureDays.toFloat(),
+            FULL_MARKS_COMMITTEE_DAYS,
+            COMMITTEES_WEIGHT
+        )
 
         val total = voteContribution + questionsContribution + speechesContribution + committeesContribution
 
@@ -81,15 +118,12 @@ object ActivityScoreCalculator {
     }
 
     /**
-     * Normalize a count relative to peer average.
-     * count = 0 → 0% of weight
-     * count = average → 50% of weight
-     * count = 2× average → 100% of weight
-     * Linear interpolation between these points, capped at 100%.
+     * Scale a rate linearly: 0 → 0% of weight, fullMarks → 100% of weight.
+     * Capped at 100%.
      */
-    private fun normalize(count: Int, average: Float, weight: Float): Float {
-        if (average <= 0f) return if (count > 0) weight else 0f
-        val ratio = count.toFloat() / (average * 2f)
+    private fun scaleRate(rate: Float, fullMarks: Float, weight: Float): Float {
+        if (fullMarks <= 0f) return 0f
+        val ratio = rate / fullMarks
         return (ratio * weight).coerceIn(0f, weight)
     }
 }

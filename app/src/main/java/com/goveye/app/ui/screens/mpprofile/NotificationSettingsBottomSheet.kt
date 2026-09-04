@@ -3,28 +3,28 @@ package com.goveye.app.ui.screens.mpprofile
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.HowToVote
 import androidx.compose.material.icons.outlined.RecordVoiceOver
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -32,14 +32,14 @@ import androidx.compose.ui.unit.dp
 /**
  * FotMob-style notification settings bottom sheet (D-04 revised).
  *
- * - Master toggle in a rounded rectangle section
- * - Below: checkboxes for each notification type (Votes, Speeches) with icons
+ * - Master toggle (no box fill around it)
+ * - Below: checkboxes for each notification type (Votes, Speeches, Income,
+ *   Expenses) with icons
  *
- * Logic:
- * - Master ON + some checkboxes ON → receive those notification types
- * - Master OFF → no notifications
- * - If master OFF and user checks a checkbox → master turns ON (only that type)
- * - If all checkboxes unchecked → master turns OFF
+ * Checkboxes and switch use the MP's party color (desaturated) — same
+ * approach as party cards in the Directory's Parties tab.
+ *
+ * No bottom sheet handle — just small padding above the content.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,79 +54,90 @@ fun NotificationSettingsBottomSheet(
     onSpeechesToggle: (Boolean) -> Unit,
     onIncomeToggle: (Boolean) -> Unit,
     onExpensesToggle: (Boolean) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    partyColor: Color = MaterialTheme.colorScheme.primary
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    // Smart party coloring — follows Miko's CheckboxItem pattern:
+    // ON:  thumb = surface (white), track = party color, border = party color
+    // OFF: thumb = party color (muted), track = party color (very faint),
+    //      border = party color (faint) — so the party theme is always visible
+    val switchColors = SwitchDefaults.colors(
+        checkedThumbColor = MaterialTheme.colorScheme.surface,
+        checkedTrackColor = partyColor,
+        checkedBorderColor = partyColor,
+        uncheckedThumbColor = partyColor.copy(alpha = 0.5f),
+        uncheckedTrackColor = partyColor.copy(alpha = 0.12f),
+        uncheckedBorderColor = partyColor.copy(alpha = 0.2f)
+    )
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surface
+        containerColor = MaterialTheme.colorScheme.surface,
+        dragHandle = null
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+                .padding(horizontal = 24.dp)
+                .padding(top = 8.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            // Master toggle in a rounded rectangle section
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.surfaceContainer,
-                modifier = Modifier.fillMaxWidth()
+            // Master toggle — no box fill, just label + switch
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Notifications enabled",
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Switch(
-                        checked = notificationsEnabled,
-                        onCheckedChange = onMasterToggle
-                    )
-                }
+                Text(
+                    text = "Notifications enabled",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Switch(
+                    checked = notificationsEnabled,
+                    onCheckedChange = onMasterToggle,
+                    colors = switchColors
+                )
             }
 
-            Spacer(modifier = Modifier.size(4.dp))
-
-            // Type checkboxes
+            // Type checkboxes — tighter spacing
             NotificationTypeRow(
                 icon = Icons.Outlined.HowToVote,
                 label = "Votes",
                 checked = votesEnabled,
-                onCheckedChange = onVotesToggle
+                onCheckedChange = onVotesToggle,
+                partyColor = partyColor
             )
 
             NotificationTypeRow(
                 icon = Icons.Outlined.RecordVoiceOver,
                 label = "Speeches",
                 checked = speechesEnabled,
-                onCheckedChange = onSpeechesToggle
+                onCheckedChange = onSpeechesToggle,
+                partyColor = partyColor
             )
 
             NotificationTypeRow(
                 icon = Icons.Outlined.ArrowDownward,
                 label = "Income",
                 checked = incomeEnabled,
-                onCheckedChange = onIncomeToggle
+                onCheckedChange = onIncomeToggle,
+                partyColor = partyColor
             )
 
             NotificationTypeRow(
                 icon = Icons.Outlined.ArrowUpward,
                 label = "Expenses",
                 checked = expensesEnabled,
-                onCheckedChange = onExpensesToggle
+                onCheckedChange = onExpensesToggle,
+                partyColor = partyColor
             )
-
-            Spacer(modifier = Modifier.padding(bottom = 16.dp))
         }
     }
 }
@@ -136,24 +147,25 @@ private fun NotificationTypeRow(
     icon: ImageVector,
     label: String,
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
+    partyColor: Color
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp),
+            .padding(horizontal = 16.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(24.dp)
+                tint = if (checked) partyColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(22.dp)
             )
             Text(
                 text = label,
@@ -163,7 +175,12 @@ private fun NotificationTypeRow(
         }
         Checkbox(
             checked = checked,
-            onCheckedChange = onCheckedChange
+            onCheckedChange = onCheckedChange,
+            colors = CheckboxDefaults.colors(
+                checkedColor = partyColor,
+                uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                checkmarkColor = MaterialTheme.colorScheme.surface
+            )
         )
     }
 }

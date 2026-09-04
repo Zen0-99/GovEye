@@ -45,10 +45,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -134,7 +136,6 @@ private fun GovEyeAppContent(
     onTestOnboarding: () -> Unit = {}
 ) {
     val searchConfig by searchStateHolder.config
-    val showInfoCards by themeViewModel.showInfoCards.collectAsStateWithLifecycle()
 
     // Snackbar host for update-check notifications (SyncStone convention:
     // in-app snackbar, no Toasts). The UpdateCheckViewModel is scoped to
@@ -278,7 +279,12 @@ private fun GovEyeAppContent(
                             onNavigateToTranscript = { divId, divTitle, speechGid ->
                                 currentBackStack.add(TranscriptRoute(divId, divTitle, speechGid))
                             },
-                            showInfoCards = showInfoCards,
+                            onNavigateToProfile = { memberId, fallback, initialTab ->
+                                currentBackStack.add(
+                                    fallback?.toRoute(memberId, initialTab)
+                                        ?: ProfileRoute(memberId, initialTab = initialTab)
+                                )
+                            },
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(top = topBarHeight)
@@ -289,8 +295,10 @@ private fun GovEyeAppContent(
                 is DirectoryRoute ->
                     NavEntry(key) {
                         DirectoryScreen(
-                            onNavigateToProfile = { memberId ->
-                                currentBackStack.add(ProfileRoute(memberId))
+                            onNavigateToProfile = { memberId, fallback ->
+                                currentBackStack.add(
+                                    fallback?.toRoute(memberId) ?: ProfileRoute(memberId, initialTab = 0)
+                                )
                             },
                             onNavigateToDivision = { divisionId, house ->
                                 currentBackStack.add(DivisionDetailRoute(divisionId, house))
@@ -307,7 +315,6 @@ private fun GovEyeAppContent(
                             onNavigateToCouncil = { councilId ->
                                 currentBackStack.add(CouncilRoute(councilId))
                             },
-                            showInfoCards = showInfoCards,
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(top = topBarHeight)
@@ -320,9 +327,20 @@ private fun GovEyeAppContent(
                         ProfileScreen(
                             memberId = key.memberId,
                             onBack = { currentBackStack.removeLastOrNull() },
-                            onNavigateToProfile = { targetId ->
-                                currentBackStack.add(ProfileRoute(targetId))
+                            onNavigateToProfile = { targetId, fallback, initialTab ->
+                                currentBackStack.add(
+                                    fallback?.toRoute(targetId, initialTab)
+                                        ?: ProfileRoute(targetId, initialTab = initialTab)
+                                )
                             },
+                            fallbackName = key.fallbackName,
+                            fallbackPartyName = key.fallbackPartyName,
+                            fallbackPartyColor = key.fallbackPartyColor,
+                            fallbackThumbnailUrl = key.fallbackThumbnailUrl,
+                            fallbackConstituency = key.fallbackConstituency,
+                            fallbackActivityScore = key.fallbackActivityScore,
+                            fallbackDateOfBirth = key.fallbackDateOfBirth,
+                            initialTab = key.initialTab,
                             onNavigateToDivision = { divisionId, house ->
                                 currentBackStack.add(DivisionDetailRoute(divisionId, house))
                             },
@@ -394,8 +412,11 @@ private fun GovEyeAppContent(
                             divisionId = key.divisionId,
                             house = key.house,
                             onBack = { currentBackStack.removeLastOrNull() },
-                            onNavigateToProfile = { targetId ->
-                                currentBackStack.add(ProfileRoute(targetId))
+                            onNavigateToProfile = { targetId, fallback, initialTab ->
+                                currentBackStack.add(
+                                    fallback?.toRoute(targetId, initialTab)
+                                        ?: ProfileRoute(targetId, initialTab = initialTab)
+                                )
                             },
                             onNavigateToTranscript = { divId, divTitle, speechGid ->
                                 currentBackStack.add(TranscriptRoute(divId, divTitle, speechGid))
@@ -553,6 +574,12 @@ private fun GovEyeAppContent(
     // screen's config until the back navigation is committed.
     var committedSearchConfig by remember { mutableStateOf(searchConfig) }
     LaunchedEffect(currentRoute) {
+        // Wait one frame for the new screen to compose and set its config
+        // via ConfigureSearchBar before snapshotting. Without this delay,
+        // the snapshot captures the previous screen's config (e.g. filterClick=null
+        // on profile's default tab) before the new screen (DirectoryScreen with
+        // filterClick=non-null) has a chance to recompose.
+        withFrameNanos { }
         committedSearchConfig = searchStateHolder.config.value
     }
     // Sync query live so user typing updates the search bar immediately,
@@ -714,24 +741,33 @@ private fun GovEyeAppContent(
                 }
             )
 
-            // Bottom bar as overlay — only on tab root screens.
-            // Rendered on top of NavDisplay so it's visible above tab content.
-            // Detail screens fill the full height and cover this area, so
-            // the bar is simply not seen — no layout jump, no animation needed.
-            if (isTabRoot) {
-                GovEyeBottomBar(
-                    currentTabIndex = currentTabIndex,
-                    onTabSelected = {
-                        Log.i("GovEye/Nav", "Tab selected: $it (was $currentTabIndex)")
-                        currentTabIndex = it
-                    },
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .onSizeChanged { size ->
-                            bottomBarHeight = with(density) { size.height.toDp() }
-                        }
-                )
-            }
+            // Bottom bar — always composed as an overlay, but alpha-animated
+            // so it fades out on detail screens and fades in on tab roots.
+            // This avoids the blank area during predictive back (the bar is
+            // always in the layout, just invisible) and the layout shift
+            // (no height change). Miko uses AnimatedVisibility in a Scaffold
+            // bottomBar slot, but GovEye's detail screens share the same
+            // NavDisplay, so removing the bar from composition causes a
+            // height change that pushes content. Alpha animation keeps the
+            // layout stable while hiding the bar visually.
+            val bottomBarAlpha by androidx.compose.animation.core.animateFloatAsState(
+                targetValue = if (isTabRoot) 1f else 0f,
+                animationSpec = tween(durationMillis = 200),
+                label = "bottomBarAlpha"
+            )
+            GovEyeBottomBar(
+                currentTabIndex = currentTabIndex,
+                onTabSelected = {
+                    Log.i("GovEye/Nav", "Tab selected: $it (was $currentTabIndex)")
+                    currentTabIndex = it
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .graphicsLayer { alpha = bottomBarAlpha }
+                    .onSizeChanged { size ->
+                        bottomBarHeight = with(density) { size.height.toDp() }
+                    }
+            )
         }
     }
 }

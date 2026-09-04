@@ -30,12 +30,14 @@ import kotlin.math.sin
 
 /**
  * Pentagon/radar chart for trait visualization.
- * 5 axes: Rebellion, Participation, Questions, Speeches, Committees.
- * The MP's percentile values form a filled polygon.
+ * 5 axes: Loyalty, Participation, Questions, Speeches, Committees.
+ * The polygon uses [traitDisplayPercent] — mpValue for rate-based traits
+ * (Loyalty, Participation), percentile for count-based traits — so the
+ * shape reflects the displayed percentages.
  *
  * Grid lines and axes use [onSurface] at a theme-aware alpha so they
  * are visible in both light and dark themes. Axis labels (trait name +
- * percentile) are drawn well outside the chart area.
+ * percentage) are drawn well outside the chart area.
  */
 @Composable
 fun TraitRadarChart(traitBars: List<TraitBar>, modifier: Modifier = Modifier) {
@@ -59,15 +61,10 @@ fun TraitRadarChart(traitBars: List<TraitBar>, modifier: Modifier = Modifier) {
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
-                text = "Traits vs Peers",
+                text = "Performance Breakdown",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                text = "Percentile rank (0-100) among same-house MPs",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
@@ -127,11 +124,13 @@ fun TraitRadarChart(traitBars: List<TraitBar>, modifier: Modifier = Modifier) {
                         drawLine(gridColor, Offset(centerX, centerY), Offset(x, y), strokeWidth = 1.5f)
                     }
 
-                    // MP percentile polygon
+                    // MP value polygon — uses traitDisplayPercent (mpValue for
+                    // rate-based traits, percentile for count-based) so the
+                    // polygon reflects the displayed percentage, not just rank.
                     val mpPath = Path()
                     for (i in traitBars.indices) {
                         val angle = startAngle + i * angleStep
-                        val value = traitBars[i].percentile / 100f
+                        val value = traitDisplayPercent(traitBars[i]) / 100f
                         val r = radius * value
                         val x = centerX + r * cos(angle)
                         val y = centerY + r * sin(angle)
@@ -144,7 +143,7 @@ fun TraitRadarChart(traitBars: List<TraitBar>, modifier: Modifier = Modifier) {
                     // Dots at vertices + labels well outside the chart
                     for (i in traitBars.indices) {
                         val angle = startAngle + i * angleStep
-                        val value = traitBars[i].percentile / 100f
+                        val value = traitDisplayPercent(traitBars[i]) / 100f
                         val r = radius * value
                         val dotX = centerX + r * cos(angle)
                         val dotY = centerY + r * sin(angle)
@@ -160,8 +159,9 @@ fun TraitRadarChart(traitBars: List<TraitBar>, modifier: Modifier = Modifier) {
                             labelY + labelTextSize / 3f,
                             paint
                         )
+                        // Show the display percentage (same as polygon fill)
                         drawContext.canvas.nativeCanvas.drawText(
-                            "${traitBars[i].percentile}%",
+                            "${traitDisplayPercent(traitBars[i]).toInt()}%",
                             labelX,
                             labelY + labelTextSize * 1.5f,
                             valuePaint

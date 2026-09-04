@@ -10,6 +10,7 @@ import com.goveye.app.data.local.entity.BioDataEntity
 import com.goveye.app.data.local.entity.ExpenseEntity
 import com.goveye.app.data.local.entity.MpEntity
 import com.goveye.app.data.local.entity.MpLinkEntity
+import com.goveye.app.data.local.entity.MpTagEntity
 import com.goveye.app.data.preference.ActivityFilterPreferences
 import com.goveye.app.data.repo.BioDataRepository
 import com.goveye.app.data.repo.CommitteesRepository
@@ -81,7 +82,7 @@ data class ProfileUiState(
     val activityEnabledTypes: Set<ActivityEntryType> = ActivityEntryType.entries.toSet(),
     val activityTotalCount: Int = 0,
     // Topics — MP's top tags from mp_tags table (frequency + recency weighted)
-    val mpTags: List<String> = emptyList()
+    val mpTags: List<MpTagEntity> = emptyList()
 )
 
 @HiltViewModel
@@ -107,34 +108,48 @@ class ProfileViewModel @Inject constructor(
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
 
     fun loadProfile(memberId: Int) {
-        // Load the MP basic data first so the header renders immediately,
-        // then load everything else in parallel and update the state in
-        // a single batch. This prevents the section-by-section "trickle"
-        // effect where each DB query triggers a separate recomposition.
+        // Two-stage loading to eliminate visual jumps:
+        //
+        // Stage 1 (before first paint): Load all header-critical data together
+        //   — mp, bioData, activityScore, traitBars, mpTags — then do a single
+        //   state update with isLoading=false. The header renders fully formed:
+        //   name with age, avatar with activity score pill, stats card with all
+        //   fields, topics chips. No elements pop in after the first frame.
+        //
+        // Stage 2 (after first paint): Everything else in parallel. Each section
+        //   updates state independently as its data arrives. The UI reserves
+        //   fixed-height placeholders for these sections so their appearance
+        //   doesn't cause layout reflow.
         viewModelScope.launch {
-            // 1. MP basic data — needed for the header, party color, etc.
-            // Try bundled DB first; fall back to live API for Lords and other
-            // members not in the Commons-only bundled directory.
+            // === Stage 1: Header-critical data (single batch) ===
             val mpResult = membersRepository.observeMp(memberId).first()
             val mp = mpResult.data ?: membersRepository.fetchMemberFromApi(memberId)
+            val mpTags = runCatching {
+                mpTagDao.observeTagsForMp(memberId).first()
+            }.getOrDefault(emptyList())
+            val bioData = runCatching { bioDataRepository.getBioData(memberId) }.getOrNull()
+            val house = mp?.house ?: 1
+            val partyName = mp?.party?.name
+            val stats = runCatching {
+                statsRepository.getActivityScore(memberId, house, partyName) to
+                    statsRepository.getTraitBars(memberId, house, partyName)
+            }.getOrNull()
+
+            // Single state update — one recomposition with all header data
             _uiState.value = _uiState.value.copy(
                 mp = mp,
+                mpTags = mpTags,
+                bioData = bioData,
+                activityScore = stats?.first,
+                traitBars = stats?.second ?: emptyList(),
                 syncStatus = if (mp != null) SyncStatus.FRESH else SyncStatus.EMPTY,
                 isLoading = false
             )
 
-            // 2. Load everything else in parallel — each section updates
-            //    the UI independently as soon as its data is ready, so the
-            //    user sees content appear progressively instead of waiting
-            //    for the slowest query.
-            val house = mp?.house ?: 1
-            val partyName = mp?.party?.name
+            // === Stage 2: Remaining data in parallel ===
             val partyId = mp?.party?.id
 
             coroutineScope {
-                // Launch each load as an independent coroutine that updates
-                // state on completion. Fast DB reads appear instantly; slow
-                // API fallbacks trickle in without blocking the rest.
                 launch {
                     val isFollowing = followRepository.observeIsFollowing(memberId).first()
                     _uiState.value = _uiState.value.copy(isFollowing = isFollowing)
@@ -158,20 +173,14 @@ class ProfileViewModel @Inject constructor(
                     _uiState.value = _uiState.value.copy(contacts = contacts)
                 }
                 launch {
-                    // bioData is a fast DB read — load it first so maiden speech
-                    // and other stats appear instantly with the header.
-                    val bioData = runCatching { bioDataRepository.getBioData(memberId) }.getOrNull()
-                    _uiState.value = _uiState.value.copy(bioData = bioData)
-                }
-                launch {
                     // experiences may involve API fallback — load separately so
                     // it doesn't delay bioData (maiden speech, etc.)
                     // Re-fetch bioData for the merge (cheap DB read, avoids race)
-                    val bioData = runCatching { bioDataRepository.getBioData(memberId) }.getOrNull()
+                    val bioDataForMerge = runCatching { bioDataRepository.getBioData(memberId) }.getOrNull()
                     val experiences = runCatching {
                         membersRepository.getExperience(memberId)
                     }.getOrDefault(emptyList())
-                    val merged = mergeExperiencesWithMnisPosts(experiences, bioData)
+                    val merged = mergeExperiencesWithMnisPosts(experiences, bioDataForMerge)
                     _uiState.value = _uiState.value.copy(experiences = merged)
                 }
                 launch {
@@ -183,12 +192,6 @@ class ProfileViewModel @Inject constructor(
                     _uiState.value = _uiState.value.copy(committees = committees.data)
                 }
                 launch {
-                    val mpTags = runCatching {
-                        mpTagDao.observeTagsForMp(memberId).first()
-                    }.getOrDefault(emptyList())
-                    _uiState.value = _uiState.value.copy(mpTags = mpTags)
-                }
-                launch {
                     val samePartyMps = partyId?.let {
                         mpDao.getMpsByParty(it, memberId).map { it.toDomainMp() }
                     } ?: emptyList()
@@ -196,11 +199,23 @@ class ProfileViewModel @Inject constructor(
                 }
                 launch {
                     val votesResult = runCatching {
-                        val allDates = votesRepository.getAllDivisionDates(house)
-                        val votes = votesRepository.getMemberVotingWithDivisions(memberId)
+                        val allDatesRaw = votesRepository.getAllDivisionDates(house)
+                        // Filter division dates to the MP's tenure start so the
+                        // attendance chart doesn't show divisions from before
+                        // the MP was elected. Use membershipStartDate (always
+                        // available) as the tenure cutoff.
+                        val tenureStart = mp?.membershipStartDate?.take(10) ?: "2016-01-01"
+                        val allDates = allDatesRaw.filter { it >= tenureStart }
+                        // Also filter votes to the same window so the numerator
+                        // and denominator in the attendance chart use the same
+                        // time range — prevents votes from a previous parliament
+                        // inflating the attendance rate for overlapping periods.
+                        val allVotes = votesRepository.getMemberVotingWithDivisions(memberId)
+                        val votes = allVotes.filter { it.divisionDate >= tenureStart }
                         android.util.Log.i(
                             "GovEye/Profile",
-                            "Loaded ${votes.size} votes for MP $memberId (house=$house)"
+                            "Loaded ${votes.size}/${allVotes.size} votes for MP $memberId (house=$house), " +
+                                "${allDates.size}/${allDatesRaw.size} divisions since tenure ($tenureStart)"
                         )
                         Triple(allDates, votes, votes.isNotEmpty() && partyName != null)
                     }.getOrNull()
@@ -219,16 +234,6 @@ class ProfileViewModel @Inject constructor(
                         }.getOrNull()
                         _uiState.value = _uiState.value.copy(rebellionStats = rebellionStats)
                     }
-                }
-                launch {
-                    val stats = runCatching {
-                        statsRepository.getActivityScore(memberId, house, partyName) to
-                            statsRepository.getTraitBars(memberId, house, partyName)
-                    }.getOrNull()
-                    _uiState.value = _uiState.value.copy(
-                        activityScore = stats?.first,
-                        traitBars = stats?.second ?: emptyList()
-                    )
                 }
                 launch {
                     val interests = interestsRepository.observeInterestsForMember(memberId).first()

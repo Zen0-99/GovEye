@@ -12,8 +12,8 @@ import kotlinx.coroutines.flow.Flow
  */
 @Dao
 interface MpTagDao {
-    @Query("SELECT tag FROM mp_tags WHERE memberId = :memberId ORDER BY hitCount DESC")
-    fun observeTagsForMp(memberId: Int): Flow<List<String>>
+    @Query("SELECT * FROM mp_tags WHERE memberId = :memberId AND hitCount >= :minHits ORDER BY hitCount DESC")
+    fun observeTagsForMp(memberId: Int, minHits: Int = 5): Flow<List<MpTagEntity>>
 
     @Query("SELECT memberId FROM mp_tags WHERE tag = :tag ORDER BY hitCount DESC")
     fun observeMpsForTag(tag: String): Flow<List<Int>>

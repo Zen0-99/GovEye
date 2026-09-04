@@ -29,11 +29,6 @@ fun BioSection(synopsis: String?, modifier: Modifier = Modifier) {
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small)
         ) {
             Text(
-                text = "Biography",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
                 text = synopsis,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant

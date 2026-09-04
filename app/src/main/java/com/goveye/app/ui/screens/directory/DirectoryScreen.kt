@@ -55,14 +55,13 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import com.goveye.app.data.preference.DirectoryViewMode
 import com.goveye.app.ui.components.FloatingSearchBar
-import com.goveye.app.ui.components.InfoCard
-import com.goveye.app.ui.components.StickyInfoCard
 import com.goveye.app.ui.components.TabTextWithBadge
 import com.goveye.app.ui.screens.bills.BillBrowseViewModel
 import com.goveye.app.ui.screens.bills.BillsTabContent
 import com.goveye.app.ui.screens.divisions.DivisionBrowseViewModel
 import com.goveye.app.ui.screens.divisions.DivisionsTabContent
 import com.goveye.app.ui.theme.padding
+import kotlinx.coroutines.launch
 
 private enum class DirectoryTab(val title: String) {
     OFFICIALS("Officials"),
@@ -76,13 +75,12 @@ private enum class DirectoryTab(val title: String) {
 
 @Composable
 fun DirectoryScreen(
-    onNavigateToProfile: (Int) -> Unit,
+    onNavigateToProfile: (Int, com.goveye.app.ui.navigation.MpHeaderFallback?) -> Unit,
     onNavigateToDivision: (Int, Int) -> Unit = { _, _ -> },
     onNavigateToBill: (Int) -> Unit = {},
     onNavigateToParty: (Int) -> Unit = {},
     onNavigateToCommittee: (Int) -> Unit = {},
     onNavigateToCouncil: (Int) -> Unit = {},
-    showInfoCards: Boolean = true,
     modifier: Modifier = Modifier,
     viewModel: DirectoryViewModel = hiltViewModel()
 ) {
@@ -91,6 +89,20 @@ fun DirectoryScreen(
     val lazyPagingItems = viewModel.pagedMps.collectAsLazyPagingItems()
     val searchResults by viewModel.searchResults.collectAsStateWithLifecycle()
     val filteredMps by viewModel.filteredMps.collectAsStateWithLifecycle()
+
+    // Coroutine scope for looking up activity score before navigating.
+    // The score is a single DB read from mp_stats (<1ms) so the delay
+    // is imperceptible.
+    val navScope = androidx.compose.runtime.rememberCoroutineScope()
+    val navigateToProfileWithScore: (com.goveye.app.domain.model.Mp) -> Unit = { mp ->
+        navScope.launch {
+            val (score, dob) = viewModel.getActivityScoreAndDob(mp.id, mp.house, mp.party?.name)
+            onNavigateToProfile(
+                mp.id,
+                com.goveye.app.ui.navigation.MpHeaderFallback.fromMp(mp, score, dob)
+            )
+        }
+    }
     val tabCounts by viewModel.tabCounts.collectAsStateWithLifecycle(emptyMap())
     val filterState by viewModel.filterState.collectAsStateWithLifecycle(DirectoryFilterState())
     val distinctParties by viewModel.distinctParties.collectAsStateWithLifecycle(emptyList())
@@ -185,8 +197,7 @@ fun DirectoryScreen(
                     searchResults = searchResults,
                     filteredMps = filteredMps,
                     hasActiveFilters = filterState.hasActiveFilters,
-                    onNavigateToProfile = onNavigateToProfile,
-                    showInfoCards = showInfoCards,
+                    onNavigateToProfile = navigateToProfileWithScore,
                     postcodeState = postcodeState
                 )
 
@@ -210,7 +221,6 @@ fun DirectoryScreen(
                 DirectoryTab.BILLS -> BillsTabContent(
                     onNavigateToBill = onNavigateToBill,
                     searchQuery = searchQuery,
-                    showInfoCards = showInfoCards,
                     state = billsState,
                     onSearchQueryChange = billsViewModel::setSearchQuery
                 )
@@ -219,7 +229,6 @@ fun DirectoryScreen(
                     onNavigateToDivision = onNavigateToDivision,
                     houseFilter = filterState.houseFilter,
                     searchQuery = searchQuery,
-                    showInfoCards = showInfoCards,
                     state = divisionsState,
                     onSearchQueryChange = divisionsViewModel::setSearchQuery,
                     onHouseFilterChange = divisionsViewModel::setHouseFilter,
@@ -235,7 +244,6 @@ fun DirectoryScreen(
                     statements = governmentStatements,
                     legislation = governmentLegislation,
                     isLoading = governmentLoading,
-                    showInfoCards = showInfoCards,
                     onSourceTypeChange = viewModel::setGovernmentSourceType
                 )
             }
@@ -285,8 +293,7 @@ private fun OfficialsTabContent(
     searchResults: List<com.goveye.app.domain.model.Mp>,
     filteredMps: List<com.goveye.app.domain.model.Mp>,
     hasActiveFilters: Boolean,
-    onNavigateToProfile: (Int) -> Unit,
-    showInfoCards: Boolean = true,
+    onNavigateToProfile: (com.goveye.app.domain.model.Mp) -> Unit,
     postcodeState: PostcodeSearchState = PostcodeSearchState.Idle
 ) {
     Log.i(
@@ -337,14 +344,6 @@ private fun OfficialsTabContent(
                 contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                if (showInfoCards) {
-                    stickyHeader(key = "tab-info") {
-                        StickyInfoCard(
-                            title = "Officials",
-                            subtitle = "Browse all MPs and Lords in the UK Parliament."
-                        )
-                    }
-                }
                 // Show postcode result header
                 if (postcodeState is PostcodeSearchState.Found) {
                     val result = (postcodeState as PostcodeSearchState.Found).result
@@ -360,7 +359,7 @@ private fun OfficialsTabContent(
                 items(searchResults, key = { it.id }, contentType = { "mp_row" }) { mp ->
                     MpListRow(
                         mp = mp,
-                        onClick = { onNavigateToProfile(mp.id) }
+                        onClick = { onNavigateToProfile(mp) }
                     )
                 }
             }
@@ -389,18 +388,10 @@ private fun OfficialsTabContent(
                         contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        if (showInfoCards) {
-                            stickyHeader(key = "tab-info") {
-                                StickyInfoCard(
-                                    title = "Officials",
-                                    subtitle = "Browse all MPs and Lords in the UK Parliament."
-                                )
-                            }
-                        }
                         items(filteredMps, key = { it.id }, contentType = { "mp_row" }) { mp ->
                             MpListRow(
                                 mp = mp,
-                                onClick = { onNavigateToProfile(mp.id) }
+                                onClick = { onNavigateToProfile(mp) }
                             )
                         }
                     }
@@ -417,18 +408,10 @@ private fun OfficialsTabContent(
                         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
                         verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small)
                     ) {
-                        if (showInfoCards) {
-                            item(key = "tab-info", span = { GridItemSpan(maxLineSpan) }) {
-                                InfoCard(
-                                    title = "Officials",
-                                    subtitle = "Browse all MPs and Lords in the UK Parliament."
-                                )
-                            }
-                        }
                         items(filteredMps, key = { it.id }, contentType = { "mp_grid" }) { mp ->
                             MpGridCard(
                                 mp = mp,
-                                onClick = { onNavigateToProfile(mp.id) }
+                                onClick = { onNavigateToProfile(mp) }
                             )
                         }
                     }
@@ -466,18 +449,10 @@ private fun OfficialsTabContent(
                                 contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 8.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                if (showInfoCards) {
-                                    stickyHeader(key = "tab-info") {
-                                        StickyInfoCard(
-                                            title = "Officials",
-                                            subtitle = "Browse all MPs and Lords in the UK Parliament."
-                                        )
-                                    }
-                                }
                                 items(cachedMps, key = { it.id }, contentType = { "mp_row" }) { mp ->
                                     MpListRow(
                                         mp = mp,
-                                        onClick = { onNavigateToProfile(mp.id) }
+                                        onClick = { onNavigateToProfile(mp) }
                                     )
                                 }
                             }
@@ -491,18 +466,10 @@ private fun OfficialsTabContent(
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                if (showInfoCards) {
-                                    item(span = { GridItemSpan(3) }) {
-                                        StickyInfoCard(
-                                            title = "Officials",
-                                            subtitle = "Browse all MPs and Lords in the UK Parliament."
-                                        )
-                                    }
-                                }
                                 items(cachedMps, key = { it.id }, contentType = { "mp_grid" }) { mp ->
                                     MpGridCard(
                                         mp = mp,
-                                        onClick = { onNavigateToProfile(mp.id) }
+                                        onClick = { onNavigateToProfile(mp) }
                                     )
                                 }
                             }
@@ -559,14 +526,6 @@ private fun OfficialsTabContent(
                             contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 8.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            if (showInfoCards) {
-                                stickyHeader(key = "tab-info") {
-                                    StickyInfoCard(
-                                        title = "Officials",
-                                        subtitle = "Browse all MPs and Lords in the UK Parliament."
-                                    )
-                                }
-                            }
                             items(
                                 count = lazyPagingItems.itemCount,
                                 key = lazyPagingItems.itemKey { it.id },
@@ -576,7 +535,7 @@ private fun OfficialsTabContent(
                                 if (mp != null) {
                                     MpListRow(
                                         mp = mp,
-                                        onClick = { onNavigateToProfile(mp.id) }
+                                        onClick = { onNavigateToProfile(mp) }
                                     )
                                 }
                             }
@@ -594,14 +553,6 @@ private fun OfficialsTabContent(
                             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
                             verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small)
                         ) {
-                            if (showInfoCards) {
-                                item(key = "tab-info", span = { GridItemSpan(maxLineSpan) }) {
-                                    InfoCard(
-                                        title = "Officials",
-                                        subtitle = "Browse all MPs and Lords in the UK Parliament."
-                                    )
-                                }
-                            }
                             items(
                                 count = lazyPagingItems.itemCount,
                                 key = lazyPagingItems.itemKey { it.id },
@@ -611,7 +562,7 @@ private fun OfficialsTabContent(
                                 if (mp != null) {
                                     MpGridCard(
                                         mp = mp,
-                                        onClick = { onNavigateToProfile(mp.id) }
+                                        onClick = { onNavigateToProfile(mp) }
                                     )
                                 }
                             }

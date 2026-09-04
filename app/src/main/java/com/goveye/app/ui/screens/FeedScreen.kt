@@ -24,10 +24,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.goveye.app.ui.components.ConfigureSearchBar
 import com.goveye.app.ui.components.SearchBarConfig
-import com.goveye.app.ui.components.StickyInfoCard
 import com.goveye.app.ui.screens.directory.DirectoryFilterState
 import com.goveye.app.ui.screens.directory.FilterBottomSheet
 import com.goveye.app.ui.screens.directory.FilterTabType
+import com.goveye.app.ui.screens.divisions.MpMicroviewDialog
+import com.goveye.app.ui.screens.divisions.MpMicroviewMode
 import com.goveye.app.ui.screens.divisions.TagMicroviewDialog
 import com.goveye.app.ui.screens.feed.FeedDateHeader
 import com.goveye.app.ui.screens.feed.FeedFinancialCard
@@ -53,13 +54,16 @@ fun FeedScreen(
     onNavigateToStatementDetail: (Int) -> Unit,
     onNavigateToLegislationDetail: (Int) -> Unit,
     onNavigateToTranscript: (Int, String, String) -> Unit,
-    showInfoCards: Boolean = true,
+    onNavigateToProfile: (Int, com.goveye.app.ui.navigation.MpHeaderFallback?, Int) -> Unit = { _, _, _ -> },
     modifier: Modifier = Modifier,
     viewModel: FeedViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var showFilterSheet by remember { mutableStateOf(false) }
     var selectedTag by remember { mutableStateOf<String?>(null) }
+    var microviewMemberId by remember { mutableStateOf<Int?>(null) }
+    var microviewName by remember { mutableStateOf("") }
+    var microviewPartyColor by remember { mutableStateOf<String?>(null) }
 
     Log.i(
         "GovEye/Feed",
@@ -117,21 +121,6 @@ fun FeedScreen(
                     contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Recess info card — always visible when parliament is in
-                    // recess, even if there's feed content. Previously this
-                    // only showed as an empty state.
-                    val recess = state.currentRecess
-                    if (recess != null && showInfoCards) {
-                        stickyHeader(key = "recess-info") {
-                            StickyInfoCard(
-                                title = "Parliament is in recess",
-                                subtitle = "Returns ${com.goveye.app.domain.util.DateUtils.formatRelativeDate(
-                                    recess.endDate
-                                )}."
-                            )
-                        }
-                    }
-
                     state.dateGroups.forEach { group ->
                         stickyHeader(key = "header-${group.dateKey}") {
                             FeedDateHeader(dateHeader = group.dateHeader)
@@ -149,7 +138,12 @@ fun FeedScreen(
                                 onNavigateToStatementDetail = onNavigateToStatementDetail,
                                 onNavigateToLegislationDetail = onNavigateToLegislationDetail,
                                 onNavigateToTranscript = onNavigateToTranscript,
-                                onTagClick = { tag -> selectedTag = tag }
+                                onTagClick = { tag -> selectedTag = tag },
+                                onProfileClick = { memberId, name, partyColor ->
+                                    microviewMemberId = memberId
+                                    microviewName = name
+                                    microviewPartyColor = partyColor
+                                }
                             )
                         }
                     }
@@ -187,6 +181,32 @@ fun FeedScreen(
             onDismiss = { selectedTag = null }
         )
     }
+
+    // MP finances microview dialog — opened by clicking the MP avatar on a
+    // feed financial card. Shows the Finances tab only, with non-clickable
+    // cards. The user can open the full profile from the dialog header.
+    microviewMemberId?.let { memberId ->
+        MpMicroviewDialog(
+            memberId = memberId,
+            fallbackName = microviewName,
+            fallbackPartyName = null,
+            fallbackPartyColour = microviewPartyColor,
+            fallbackConstituency = null,
+            onNavigateToFullProfile = { id ->
+                microviewMemberId = null
+                onNavigateToProfile(
+                    id,
+                    com.goveye.app.ui.navigation.MpHeaderFallback(
+                        name = microviewName,
+                        partyColor = microviewPartyColor
+                    ),
+                    5 // Open Finances tab directly
+                )
+            },
+            onDismiss = { microviewMemberId = null },
+            mode = MpMicroviewMode.FINANCES
+        )
+    }
 }
 
 /**
@@ -203,12 +223,16 @@ private fun FeedItemCard(
     onNavigateToStatementDetail: (Int) -> Unit,
     onNavigateToLegislationDetail: (Int) -> Unit,
     onNavigateToTranscript: (Int, String, String) -> Unit,
-    onTagClick: (String) -> Unit
+    onTagClick: (String) -> Unit,
+    onProfileClick: (Int, String, String?) -> Unit = { _, _, _ -> }
 ) {
     when (item) {
         is FeedItem.FinancialItem -> FeedFinancialCard(
             item = item,
-            onClick = { /* navigate to financial detail */ }
+            onClick = { /* navigate to financial detail */ },
+            onProfileClick = {
+                onProfileClick(item.memberId, item.memberName, item.memberPartyColorHex)
+            }
         )
 
         is FeedItem.SpeechItem -> FeedSpeechCard(

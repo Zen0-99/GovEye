@@ -172,7 +172,7 @@ class GovernmentAnnouncementsRepository @Inject constructor(
 
     // --- MP tags ---
 
-    fun observeTagsForMp(memberId: Int): Flow<List<String>> = mpTagDao.observeTagsForMp(memberId)
+    fun observeTagsForMp(memberId: Int) = mpTagDao.observeTagsForMp(memberId)
 
     fun observeMpsForTag(tag: String): Flow<List<Int>> = mpTagDao.observeMpsForTag(tag)
 

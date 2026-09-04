@@ -55,7 +55,17 @@ import com.goveye.app.ui.components.charts.ChartHeaderWithLegend
 import com.goveye.app.ui.components.charts.RebellionLineChart
 import com.goveye.app.ui.components.charts.VotingBarChart
 import com.goveye.app.ui.components.stats.VoteMapGrid
+import com.goveye.app.ui.screens.mpprofile.InterestsTabContent
 import com.goveye.app.ui.theme.parsePartyColor
+
+/**
+ * Which content to show in the microview dialog.
+ * - [VOTES]: Voting charts + recent votes list (default — used from division detail)
+ * - [FINANCES]: Interests + expense bucket totals (used from feed financial cards).
+ *   Cards show totals but are not clickable — the user must open the full profile
+ *   to drill into individual entries.
+ */
+enum class MpMicroviewMode { VOTES, FINANCES }
 
 /**
  * MP microview dialog — shown when clicking an MP in the division detail
@@ -78,6 +88,7 @@ fun MpMicroviewDialog(
     fallbackConstituency: String?,
     onNavigateToFullProfile: (Int) -> Unit,
     onDismiss: () -> Unit,
+    mode: MpMicroviewMode = MpMicroviewMode.VOTES,
     viewModel: MpMicroviewViewModel = hiltViewModel()
 ) {
     LaunchedEffect(memberId) {
@@ -231,7 +242,7 @@ fun MpMicroviewDialog(
                     }
                 }
 
-                // Votes content — charts + vote list
+                // Content — votes or finances depending on mode
                 if (uiState.isLoading && uiState.mp == null) {
                     Box(
                         modifier = Modifier
@@ -242,14 +253,25 @@ fun MpMicroviewDialog(
                         CircularProgressIndicator()
                     }
                 } else {
-                    VotesContent(
-                        memberVotes = uiState.memberVotes,
-                        rebellionStats = uiState.rebellionStats,
-                        allDivisionDates = uiState.allDivisionDates,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                    )
+                    when (mode) {
+                        MpMicroviewMode.VOTES -> VotesContent(
+                            memberVotes = uiState.memberVotes,
+                            rebellionStats = uiState.rebellionStats,
+                            allDivisionDates = uiState.allDivisionDates,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                        )
+
+                        MpMicroviewMode.FINANCES -> FinancesContent(
+                            interests = uiState.interests,
+                            expenseBucketTotals = uiState.expenseBucketTotals,
+                            partyColorHex = uiState.mp?.party?.backgroundColour,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                        )
+                    }
                 }
             }
         }
@@ -372,4 +394,42 @@ private fun VotesContent(
             }
         }
     }
+}
+
+/**
+ * Finances content for the microview — shows the same dashboard as the
+ * Finances tab on the full profile (income bucket summaries + expense bucket
+ * totals) but with non-clickable cards. The user must open the full profile
+ * to drill into individual entries.
+ */
+@Composable
+private fun FinancesContent(
+    interests: List<com.goveye.app.domain.model.Interest>,
+    expenseBucketTotals: List<com.goveye.app.data.local.dao.ExpenseBucketTotal>,
+    partyColorHex: String?,
+    modifier: Modifier = Modifier
+) {
+    if (interests.isEmpty() && expenseBucketTotals.isEmpty()) {
+        Box(
+            modifier = modifier,
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "No registered financial interests",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        return
+    }
+
+    InterestsTabContent(
+        memberId = 0,
+        interests = interests,
+        expenseBucketTotals = expenseBucketTotals,
+        onNavigateToBucketDetail = { },
+        onNavigateToExpenseBucket = { },
+        partyColorHex = partyColorHex,
+        modifier = modifier
+    )
 }

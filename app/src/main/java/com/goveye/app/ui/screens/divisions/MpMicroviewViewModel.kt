@@ -2,11 +2,15 @@ package com.goveye.app.ui.screens.divisions
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.goveye.app.data.local.dao.ExpenseBucketTotal
 import com.goveye.app.data.local.dao.MpDao
+import com.goveye.app.data.repo.ExpensesRepository
 import com.goveye.app.data.repo.FollowRepository
 import com.goveye.app.data.repo.HistoricalMemberRepository
+import com.goveye.app.data.repo.InterestsRepository
 import com.goveye.app.data.repo.MembersRepository
 import com.goveye.app.data.repo.VotesRepository
+import com.goveye.app.domain.model.Interest
 import com.goveye.app.domain.model.MemberVoteWithDivision
 import com.goveye.app.domain.model.Mp
 import com.goveye.app.domain.stats.RebellionCalculator
@@ -16,6 +20,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 data class MpMicroviewUiState(
@@ -23,6 +28,8 @@ data class MpMicroviewUiState(
     val memberVotes: List<MemberVoteWithDivision> = emptyList(),
     val rebellionStats: RebellionStats? = null,
     val allDivisionDates: List<String> = emptyList(),
+    val interests: List<Interest> = emptyList(),
+    val expenseBucketTotals: List<ExpenseBucketTotal> = emptyList(),
     val isFollowing: Boolean = false,
     val isLoading: Boolean = true
 )
@@ -43,7 +50,9 @@ class MpMicroviewViewModel @Inject constructor(
     private val votesRepository: VotesRepository,
     private val followRepository: FollowRepository,
     private val mpDao: MpDao,
-    private val historicalMemberRepository: HistoricalMemberRepository
+    private val historicalMemberRepository: HistoricalMemberRepository,
+    private val interestsRepository: InterestsRepository,
+    private val expensesRepository: ExpensesRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MpMicroviewUiState())
@@ -89,6 +98,7 @@ class MpMicroviewViewModel @Inject constructor(
                 )
                 _uiState.value = _uiState.value.copy(mp = mp, isLoading = false)
                 loadVotesAndFollow(memberId, mpEntity.house, mpEntity.partyName)
+                loadFinances(memberId)
             } else {
                 // 2. Not in Commons DB — look up in historical_members (Lords, former MPs)
                 val historicalMember = historicalMemberRepository.getByParliamentMemberId(memberId)
@@ -115,6 +125,7 @@ class MpMicroviewViewModel @Inject constructor(
                     )
                     _uiState.value = _uiState.value.copy(mp = mp, isLoading = false)
                     loadVotesAndFollow(votesMemberId, house, historicalMember.party ?: fallbackPartyName)
+                    loadFinances(memberId)
                 } else {
                     // 3. Fallback — use data from the DivisionVote
                     val fallbackMp = Mp(
@@ -138,6 +149,7 @@ class MpMicroviewViewModel @Inject constructor(
                     // For division detail, the memberId is already the correct one
                     // (Lords votes store memberId + offset directly in division_votes)
                     loadVotesAndFollow(memberId, 1, fallbackPartyName)
+                    loadFinances(memberId)
                 }
             }
         }
@@ -171,6 +183,25 @@ class MpMicroviewViewModel @Inject constructor(
                     val stats = RebellionCalculator.computeAggregated(memberVotes, partyVoteCounts)
                     _uiState.value = _uiState.value.copy(rebellionStats = stats)
                 }
+            } catch (e: Exception) {
+                // Keep cached data
+            }
+        }
+    }
+
+    private fun loadFinances(memberId: Int) {
+        viewModelScope.launch {
+            try {
+                val interests = interestsRepository.observeInterestsForMember(memberId).first()
+                _uiState.value = _uiState.value.copy(interests = interests.data)
+            } catch (e: Exception) {
+                // Keep cached data
+            }
+        }
+        viewModelScope.launch {
+            try {
+                val bucketTotals = expensesRepository.getBucketTotals(memberId)
+                _uiState.value = _uiState.value.copy(expenseBucketTotals = bucketTotals)
             } catch (e: Exception) {
                 // Keep cached data
             }

@@ -66,7 +66,6 @@ fun SettingsScreen(themeViewModel: ThemeViewModel, modifier: Modifier = Modifier
     )
     val themeMode by themeViewModel.themeMode.collectAsStateWithLifecycle()
     val isAmoled by themeViewModel.isAmoled.collectAsStateWithLifecycle()
-    val showInfoCards by themeViewModel.showInfoCards.collectAsStateWithLifecycle()
     val wifiOnly by downloadSettingsViewModel.wifiOnly.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
@@ -113,13 +112,6 @@ fun SettingsScreen(themeViewModel: ThemeViewModel, modifier: Modifier = Modifier
                     onCheckedChange = { themeViewModel.setAmoled(it) }
                 )
             }
-
-            SettingsDivider()
-            SettingsToggleRow(
-                label = "Show info cards",
-                checked = showInfoCards,
-                onCheckedChange = { themeViewModel.setShowInfoCards(it) }
-            )
         }
 
         // --- Data ---
@@ -167,6 +159,34 @@ fun SettingsScreen(themeViewModel: ThemeViewModel, modifier: Modifier = Modifier
             SettingsRow(
                 label = "Test onboarding",
                 onClick = onTestOnboarding
+            )
+
+            SettingsDivider()
+
+            SettingsRow(
+                label = "Mock vote notification",
+                onClick = { updateCheckViewModel.mockVoteNotification() }
+            )
+
+            SettingsDivider()
+
+            SettingsRow(
+                label = "Mock speech notification",
+                onClick = { updateCheckViewModel.mockSpeechNotification() }
+            )
+
+            SettingsDivider()
+
+            SettingsRow(
+                label = "Mock income notification",
+                onClick = { updateCheckViewModel.mockIncomeNotification() }
+            )
+
+            SettingsDivider()
+
+            SettingsRow(
+                label = "Mock expense notification",
+                onClick = { updateCheckViewModel.mockExpenseNotification() }
             )
         }
     }

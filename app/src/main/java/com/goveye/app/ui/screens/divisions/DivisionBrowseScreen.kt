@@ -26,7 +26,6 @@ import androidx.compose.ui.unit.dp
 import com.goveye.app.domain.model.Division
 import com.goveye.app.domain.model.SyncStatus
 import com.goveye.app.ui.components.DelayedSpinner
-import com.goveye.app.ui.components.StickyInfoCard
 import com.goveye.app.ui.components.SyncStatusBanner
 import com.goveye.app.ui.theme.padding
 
@@ -40,7 +39,6 @@ fun DivisionsTabContent(
     onNavigateToDivision: (Int, Int) -> Unit,
     houseFilter: Int = 0,
     searchQuery: String = "",
-    showInfoCards: Boolean = true,
     modifier: Modifier = Modifier,
     state: DivisionBrowseState = DivisionBrowseState(),
     onSearchQueryChange: (String) -> Unit = {},
@@ -86,14 +84,6 @@ fun DivisionsTabContent(
                 ),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                if (showInfoCards) {
-                    stickyHeader(key = "tab-info") {
-                        StickyInfoCard(
-                            title = "Debates",
-                            subtitle = "Browse every division and vote in the Commons and Lords."
-                        )
-                    }
-                }
                 items(state.divisions, key = { it.id }, contentType = { "division_card" }) { division ->
                     val tags = state.divisionTags[division.id] ?: emptyList()
                     com.goveye.app.ui.screens.feed.UnifiedFeedCard(

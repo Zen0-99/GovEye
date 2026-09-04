@@ -19,6 +19,7 @@ import com.goveye.app.domain.model.Mp
 import com.goveye.app.ui.theme.padding
 import java.time.LocalDate
 import java.time.Period
+import java.time.format.DateTimeFormatter
 
 @Composable
 fun ProfileStatsCard(mp: Mp, bioData: BioDataEntity? = null, modifier: Modifier = Modifier) {
@@ -31,30 +32,30 @@ fun ProfileStatsCard(mp: Mp, bioData: BioDataEntity? = null, modifier: Modifier 
         }
     }
 
-    val age = bioData?.dateOfBirth?.let { dob ->
-        try {
-            val birth = LocalDate.parse(dob.take(10))
-            Period.between(birth, LocalDate.now()).years
-        } catch (e: Exception) {
-            null
-        }
-    }
-
     val maidenSpeechFormatted = bioData?.maidenSpeechDate?.let { date ->
         try {
-            LocalDate.parse(date.take(10)).let {
-                "${it.dayOfMonth} ${it.month.name.lowercase().replaceFirstChar { c -> c.uppercase() }} ${it.year}"
-            }
+            val parsed = LocalDate.parse(date.take(10))
+            parsed.format(DateTimeFormatter.ofPattern("d MMM yyyy"))
         } catch (e: Exception) {
             null
         }
     }
 
+    val birthDateFormatted = bioData?.dateOfBirth?.let { dob ->
+        try {
+            val parsed = LocalDate.parse(dob.take(10))
+            parsed.format(DateTimeFormatter.ofPattern("d MMM yyyy"))
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    // Stats: label on top, value below. Order: Year Born, Maiden Speech,
+    // Years in Parliament.
     val stats = buildList {
-        yearsInParliament?.let { add("Years in\nParliament" to "$it") }
-        age?.let { add("Age" to "$it") }
+        birthDateFormatted?.let { add("Year\nBorn" to it) }
         maidenSpeechFormatted?.let { add("Maiden\nSpeech" to it) }
-        mp.constituency?.name?.let { add("Constituency" to it) }
+        yearsInParliament?.let { add("Years in\nParliament" to "$it years") }
     }
 
     if (stats.isEmpty()) return
@@ -90,17 +91,18 @@ private fun StatItem(label: String, value: String, modifier: Modifier = Modifier
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 2,
-            textAlign = TextAlign.Center
-        )
-        Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 2,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 2.dp)
         )
     }
 }

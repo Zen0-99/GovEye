@@ -27,7 +27,6 @@ import androidx.compose.ui.unit.dp
 import com.goveye.app.domain.model.Bill
 import com.goveye.app.domain.model.SyncStatus
 import com.goveye.app.ui.components.DelayedSpinner
-import com.goveye.app.ui.components.StickyInfoCard
 import com.goveye.app.ui.components.SyncStatusBanner
 import com.goveye.app.ui.theme.padding
 
@@ -36,7 +35,6 @@ import com.goveye.app.ui.theme.padding
 fun BillsTabContent(
     onNavigateToBill: (Int) -> Unit,
     searchQuery: String = "",
-    showInfoCards: Boolean = true,
     modifier: Modifier = Modifier,
     state: BillBrowseUiState = BillBrowseUiState(),
     onSearchQueryChange: (String) -> Unit = {}
@@ -81,14 +79,6 @@ fun BillsTabContent(
                     ),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    if (showInfoCards) {
-                        stickyHeader(key = "tab-info") {
-                            StickyInfoCard(
-                                title = "Bills",
-                                subtitle = "Track legislation as it moves through Parliament."
-                            )
-                        }
-                    }
                     items(displayBills, key = { it.id }, contentType = { "bill_card" }) { bill ->
                         BillCard(
                             bill = bill,
