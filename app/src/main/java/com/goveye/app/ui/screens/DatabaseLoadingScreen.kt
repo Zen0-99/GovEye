@@ -9,15 +9,18 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
@@ -108,19 +111,28 @@ fun DatabaseLoadingScreen(
         else -> "Loading"
     }
 
-    Box(
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
     ) {
+        val isLandscape = maxWidth > maxHeight
+        // Scale the circle down in landscape so everything fits
+        val circleSize = if (isLandscape) 200.dp else 280.dp
+        val topPadding = if (isLandscape) 24.dp else 80.dp
+        val bottomPadding = if (isLandscape) 16.dp else 32.dp
+        // In landscape, constrain bottom buttons to half width so they
+        // don't span the full wide screen
+        val buttonMaxWidth: androidx.compose.ui.unit.Dp = if (isLandscape) maxWidth * 0.5f else maxWidth
+
         // ── Top: title + subtitle ─────────────────────────────────────
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.TopCenter)
-                .padding(top = 80.dp)
+                .padding(top = topPadding)
         ) {
             Text(
                 text = "GovEye",
@@ -145,7 +157,7 @@ fun DatabaseLoadingScreen(
             exit = fadeOut(),
             modifier = Modifier.align(Alignment.Center)
         ) {
-            CircularProgressWithPercentage(state)
+            CircularProgressWithPercentage(state, circleSize)
         }
 
         // Canceled state — unfilled circle with X icon
@@ -155,7 +167,7 @@ fun DatabaseLoadingScreen(
             exit = fadeOut(),
             modifier = Modifier.align(Alignment.Center)
         ) {
-            CanceledCircle()
+            CanceledCircle(circleSize)
         }
 
         AnimatedVisibility(
@@ -186,11 +198,12 @@ fun DatabaseLoadingScreen(
             exit = fadeOut(),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 32.dp, start = 24.dp, end = 24.dp)
+                .padding(bottom = bottomPadding)
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.width(buttonMaxWidth).padding(horizontal = 24.dp)
             ) {
                 Text(
                     text = "You can minimise the app",
@@ -214,7 +227,8 @@ fun DatabaseLoadingScreen(
             exit = fadeOut(),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(start = 24.dp, end = 24.dp, bottom = 32.dp)
+                .width(buttonMaxWidth)
+                .padding(start = 24.dp, end = 24.dp, bottom = bottomPadding)
         ) {
             Button(
                 onClick = onRestart,
@@ -231,7 +245,8 @@ fun DatabaseLoadingScreen(
             exit = fadeOut(),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(start = 24.dp, end = 24.dp, bottom = 32.dp)
+                .width(buttonMaxWidth)
+                .padding(start = 24.dp, end = 24.dp, bottom = bottomPadding)
         ) {
             Button(
                 onClick = onRedownload,
@@ -318,7 +333,10 @@ fun DatabaseLoadingScreen(
  * the same circle, so there's no layout jump.
  */
 @Composable
-private fun CircularProgressWithPercentage(state: DatabaseUpdateState) {
+private fun CircularProgressWithPercentage(
+    state: DatabaseUpdateState,
+    circleSize: androidx.compose.ui.unit.Dp = 280.dp
+) {
     val isDownloading = state is DatabaseUpdateState.Downloading &&
         (state as DatabaseUpdateState.Downloading).isFullDb
 
@@ -373,7 +391,7 @@ private fun CircularProgressWithPercentage(state: DatabaseUpdateState) {
 
         Box(
             contentAlignment = Alignment.Center,
-            modifier = Modifier.size(280.dp)
+            modifier = Modifier.size(circleSize)
         ) {
             // Background track
             CircularProgressIndicator(
@@ -398,34 +416,38 @@ private fun CircularProgressWithPercentage(state: DatabaseUpdateState) {
             val checkmarkAlpha = 1f - contentAlpha.value
 
             // Percentage text — fades out on completion
+            // Scale font with circle size (64sp at 280dp, proportionally smaller)
+            val percentFontSize = with(androidx.compose.ui.unit.TextUnit) { (circleSize.value / 280f * 64f).sp }
             if (percentageAlpha > 0.01f) {
                 Text(
                     text = "$percent%",
                     style = MaterialTheme.typography.displayLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
-                    fontSize = 64.sp,
+                    fontSize = percentFontSize,
                     modifier = Modifier.graphicsLayer { alpha = percentageAlpha }
                 )
             }
             // Checkmark icon — fades in on completion
+            // Scale icon with circle size (80dp at 280dp, proportionally smaller)
+            val checkmarkSize = (circleSize.value / 280f * 80f).dp
             if (checkmarkAlpha > 0.01f) {
                 Icon(
                     imageVector = Icons.Outlined.Check,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
-                        .size(80.dp)
+                        .size(checkmarkSize)
                         .graphicsLayer { alpha = checkmarkAlpha }
                 )
             }
         }
     } else {
-        // Indeterminate spinner — same 280dp size as the determinate circle
+        // Indeterminate spinner — same size as the determinate circle
         // so the layout doesn't jump when progress data starts arriving.
         Box(
             contentAlignment = Alignment.Center,
-            modifier = Modifier.size(280.dp)
+            modifier = Modifier.size(circleSize)
         ) {
             // Background track (static ring, same as determinate mode)
             CircularProgressIndicator(
@@ -452,10 +474,10 @@ private fun CircularProgressWithPercentage(state: DatabaseUpdateState) {
  * the layout doesn't jump.
  */
 @Composable
-private fun CanceledCircle() {
+private fun CanceledCircle(circleSize: androidx.compose.ui.unit.Dp = 280.dp) {
     Box(
         contentAlignment = Alignment.Center,
-        modifier = Modifier.size(280.dp)
+        modifier = Modifier.size(circleSize)
     ) {
         // Background track only — no progress ring (unfilled)
         CircularProgressIndicator(
@@ -465,12 +487,13 @@ private fun CanceledCircle() {
             strokeWidth = 12.dp,
             trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
         )
-        // X icon in center
+        // X icon in center — scales with circle size
+        val xSize = (circleSize.value / 280f * 80f).dp
         Icon(
             imageVector = Icons.Outlined.Close,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(80.dp)
+            modifier = Modifier.size(xSize)
         )
     }
 }

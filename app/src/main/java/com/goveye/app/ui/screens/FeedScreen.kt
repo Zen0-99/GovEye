@@ -64,6 +64,7 @@ fun FeedScreen(
     var microviewMemberId by remember { mutableStateOf<Int?>(null) }
     var microviewName by remember { mutableStateOf("") }
     var microviewPartyColor by remember { mutableStateOf<String?>(null) }
+    var microviewMode by remember { mutableStateOf(MpMicroviewMode.VOTES) }
 
     Log.i(
         "GovEye/Feed",
@@ -139,10 +140,11 @@ fun FeedScreen(
                                 onNavigateToLegislationDetail = onNavigateToLegislationDetail,
                                 onNavigateToTranscript = onNavigateToTranscript,
                                 onTagClick = { tag -> selectedTag = tag },
-                                onProfileClick = { memberId, name, partyColor ->
+                                onProfileClick = { memberId, name, partyColor, mode ->
                                     microviewMemberId = memberId
                                     microviewName = name
                                     microviewPartyColor = partyColor
+                                    microviewMode = mode
                                 }
                             )
                         }
@@ -182,9 +184,10 @@ fun FeedScreen(
         )
     }
 
-    // MP finances microview dialog — opened by clicking the MP avatar on a
-    // feed financial card. Shows the Finances tab only, with non-clickable
-    // cards. The user can open the full profile from the dialog header.
+    // MP microview dialog — opened by clicking the MP avatar on a feed card.
+    // Mode depends on the card type: FINANCES for financial cards, VOTES for
+    // vote and speech cards. The user can open the full profile from the
+    // dialog header.
     microviewMemberId?.let { memberId ->
         MpMicroviewDialog(
             memberId = memberId,
@@ -200,11 +203,11 @@ fun FeedScreen(
                         name = microviewName,
                         partyColor = microviewPartyColor
                     ),
-                    5 // Open Finances tab directly
+                    if (microviewMode == MpMicroviewMode.FINANCES) 5 else 0
                 )
             },
             onDismiss = { microviewMemberId = null },
-            mode = MpMicroviewMode.FINANCES
+            mode = microviewMode
         )
     }
 }
@@ -224,14 +227,14 @@ private fun FeedItemCard(
     onNavigateToLegislationDetail: (Int) -> Unit,
     onNavigateToTranscript: (Int, String, String) -> Unit,
     onTagClick: (String) -> Unit,
-    onProfileClick: (Int, String, String?) -> Unit = { _, _, _ -> }
+    onProfileClick: (Int, String, String?, MpMicroviewMode) -> Unit = { _, _, _, _ -> }
 ) {
     when (item) {
         is FeedItem.FinancialItem -> FeedFinancialCard(
             item = item,
             onClick = { /* navigate to financial detail */ },
             onProfileClick = {
-                onProfileClick(item.memberId, item.memberName, item.memberPartyColorHex)
+                onProfileClick(item.memberId, item.memberName, item.memberPartyColorHex, MpMicroviewMode.FINANCES)
             }
         )
 
@@ -239,12 +242,18 @@ private fun FeedItemCard(
             item = item,
             onClick = { onNavigateToDivision(item.divisionId, 1) },
             onNavigateToTranscript = onNavigateToTranscript,
-            onTagClick = onTagClick
+            onTagClick = onTagClick,
+            onProfileClick = {
+                onProfileClick(item.memberId, item.memberName, item.memberPartyColorHex, MpMicroviewMode.VOTES)
+            }
         )
 
         is FeedItem.MpVoteItem -> FeedMpVoteCard(
             item = item,
-            onClick = { onNavigateToDivision(item.divisionId, item.divisionHouse) }
+            onClick = { onNavigateToDivision(item.divisionId, item.divisionHouse) },
+            onProfileClick = {
+                onProfileClick(item.memberId, item.memberName, item.memberPartyColorHex, MpMicroviewMode.VOTES)
+            }
         )
 
         is FeedItem.DivisionItem -> {

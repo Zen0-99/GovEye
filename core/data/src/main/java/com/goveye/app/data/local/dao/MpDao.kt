@@ -13,6 +13,9 @@ interface MpDao {
     fun observeAllMps(): Flow<List<MpEntity>>
 
     @Query("SELECT * FROM mps WHERE isActive = 1 ORDER BY nameListAs")
+    suspend fun getAllMps(): List<MpEntity>
+
+    @Query("SELECT * FROM mps WHERE isActive = 1 ORDER BY nameListAs")
     fun pagingSource(): PagingSource<Int, MpEntity>
 
     @Query("SELECT * FROM mps WHERE partyId = :partyId AND isActive = 1 ORDER BY nameListAs")
@@ -59,6 +62,18 @@ interface MpDao {
 
     @Query("SELECT MIN(lastUpdated) FROM mps WHERE isActive = 1")
     suspend fun getOldestTimestamp(): Long?
+
+    /**
+     * Average years served across all active MPs in a house.
+     * Computed from membershipStartDate (current unbroken tenure).
+     * Used as the denominator for rate-based trait scores
+     * (questions-per-year, speeches-per-year).
+     */
+    @Query(
+        """SELECT AVG((julianday('now') - julianday(substr(membershipStartDate, 1, 10))) / 365.25)
+           FROM mps WHERE isActive = 1 AND house = :house AND membershipStartDate IS NOT NULL"""
+    )
+    suspend fun getAverageYearsServed(house: Int): Float?
 
     @Query("DELETE FROM mps")
     suspend fun clearAll()

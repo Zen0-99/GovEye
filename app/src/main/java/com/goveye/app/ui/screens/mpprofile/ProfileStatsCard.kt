@@ -50,10 +50,10 @@ fun ProfileStatsCard(mp: Mp, bioData: BioDataEntity? = null, modifier: Modifier 
         }
     }
 
-    // Stats: label on top, value below. Order: Year Born, Maiden Speech,
+    // Stats: label on top, value below. Order: Year of Birth, Maiden Speech,
     // Years in Parliament.
     val stats = buildList {
-        birthDateFormatted?.let { add("Year\nBorn" to it) }
+        birthDateFormatted?.let { add("Year of\nBirth" to it) }
         maidenSpeechFormatted?.let { add("Maiden\nSpeech" to it) }
         yearsInParliament?.let { add("Years in\nParliament" to "$it years") }
     }

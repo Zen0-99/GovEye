@@ -18,6 +18,7 @@ import com.goveye.app.data.repo.PostcodeRepository
 import com.goveye.app.data.repo.StatsRepository
 import com.goveye.app.data.util.PostcodeDetector
 import com.goveye.app.domain.model.Mp
+import com.goveye.app.domain.search.FuzzyMatcher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
@@ -148,6 +149,19 @@ class DirectoryViewModel @Inject constructor(
         }.onEach { DirectoryCache.updateParties(it) }
             .stateIn(viewModelScope, SharingStarted.Eagerly, DirectoryCache.parties ?: emptyList())
 
+    // Ruling party ID — the party whose leader has the title "Prime Minister".
+    // Used by the Parties tab to split the grid into "Government" (1 col) and
+    // "Other Parties" (2 col). Falls back to the party with the most seats.
+    val rulingPartyId: StateFlow<Int?> =
+        flow {
+            try {
+                val id = governmentAnnouncementsRepository.getRulingPartyId()
+                emit(id ?: parties.value.firstOrNull()?.partyId)
+            } catch (e: Exception) {
+                emit(parties.value.firstOrNull()?.partyId)
+            }
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
     // All councils — for the Councils tab.
     // Uses Eagerly so the one-shot query runs once and is cached.
     val councils: StateFlow<List<CouncilSummary>> =
@@ -267,7 +281,20 @@ class DirectoryViewModel @Inject constructor(
                 "GovEye/Directory",
                 "searchResults combine — results=${results.size} hasFilters=${filters.hasActiveFilters}"
             )
-            results.filter { mp -> filters.matches(mp) }
+            val filtered = results.filter { mp -> filters.matches(mp) }
+            // Re-rank by relevance (prefix matches first, then substring, then fuzzy)
+            // instead of the alphabetical ordering from FTS/LIKE SQL queries.
+            val query = _searchQuery.value.trim()
+            if (query.isBlank()) {
+                filtered
+            } else {
+                filtered.sortedBy { mp ->
+                    FuzzyMatcher.score(
+                        query,
+                        "${mp.nameListAs} ${mp.nameDisplayAs} ${mp.constituency?.name ?: ""} ${mp.party?.name ?: ""}"
+                    )
+                }
+            }
         }
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())

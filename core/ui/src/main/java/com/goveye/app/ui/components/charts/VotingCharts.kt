@@ -87,8 +87,8 @@ fun VotingBarChart(data: List<MonthlyVotingData>, modifier: Modifier = Modifier)
         }
     }
 
-    ChartCard(modifier = modifier) {
-        // Title + legend on same row
+    Column(modifier = modifier.fillMaxWidth()) {
+        // Title + legend above the card (heading-above-section design)
         ChartHeaderWithLegend(
             title = "Voting Pattern",
             legendItems = listOf(
@@ -97,28 +97,29 @@ fun VotingBarChart(data: List<MonthlyVotingData>, modifier: Modifier = Modifier)
                 "No vote" to NoVoteColor
             )
         )
-        ProvideVicoTheme(theme = rememberM3VicoTheme()) {
-            CartesianChartHost(
-                chart = rememberCartesianChart(
-                    rememberColumnCartesianLayer(
-                        columnProvider = ColumnCartesianLayer.ColumnProvider.series(
-                            rememberLineComponent(fill = Fill(AyeColor), thickness = 12.dp),
-                            rememberLineComponent(fill = Fill(NoColor), thickness = 12.dp),
-                            rememberLineComponent(fill = Fill(NoVoteColor), thickness = 12.dp)
+        ChartCard {
+            ProvideVicoTheme(theme = rememberM3VicoTheme()) {
+                CartesianChartHost(
+                    chart = rememberCartesianChart(
+                        rememberColumnCartesianLayer(
+                            columnProvider = ColumnCartesianLayer.ColumnProvider.series(
+                                rememberLineComponent(fill = Fill(AyeColor), thickness = 12.dp),
+                                rememberLineComponent(fill = Fill(NoColor), thickness = 12.dp),
+                                rememberLineComponent(fill = Fill(NoVoteColor), thickness = 12.dp)
+                            )
+                        ),
+                        startAxis = VerticalAxis.rememberStart(valueFormatter = startAxisFormatter),
+                        bottomAxis = HorizontalAxis.rememberBottom(
+                            valueFormatter = bottomAxisFormatter
                         )
                     ),
-                    startAxis = VerticalAxis.rememberStart(valueFormatter = startAxisFormatter),
-                    bottomAxis = HorizontalAxis.rememberBottom(
-                        valueFormatter = bottomAxisFormatter
-                    )
-                ),
-                modelProducer = modelProducer,
-                animationSpec = null,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp)
-                    .padding(8.dp)
-            )
+                    modelProducer = modelProducer,
+                    animationSpec = null,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp).padding(4.dp)
+                )
+            }
         }
     }
 }
@@ -156,38 +157,42 @@ fun AttendanceLineChart(data: List<AttendanceTrend>, modifier: Modifier = Modifi
         CartesianValueFormatter { _, value, _ -> "${value.toInt()}%" }
     }
 
-    ChartCard(modifier = modifier) {
+    Column(modifier = modifier.fillMaxWidth()) {
         ChartHeader(title = "Attendance Rate")
-        ProvideVicoTheme(theme = rememberM3VicoTheme()) {
-            CartesianChartHost(
-                chart = rememberCartesianChart(
-                    rememberLineCartesianLayer(
-                        lineProvider = LineCartesianLayer.LineProvider.series(
-                            LineCartesianLayer.rememberLine(
-                                fill = LineCartesianLayer.LineFill.single(Fill(LineColor))
+        ChartCard {
+            ProvideVicoTheme(theme = rememberM3VicoTheme()) {
+                CartesianChartHost(
+                    chart = rememberCartesianChart(
+                        rememberLineCartesianLayer(
+                            lineProvider = LineCartesianLayer.LineProvider.series(
+                                LineCartesianLayer.rememberLine(
+                                    fill = LineCartesianLayer.LineFill.single(Fill(LineColor)),
+                                    areaFill = LineCartesianLayer.AreaFill.single(
+                                        Fill(LineColor.copy(alpha = 0.15f))
+                                    )
+                                )
                             )
+                        ),
+                        startAxis = VerticalAxis.rememberStart(valueFormatter = startAxisFormatter),
+                        bottomAxis = HorizontalAxis.rememberBottom(
+                            valueFormatter = bottomAxisFormatter
                         )
                     ),
-                    startAxis = VerticalAxis.rememberStart(valueFormatter = startAxisFormatter),
-                    bottomAxis = HorizontalAxis.rememberBottom(
-                        valueFormatter = bottomAxisFormatter
-                    )
-                ),
-                modelProducer = modelProducer,
-                animationSpec = null,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(160.dp)
-                    .padding(8.dp)
-            )
+                    modelProducer = modelProducer,
+                    animationSpec = null,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(160.dp).padding(4.dp)
+                )
+            }
         }
     }
 }
 
 /**
- * Line chart showing rebellion rate in a card.
- * Y-axis shows percentage values, X-axis shows period labels.
- * Animation is disabled.
+ * Line chart showing party loyalty rate in a card.
+ * Party loyalty = 100% - rebellion rate. Y-axis shows percentage values,
+ * X-axis shows period labels. Animation is disabled.
  */
 @Composable
 fun RebellionLineChart(data: List<RebellionTrend>, modifier: Modifier = Modifier) {
@@ -198,7 +203,8 @@ fun RebellionLineChart(data: List<RebellionTrend>, modifier: Modifier = Modifier
     LaunchedEffect(data) {
         modelProducer.runTransaction {
             lineSeries {
-                series(data.map { (it.rebellionRate * 100).toInt() })
+                // Party loyalty = 100% - rebellion rate
+                series(data.map { (100 - (it.rebellionRate * 100).toInt()) })
             }
         }
     }
@@ -217,30 +223,34 @@ fun RebellionLineChart(data: List<RebellionTrend>, modifier: Modifier = Modifier
         CartesianValueFormatter { _, value, _ -> "${value.toInt()}%" }
     }
 
-    ChartCard(modifier = modifier) {
-        ChartHeader(title = "Rebellion Trend")
-        ProvideVicoTheme(theme = rememberM3VicoTheme()) {
-            CartesianChartHost(
-                chart = rememberCartesianChart(
-                    rememberLineCartesianLayer(
-                        lineProvider = LineCartesianLayer.LineProvider.series(
-                            LineCartesianLayer.rememberLine(
-                                fill = LineCartesianLayer.LineFill.single(Fill(NoColor))
+    Column(modifier = modifier.fillMaxWidth()) {
+        ChartHeader(title = "Party Loyalty Trend")
+        ChartCard {
+            ProvideVicoTheme(theme = rememberM3VicoTheme()) {
+                CartesianChartHost(
+                    chart = rememberCartesianChart(
+                        rememberLineCartesianLayer(
+                            lineProvider = LineCartesianLayer.LineProvider.series(
+                                LineCartesianLayer.rememberLine(
+                                    fill = LineCartesianLayer.LineFill.single(Fill(LineColor)),
+                                    areaFill = LineCartesianLayer.AreaFill.single(
+                                        Fill(LineColor.copy(alpha = 0.15f))
+                                    )
+                                )
                             )
+                        ),
+                        startAxis = VerticalAxis.rememberStart(valueFormatter = startAxisFormatter),
+                        bottomAxis = HorizontalAxis.rememberBottom(
+                            valueFormatter = bottomAxisFormatter
                         )
                     ),
-                    startAxis = VerticalAxis.rememberStart(valueFormatter = startAxisFormatter),
-                    bottomAxis = HorizontalAxis.rememberBottom(
-                        valueFormatter = bottomAxisFormatter
-                    )
-                ),
-                modelProducer = modelProducer,
-                animationSpec = null,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(160.dp)
-                    .padding(8.dp)
-            )
+                    modelProducer = modelProducer,
+                    animationSpec = null,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(160.dp).padding(4.dp)
+                )
+            }
         }
     }
 }
@@ -256,7 +266,7 @@ fun ChartCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
         color = MaterialTheme.colorScheme.surfaceContainer
     ) {
         Column(
-            modifier = Modifier.padding(12.dp)
+            modifier = Modifier.padding(8.dp)
         ) {
             content()
         }
@@ -271,7 +281,7 @@ fun ChartHeader(title: String) {
     Text(
         text = title,
         style = MaterialTheme.typography.titleSmall,
-        fontWeight = FontWeight.SemiBold,
+        fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.padding(bottom = 4.dp)
     )
@@ -292,7 +302,7 @@ fun ChartHeaderWithLegend(title: String, legendItems: List<Pair<String, Color>>)
         Text(
             text = title,
             style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
         )
         Row(

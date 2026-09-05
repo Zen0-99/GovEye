@@ -1,7 +1,9 @@
 package com.goveye.app.ui.components.stats
 
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -37,9 +40,13 @@ import kotlin.comparisons.reverseOrder
  * Vote map grid — FotMob shot map style grid of colored tiles.
  * Green = with party, Red = rebel, Gray = no vote recorded.
  *
+ * Tiles are a fixed small size (14dp) regardless of vote count.
+ * Long-press a tile to scale it up as visual feedback; release to
+ * navigate to the division. This makes small tiles usable despite
+ * their size.
+ *
  * When there are multiple years of data, a year selector with left/right
- * arrows appears at the bottom. Only the selected year's tiles are shown,
- * retaining the shrink-to-fit sizing logic.
+ * arrows appears at the bottom. Only the selected year's tiles are shown.
  */
 @Composable
 fun VoteMapGrid(tiles: List<VoteMapTile>, onTileClick: (Int, Int) -> Unit, modifier: Modifier = Modifier) {
@@ -56,19 +63,16 @@ fun VoteMapGrid(tiles: List<VoteMapTile>, onTileClick: (Int, Int) -> Unit, modif
     val selectedYear = years.getOrElse(selectedYearIndex) { years.first() }
     val yearTiles = yearToTiles[selectedYear] ?: emptyList()
 
-    // Calculate tile size based on count — shrink to fit all without scrolling
-    val tileSize = when {
-        yearTiles.size <= 36 -> 32.dp
-        yearTiles.size <= 64 -> 24.dp
-        yearTiles.size <= 100 -> 18.dp
-        yearTiles.size <= 200 -> 12.dp
-        else -> 8.dp
-    }
-    val gridSpacing = if (tileSize <= 18.dp) 2.dp else 3.dp
+    // Fixed small tile size — consistent regardless of vote count
+    val tileSize = 14.dp
+    val gridSpacing = 3.dp
 
     // Calculate how many columns fit on screen
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val columns = ((screenWidth - 24.dp) / (tileSize + gridSpacing)).toInt().coerceAtLeast(1)
+
+    // Track which tile is currently being long-pressed (for scale animation)
+    var pressedTileIndex by remember { mutableStateOf<Int?>(null) }
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -89,7 +93,12 @@ fun VoteMapGrid(tiles: List<VoteMapTile>, onTileClick: (Int, Int) -> Unit, modif
                             val tile = yearTiles[index]
                             VoteMapTileView(
                                 tile = tile,
-                                onClick = { onTileClick(tile.divisionId, 1) },
+                                isPressed = pressedTileIndex == index,
+                                onPress = { pressedTileIndex = index },
+                                onRelease = {
+                                    pressedTileIndex = null
+                                    onTileClick(tile.divisionId, 1)
+                                },
                                 size = tileSize
                             )
                         } else {
@@ -188,19 +197,45 @@ private fun SummaryStat(label: String, count: Int, color: Color) {
 }
 
 @Composable
-private fun VoteMapTileView(tile: VoteMapTile, onClick: () -> Unit, size: androidx.compose.ui.unit.Dp) {
+private fun VoteMapTileView(
+    tile: VoteMapTile,
+    isPressed: Boolean,
+    onPress: () -> Unit,
+    onRelease: () -> Unit,
+    size: androidx.compose.ui.unit.Dp
+) {
     val color = when (tile.voteResult) {
         VoteMapResult.WITH_PARTY -> com.goveye.app.ui.components.VoteColors.aye
         VoteMapResult.REBEL -> com.goveye.app.ui.components.VoteColors.no
         VoteMapResult.NO_VOTE -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
     }
 
+    // Scale up when pressed — visual feedback that the tile is being held
+    val animatedSize by animateDpAsState(
+        targetValue = if (isPressed) size * 2.5f else size,
+        animationSpec = tween(durationMillis = 150),
+        label = "tileScale"
+    )
+
     Box(
         modifier = Modifier
-            .size(size)
-            .clip(RoundedCornerShape(if (size <= 18.dp) 2.dp else 4.dp))
-            .background(color)
-            .clickable(onClick = onClick),
+            .size(size) // keep layout slot fixed at original size
+            .pointerInput(tile.divisionId) {
+                detectTapGestures(
+                    onLongPress = {
+                        onPress()
+                        // Navigate on release of the long press
+                        onRelease()
+                    }
+                )
+            },
         contentAlignment = Alignment.Center
-    ) {}
+    ) {
+        Box(
+            modifier = Modifier
+                .size(animatedSize)
+                .clip(RoundedCornerShape(3.dp))
+                .background(color)
+        )
+    }
 }

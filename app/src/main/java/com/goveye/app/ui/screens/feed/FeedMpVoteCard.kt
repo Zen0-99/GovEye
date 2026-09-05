@@ -1,6 +1,7 @@
 package com.goveye.app.ui.screens.feed
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,7 +38,12 @@ import com.goveye.app.ui.components.cardClickable
  * Tapping the card navigates to the division detail.
  */
 @Composable
-fun FeedMpVoteCard(item: FeedItem.MpVoteItem, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun FeedMpVoteCard(
+    item: FeedItem.MpVoteItem,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    onProfileClick: (() -> Unit)? = null
+) {
     val ayeColor = VoteColors.aye
     val noColor = VoteColors.no
     val voteUpper = item.vote.uppercase()
@@ -72,12 +78,18 @@ fun FeedMpVoteCard(item: FeedItem.MpVoteItem, onClick: () -> Unit, modifier: Mod
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // Avatar is clickable to open the MP microview (voting stats)
                 MpAvatar(
                     thumbnailUrl = item.memberPhotoUrl,
                     displayName = item.memberName,
                     partyColorHex = item.memberPartyColorHex,
                     size = 32.dp,
-                    borderWidth = 1.dp
+                    borderWidth = 1.dp,
+                    modifier = if (onProfileClick != null) {
+                        Modifier.clickable { onProfileClick() }
+                    } else {
+                        Modifier
+                    }
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(

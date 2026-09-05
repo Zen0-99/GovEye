@@ -35,6 +35,33 @@ fun parsePartyColor(hex: String?): Color {
     }
 }
 
+/**
+ * Party color overrides by MNIS party ID.
+ *
+ * Some MNIS API colors are inaccurate or missing. This map provides
+ * corrected colors based on the BBC's official election color palette
+ * and party branding. Used by [partyColorForId] when the MNIS color
+ * is wrong or empty.
+ *
+ * Source: BBC election color hexes + Wikipedia party colour fields.
+ */
+private val PARTY_COLOR_OVERRIDES = mapOf(
+    1 to "d6b429", // Alliance Party — gold (BBC)
+    7 to "b51c4b", // DUP — dark red (BBC)
+    38 to "3b75a8", // UUP — blue (BBC)
+    1117 to "1a237e" // Restore Britain — navy blue (Wikipedia)
+)
+
+/**
+ * Returns the correct party color for a given MNIS party ID.
+ * Falls back to the provided hex string from the MNIS API if no
+ * override exists. Returns a neutral gray if both are null/blank.
+ */
+fun partyColorForId(partyId: Int?, mnisHex: String?): Color {
+    PARTY_COLOR_OVERRIDES[partyId]?.let { return parsePartyColor(it) }
+    return parsePartyColor(mnisHex)
+}
+
 /** Derives initials from a display name (max 2 chars). E.g. "Diane Abbott" -> "DA". */
 fun deriveInitials(name: String): String {
     val parts = name.trim().split(" ").filter { it.isNotEmpty() }
@@ -60,16 +87,17 @@ private val PARTY_NAME_TO_COLOR = mapOf(
     "Reform UK" to "12b6cf",
     "Reform" to "12b6cf",
     "Brexit Party" to "12b6cf",
-    "Democratic Unionist Party" to "d01908",
-    "DUP" to "d01908",
+    "Democratic Unionist Party" to "b51c4b",
+    "DUP" to "b51c4b",
     "Sinn Féin" to "0c6b33",
     "Sinn Fein" to "0c6b33",
     "Social Democratic and Labour Party" to "0c6b33",
     "SDLP" to "0c6b33",
-    "Alliance Party" to "f6cb2c",
-    "Alliance" to "f6cb2c",
-    "Ulster Unionist Party" to "0087dc",
-    "UUP" to "0087dc",
+    "Alliance Party" to "d6b429",
+    "Alliance" to "d6b429",
+    "Ulster Unionist Party" to "3b75a8",
+    "UUP" to "3b75a8",
+    "Restore Britain" to "1a237e",
     "Independent" to "a0a0a0",
     "Speaker" to "a0a0a0",
     "Labour/Co-operative" to "dc241f",

@@ -52,19 +52,20 @@ fun ActivityScoreMethodologyScreen(onBack: () -> Unit, modifier: Modifier = Modi
 This is a mechanical score computed from publicly available parliamentary data.
 
 Weights:
-• Votes: 40% — based on the MP's vote participation rate (divisions voted in / total divisions)
-• Questions: 20% — based on written and oral questions asked
-• Speeches: 20% — based on speeches made in debates
-• Committees: 20% — based on committee memberships
+• Votes: 25% — based on the MP's vote participation rate (divisions voted in / total divisions)
+• Questions: 20% — based on written and oral questions asked, annualized relative to house average
+• Speeches: 20% — based on speeches made in debates, annualized relative to house average
+• Committees: 15% — based on committee memberships (10+ committees = full marks)
+• Finance: 20% — based on financial declarations (interests + expenses), annualized relative to house average
 
 Normalization:
-Each component is normalized relative to the house average. A count equal to the average earns 50% of the component's weight. A count of 2× the average earns 100%. The score is capped at 100.
+Votes use the raw participation rate (0-100%). Questions, Speeches, and Finance are annualized (count / years served) and compared to the house average rate — a rate equal to the average earns 50% of the component's weight, 2× the average earns 100%. Committees use an absolute ceiling (10+ = full marks). All components are capped at 100%.
+
+The Performance Breakdown radar chart shows the same rate-vs-average percentages used in the Activity Score, so the two views are always consistent.
 
 This is a transparency tool, not an editorial judgment. A higher score means more recorded activity, not better performance. An MP with a low score may be doing important work that isn't captured by these metrics.
 
-Trait bars show the MP's percentile rank compared to other MPs in the same house (Commons or Lords). The 50th percentile means the MP is exactly average for that trait.
-
-Data sources: UK Parliament Commons/Lords Votes API, Hansard API, Committees API.
+Data sources: UK Parliament Commons/Lords Votes API, Hansard API, Committees API, Register of Financial Interests, IPSA Expense Claims.
                 """.trimIndent(),
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 16.dp)

@@ -1,11 +1,19 @@
 package com.goveye.app.ui.screens.mpprofile
 
+import com.goveye.app.data.local.dao.ExpenseBucketTotal
 import com.goveye.app.data.local.entity.BioDataEntity
+import com.goveye.app.data.local.entity.ExpenseEntity
 import com.goveye.app.data.local.entity.MpLinkEntity
 import com.goveye.app.data.local.entity.MpTagEntity
+import com.goveye.app.domain.model.BiographyExperience
+import com.goveye.app.domain.model.Committee
 import com.goveye.app.domain.model.Contact
+import com.goveye.app.domain.model.DivisionVote
+import com.goveye.app.domain.model.Interest
+import com.goveye.app.domain.model.MemberVoteWithDivision
 import com.goveye.app.domain.model.Mp
 import com.goveye.app.domain.stats.ActivityScore
+import com.goveye.app.domain.stats.RebellionStats
 import com.goveye.app.domain.stats.TraitBar
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -13,6 +21,11 @@ import javax.inject.Singleton
 /**
  * Snapshot of all profile data for a single MP.
  * Stored in [ProfileCache] so revisiting an MP is instant.
+ *
+ * Includes ALL UI state fields (votes, interests, expenses, committees,
+ * experiences) so that a cache hit restores the full profile — not just
+ * the header. Without these, revisiting an MP within the TTL shows empty
+ * Stats/Finances/Activity tabs because [refreshFromDb] didn't reload them.
  */
 data class CachedProfileData(
     val mp: Mp?,
@@ -24,7 +37,17 @@ data class CachedProfileData(
     val activityScore: ActivityScore?,
     val traitBars: List<TraitBar>,
     val samePartyMps: List<Mp>,
-    val committeePeerMps: List<Mp>
+    val committeePeerMps: List<Mp>,
+    val memberVotes: List<MemberVoteWithDivision>,
+    val rebellionStats: RebellionStats?,
+    val allDivisionDates: List<String>,
+    val allVotesByDivision: Map<Int, List<DivisionVote>>,
+    val memberPartyName: String?,
+    val interests: List<Interest>,
+    val expenseBucketTotals: List<ExpenseBucketTotal>,
+    val expenses: List<ExpenseEntity>,
+    val committees: List<Committee>,
+    val experiences: List<BiographyExperience>
 )
 
 /**

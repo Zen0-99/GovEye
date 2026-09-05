@@ -1,5 +1,6 @@
 package com.goveye.app.ui.screens.feed
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,7 +46,8 @@ fun FeedSpeechCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     onNavigateToTranscript: ((Int, String, String) -> Unit)? = null,
-    onTagClick: (String) -> Unit = {}
+    onTagClick: (String) -> Unit = {},
+    onProfileClick: (() -> Unit)? = null
 ) {
     val expandState = rememberExpandState()
 
@@ -67,12 +69,18 @@ fun FeedSpeechCard(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // Avatar is clickable to open the MP microview
                 MpAvatar(
                     thumbnailUrl = item.memberPhotoUrl,
                     displayName = item.memberName,
                     partyColorHex = item.memberPartyColorHex,
                     size = 32.dp,
-                    borderWidth = 1.dp
+                    borderWidth = 1.dp,
+                    modifier = if (onProfileClick != null) {
+                        Modifier.clickable { onProfileClick() }
+                    } else {
+                        Modifier
+                    }
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Column(modifier = Modifier.weight(1f)) {

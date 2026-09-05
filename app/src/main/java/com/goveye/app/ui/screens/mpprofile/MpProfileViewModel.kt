@@ -114,7 +114,11 @@ class ProfileViewModel @Inject constructor(
         // first frame, no fade-in) and do a silent background refresh.
         val cached = profileCache.get(memberId)
         if (cached != null) {
-            // Instant restore — no optimistic loading, no fade-in
+            // Instant restore — no optimistic loading, no fade-in.
+            // Restore ALL fields including votes, interests, expenses,
+            // committees, and experiences so Stats/Finances/Activity tabs
+            // are fully populated on revisit. Without these, the cache hit
+            // would show empty data tabs until refreshFromDb catches up.
             _uiState.value = _uiState.value.copy(
                 mp = cached.mp,
                 synopsis = cached.synopsis,
@@ -126,6 +130,16 @@ class ProfileViewModel @Inject constructor(
                 traitBars = cached.traitBars,
                 samePartyMps = cached.samePartyMps,
                 committeePeerMps = cached.committeePeerMps,
+                memberVotes = cached.memberVotes,
+                rebellionStats = cached.rebellionStats,
+                allDivisionDates = cached.allDivisionDates,
+                allVotesByDivision = cached.allVotesByDivision,
+                memberPartyName = cached.memberPartyName,
+                interests = cached.interests,
+                expenseBucketTotals = cached.expenseBucketTotals,
+                expenses = cached.expenses,
+                committees = cached.committees,
+                experiences = cached.experiences,
                 syncStatus = if (cached.mp != null) SyncStatus.FRESH else SyncStatus.EMPTY,
                 isLoading = false
             )
@@ -292,7 +306,9 @@ class ProfileViewModel @Inject constructor(
             // 3. Load the mixed activity feed (votes, questions, income, expenses, committee, career)
             loadActivityFeed(memberId)
 
-            // 4. Cache the profile snapshot for instant revisit
+            // 4. Cache the profile snapshot for instant revisit.
+            // Store ALL UI state fields so a cache hit restores the full
+            // profile — votes, interests, expenses, committees, experiences.
             val state = _uiState.value
             profileCache.put(
                 memberId,
@@ -306,7 +322,17 @@ class ProfileViewModel @Inject constructor(
                     activityScore = state.activityScore,
                     traitBars = state.traitBars,
                     samePartyMps = state.samePartyMps,
-                    committeePeerMps = state.committeePeerMps
+                    committeePeerMps = state.committeePeerMps,
+                    memberVotes = state.memberVotes,
+                    rebellionStats = state.rebellionStats,
+                    allDivisionDates = state.allDivisionDates,
+                    allVotesByDivision = state.allVotesByDivision,
+                    memberPartyName = state.memberPartyName,
+                    interests = state.interests,
+                    expenseBucketTotals = state.expenseBucketTotals,
+                    expenses = state.expenses,
+                    committees = state.committees,
+                    experiences = state.experiences
                 )
             )
         }
@@ -316,6 +342,10 @@ class ProfileViewModel @Inject constructor(
      * Silent background refresh after a cache hit.
      * Re-fetches all data from the DB and updates state without resetting
      * isLoading (which is already false). Any changes are picked up silently.
+     *
+     * Reloads ALL fields including votes, interests, expenses, committees,
+     * and experiences — not just header data — so that any DB changes since
+     * the cache was populated are reflected.
      */
     private fun refreshFromDb(memberId: Int) {
         viewModelScope.launch {
@@ -340,8 +370,9 @@ class ProfileViewModel @Inject constructor(
                 traitBars = stats?.second ?: emptyList()
             )
 
-            // Stage 2 in parallel
+            // Stage 2 in parallel — reload ALL fields, not just header data
             val partyId = mp?.party?.id
+            val tenureStart = mp?.membershipStartDate?.take(10) ?: "2016-01-01"
             coroutineScope {
                 launch {
                     val synopsis = runCatching { membersRepository.getSynopsis(memberId) }.getOrNull()
@@ -361,9 +392,60 @@ class ProfileViewModel @Inject constructor(
                     } ?: emptyList()
                     _uiState.value = _uiState.value.copy(samePartyMps = samePartyMps)
                 }
+                launch {
+                    val committees = committeesRepository.observeCommitteesForMember(memberId).first()
+                    _uiState.value = _uiState.value.copy(committees = committees.data)
+                }
+                launch {
+                    val votesResult = runCatching {
+                        val allDatesRaw = votesRepository.getAllDivisionDates(house)
+                        val allDates = allDatesRaw.filter { it >= tenureStart }
+                        val allVotes = votesRepository.getMemberVotingWithDivisions(memberId)
+                        val votes = allVotes.filter { it.divisionDate >= tenureStart }
+                        Triple(allDates, votes, votes.isNotEmpty() && partyName != null)
+                    }.getOrNull()
+                    _uiState.value = _uiState.value.copy(
+                        allDivisionDates = votesResult?.first ?: emptyList(),
+                        memberVotes = votesResult?.second ?: emptyList(),
+                        memberPartyName = partyName
+                    )
+                    if (votesResult?.third == true) {
+                        val rebellionStats = runCatching {
+                            val memberVotes = votesRepository.getMemberVotes(memberId)
+                            val divisionIds = memberVotes.map { it.divisionId }.distinct()
+                            val partyVoteCounts = votesRepository.getPartyVoteCounts(divisionIds, partyName!!)
+                            RebellionCalculator.computeAggregated(memberVotes, partyVoteCounts)
+                        }.getOrNull()
+                        _uiState.value = _uiState.value.copy(rebellionStats = rebellionStats)
+                    }
+                }
+                launch {
+                    val interests = interestsRepository.observeInterestsForMember(memberId).first()
+                    _uiState.value = _uiState.value.copy(interests = interests.data)
+                }
+                launch {
+                    val bucketTotals = runCatching {
+                        expensesRepository.getBucketTotals(memberId)
+                    }.getOrDefault(emptyList())
+                    _uiState.value = _uiState.value.copy(expenseBucketTotals = bucketTotals)
+                }
+                launch {
+                    val expenses = runCatching {
+                        expensesRepository.getExpenses(memberId)
+                    }.getOrDefault(emptyList())
+                    _uiState.value = _uiState.value.copy(expenses = expenses)
+                }
+                launch {
+                    val bioDataForMerge = runCatching { bioDataRepository.getBioData(memberId) }.getOrNull()
+                    val experiences = runCatching {
+                        membersRepository.getExperience(memberId)
+                    }.getOrDefault(emptyList())
+                    val merged = mergeExperiencesWithMnisPosts(experiences, bioDataForMerge)
+                    _uiState.value = _uiState.value.copy(experiences = merged)
+                }
             }
 
-            // Update cache with refreshed data
+            // Update cache with refreshed data — include ALL fields
             val state = _uiState.value
             profileCache.put(
                 memberId,
@@ -377,7 +459,17 @@ class ProfileViewModel @Inject constructor(
                     activityScore = state.activityScore,
                     traitBars = state.traitBars,
                     samePartyMps = state.samePartyMps,
-                    committeePeerMps = state.committeePeerMps
+                    committeePeerMps = state.committeePeerMps,
+                    memberVotes = state.memberVotes,
+                    rebellionStats = state.rebellionStats,
+                    allDivisionDates = state.allDivisionDates,
+                    allVotesByDivision = state.allVotesByDivision,
+                    memberPartyName = state.memberPartyName,
+                    interests = state.interests,
+                    expenseBucketTotals = state.expenseBucketTotals,
+                    expenses = state.expenses,
+                    committees = state.committees,
+                    experiences = state.experiences
                 )
             )
 

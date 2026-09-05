@@ -12,8 +12,10 @@ import com.goveye.app.data.local.dao.PartySummary
 import com.goveye.app.data.local.entity.MpEntity
 import com.goveye.app.data.local.entity.PartyManifestoEntity
 import com.goveye.app.data.local.entity.PartyStatsEntity
+import com.goveye.app.data.repo.GovernmentAnnouncementsRepository
 import com.goveye.app.data.repo.ManifestoRepository
 import com.goveye.app.data.repo.PartyStatsRepository
+import com.goveye.app.domain.model.PartyLeaderDetail
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -32,6 +34,7 @@ data class PartyUiState(
     val party: PartySummary? = null,
     val stats: PartyStatsEntity? = null,
     val manifesto: PartyManifestoEntity? = null,
+    val leader: PartyLeaderDetail? = null,
     val isLoading: Boolean = true,
     val isFollowing: Boolean = false,
     val notificationsEnabled: Boolean = false
@@ -42,7 +45,8 @@ data class PartyUiState(
 class PartyViewModel @Inject constructor(
     private val mpDao: MpDao,
     private val partyStatsRepository: PartyStatsRepository,
-    private val manifestoRepository: ManifestoRepository
+    private val manifestoRepository: ManifestoRepository,
+    private val governmentAnnouncementsRepository: GovernmentAnnouncementsRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PartyUiState())
@@ -97,10 +101,18 @@ class PartyViewModel @Inject constructor(
                 null
             }
 
+            // Fetch party leader detail (joins party_leaders + mps + bio_data)
+            val leader = try {
+                governmentAnnouncementsRepository.getPartyLeaderDetail(partyId)
+            } catch (e: Exception) {
+                null
+            }
+
             _uiState.value = PartyUiState(
                 party = party,
                 stats = stats,
                 manifesto = manifesto,
+                leader = leader,
                 isLoading = false
             )
         }

@@ -10,6 +10,9 @@ interface PartyLeaderDao {
     @Query("SELECT * FROM party_leaders ORDER BY partyId")
     fun observePartyLeaders(): Flow<List<PartyLeaderEntity>>
 
+    @Query("SELECT * FROM party_leaders ORDER BY partyId")
+    suspend fun getAllPartyLeaders(): List<PartyLeaderEntity>
+
     @Query("SELECT * FROM party_leaders WHERE partyId = :partyId")
     suspend fun getLeaderForParty(partyId: Int): PartyLeaderEntity?
 }

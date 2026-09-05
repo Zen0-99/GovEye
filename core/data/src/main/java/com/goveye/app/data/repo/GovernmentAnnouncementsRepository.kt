@@ -1,12 +1,15 @@
 package com.goveye.app.data.repo
 
 import com.goveye.app.data.local.dao.AnnouncementTagDao
+import com.goveye.app.data.local.dao.BioDataDao
 import com.goveye.app.data.local.dao.GovernmentPublicationDao
 import com.goveye.app.data.local.dao.LegislationDao
+import com.goveye.app.data.local.dao.MpDao
 import com.goveye.app.data.local.dao.MpTagDao
 import com.goveye.app.data.local.dao.PartyLeaderDao
 import com.goveye.app.data.local.dao.SourceRecommendationDao
 import com.goveye.app.data.local.dao.WrittenStatementDao
+import com.goveye.app.data.local.entity.BioDataEntity
 import com.goveye.app.data.local.entity.GovernmentPublicationEntity
 import com.goveye.app.data.local.entity.LegislationEntity
 import com.goveye.app.data.local.entity.MpTagEntity
@@ -17,6 +20,7 @@ import com.goveye.app.domain.model.GovernmentPublication
 import com.goveye.app.domain.model.Legislation
 import com.goveye.app.domain.model.MpTag
 import com.goveye.app.domain.model.PartyLeader
+import com.goveye.app.domain.model.PartyLeaderDetail
 import com.goveye.app.domain.model.SourceRecommendation
 import com.goveye.app.domain.model.WrittenStatement
 import javax.inject.Inject
@@ -43,7 +47,9 @@ class GovernmentAnnouncementsRepository @Inject constructor(
     private val announcementTagDao: AnnouncementTagDao,
     private val mpTagDao: MpTagDao,
     private val partyLeaderDao: PartyLeaderDao,
-    private val sourceRecommendationDao: SourceRecommendationDao
+    private val sourceRecommendationDao: SourceRecommendationDao,
+    private val mpDao: MpDao,
+    private val bioDataDao: BioDataDao
 ) {
     // --- Written statements ---
 
@@ -193,6 +199,119 @@ class GovernmentAnnouncementsRepository @Inject constructor(
     }
 
     suspend fun getLeaderForParty(partyId: Int): PartyLeader? = partyLeaderDao.getLeaderForParty(partyId)?.toDomain()
+
+    /**
+     * Returns the partyId of the ruling party (the party whose leader has
+     * the title "Prime Minister"), or null if not found.
+     */
+    suspend fun getRulingPartyId(): Int? {
+        val leaders = partyLeaderDao.getAllPartyLeaders()
+        return leaders.find { it.title.contains("Prime Minister", ignoreCase = true) }?.partyId
+    }
+
+    /**
+     * Fetch rich party leader detail by joining party_leaders → mps → bio_data.
+     *
+     * - Name, constituency, thumbnailUrl, party colour come from the mps table
+     * - Age is computed from bio_data.dateOfBirth
+     * - "Leader for X years" is computed from bio_data.postsJson — the post
+     *   matching the leader title has a startDate field
+     *
+     * Returns null if the party has no leader in the table, or if the MP
+     * referenced by party_leaders.memberId is not in the mps table.
+     */
+    suspend fun getPartyLeaderDetail(partyId: Int): PartyLeaderDetail? {
+        val leaderEntity = partyLeaderDao.getLeaderForParty(partyId) ?: return null
+        val mp = mpDao.getMp(leaderEntity.memberId) ?: return null
+        val bioData = try {
+            bioDataDao.getByMpId(leaderEntity.memberId)
+        } catch (e: Exception) {
+            null
+        }
+
+        val age = bioData?.dateOfBirth?.let { computeAge(it) }
+        val leaderSinceYears = bioData?.postsJson?.let { postsJson ->
+            parseLeaderStartDate(postsJson, leaderEntity.title)?.let { startDate ->
+                computeYearsSince(startDate)
+            }
+        }
+
+        return PartyLeaderDetail(
+            memberId = mp.id,
+            name = mp.nameDisplayAs,
+            constituency = mp.constituencyName,
+            thumbnailUrl = mp.thumbnailUrl,
+            partyBackgroundColour = mp.partyBackgroundColour,
+            title = leaderEntity.title,
+            age = age,
+            leaderSinceYears = leaderSinceYears
+        )
+    }
+
+    /**
+     * Compute age from a date-of-birth string (expected format: "YYYY-MM-DD").
+     */
+    private fun computeAge(dob: String): Int? {
+        return try {
+            val parts = dob.split("-")
+            if (parts.size < 3) return null
+            val birthYear = parts[0].toInt()
+            val birthMonth = parts[1].toInt()
+            val birthDay = parts[2].toInt()
+            val now = java.time.LocalDate.now()
+            var age = now.year - birthYear
+            if (now.monthValue < birthMonth || (now.monthValue == birthMonth && now.dayOfMonth < birthDay)) {
+                age--
+            }
+            age
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Compute whole years since the given date (expected format: "YYYY-MM-DD").
+     */
+    private fun computeYearsSince(startDate: String): Int? {
+        return try {
+            val parts = startDate.split("-")
+            if (parts.size < 3) return null
+            val startYear = parts[0].toInt()
+            val startMonth = parts[1].toInt()
+            val startDay = parts[2].toInt()
+            val now = java.time.LocalDate.now()
+            var years = now.year - startYear
+            if (now.monthValue < startMonth || (now.monthValue == startMonth && now.dayOfMonth < startDay)) {
+                years--
+            }
+            years
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Parse bio_data.postsJson (a JSON array of posts) and find the startDate
+     * of the post whose title matches the leader title.
+     *
+     * postsJson format: [{"type":"...","title":"...","department":"...","startDate":"...","endDate":"..."}, ...]
+     */
+    private fun parseLeaderStartDate(postsJson: String, leaderTitle: String): String? {
+        return try {
+            val array = org.json.JSONArray(postsJson)
+            for (i in 0 until array.length()) {
+                val post = array.getJSONObject(i)
+                val title = post.optString("title", "")
+                if (title.contains(leaderTitle, ignoreCase = true)) {
+                    val startDate = post.optString("startDate", null)
+                    if (!startDate.isNullOrBlank()) return startDate
+                }
+            }
+            null
+        } catch (e: Exception) {
+            null
+        }
+    }
 
     // --- Source recommendations ---
 

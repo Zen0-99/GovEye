@@ -59,10 +59,11 @@ fun ActivityScoreStrip(score: ActivityScore?, modifier: Modifier = Modifier) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                BreakdownItem(label = "Votes", value = score.breakdown.voteParticipationContribution, max = 4.0f)
+                BreakdownItem(label = "Votes", value = score.breakdown.voteParticipationContribution, max = 2.5f)
                 BreakdownItem(label = "Questions", value = score.breakdown.questionsContribution, max = 2.0f)
                 BreakdownItem(label = "Speeches", value = score.breakdown.speechesContribution, max = 2.0f)
-                BreakdownItem(label = "Committees", value = score.breakdown.committeesContribution, max = 2.0f)
+                BreakdownItem(label = "Committees", value = score.breakdown.committeesContribution, max = 1.5f)
+                BreakdownItem(label = "Finance", value = score.breakdown.financeContribution, max = 2.0f)
             }
         }
     }

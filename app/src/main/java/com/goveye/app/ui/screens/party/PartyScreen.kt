@@ -48,7 +48,7 @@ import com.goveye.app.ui.components.SearchBarConfig
 import com.goveye.app.ui.components.SubTab
 import com.goveye.app.ui.components.SubTabPager
 import com.goveye.app.ui.theme.padding
-import com.goveye.app.ui.theme.parsePartyColor
+import com.goveye.app.ui.theme.partyColorForId
 import com.goveye.app.ui.utils.partyLogoResId
 
 enum class PartyTab(val label: String) {
@@ -77,7 +77,7 @@ fun PartyScreen(
     var currentPage by remember { mutableIntStateOf(0) }
 
     val party = uiState.party
-    val partyColor = remember(party) { parsePartyColor(party?.partyBackgroundColour) }
+    val partyColor = remember(party) { partyColorForId(party?.partyId, party?.partyBackgroundColour) }
     val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     val headerIconTint = if (isDark) Color.White else Color(0xFF1A1A1A)
 
@@ -164,7 +164,9 @@ fun PartyScreen(
                 when (PartyTab.entries[page]) {
                     PartyTab.INFO -> PartyInfoTab(
                         party = uiState.party,
-                        stats = uiState.stats
+                        stats = uiState.stats,
+                        leader = uiState.leader,
+                        onNavigateToProfile = onNavigateToProfile
                     )
 
                     PartyTab.MEMBERS -> {

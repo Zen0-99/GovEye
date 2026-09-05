@@ -521,6 +521,9 @@ private fun GovEyeAppContent(
                             onNavigateToProfile = { memberId ->
                                 currentBackStack.add(ProfileRoute(memberId))
                             },
+                            onNavigateToParty = { partyId ->
+                                currentBackStack.add(PartyRoute(partyId))
+                            },
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(top = topBarHeight)

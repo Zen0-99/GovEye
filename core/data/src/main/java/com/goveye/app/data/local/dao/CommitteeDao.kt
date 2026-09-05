@@ -16,8 +16,10 @@ interface CommitteeDao {
                c.categoryName AS categoryName, c.isActive AS isActive,
                COUNT(ref.memberId) AS memberCount
         FROM committees c
-        LEFT JOIN mp_committee_cross_ref ref ON c.id = ref.committeeId
+        INNER JOIN mp_committee_cross_ref ref ON c.id = ref.committeeId
+        INNER JOIN mps m ON ref.memberId = m.id AND m.isActive = 1
         GROUP BY c.id
+        HAVING memberCount > 0
         ORDER BY c.isActive DESC, memberCount DESC, c.name
         """
     )
@@ -29,8 +31,10 @@ interface CommitteeDao {
                c.categoryName AS categoryName, c.isActive AS isActive,
                COUNT(ref.memberId) AS memberCount
         FROM committees c
-        LEFT JOIN mp_committee_cross_ref ref ON c.id = ref.committeeId
+        INNER JOIN mp_committee_cross_ref ref ON c.id = ref.committeeId
+        INNER JOIN mps m ON ref.memberId = m.id AND m.isActive = 1
         GROUP BY c.id
+        HAVING memberCount > 0
         ORDER BY c.isActive DESC, memberCount DESC, c.name
         """
     )

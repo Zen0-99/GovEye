@@ -29,10 +29,11 @@ import com.goveye.app.domain.stats.TraitBar
  * Activity score display — large centered number with breakdown columns.
  *
  * Layout:
- *   [Votes   /3.0]     [ 5.2 ]     [Questions /2.5]
- *   [Speeches/2.5]     [ score]     [Committees/2.0]
+ *   [Votes   /2.5]     [ 5.2 ]     [Questions /2.0]
+ *   [Speeches/2.0]     [ score]     [Committees/1.5]
+ *   [Finance /2.0]
  *
- * Left column: Votes + Speeches (left-aligned)
+ * Left column: Votes + Speeches + Finance (left-aligned)
  * Center: large score number + label
  * Right column: Questions + Committees (right-aligned)
  */
@@ -50,14 +51,15 @@ fun ActivityScoreStrip(score: ActivityScore, modifier: Modifier = Modifier) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Left column — Votes + Speeches (left-aligned)
+        // Left column — Votes + Speeches + Finance (left-aligned)
         Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalAlignment = Alignment.Start
         ) {
-            ScoreBreakdownEntry("Votes", score.breakdown.voteParticipationContribution, 3.0f, onColor, onColorVariant)
-            ScoreBreakdownEntry("Speeches", score.breakdown.speechesContribution, 2.5f, onColor, onColorVariant)
+            ScoreBreakdownEntry("Votes", score.breakdown.voteParticipationContribution, 2.5f, onColor, onColorVariant)
+            ScoreBreakdownEntry("Speeches", score.breakdown.speechesContribution, 2.0f, onColor, onColorVariant)
+            ScoreBreakdownEntry("Finance", score.breakdown.financeContribution, 2.0f, onColor, onColorVariant)
         }
 
         // Center — large score number + label
@@ -86,7 +88,7 @@ fun ActivityScoreStrip(score: ActivityScore, modifier: Modifier = Modifier) {
             ScoreBreakdownEntry(
                 "Questions",
                 score.breakdown.questionsContribution,
-                2.5f,
+                2.0f,
                 onColor,
                 onColorVariant,
                 Alignment.End
@@ -94,7 +96,7 @@ fun ActivityScoreStrip(score: ActivityScore, modifier: Modifier = Modifier) {
             ScoreBreakdownEntry(
                 "Committees",
                 score.breakdown.committeesContribution,
-                2.0f,
+                1.5f,
                 onColor,
                 onColorVariant,
                 Alignment.End
@@ -141,7 +143,10 @@ private fun ScoreBreakdownEntry(
 }
 
 /**
- * FotMob-style trait bars — 5 horizontal bars showing percentile rankings.
+ * FotMob-style trait bars — 6 horizontal bars showing normalized scores.
+ * Loyalty/Participation show the actual rate (0-100%).
+ * Questions/Speeches/Finance show rate-vs-average (100% = average).
+ * Committees show count-vs-ceiling (50% = 5 committees, 100% = 10+).
  */
 @Composable
 fun TraitBarsSection(traitBars: List<TraitBar>, modifier: Modifier = Modifier) {
@@ -188,13 +193,14 @@ private fun TraitBarRow(trait: TraitBar) {
         ) {
             Text(
                 text = trait.label,
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium
             )
             Text(
                 text = "${displayPercent.toInt()}%",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
         Box(
@@ -219,9 +225,14 @@ private fun TraitBarRow(trait: TraitBar) {
  * Returns the percentage value to display and use for bar/radar fills.
  *
  * Rate-based traits (Loyalty, Participation) use the actual mpValue (0-100).
- * Count-based traits (Questions, Speeches, Committees) use the percentile
- * rank (0-100), so the displayed percentage, bar fill, and radar polygon
- * are all consistent.
+ * Count-based traits (Questions, Speeches, Committees, Finance) use the normalized
+ * rate-based score stored in [TraitBar.percentile] (0-100, clamped).
+ *
+ * Questions/Speeches/Finance: score = (mpRate / avgRate) * 100, where rate = count / yearsServed.
+ * An MP at the average rate scores 100%.
+ *
+ * Committees: score = (mpCount / 10) * 100.
+ * 5 committees = 50%, 10+ = 100%.
  */
 fun traitDisplayPercent(trait: TraitBar): Float = when (trait.label) {
     "Loyalty", "Participation" -> trait.mpValue.coerceIn(0f, 100f)

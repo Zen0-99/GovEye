@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -107,6 +108,7 @@ fun DirectoryScreen(
     val filterState by viewModel.filterState.collectAsStateWithLifecycle(DirectoryFilterState())
     val distinctParties by viewModel.distinctParties.collectAsStateWithLifecycle(emptyList())
     val parties by viewModel.parties.collectAsStateWithLifecycle(emptyList())
+    val rulingPartyId by viewModel.rulingPartyId.collectAsStateWithLifecycle(null)
     val councils by viewModel.councils.collectAsStateWithLifecycle(emptyList())
     val committees by viewModel.committees.collectAsStateWithLifecycle(emptyList())
     val governmentSourceType by viewModel.governmentSourceType.collectAsStateWithLifecycle(GovernmentSourceType.ALL)
@@ -203,7 +205,9 @@ fun DirectoryScreen(
 
                 DirectoryTab.PARTIES -> PartiesTabContent(
                     parties = parties,
-                    onNavigateToParty = onNavigateToParty
+                    onNavigateToParty = onNavigateToParty,
+                    searchQuery = searchQuery,
+                    rulingPartyId = rulingPartyId
                 )
 
                 DirectoryTab.COMMITTEES -> CommitteesTabContent(
@@ -339,7 +343,16 @@ private fun OfficialsTabContent(
                 )
             }
         } else {
+            val searchListState = rememberLazyListState()
+            // Reset scroll to top when the query changes — without this, the
+            // list stays at the same scroll offset and better matches at the
+            // top are off-screen (e.g. typing "abo" → "abot" keeps scroll
+            // position, hiding Abbott which is now ranked first).
+            LaunchedEffect(searchQuery) {
+                searchListState.scrollToItem(0)
+            }
             LazyColumn(
+                state = searchListState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)

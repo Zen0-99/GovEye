@@ -185,11 +185,12 @@ interface DivisionDao {
             v.vote AS vote
         FROM division_votes v
         INNER JOIN divisions d ON v.divisionId = d.id
-        WHERE v.memberId IN (:memberIds)
-            AND v.divisionId = (
-                SELECT MAX(v2.divisionId) FROM division_votes v2
-                WHERE v2.memberId = v.memberId
-            )
+        INNER JOIN (
+            SELECT memberId, MAX(divisionId) AS maxDivId
+            FROM division_votes
+            WHERE memberId IN (:memberIds)
+            GROUP BY memberId
+        ) latest ON v.memberId = latest.memberId AND v.divisionId = latest.maxDivId
         """
     )
     suspend fun getRecentVotesForMembers(memberIds: List<Int>): List<MemberRecentVote>

@@ -23,6 +23,7 @@ import com.goveye.app.domain.model.Mp
 import com.goveye.app.domain.model.RepositoryResult
 import com.goveye.app.domain.model.SyncStatus
 import com.goveye.app.domain.search.FtsQuerySanitizer
+import com.goveye.app.domain.search.FuzzyMatcher
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
@@ -101,28 +102,82 @@ class MembersRepository @Inject constructor(
     }
 
     /**
-     * Combined search: searches both current MPs (mps_fts) and historical
-     * members (historical_members_fts4). Returns current MPs first, then
-     * historical members that aren't already in the current MP results.
+     * Combined search with FTS → LIKE → fuzzy fallback chain.
+     *
+     * Phase 1: FTS4 MATCH (fast, prefix matching via mps_fts + historical_members_fts4)
+     * Phase 2: LIKE search (substring matching — catches cases FTS tokenization misses)
+     * Phase 3: Fuzzy Levenshtein matching (typo tolerance — "Hamiltton" → "Hamilton")
+     *
+     * Returns current MPs first, then historical members.
      * Historical members are mapped to Mp domain objects with isActive=false.
      */
     fun searchAllMembersFts(query: String): Flow<List<Mp>> {
         val sanitized = FtsQuerySanitizer.sanitize(query) ?: return flowOf(emptyList())
+        val rawQuery = query.trim()
         return flow {
-            // Search current MPs (Flow — collect first)
-            val currentMps = searchDao.searchMpsFts(sanitized).first().map { it.toDomain() }
+            // Phase 1: FTS search (current MPs)
+            var currentMps = searchDao.searchMpsFts(sanitized).first().map { it.toDomain() }
+
+            // Phase 2: LIKE fallback if FTS returned nothing
+            if (currentMps.isEmpty() && rawQuery.length >= 2) {
+                currentMps = searchDao.searchMps(rawQuery).first().map { it.toDomain() }
+            }
+
+            // Phase 3: Fuzzy fallback if LIKE also returned nothing
+            if (currentMps.isEmpty() && rawQuery.length >= 3) {
+                currentMps = fuzzySearchMps(rawQuery)
+            }
+
             // Search historical members (excluding current MPs)
             val currentIds = currentMps.map { it.id }.toSet()
-            val historical = try {
+            var historical = try {
                 historicalMemberDao.search(sanitized)
                     .filter { it.parliamentMemberId == null || it.parliamentMemberId !in currentIds }
                     .take(50 - currentMps.size)
             } catch (e: Exception) {
                 emptyList()
             }
+
+            // Fuzzy fallback for historical members too
+            if (historical.isEmpty() && currentMps.isEmpty() && rawQuery.length >= 3) {
+                historical = try {
+                    historicalMemberDao.getAll()
+                        .filter { hm ->
+                            FuzzyMatcher.matches(
+                                rawQuery,
+                                "${hm.displayName} ${hm.alternateNames ?: ""} ${hm.constituency ?: ""}"
+                            )
+                        }
+                        .filter { it.parliamentMemberId == null || it.parliamentMemberId !in currentIds }
+                        .take(50)
+                } catch (e: Exception) {
+                    emptyList()
+                }
+            }
+
             val historicalMps = historical.map { it.toDomainMp() }
             emit(currentMps + historicalMps)
         }
+    }
+
+    /**
+     * Fuzzy search: load all MPs and filter by Levenshtein distance.
+     * Used as a final fallback when FTS and LIKE both return no results.
+     */
+    private suspend fun fuzzySearchMps(query: String): List<Mp> {
+        val allMps = mpDao.getAllMps().map { it.toDomain() }
+        return allMps
+            .map { mp ->
+                FuzzyMatcher.score(
+                    query,
+                    "${mp.nameListAs} ${mp.nameDisplayAs} ${mp.constituency?.name ?: ""} ${mp.party?.name ?: ""}"
+                ) to
+                    mp
+            }
+            .filter { it.first < Int.MAX_VALUE }
+            .sortedBy { it.first }
+            .take(50)
+            .map { it.second }
     }
 
     /**
@@ -197,15 +252,26 @@ class MembersRepository @Inject constructor(
         val dbEntity = mpSynopsisDao.getByMpId(memberId)
         if (dbEntity != null && !dbEntity.synopsisText.isNullOrBlank()) {
             val synopsis = stripHtml(dbEntity.synopsisText)
-            synopsisCache[memberId] = synopsis to System.currentTimeMillis()
-            return synopsis
+            // Filter out Wikipedia disambiguation pages that were stored as
+            // bios (e.g. "Jack Abbott may refer to..."). These are not real
+            // biographies — return null so the BioSection is hidden.
+            if (!isDisambiguationPage(synopsis)) {
+                synopsisCache[memberId] = synopsis to System.currentTimeMillis()
+                return synopsis
+            }
         }
-        // Fall back to live API if not in bundled DB
+        // Fall back to live API if not in bundled DB (or if bundled text was
+        // a disambiguation page — the live Parliament API synopsis is always
+        // a real one-liner, never a disambiguation page)
         return try {
             val response = membersApi.getMemberSynopsis(memberId)
             val synopsis = stripHtml(response.value ?: "")
-            synopsisCache[memberId] = synopsis to System.currentTimeMillis()
-            synopsis
+            if (synopsis.isNotBlank() && !isDisambiguationPage(synopsis)) {
+                synopsisCache[memberId] = synopsis to System.currentTimeMillis()
+                synopsis
+            } else {
+                cached?.first
+            }
         } catch (e: Exception) {
             cached?.first
         }
@@ -303,6 +369,21 @@ class MembersRepository @Inject constructor(
         .replace("&#39;", "'")
         .replace("&nbsp;", " ")
         .trim()
+
+    /**
+     * Detects Wikipedia disambiguation pages that were erroneously stored
+     * as MP biographies. These typically start with "X may refer to:" and
+     * list unrelated people/things. Returns true if the text looks like a
+     * disambiguation page rather than a real biography.
+     */
+    private fun isDisambiguationPage(text: String): Boolean {
+        val lower = text.lowercase()
+        // "may refer to" is the standard Wikipedia disambiguation phrase
+        if (lower.contains("may refer to")) return true
+        // Some disambiguation pages use "usually refers to" or "can refer to"
+        if (lower.contains("usually refers to") || lower.contains("can refer to")) return true
+        return false
+    }
 
     // --- Bundled DB entity → domain mappers ---
 

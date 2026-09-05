@@ -531,6 +531,73 @@ object DatabaseModule {
         }
     }
 
+    // Migration 26 → 27: Add index on division_votes.memberId.
+    // Without this index, queries filtering by memberId (e.g. getRecentVotesForMembers)
+    // do full table scans on a table with hundreds of thousands of rows, causing
+    // the Following tab to hang indefinitely on skeletons.
+    // Idempotent — the index may already exist if the seed DB was built at v27.
+    private val MIGRATION_26_27 = object : Migration(26, 27) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            val indexes = db.query(
+                "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='division_votes'"
+            ).use { cursor ->
+                buildList {
+                    while (cursor.moveToNext()) {
+                        add(cursor.getString(0))
+                    }
+                }
+            }.toSet()
+
+            if ("index_division_votes_memberId" !in indexes) {
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_division_votes_memberId` ON `division_votes` (`memberId`)"
+                )
+            }
+        }
+    }
+
+    // Fix stale party_leaders member IDs. The seed DB (v27) had wrong IDs
+    // from HARDCODED_LEADERS in build_party_leaders.py — e.g. 4513 was Mims
+    // Davies (Conservative!) not Keir Starmer, 4981 was Ashley Dalton (Labour!)
+    // not Nigel Farage. This migration corrects all 8 entries with verified
+    // member IDs from the mps table.
+    private val MIGRATION_27_28 = object : Migration(27, 28) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Labour (15) — Andy Burnham, Prime Minister
+            db.execSQL(
+                "INSERT OR REPLACE INTO party_leaders (partyId, memberId, title) VALUES (15, 1427, 'Prime Minister')"
+            )
+            // Conservative (4) — Kemi Badenoch, Leader of the Opposition
+            db.execSQL(
+                "INSERT OR REPLACE INTO party_leaders (partyId, memberId, title) VALUES (4, 4597, 'Leader of the Opposition')"
+            )
+            // Liberal Democrats (17) — Ed Davey
+            db.execSQL(
+                "INSERT OR REPLACE INTO party_leaders (partyId, memberId, title) VALUES (17, 188, 'Leader of the Liberal Democrats')"
+            )
+            // SNP (29) — Pete Wishart (Westminster leader)
+            db.execSQL(
+                "INSERT OR REPLACE INTO party_leaders (partyId, memberId, title) VALUES (29, 1440, 'Leader of the Scottish National Party')"
+            )
+            // DUP (7) — Gavin Robinson
+            db.execSQL(
+                "INSERT OR REPLACE INTO party_leaders (partyId, memberId, title) VALUES (7, 4360, 'Leader of the Democratic Unionist Party')"
+            )
+            // Plaid Cymru (22) — Liz Saville Roberts
+            db.execSQL(
+                "INSERT OR REPLACE INTO party_leaders (partyId, memberId, title) VALUES (22, 4521, 'Leader of Plaid Cymru')"
+            )
+            // Green Party (44) — Adrian Ramsay (co-leader; Zack Polanski not an MP)
+            db.execSQL(
+                "INSERT OR REPLACE INTO party_leaders (partyId, memberId, title) VALUES (44, 5320, 'Leader of the Green Party')"
+            )
+            // Reform UK (1036) — Nigel Farage
+            db.execSQL(
+                "INSERT OR REPLACE INTO party_leaders (partyId, memberId, title) VALUES (1036, 5091, 'Leader of Reform UK')"
+            )
+        }
+    }
+
     @Provides
     @Singleton
     fun provideBundledDatabase(@ApplicationContext context: Context): BundledDatabase {
@@ -587,7 +654,9 @@ object DatabaseModule {
                 MIGRATION_22_23,
                 MIGRATION_23_24,
                 MIGRATION_24_25,
-                MIGRATION_25_26
+                MIGRATION_25_26,
+                MIGRATION_26_27,
+                MIGRATION_27_28
             )
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
@@ -857,9 +926,13 @@ object DatabaseModule {
         hansardDao: HansardDao,
         mpDao: MpDao,
         mpStatsDao: com.goveye.app.data.local.dao.MpStatsDao,
-        bioDataDao: BioDataDao
-    ): StatsRepository =
-        StatsRepository(divisionDao, committeeDao, debateSpeechDao, hansardDao, mpDao, mpStatsDao, bioDataDao)
+        bioDataDao: BioDataDao,
+        interestDao: com.goveye.app.data.local.dao.InterestDao,
+        expenseDao: com.goveye.app.data.local.dao.ExpenseDao
+    ): StatsRepository = StatsRepository(
+        divisionDao, committeeDao, debateSpeechDao, hansardDao,
+        mpDao, mpStatsDao, bioDataDao, interestDao, expenseDao
+    )
 
     @Provides
     @Singleton
@@ -880,7 +953,9 @@ object DatabaseModule {
         announcementTagDao: AnnouncementTagDao,
         mpTagDao: MpTagDao,
         partyLeaderDao: PartyLeaderDao,
-        sourceRecommendationDao: SourceRecommendationDao
+        sourceRecommendationDao: SourceRecommendationDao,
+        mpDao: MpDao,
+        bioDataDao: BioDataDao
     ): GovernmentAnnouncementsRepository = GovernmentAnnouncementsRepository(
         writtenStatementDao,
         governmentPublicationDao,
@@ -888,6 +963,8 @@ object DatabaseModule {
         announcementTagDao,
         mpTagDao,
         partyLeaderDao,
-        sourceRecommendationDao
+        sourceRecommendationDao,
+        mpDao,
+        bioDataDao
     )
 }

@@ -57,7 +57,8 @@ private data class CardTypeData(
     val tags: List<String>,
     val divisionData: DivisionData?,
     val cardTypeIcon: ImageVector? = null,
-    val followedVotes: List<com.goveye.app.data.local.entity.FollowedMpVote> = emptyList()
+    val followedVotes: List<com.goveye.app.data.local.entity.FollowedMpVote> = emptyList(),
+    val showImagePlaceholder: Boolean = true
 )
 
 private data class DivisionData(val ayeCount: Int, val noCount: Int)
@@ -176,7 +177,7 @@ fun UnifiedFeedCard(
                         }
                     }
                 )
-            } else if (data.cardTypeIcon != null) {
+            } else if (data.cardTypeIcon != null && data.showImagePlaceholder) {
                 // No image URL — show a colored placeholder with the category icon
                 Box(
                     modifier = Modifier
@@ -404,7 +405,8 @@ private fun getCardTypeData(item: FeedItem): CardTypeData = when (item) {
             tags = item.tags,
             divisionData = DivisionData(ayeCount = division.ayeCount, noCount = division.noCount),
             cardTypeIcon = Icons.Outlined.HowToVote,
-            followedVotes = item.followedVotes
+            followedVotes = item.followedVotes,
+            showImagePlaceholder = false
         )
     }
 

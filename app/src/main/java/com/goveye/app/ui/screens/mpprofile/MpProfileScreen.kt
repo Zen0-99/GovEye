@@ -370,6 +370,7 @@ fun ProfileScreen(
                                     allDivisionDates = uiState.allDivisionDates,
                                     activityScore = uiState.activityScore,
                                     traitBars = uiState.traitBars,
+                                    partyColor = partyColor,
                                     onNavigateToDivision = { divisionId, house ->
                                         onNavigateToDivision(divisionId, house)
                                     },
@@ -753,6 +754,7 @@ private fun ProfileStatsTabContent(
     allDivisionDates: List<String>,
     activityScore: com.goveye.app.domain.stats.ActivityScore?,
     traitBars: List<com.goveye.app.domain.stats.TraitBar>,
+    partyColor: Color,
     onNavigateToDivision: (Int, Int) -> Unit,
     onNavigateToVotingRecord: (Int) -> Unit
 ) {
@@ -798,10 +800,19 @@ private fun ProfileStatsTabContent(
         // Summary header
         if (memberVotes.isNotEmpty()) {
             item {
-                VotesSummaryCard(
-                    totalVotes = memberVotes.size,
-                    rebellionStats = rebellionStats
-                )
+                Column {
+                    Text(
+                        text = "Voting Record",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+                    VotesSummaryCard(
+                        totalVotes = memberVotes.size,
+                        rebellionStats = rebellionStats
+                    )
+                }
             }
         }
 
@@ -824,10 +835,10 @@ private fun ProfileStatsTabContent(
             }
         }
 
-        // Vote map — wrapped in a card
+        // Vote map — title above card, grid inside card
         if (voteMapTiles.isNotEmpty()) {
             item {
-                com.goveye.app.ui.components.charts.ChartCard {
+                Column {
                     com.goveye.app.ui.components.charts.ChartHeaderWithLegend(
                         title = "Vote Map",
                         legendItems = listOf(
@@ -836,10 +847,12 @@ private fun ProfileStatsTabContent(
                             "No vote" to MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
                         )
                     )
-                    com.goveye.app.ui.components.stats.VoteMapGrid(
-                        tiles = voteMapTiles,
-                        onTileClick = onNavigateToDivision
-                    )
+                    com.goveye.app.ui.components.charts.ChartCard {
+                        com.goveye.app.ui.components.stats.VoteMapGrid(
+                            tiles = voteMapTiles,
+                            onTileClick = onNavigateToDivision
+                        )
+                    }
                 }
             }
         }
@@ -847,11 +860,20 @@ private fun ProfileStatsTabContent(
         // Recent votes summary — 5 compact rows + "See all" link (D-08)
         if (memberVotes.isNotEmpty()) {
             item {
-                RecentVotesSummary(
-                    recentVotes = memberVotes.take(5),
-                    onSeeAll = { onNavigateToVotingRecord(memberId) },
-                    onNavigateToDivision = onNavigateToDivision
-                )
+                Column {
+                    Text(
+                        text = "Recent votes",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+                    RecentVotesSummary(
+                        recentVotes = memberVotes.take(5),
+                        onSeeAll = { onNavigateToVotingRecord(memberId) },
+                        onNavigateToDivision = onNavigateToDivision
+                    )
+                }
             }
         }
 
@@ -884,11 +906,6 @@ private fun VotesSummaryCard(totalVotes: Int, rebellionStats: RebellionStats?) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Text(
-            text = "Voting Record",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-        )
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
@@ -908,16 +925,16 @@ private fun VotesSummaryCard(totalVotes: Int, rebellionStats: RebellionStats?) {
             if (rebellionStats != null) {
                 Column {
                     Text(
-                        text = "Rebellion Rate",
+                        text = "Party Loyalty",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "${(rebellionStats.rebellionRate * 100).toInt()}%",
+                        text = "${((1 - rebellionStats.rebellionRate) * 100).toInt()}%",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                         color = if (rebellionStats.rebellionRate > 0) {
-                            MaterialTheme.colorScheme.error
+                            MaterialTheme.colorScheme.primary
                         } else {
                             MaterialTheme.colorScheme.primary
                         }
@@ -1015,13 +1032,6 @@ private fun RecentVotesSummary(
     onNavigateToDivision: (Int, Int) -> Unit
 ) {
     com.goveye.app.ui.components.charts.ChartCard {
-        Text(
-            text = "Recent votes",
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             recentVotes.forEach { vote ->
                 RecentVoteRow(

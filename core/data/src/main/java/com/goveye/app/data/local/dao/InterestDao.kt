@@ -27,4 +27,18 @@ interface InterestDao {
 
     @Query("SELECT MIN(lastUpdated) FROM interests WHERE memberId = :memberId")
     suspend fun getOldestTimestampForMember(memberId: Int): Long?
+
+    @Query("SELECT COUNT(*) FROM interests WHERE memberId = :memberId")
+    suspend fun countInterestsForMember(memberId: Int): Int
+
+    @Query(
+        """
+        SELECT AVG(cnt) FROM (
+            SELECT COUNT(*) as cnt FROM interests
+            WHERE memberId IN (SELECT id FROM mps WHERE isActive = 1 AND house = :house)
+            GROUP BY memberId
+        )
+        """
+    )
+    suspend fun getAverageInterestCount(house: Int): Float?
 }

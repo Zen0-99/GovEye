@@ -19,6 +19,9 @@ fun partyLogoResId(partyId: Int): Int? = when (partyId) {
     // Democratic Unionist Party (DUP)
     7 -> R.drawable.party_logo_7
 
+    // Independent
+    8 -> R.drawable.party_logo_8
+
     // Labour Party
     15 -> R.drawable.party_logo_15
 
@@ -31,14 +34,26 @@ fun partyLogoResId(partyId: Int): Int? = when (partyId) {
     // Scottish National Party (SNP)
     29 -> R.drawable.party_logo_29
 
+    // Sinn Féin
+    30 -> R.drawable.party_logo_30
+
     // Social Democratic & Labour Party (SDLP)
     31 -> R.drawable.party_logo_31
+
+    // Ulster Unionist Party (UUP)
+    38 -> R.drawable.party_logo_38
 
     // Green Party
     44 -> R.drawable.party_logo_44
 
+    // Traditional Unionist Voice (TUV)
+    158 -> R.drawable.party_logo_158
+
     // Reform UK
     1036 -> R.drawable.party_logo_1036
+
+    // Restore Britain
+    1117 -> R.drawable.party_logo_1117
 
     // No logo available — fall back to abbreviation text
     else -> null

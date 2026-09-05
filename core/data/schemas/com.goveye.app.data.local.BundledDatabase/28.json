@@ -1,0 +1,2553 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 28,
+    "identityHash": "e865c72851c6900bbfd46d7cdba778cf",
+    "entities": [
+      {
+        "tableName": "mps",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `nameListAs` TEXT NOT NULL, `nameDisplayAs` TEXT NOT NULL, `nameFullTitle` TEXT, `nameAddressAs` TEXT, `gender` TEXT, `partyId` INTEGER NOT NULL, `partyName` TEXT NOT NULL, `partyAbbreviation` TEXT NOT NULL, `partyBackgroundColour` TEXT NOT NULL, `partyForegroundColour` TEXT NOT NULL, `constituencyId` INTEGER NOT NULL, `constituencyName` TEXT NOT NULL, `house` INTEGER NOT NULL, `membershipStartDate` TEXT, `membershipEndDate` TEXT, `isActive` INTEGER NOT NULL, `thumbnailUrl` TEXT, `lastUpdated` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nameListAs",
+            "columnName": "nameListAs",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nameDisplayAs",
+            "columnName": "nameDisplayAs",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nameFullTitle",
+            "columnName": "nameFullTitle",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "nameAddressAs",
+            "columnName": "nameAddressAs",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "gender",
+            "columnName": "gender",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "partyId",
+            "columnName": "partyId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "partyName",
+            "columnName": "partyName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "partyAbbreviation",
+            "columnName": "partyAbbreviation",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "partyBackgroundColour",
+            "columnName": "partyBackgroundColour",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "partyForegroundColour",
+            "columnName": "partyForegroundColour",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "constituencyId",
+            "columnName": "constituencyId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "constituencyName",
+            "columnName": "constituencyName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "house",
+            "columnName": "house",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "membershipStartDate",
+            "columnName": "membershipStartDate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "membershipEndDate",
+            "columnName": "membershipEndDate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "isActive",
+            "columnName": "isActive",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "thumbnailUrl",
+            "columnName": "thumbnailUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastUpdated",
+            "columnName": "lastUpdated",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "mps_fts",
+        "createSql": "CREATE VIRTUAL TABLE IF NOT EXISTS `${TABLE_NAME}` USING FTS4(`nameListAs` TEXT NOT NULL, `nameDisplayAs` TEXT NOT NULL, `constituencyName` TEXT NOT NULL, `partyName` TEXT NOT NULL, content=`mps`)",
+        "fields": [
+          {
+            "fieldPath": "nameListAs",
+            "columnName": "nameListAs",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nameDisplayAs",
+            "columnName": "nameDisplayAs",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "constituencyName",
+            "columnName": "constituencyName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "partyName",
+            "columnName": "partyName",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "rowid"
+          ]
+        },
+        "ftsVersion": "FTS4",
+        "ftsOptions": {
+          "tokenizer": "simple",
+          "tokenizerArgs": [],
+          "contentTable": "mps",
+          "languageIdColumnName": "",
+          "matchInfo": "FTS4",
+          "notIndexedColumns": [],
+          "prefixSizes": [],
+          "preferredOrder": "ASC"
+        },
+        "contentSyncTriggers": [
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_mps_fts_BEFORE_UPDATE BEFORE UPDATE ON `mps` BEGIN DELETE FROM `mps_fts` WHERE `docid`=OLD.`rowid`; END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_mps_fts_BEFORE_DELETE BEFORE DELETE ON `mps` BEGIN DELETE FROM `mps_fts` WHERE `docid`=OLD.`rowid`; END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_mps_fts_AFTER_UPDATE AFTER UPDATE ON `mps` BEGIN INSERT INTO `mps_fts`(`docid`, `nameListAs`, `nameDisplayAs`, `constituencyName`, `partyName`) VALUES (NEW.`rowid`, NEW.`nameListAs`, NEW.`nameDisplayAs`, NEW.`constituencyName`, NEW.`partyName`); END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_mps_fts_AFTER_INSERT AFTER INSERT ON `mps` BEGIN INSERT INTO `mps_fts`(`docid`, `nameListAs`, `nameDisplayAs`, `constituencyName`, `partyName`) VALUES (NEW.`rowid`, NEW.`nameListAs`, NEW.`nameDisplayAs`, NEW.`constituencyName`, NEW.`partyName`); END"
+        ]
+      },
+      {
+        "tableName": "committees",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `name` TEXT NOT NULL, `house` TEXT, `categoryName` TEXT, `startDate` TEXT, `endDate` TEXT, `isActive` INTEGER NOT NULL, `purpose` TEXT, `contactEmail` TEXT, `contactPhone` TEXT, `contactAddress` TEXT, `websiteUrl` TEXT, `lastUpdated` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "house",
+            "columnName": "house",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "categoryName",
+            "columnName": "categoryName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "startDate",
+            "columnName": "startDate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "endDate",
+            "columnName": "endDate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "isActive",
+            "columnName": "isActive",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "purpose",
+            "columnName": "purpose",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "contactEmail",
+            "columnName": "contactEmail",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "contactPhone",
+            "columnName": "contactPhone",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "contactAddress",
+            "columnName": "contactAddress",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "websiteUrl",
+            "columnName": "websiteUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastUpdated",
+            "columnName": "lastUpdated",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "mp_committee_cross_ref",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`memberId` INTEGER NOT NULL, `committeeId` INTEGER NOT NULL, `lastUpdated` INTEGER NOT NULL, PRIMARY KEY(`memberId`, `committeeId`))",
+        "fields": [
+          {
+            "fieldPath": "memberId",
+            "columnName": "memberId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "committeeId",
+            "columnName": "committeeId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastUpdated",
+            "columnName": "lastUpdated",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "memberId",
+            "committeeId"
+          ]
+        }
+      },
+      {
+        "tableName": "divisions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `title` TEXT NOT NULL, `date` TEXT NOT NULL, `publicationUpdated` TEXT, `number` INTEGER, `isDeferred` INTEGER NOT NULL, `ayeCount` INTEGER NOT NULL, `noCount` INTEGER NOT NULL, `house` INTEGER NOT NULL, `lastUpdated` INTEGER NOT NULL, `twfyDebateUrl` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "date",
+            "columnName": "date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "publicationUpdated",
+            "columnName": "publicationUpdated",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "number",
+            "columnName": "number",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "isDeferred",
+            "columnName": "isDeferred",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ayeCount",
+            "columnName": "ayeCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "noCount",
+            "columnName": "noCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "house",
+            "columnName": "house",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastUpdated",
+            "columnName": "lastUpdated",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "twfyDebateUrl",
+            "columnName": "twfyDebateUrl",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "division_votes",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`divisionId` INTEGER NOT NULL, `memberId` INTEGER NOT NULL, `vote` TEXT NOT NULL, `memberName` TEXT NOT NULL, `partyName` TEXT NOT NULL, `partyColour` TEXT NOT NULL, `constituencyName` TEXT NOT NULL, `isTeller` INTEGER NOT NULL, `proxyName` TEXT, PRIMARY KEY(`divisionId`, `memberId`))",
+        "fields": [
+          {
+            "fieldPath": "divisionId",
+            "columnName": "divisionId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "memberId",
+            "columnName": "memberId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "vote",
+            "columnName": "vote",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "memberName",
+            "columnName": "memberName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "partyName",
+            "columnName": "partyName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "partyColour",
+            "columnName": "partyColour",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "constituencyName",
+            "columnName": "constituencyName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isTeller",
+            "columnName": "isTeller",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "proxyName",
+            "columnName": "proxyName",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "divisionId",
+            "memberId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_division_votes_memberId",
+            "unique": false,
+            "columnNames": [
+              "memberId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_division_votes_memberId` ON `${TABLE_NAME}` (`memberId`)"
+          }
+        ]
+      },
+      {
+        "tableName": "bills",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `shortTitle` TEXT NOT NULL, `longTitle` TEXT, `summary` TEXT, `currentHouse` TEXT NOT NULL, `originatingHouse` TEXT NOT NULL, `lastUpdate` TEXT NOT NULL, `billWithdrawn` TEXT, `isDefeated` INTEGER NOT NULL, `isAct` INTEGER NOT NULL, `billTypeId` INTEGER, `currentStageDescription` TEXT, `currentStageAbbreviation` TEXT, `lastUpdated` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "shortTitle",
+            "columnName": "shortTitle",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "longTitle",
+            "columnName": "longTitle",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "summary",
+            "columnName": "summary",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "currentHouse",
+            "columnName": "currentHouse",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "originatingHouse",
+            "columnName": "originatingHouse",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastUpdate",
+            "columnName": "lastUpdate",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "billWithdrawn",
+            "columnName": "billWithdrawn",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "isDefeated",
+            "columnName": "isDefeated",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isAct",
+            "columnName": "isAct",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "billTypeId",
+            "columnName": "billTypeId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "currentStageDescription",
+            "columnName": "currentStageDescription",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "currentStageAbbreviation",
+            "columnName": "currentStageAbbreviation",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastUpdated",
+            "columnName": "lastUpdated",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "bill_stages",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`billId` INTEGER NOT NULL, `stageId` INTEGER NOT NULL, `description` TEXT NOT NULL, `abbreviation` TEXT NOT NULL, `house` TEXT NOT NULL, `sortOrder` INTEGER NOT NULL, `sessionId` INTEGER, `sittingDates` TEXT NOT NULL, `lastUpdated` INTEGER NOT NULL, PRIMARY KEY(`billId`, `stageId`))",
+        "fields": [
+          {
+            "fieldPath": "billId",
+            "columnName": "billId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stageId",
+            "columnName": "stageId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "abbreviation",
+            "columnName": "abbreviation",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "house",
+            "columnName": "house",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortOrder",
+            "columnName": "sortOrder",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionId",
+            "columnName": "sessionId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "sittingDates",
+            "columnName": "sittingDates",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastUpdated",
+            "columnName": "lastUpdated",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "billId",
+            "stageId"
+          ]
+        }
+      },
+      {
+        "tableName": "recess_dates",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `house` INTEGER NOT NULL, `description` TEXT NOT NULL, `startDate` TEXT NOT NULL, `endDate` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "house",
+            "columnName": "house",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startDate",
+            "columnName": "startDate",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "endDate",
+            "columnName": "endDate",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "recess_dates_meta",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`house` INTEGER NOT NULL, `lastRefreshedAt` INTEGER NOT NULL, PRIMARY KEY(`house`))",
+        "fields": [
+          {
+            "fieldPath": "house",
+            "columnName": "house",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastRefreshedAt",
+            "columnName": "lastRefreshedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "house"
+          ]
+        }
+      },
+      {
+        "tableName": "hansard_contributions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`itemId` INTEGER NOT NULL, `memberId` INTEGER NOT NULL, `memberName` TEXT NOT NULL, `contributionText` TEXT NOT NULL, `sittingDate` TEXT NOT NULL, `house` TEXT NOT NULL, `debateSection` TEXT NOT NULL, `debateSectionId` INTEGER NOT NULL, `lastUpdated` INTEGER NOT NULL, PRIMARY KEY(`itemId`))",
+        "fields": [
+          {
+            "fieldPath": "itemId",
+            "columnName": "itemId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "memberId",
+            "columnName": "memberId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "memberName",
+            "columnName": "memberName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "contributionText",
+            "columnName": "contributionText",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sittingDate",
+            "columnName": "sittingDate",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "house",
+            "columnName": "house",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "debateSection",
+            "columnName": "debateSection",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "debateSectionId",
+            "columnName": "debateSectionId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastUpdated",
+            "columnName": "lastUpdated",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "itemId"
+          ]
+        }
+      },
+      {
+        "tableName": "interests",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `memberId` INTEGER NOT NULL, `summary` TEXT NOT NULL, `categoryId` INTEGER NOT NULL, `categoryNumber` TEXT NOT NULL, `categoryName` TEXT NOT NULL, `fullCategoryName` TEXT, `registrationDate` TEXT, `publishedDate` TEXT, `rectified` INTEGER NOT NULL, `fieldsJson` TEXT NOT NULL, `lastUpdated` INTEGER NOT NULL, `parsedAmountPence` INTEGER, `currencyCode` TEXT, `bucket` TEXT, `donorName` TEXT, `paymentType` TEXT, `paymentDescription` TEXT, `donorStatus` TEXT, `donorAddress` TEXT, `donorCompanyIdentifier` TEXT, `destination` TEXT, `visitPurpose` TEXT, `organisationName` TEXT, `organisationDescription` TEXT, `propertyLocation` TEXT, `propertyType` TEXT, `hoursWorked` TEXT, `familyMemberName` TEXT, `familyMemberRelationship` TEXT, `familyMemberRole` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "memberId",
+            "columnName": "memberId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "summary",
+            "columnName": "summary",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "categoryId",
+            "columnName": "categoryId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "categoryNumber",
+            "columnName": "categoryNumber",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "categoryName",
+            "columnName": "categoryName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fullCategoryName",
+            "columnName": "fullCategoryName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "registrationDate",
+            "columnName": "registrationDate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "publishedDate",
+            "columnName": "publishedDate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "rectified",
+            "columnName": "rectified",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fieldsJson",
+            "columnName": "fieldsJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastUpdated",
+            "columnName": "lastUpdated",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "parsedAmountPence",
+            "columnName": "parsedAmountPence",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "currencyCode",
+            "columnName": "currencyCode",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "bucket",
+            "columnName": "bucket",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "donorName",
+            "columnName": "donorName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "paymentType",
+            "columnName": "paymentType",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "paymentDescription",
+            "columnName": "paymentDescription",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "donorStatus",
+            "columnName": "donorStatus",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "donorAddress",
+            "columnName": "donorAddress",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "donorCompanyIdentifier",
+            "columnName": "donorCompanyIdentifier",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "destination",
+            "columnName": "destination",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "visitPurpose",
+            "columnName": "visitPurpose",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "organisationName",
+            "columnName": "organisationName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "organisationDescription",
+            "columnName": "organisationDescription",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "propertyLocation",
+            "columnName": "propertyLocation",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "propertyType",
+            "columnName": "propertyType",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "hoursWorked",
+            "columnName": "hoursWorked",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "familyMemberName",
+            "columnName": "familyMemberName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "familyMemberRelationship",
+            "columnName": "familyMemberRelationship",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "familyMemberRole",
+            "columnName": "familyMemberRole",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "debate_speeches",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`debateGid` TEXT NOT NULL, `speechGid` TEXT NOT NULL, `divisionId` INTEGER NOT NULL, `speakerName` TEXT NOT NULL, `memberId` INTEGER NOT NULL, `twfyPersonId` INTEGER NOT NULL, `speakerPosition` TEXT NOT NULL, `speechText` TEXT NOT NULL, `speechOrder` INTEGER NOT NULL, `isIntervention` INTEGER NOT NULL, `lastUpdated` INTEGER NOT NULL, PRIMARY KEY(`debateGid`, `speechGid`))",
+        "fields": [
+          {
+            "fieldPath": "debateGid",
+            "columnName": "debateGid",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "speechGid",
+            "columnName": "speechGid",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "divisionId",
+            "columnName": "divisionId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "speakerName",
+            "columnName": "speakerName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "memberId",
+            "columnName": "memberId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "twfyPersonId",
+            "columnName": "twfyPersonId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "speakerPosition",
+            "columnName": "speakerPosition",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "speechText",
+            "columnName": "speechText",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "speechOrder",
+            "columnName": "speechOrder",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isIntervention",
+            "columnName": "isIntervention",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastUpdated",
+            "columnName": "lastUpdated",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "debateGid",
+            "speechGid"
+          ]
+        }
+      },
+      {
+        "tableName": "bio_data",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`mpId` INTEGER NOT NULL, `maidenSpeechDate` TEXT, `dateOfBirth` TEXT, `townOfBirth` TEXT, `countryOfBirth` TEXT, `honoursJson` TEXT, `postsJson` TEXT, `committeesJson` TEXT, `lastUpdated` INTEGER NOT NULL, PRIMARY KEY(`mpId`))",
+        "fields": [
+          {
+            "fieldPath": "mpId",
+            "columnName": "mpId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "maidenSpeechDate",
+            "columnName": "maidenSpeechDate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "dateOfBirth",
+            "columnName": "dateOfBirth",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "townOfBirth",
+            "columnName": "townOfBirth",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "countryOfBirth",
+            "columnName": "countryOfBirth",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "honoursJson",
+            "columnName": "honoursJson",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "postsJson",
+            "columnName": "postsJson",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "committeesJson",
+            "columnName": "committeesJson",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastUpdated",
+            "columnName": "lastUpdated",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "mpId"
+          ]
+        }
+      },
+      {
+        "tableName": "expenses",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `mpId` INTEGER NOT NULL, `category` TEXT NOT NULL, `bucket` TEXT NOT NULL, `amountPence` INTEGER NOT NULL, `claimDate` TEXT, `status` TEXT, `lastUpdated` INTEGER NOT NULL, `shortDescription` TEXT, `details` TEXT, `claimNumber` TEXT, `journeyType` TEXT, `journeyFrom` TEXT, `journeyTo` TEXT, `travel` TEXT, `nights` TEXT, `mileage` TEXT, `amountPaidPence` INTEGER, `amountNotPaidPence` INTEGER, `amountRepaidPence` INTEGER, `reasonIfNotPaid` TEXT, `supplyMonth` TEXT, `supplyPeriod` TEXT)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mpId",
+            "columnName": "mpId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "category",
+            "columnName": "category",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bucket",
+            "columnName": "bucket",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "amountPence",
+            "columnName": "amountPence",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "claimDate",
+            "columnName": "claimDate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastUpdated",
+            "columnName": "lastUpdated",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "shortDescription",
+            "columnName": "shortDescription",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "details",
+            "columnName": "details",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "claimNumber",
+            "columnName": "claimNumber",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "journeyType",
+            "columnName": "journeyType",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "journeyFrom",
+            "columnName": "journeyFrom",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "journeyTo",
+            "columnName": "journeyTo",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "travel",
+            "columnName": "travel",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "nights",
+            "columnName": "nights",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "mileage",
+            "columnName": "mileage",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "amountPaidPence",
+            "columnName": "amountPaidPence",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "amountNotPaidPence",
+            "columnName": "amountNotPaidPence",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "amountRepaidPence",
+            "columnName": "amountRepaidPence",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "reasonIfNotPaid",
+            "columnName": "reasonIfNotPaid",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "supplyMonth",
+            "columnName": "supplyMonth",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "supplyPeriod",
+            "columnName": "supplyPeriod",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "mp_links",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`mpId` INTEGER NOT NULL, `twitterHandle` TEXT, `facebookUrl` TEXT, `instagramUrl` TEXT, `linkedinUrl` TEXT, `wikipediaUrl` TEXT, `personalWebsiteUrl` TEXT, `lastUpdated` INTEGER NOT NULL, PRIMARY KEY(`mpId`))",
+        "fields": [
+          {
+            "fieldPath": "mpId",
+            "columnName": "mpId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "twitterHandle",
+            "columnName": "twitterHandle",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "facebookUrl",
+            "columnName": "facebookUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "instagramUrl",
+            "columnName": "instagramUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "linkedinUrl",
+            "columnName": "linkedinUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "wikipediaUrl",
+            "columnName": "wikipediaUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "personalWebsiteUrl",
+            "columnName": "personalWebsiteUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastUpdated",
+            "columnName": "lastUpdated",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "mpId"
+          ]
+        }
+      },
+      {
+        "tableName": "party_manifestos",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`partyId` INTEGER NOT NULL, `manifestoText` TEXT NOT NULL, `manifestoYear` INTEGER NOT NULL, `wordCount` INTEGER NOT NULL, `source` TEXT, PRIMARY KEY(`partyId`))",
+        "fields": [
+          {
+            "fieldPath": "partyId",
+            "columnName": "partyId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "manifestoText",
+            "columnName": "manifestoText",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "manifestoYear",
+            "columnName": "manifestoYear",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "wordCount",
+            "columnName": "wordCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "source",
+            "columnName": "source",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "partyId"
+          ]
+        }
+      },
+      {
+        "tableName": "party_manifestos_fts4",
+        "createSql": "CREATE VIRTUAL TABLE IF NOT EXISTS `${TABLE_NAME}` USING FTS4(`manifestoText` TEXT NOT NULL, content=`party_manifestos`)",
+        "fields": [
+          {
+            "fieldPath": "manifestoText",
+            "columnName": "manifestoText",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "rowid"
+          ]
+        },
+        "ftsVersion": "FTS4",
+        "ftsOptions": {
+          "tokenizer": "simple",
+          "tokenizerArgs": [],
+          "contentTable": "party_manifestos",
+          "languageIdColumnName": "",
+          "matchInfo": "FTS4",
+          "notIndexedColumns": [],
+          "prefixSizes": [],
+          "preferredOrder": "ASC"
+        },
+        "contentSyncTriggers": [
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_party_manifestos_fts4_BEFORE_UPDATE BEFORE UPDATE ON `party_manifestos` BEGIN DELETE FROM `party_manifestos_fts4` WHERE `docid`=OLD.`rowid`; END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_party_manifestos_fts4_BEFORE_DELETE BEFORE DELETE ON `party_manifestos` BEGIN DELETE FROM `party_manifestos_fts4` WHERE `docid`=OLD.`rowid`; END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_party_manifestos_fts4_AFTER_UPDATE AFTER UPDATE ON `party_manifestos` BEGIN INSERT INTO `party_manifestos_fts4`(`docid`, `manifestoText`) VALUES (NEW.`rowid`, NEW.`manifestoText`); END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_party_manifestos_fts4_AFTER_INSERT AFTER INSERT ON `party_manifestos` BEGIN INSERT INTO `party_manifestos_fts4`(`docid`, `manifestoText`) VALUES (NEW.`rowid`, NEW.`manifestoText`); END"
+        ]
+      },
+      {
+        "tableName": "party_stats",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`partyId` INTEGER NOT NULL, `description` TEXT, `foundedYear` TEXT, `leaderName` TEXT, `lastElectionVoteShare` REAL, `lastElectionSeats` INTEGER, `lastElectionYear` INTEGER, `lastUpdated` INTEGER NOT NULL, PRIMARY KEY(`partyId`))",
+        "fields": [
+          {
+            "fieldPath": "partyId",
+            "columnName": "partyId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "foundedYear",
+            "columnName": "foundedYear",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "leaderName",
+            "columnName": "leaderName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastElectionVoteShare",
+            "columnName": "lastElectionVoteShare",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "lastElectionSeats",
+            "columnName": "lastElectionSeats",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastElectionYear",
+            "columnName": "lastElectionYear",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastUpdated",
+            "columnName": "lastUpdated",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "partyId"
+          ]
+        }
+      },
+      {
+        "tableName": "historical_members",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`twfyPersonId` INTEGER NOT NULL, `parliamentMemberId` INTEGER, `displayName` TEXT NOT NULL, `alternateNames` TEXT, `party` TEXT, `partyAbbreviation` TEXT, `partyColourHex` TEXT, `house` INTEGER NOT NULL, `startDate` TEXT, `endDate` TEXT, `constituency` TEXT, `isCurrent` INTEGER NOT NULL, `photo` BLOB, `lastUpdated` INTEGER NOT NULL, PRIMARY KEY(`twfyPersonId`))",
+        "fields": [
+          {
+            "fieldPath": "twfyPersonId",
+            "columnName": "twfyPersonId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "parliamentMemberId",
+            "columnName": "parliamentMemberId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "displayName",
+            "columnName": "displayName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "alternateNames",
+            "columnName": "alternateNames",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "party",
+            "columnName": "party",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "partyAbbreviation",
+            "columnName": "partyAbbreviation",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "partyColourHex",
+            "columnName": "partyColourHex",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "house",
+            "columnName": "house",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startDate",
+            "columnName": "startDate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "endDate",
+            "columnName": "endDate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "constituency",
+            "columnName": "constituency",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "isCurrent",
+            "columnName": "isCurrent",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "photo",
+            "columnName": "photo",
+            "affinity": "BLOB"
+          },
+          {
+            "fieldPath": "lastUpdated",
+            "columnName": "lastUpdated",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "twfyPersonId"
+          ]
+        }
+      },
+      {
+        "tableName": "historical_members_fts4",
+        "createSql": "CREATE VIRTUAL TABLE IF NOT EXISTS `${TABLE_NAME}` USING FTS4(`displayName` TEXT NOT NULL, `alternateNames` TEXT, content=`historical_members`)",
+        "fields": [
+          {
+            "fieldPath": "displayName",
+            "columnName": "displayName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "alternateNames",
+            "columnName": "alternateNames",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "rowid"
+          ]
+        },
+        "ftsVersion": "FTS4",
+        "ftsOptions": {
+          "tokenizer": "simple",
+          "tokenizerArgs": [],
+          "contentTable": "historical_members",
+          "languageIdColumnName": "",
+          "matchInfo": "FTS4",
+          "notIndexedColumns": [],
+          "prefixSizes": [],
+          "preferredOrder": "ASC"
+        },
+        "contentSyncTriggers": [
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_historical_members_fts4_BEFORE_UPDATE BEFORE UPDATE ON `historical_members` BEGIN DELETE FROM `historical_members_fts4` WHERE `docid`=OLD.`rowid`; END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_historical_members_fts4_BEFORE_DELETE BEFORE DELETE ON `historical_members` BEGIN DELETE FROM `historical_members_fts4` WHERE `docid`=OLD.`rowid`; END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_historical_members_fts4_AFTER_UPDATE AFTER UPDATE ON `historical_members` BEGIN INSERT INTO `historical_members_fts4`(`docid`, `displayName`, `alternateNames`) VALUES (NEW.`rowid`, NEW.`displayName`, NEW.`alternateNames`); END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_historical_members_fts4_AFTER_INSERT AFTER INSERT ON `historical_members` BEGIN INSERT INTO `historical_members_fts4`(`docid`, `displayName`, `alternateNames`) VALUES (NEW.`rowid`, NEW.`displayName`, NEW.`alternateNames`); END"
+        ]
+      },
+      {
+        "tableName": "mp_stats",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`memberId` INTEGER NOT NULL, `house` INTEGER NOT NULL, `questionCount` INTEGER NOT NULL, `speechCount` INTEGER NOT NULL, `committeeCount` INTEGER NOT NULL, `voteParticipationRate` REAL NOT NULL, `rebellionRate` REAL NOT NULL, `rebellionCount` INTEGER NOT NULL, `totalDivisionsVoted` INTEGER NOT NULL, `activityScore` REAL NOT NULL, `rebellionPercentile` INTEGER NOT NULL, `participationPercentile` INTEGER NOT NULL, `questionsPercentile` INTEGER NOT NULL, `speechesPercentile` INTEGER NOT NULL, `committeesPercentile` INTEGER NOT NULL, PRIMARY KEY(`memberId`))",
+        "fields": [
+          {
+            "fieldPath": "memberId",
+            "columnName": "memberId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "house",
+            "columnName": "house",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "questionCount",
+            "columnName": "questionCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "speechCount",
+            "columnName": "speechCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "committeeCount",
+            "columnName": "committeeCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "voteParticipationRate",
+            "columnName": "voteParticipationRate",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rebellionRate",
+            "columnName": "rebellionRate",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rebellionCount",
+            "columnName": "rebellionCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "totalDivisionsVoted",
+            "columnName": "totalDivisionsVoted",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activityScore",
+            "columnName": "activityScore",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rebellionPercentile",
+            "columnName": "rebellionPercentile",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "participationPercentile",
+            "columnName": "participationPercentile",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "questionsPercentile",
+            "columnName": "questionsPercentile",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "speechesPercentile",
+            "columnName": "speechesPercentile",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "committeesPercentile",
+            "columnName": "committeesPercentile",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "memberId"
+          ]
+        }
+      },
+      {
+        "tableName": "peer_averages",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`house` INTEGER NOT NULL, `avgQuestions` REAL NOT NULL, `avgSpeeches` REAL NOT NULL, `avgCommittees` REAL NOT NULL, `avgParticipation` REAL NOT NULL, `avgRebellion` REAL NOT NULL, `mpCount` INTEGER NOT NULL, PRIMARY KEY(`house`))",
+        "fields": [
+          {
+            "fieldPath": "house",
+            "columnName": "house",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "avgQuestions",
+            "columnName": "avgQuestions",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "avgSpeeches",
+            "columnName": "avgSpeeches",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "avgCommittees",
+            "columnName": "avgCommittees",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "avgParticipation",
+            "columnName": "avgParticipation",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "avgRebellion",
+            "columnName": "avgRebellion",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mpCount",
+            "columnName": "mpCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "house"
+          ]
+        }
+      },
+      {
+        "tableName": "mp_synopsis",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`mpId` INTEGER NOT NULL, `synopsisText` TEXT, `lastUpdated` INTEGER NOT NULL, PRIMARY KEY(`mpId`))",
+        "fields": [
+          {
+            "fieldPath": "mpId",
+            "columnName": "mpId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "synopsisText",
+            "columnName": "synopsisText",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastUpdated",
+            "columnName": "lastUpdated",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "mpId"
+          ]
+        }
+      },
+      {
+        "tableName": "mp_contacts",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`mpId` INTEGER NOT NULL, `typeId` INTEGER NOT NULL, `type` TEXT, `isPreferred` INTEGER, `isWebAddress` INTEGER, `line1` TEXT, `line2` TEXT, `line3` TEXT, `line4` TEXT, `line5` TEXT, `postcode` TEXT, `phone` TEXT, `email` TEXT, `website` TEXT, `openingHours` TEXT, `lastUpdated` INTEGER NOT NULL, PRIMARY KEY(`mpId`, `typeId`))",
+        "fields": [
+          {
+            "fieldPath": "mpId",
+            "columnName": "mpId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "typeId",
+            "columnName": "typeId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "isPreferred",
+            "columnName": "isPreferred",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "isWebAddress",
+            "columnName": "isWebAddress",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "line1",
+            "columnName": "line1",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "line2",
+            "columnName": "line2",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "line3",
+            "columnName": "line3",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "line4",
+            "columnName": "line4",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "line5",
+            "columnName": "line5",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "postcode",
+            "columnName": "postcode",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "phone",
+            "columnName": "phone",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "email",
+            "columnName": "email",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "website",
+            "columnName": "website",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "openingHours",
+            "columnName": "openingHours",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastUpdated",
+            "columnName": "lastUpdated",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "mpId",
+            "typeId"
+          ]
+        }
+      },
+      {
+        "tableName": "mp_experience",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `mpId` INTEGER NOT NULL, `type` TEXT, `typeId` INTEGER, `title` TEXT, `organisation` TEXT, `startMonth` INTEGER, `startYear` INTEGER, `endMonth` INTEGER, `endYear` INTEGER, `lastUpdated` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mpId",
+            "columnName": "mpId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "typeId",
+            "columnName": "typeId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "organisation",
+            "columnName": "organisation",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "startMonth",
+            "columnName": "startMonth",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "startYear",
+            "columnName": "startYear",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "endMonth",
+            "columnName": "endMonth",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "endYear",
+            "columnName": "endYear",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastUpdated",
+            "columnName": "lastUpdated",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "division_tags",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`divisionId` INTEGER NOT NULL, `tag` TEXT NOT NULL, `hitCount` INTEGER NOT NULL, PRIMARY KEY(`divisionId`, `tag`))",
+        "fields": [
+          {
+            "fieldPath": "divisionId",
+            "columnName": "divisionId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tag",
+            "columnName": "tag",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hitCount",
+            "columnName": "hitCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "divisionId",
+            "tag"
+          ]
+        }
+      },
+      {
+        "tableName": "bill_tags",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`billId` INTEGER NOT NULL, `tag` TEXT NOT NULL, `hitCount` INTEGER NOT NULL, PRIMARY KEY(`billId`, `tag`))",
+        "fields": [
+          {
+            "fieldPath": "billId",
+            "columnName": "billId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tag",
+            "columnName": "tag",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hitCount",
+            "columnName": "hitCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "billId",
+            "tag"
+          ]
+        }
+      },
+      {
+        "tableName": "councils",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `reference` TEXT NOT NULL, `name` TEXT NOT NULL, `website` TEXT, `region` TEXT, `localAuthorityType` TEXT, `statisticalGeography` TEXT, `wikidata` TEXT, `twitter` TEXT, `contactEmail` TEXT, `contactPhone` TEXT, `lastUpdated` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reference",
+            "columnName": "reference",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "website",
+            "columnName": "website",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "region",
+            "columnName": "region",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "localAuthorityType",
+            "columnName": "localAuthorityType",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "statisticalGeography",
+            "columnName": "statisticalGeography",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "wikidata",
+            "columnName": "wikidata",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "twitter",
+            "columnName": "twitter",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "contactEmail",
+            "columnName": "contactEmail",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "contactPhone",
+            "columnName": "contactPhone",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastUpdated",
+            "columnName": "lastUpdated",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "tag_metadata",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`tag` TEXT NOT NULL, `description` TEXT NOT NULL, `divisionCount` INTEGER NOT NULL, `billCount` INTEGER NOT NULL, PRIMARY KEY(`tag`))",
+        "fields": [
+          {
+            "fieldPath": "tag",
+            "columnName": "tag",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "divisionCount",
+            "columnName": "divisionCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "billCount",
+            "columnName": "billCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "tag"
+          ]
+        }
+      },
+      {
+        "tableName": "mp_api_ids",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`memberId` INTEGER NOT NULL, `mnisId` INTEGER, `twfyPersonId` INTEGER, `ipsaMemberId` TEXT, `publicWhipId` TEXT, `lastUpdated` INTEGER NOT NULL, PRIMARY KEY(`memberId`))",
+        "fields": [
+          {
+            "fieldPath": "memberId",
+            "columnName": "memberId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mnisId",
+            "columnName": "mnisId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "twfyPersonId",
+            "columnName": "twfyPersonId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "ipsaMemberId",
+            "columnName": "ipsaMemberId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "publicWhipId",
+            "columnName": "publicWhipId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastUpdated",
+            "columnName": "lastUpdated",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "memberId"
+          ]
+        }
+      },
+      {
+        "tableName": "written_statements",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `memberId` INTEGER NOT NULL, `memberRole` TEXT NOT NULL, `uin` TEXT NOT NULL, `dateMade` TEXT NOT NULL, `answeringBodyId` INTEGER NOT NULL, `answeringBodyName` TEXT NOT NULL, `title` TEXT NOT NULL, `text` TEXT NOT NULL, `house` INTEGER NOT NULL, `lastUpdated` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "memberId",
+            "columnName": "memberId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "memberRole",
+            "columnName": "memberRole",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "uin",
+            "columnName": "uin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dateMade",
+            "columnName": "dateMade",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "answeringBodyId",
+            "columnName": "answeringBodyId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "answeringBodyName",
+            "columnName": "answeringBodyName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "text",
+            "columnName": "text",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "house",
+            "columnName": "house",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastUpdated",
+            "columnName": "lastUpdated",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "written_questions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `memberId` INTEGER NOT NULL, `uin` TEXT NOT NULL, `dateTabled` TEXT NOT NULL, `answeringBodyId` INTEGER NOT NULL, `answeringBodyName` TEXT NOT NULL, `questionText` TEXT NOT NULL, `house` INTEGER NOT NULL, `lastUpdated` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "memberId",
+            "columnName": "memberId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "uin",
+            "columnName": "uin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dateTabled",
+            "columnName": "dateTabled",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "answeringBodyId",
+            "columnName": "answeringBodyId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "answeringBodyName",
+            "columnName": "answeringBodyName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "questionText",
+            "columnName": "questionText",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "house",
+            "columnName": "house",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastUpdated",
+            "columnName": "lastUpdated",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "government_publications",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `title` TEXT NOT NULL, `summary` TEXT NOT NULL, `url` TEXT NOT NULL, `documentType` TEXT NOT NULL, `organisation` TEXT NOT NULL, `organisationSlug` TEXT NOT NULL, `firstPublishedAt` TEXT NOT NULL, `publicUpdatedAt` TEXT NOT NULL, `imageUrl` TEXT, `bodyText` TEXT, `lastUpdated` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "summary",
+            "columnName": "summary",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "url",
+            "columnName": "url",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "documentType",
+            "columnName": "documentType",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "organisation",
+            "columnName": "organisation",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "organisationSlug",
+            "columnName": "organisationSlug",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "firstPublishedAt",
+            "columnName": "firstPublishedAt",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "publicUpdatedAt",
+            "columnName": "publicUpdatedAt",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "imageUrl",
+            "columnName": "imageUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "bodyText",
+            "columnName": "bodyText",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastUpdated",
+            "columnName": "lastUpdated",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "legislation",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `title` TEXT NOT NULL, `type` TEXT NOT NULL, `year` INTEGER NOT NULL, `number` INTEGER NOT NULL, `date` TEXT NOT NULL, `url` TEXT NOT NULL, `lastUpdated` INTEGER NOT NULL, `bodyText` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "year",
+            "columnName": "year",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "number",
+            "columnName": "number",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "date",
+            "columnName": "date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "url",
+            "columnName": "url",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastUpdated",
+            "columnName": "lastUpdated",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bodyText",
+            "columnName": "bodyText",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "publication_tags",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`publicationId` INTEGER NOT NULL, `tag` TEXT NOT NULL, `hitCount` INTEGER NOT NULL, PRIMARY KEY(`publicationId`, `tag`))",
+        "fields": [
+          {
+            "fieldPath": "publicationId",
+            "columnName": "publicationId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tag",
+            "columnName": "tag",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hitCount",
+            "columnName": "hitCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "publicationId",
+            "tag"
+          ]
+        }
+      },
+      {
+        "tableName": "statement_tags",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`statementId` INTEGER NOT NULL, `tag` TEXT NOT NULL, `hitCount` INTEGER NOT NULL, PRIMARY KEY(`statementId`, `tag`))",
+        "fields": [
+          {
+            "fieldPath": "statementId",
+            "columnName": "statementId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tag",
+            "columnName": "tag",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hitCount",
+            "columnName": "hitCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "statementId",
+            "tag"
+          ]
+        }
+      },
+      {
+        "tableName": "legislation_tags",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`legislationId` INTEGER NOT NULL, `tag` TEXT NOT NULL, `hitCount` INTEGER NOT NULL, PRIMARY KEY(`legislationId`, `tag`))",
+        "fields": [
+          {
+            "fieldPath": "legislationId",
+            "columnName": "legislationId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tag",
+            "columnName": "tag",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hitCount",
+            "columnName": "hitCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "legislationId",
+            "tag"
+          ]
+        }
+      },
+      {
+        "tableName": "mp_tags",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`memberId` INTEGER NOT NULL, `tag` TEXT NOT NULL, `hitCount` INTEGER NOT NULL, PRIMARY KEY(`memberId`, `tag`))",
+        "fields": [
+          {
+            "fieldPath": "memberId",
+            "columnName": "memberId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tag",
+            "columnName": "tag",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hitCount",
+            "columnName": "hitCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "memberId",
+            "tag"
+          ]
+        }
+      },
+      {
+        "tableName": "party_leaders",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`partyId` INTEGER NOT NULL, `memberId` INTEGER NOT NULL, `title` TEXT NOT NULL, PRIMARY KEY(`partyId`))",
+        "fields": [
+          {
+            "fieldPath": "partyId",
+            "columnName": "partyId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "memberId",
+            "columnName": "memberId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "partyId"
+          ]
+        }
+      },
+      {
+        "tableName": "source_recommendations",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`tag` TEXT NOT NULL, `organisationSlug` TEXT NOT NULL, `organisationName` TEXT NOT NULL, `hitCount` INTEGER NOT NULL, `isRecommended` INTEGER NOT NULL, PRIMARY KEY(`tag`, `organisationSlug`))",
+        "fields": [
+          {
+            "fieldPath": "tag",
+            "columnName": "tag",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "organisationSlug",
+            "columnName": "organisationSlug",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "organisationName",
+            "columnName": "organisationName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hitCount",
+            "columnName": "hitCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isRecommended",
+            "columnName": "isRecommended",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "tag",
+            "organisationSlug"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'e865c72851c6900bbfd46d7cdba778cf')"
+    ]
+  }
+}

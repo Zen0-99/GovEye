@@ -18,14 +18,16 @@ data class PeerAverages(
  * Each component is 0.0–max.
  */
 data class ScoreBreakdown(
-    // 0.0-3.0 — participation rate * 3.0
+    // 0.0-2.5 — participation rate * 2.5
     val voteParticipationContribution: Float,
-    // 0.0-2.5 — questions per month, scaled
+    // 0.0-2.0 — questions per month, scaled
     val questionsContribution: Float,
-    // 0.0-2.5 — speeches per month, scaled
+    // 0.0-2.0 — speeches per month, scaled
     val speechesContribution: Float,
-    // 0.0-2.0 — committee tenure days, scaled
-    val committeesContribution: Float
+    // 0.0-1.5 — committee tenure days, scaled
+    val committeesContribution: Float,
+    // 0.0-2.0 — finance declarations per month, scaled
+    val financeContribution: Float = 0f
 )
 
 /**
@@ -36,14 +38,16 @@ data class ScoreBreakdown(
  * 7.0 vs MP B with 8.0 IS the "vs peers" comparison.
  *
  * Weights (total 10.0):
- * - Vote participation: 3.0 (30%) — participation rate, tenure-aware
- * - Questions: 2.5 (25%) — per-month rate (count / months since tenure)
- * - Speeches: 2.5 (25%) — per-month rate (count / months since tenure)
- * - Committees: 2.0 (20%) — tenure-weighted (total committee days)
+ * - Vote participation: 2.5 (25%) — participation rate, tenure-aware
+ * - Questions: 2.0 (20%) — per-month rate (count / months since tenure)
+ * - Speeches: 2.0 (20%) — per-month rate (count / months since tenure)
+ * - Committees: 1.5 (15%) — tenure-weighted (total committee days)
+ * - Finance: 2.0 (20%) — declarations per month (interests + expenses)
  *
  * Scaling for per-month rates:
  * - Questions/speeches: 2 per month = full marks. Linear up to that.
  * - Committees: 1000 total committee days = full marks. Linear up to that.
+ * - Finance: 15 declarations per month = full marks. Linear up to that.
  */
 data class ActivityScore(val score: Float, val breakdown: ScoreBreakdown)
 
@@ -52,10 +56,11 @@ data class ActivityScore(val score: Float, val breakdown: ScoreBreakdown)
  * Pure function — no DI, no side effects.
  */
 object ActivityScoreCalculator {
-    private const val VOTE_WEIGHT = 3.0f
-    private const val QUESTIONS_WEIGHT = 2.5f
-    private const val SPEECHES_WEIGHT = 2.5f
-    private const val COMMITTEES_WEIGHT = 2.0f
+    private const val VOTE_WEIGHT = 2.5f
+    private const val QUESTIONS_WEIGHT = 2.0f
+    private const val SPEECHES_WEIGHT = 2.0f
+    private const val COMMITTEES_WEIGHT = 1.5f
+    private const val FINANCE_WEIGHT = 2.0f
 
     // Per-month rate that earns full marks for questions/speeches.
     // 2 questions per month over a tenure = very active.
@@ -66,6 +71,11 @@ object ActivityScoreCalculator {
     // 1000 days ≈ ~3 years on committees = solid engagement.
     private const val FULL_MARKS_COMMITTEE_DAYS = 1000.0f
 
+    // Finance uses rate-vs-average scoring (same as the trait radar).
+    // The financeTraitScore (0-100) is passed in — 100 = at peer average.
+    // No absolute threshold; the activity score contribution is directly
+    // proportional to the trait score, keeping the two displays consistent.
+
     /**
      * Compute the activity score from self-performance metrics.
      *
@@ -74,13 +84,15 @@ object ActivityScoreCalculator {
      * @param speechCount Total speeches made since tenure
      * @param monthsSinceTenureStart Number of months from tenure start to now
      * @param committeeTenureDays Total days across all committee memberships
+     * @param financeTraitScore Finance trait score (0-100, rate-vs-average). 100 = at peer average.
      */
     fun compute(
         voteParticipationRate: Float,
         questionCount: Int,
         speechCount: Int,
         monthsSinceTenureStart: Int,
-        committeeTenureDays: Int
+        committeeTenureDays: Int,
+        financeTraitScore: Int = 0
     ): ActivityScore {
         val voteContribution = (voteParticipationRate * VOTE_WEIGHT).coerceIn(0f, VOTE_WEIGHT)
 
@@ -104,7 +116,13 @@ object ActivityScoreCalculator {
             COMMITTEES_WEIGHT
         )
 
-        val total = voteContribution + questionsContribution + speechesContribution + committeesContribution
+        // Finance: directly proportional to the trait score (0-100).
+        // 100% trait score = full weight. 50% = half weight.
+        val financeContribution = (financeTraitScore.toFloat() / 100f * FINANCE_WEIGHT)
+            .coerceIn(0f, FINANCE_WEIGHT)
+
+        val total = voteContribution + questionsContribution + speechesContribution +
+            committeesContribution + financeContribution
 
         return ActivityScore(
             score = total.coerceIn(0f, 10f),
@@ -112,7 +130,8 @@ object ActivityScoreCalculator {
                 voteParticipationContribution = voteContribution,
                 questionsContribution = questionsContribution,
                 speechesContribution = speechesContribution,
-                committeesContribution = committeesContribution
+                committeesContribution = committeesContribution,
+                financeContribution = financeContribution
             )
         )
     }

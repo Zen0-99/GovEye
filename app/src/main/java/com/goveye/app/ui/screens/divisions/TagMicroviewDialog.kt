@@ -1,5 +1,7 @@
 package com.goveye.app.ui.screens.divisions
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -31,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -161,7 +164,14 @@ fun TagMicroviewDialog(
                     }
                 }
 
-                // Description + division list
+                // Description + division list.
+                // Header (tag name) shows instantly; content fades in.
+                val contentAlpha by animateFloatAsState(
+                    targetValue = if (uiState.isLoading) 0f else 1f,
+                    animationSpec = tween(durationMillis = 300),
+                    label = "tagContentFade"
+                )
+
                 if (uiState.isLoading) {
                     Box(
                         modifier = Modifier
@@ -175,7 +185,8 @@ fun TagMicroviewDialog(
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .weight(1f),
+                            .weight(1f)
+                            .graphicsLayer(alpha = contentAlpha),
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(
                             horizontal = 16.dp,
                             vertical = 12.dp

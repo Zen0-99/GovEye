@@ -1,7 +1,10 @@
 package com.goveye.app.ui.screens.divisions
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -47,6 +50,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -79,7 +83,9 @@ data class DivisionDetailState(
     val partyBreakdown: List<PartyBreakdown> = emptyList(),
     val speechCount: Int = 0,
     val tags: List<String> = emptyList(),
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+    val isHeaderLoaded: Boolean = false,
+    val isContentLoaded: Boolean = false
 )
 
 @HiltViewModel
@@ -97,9 +103,8 @@ class DivisionDetailViewModel @Inject constructor(
         if (loadedDivisionId == divisionId) return
         loadedDivisionId = divisionId
 
-        // Phase 1: Load initial data synchronously using first() to avoid
-        // the brief loading spinner. The bundled DB is local, so this is
-        // fast (single Room query on a background thread).
+        // Stage 1: Load just the division entity (title, date, house, outcome)
+        // so the header card renders instantly. This is a single Room query.
         viewModelScope.launch {
             val divisionResult = votesRepository.observeDivision(divisionId).first()
             val division = divisionResult.data
@@ -107,23 +112,31 @@ class DivisionDetailViewModel @Inject constructor(
                 _state.value = _state.value.copy(isLoading = false)
                 return@launch
             }
+            // Show the header immediately with the division data.
+            _state.value = _state.value.copy(
+                division = division,
+                isLoading = false,
+                isHeaderLoaded = true
+            )
+        }
 
+        // Stage 2: Load votes, party breakdown, speech count, and tags
+        // in parallel. These fade in via staggered animation as they arrive.
+        viewModelScope.launch {
             val votes = votesRepository.getVotesForDivision(divisionId)
             val breakdown = votesRepository.getPartyBreakdown(divisionId)
             val speechCount = votesRepository.countSpeechesForDivision(divisionId)
             val tags = tagDao.getTagsForDivision(divisionId)
-            _state.value = DivisionDetailState(
-                division = division,
+            _state.value = _state.value.copy(
                 votes = votes,
                 partyBreakdown = breakdown,
                 speechCount = speechCount,
                 tags = tags,
-                isLoading = false
+                isContentLoaded = true
             )
         }
 
-        // Phase 2: Observe for ongoing updates (patches, sync, etc.)
-        // Skip the first emission since we already loaded it above.
+        // Phase 3: Observe for ongoing updates (patches, sync, etc.)
         viewModelScope.launch {
             votesRepository.observeDivision(divisionId).drop(1).collect { divisionResult ->
                 val division = divisionResult.data ?: return@collect
@@ -321,6 +334,15 @@ private fun DivisionDetailContent(
     val ayes = state.votes.filter { it.vote == VoteType.AYE }
     val noes = state.votes.filter { it.vote == VoteType.NO }
 
+    // Staggered fade-in alpha for content sections. The header card
+    // is always visible (optimistic). Content sections fade in once
+    // isContentLoaded becomes true, with a smooth 300ms transition.
+    val contentAlpha by animateFloatAsState(
+        targetValue = if (state.isContentLoaded) 1f else 0f,
+        animationSpec = tween(durationMillis = 300),
+        label = "divisionContentFade"
+    )
+
     LazyColumn(
         modifier = modifier,
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
@@ -340,26 +362,31 @@ private fun DivisionDetailContent(
 
         // Party breakdown — collapsible. Hidden while searching so the user
         // only sees the people matching their query (the main result bar in
-        // the header card remains visible).
+        // the header card remains visible). Fades in with contentAlpha.
         if (state.partyBreakdown.isNotEmpty() && searchQuery.isBlank()) {
             item {
-                SectionHeader(
-                    title = "Party Breakdown",
-                    expanded = breakdownExpanded,
-                    onToggle = { breakdownExpanded = !breakdownExpanded }
-                )
+                Column(modifier = Modifier.graphicsLayer(alpha = contentAlpha)) {
+                    SectionHeader(
+                        title = "Party Breakdown",
+                        expanded = breakdownExpanded,
+                        onToggle = { breakdownExpanded = !breakdownExpanded }
+                    )
+                }
             }
             if (breakdownExpanded) {
                 items(
                     state.partyBreakdown.sortedByDescending { it.ayeCount + it.noCount },
                     key = { it.partyName }
                 ) { party ->
-                    PartyBreakdownBar(party = party)
+                    Column(modifier = Modifier.graphicsLayer(alpha = contentAlpha)) {
+                        PartyBreakdownBar(party = party)
+                    }
                 }
             }
         }
 
-        // Voter list — filtered by search query and vote filter from the top bar
+        // Voter list — filtered by search query and vote filter from the top bar.
+        // Fades in with contentAlpha.
         if (ayes.isNotEmpty() || noes.isNotEmpty()) {
             // Filtered voter list
             val voters = when (voteFilter) {
@@ -381,14 +408,18 @@ private fun DivisionDetailContent(
 
             groupedByParty.forEach { (partyName, partyVoters) ->
                 item(key = "header-$partyName-$voteFilter") {
-                    PartyGroupHeader(
-                        partyName = partyName,
-                        count = partyVoters.size,
-                        partyColour = partyVoters.firstOrNull()?.partyColour
-                    )
+                    Column(modifier = Modifier.graphicsLayer(alpha = contentAlpha)) {
+                        PartyGroupHeader(
+                            partyName = partyName,
+                            count = partyVoters.size,
+                            partyColour = partyVoters.firstOrNull()?.partyColour
+                        )
+                    }
                 }
                 items(partyVoters, key = { "$voteFilter-${it.memberId}" }) { vote ->
-                    VoterRow(vote = vote, onClick = { onNavigateToProfile(vote) })
+                    Column(modifier = Modifier.graphicsLayer(alpha = contentAlpha)) {
+                        VoterRow(vote = vote, onClick = { onNavigateToProfile(vote) })
+                    }
                 }
             }
 

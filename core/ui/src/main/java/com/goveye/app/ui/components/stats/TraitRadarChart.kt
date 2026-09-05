@@ -29,8 +29,8 @@ import kotlin.math.min
 import kotlin.math.sin
 
 /**
- * Pentagon/radar chart for trait visualization.
- * 5 axes: Loyalty, Participation, Questions, Speeches, Committees.
+ * Radar chart for trait visualization.
+ * 6 axes: Loyalty, Participation, Questions, Speeches, Committees, Finance.
  * The polygon uses [traitDisplayPercent] — mpValue for rate-based traits
  * (Loyalty, Participation), percentile for count-based traits — so the
  * shape reflects the displayed percentages.
@@ -52,120 +52,124 @@ fun TraitRadarChart(traitBars: List<TraitBar>, modifier: Modifier = Modifier) {
     val percentileColor = MaterialTheme.colorScheme.onSurfaceVariant
     val density = LocalDensity.current
 
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text(
+            text = "Performance Breakdown",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(bottom = 4.dp)
+        )
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surfaceContainer
         ) {
-            Text(
-                text = "Performance Breakdown",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-
-            val labelTextSize = with(density) { 11.dp.toPx() }
-            val paint = remember(labelColor, labelTextSize) {
-                android.graphics.Paint().apply {
-                    color = labelColor.toArgb()
-                    textSize = labelTextSize
-                    isAntiAlias = true
-                    textAlign = android.graphics.Paint.Align.CENTER
-                }
-            }
-            val valuePaint = remember(percentileColor, labelTextSize) {
-                android.graphics.Paint(paint).apply {
-                    style = android.graphics.Paint.Style.FILL
-                    isFakeBoldText = true
-                    color = percentileColor.toArgb()
-                }
-            }
-
-            // Box with fixed height so the Canvas can fill it
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(280.dp)
+            Column(
+                modifier = Modifier.padding(16.dp)
             ) {
-                Canvas(
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    val centerX = size.width / 2f
-                    val centerY = size.height / 2f
-                    // Shrink radius to leave generous room for labels outside
-                    val radius = min(centerX, centerY) * 0.5f
-                    val sides = traitBars.size
-                    val angleStep = (2 * PI / sides).toFloat()
-                    val startAngle = (-PI / 2).toFloat()
+                val labelTextSize = with(density) { 11.dp.toPx() }
+                val paint = remember(labelColor, labelTextSize) {
+                    android.graphics.Paint().apply {
+                        color = labelColor.toArgb()
+                        textSize = labelTextSize
+                        isAntiAlias = true
+                        textAlign = android.graphics.Paint.Align.CENTER
+                    }
+                }
+                val valuePaint = remember(percentileColor, labelTextSize) {
+                    android.graphics.Paint(paint).apply {
+                        style = android.graphics.Paint.Style.FILL
+                        isFakeBoldText = true
+                        color = percentileColor.toArgb()
+                    }
+                }
 
-                    // Grid rings — broader, brighter, theme-aware
-                    for (ringPercent in listOf(0.25f, 0.5f, 0.75f, 1.0f)) {
-                        val ringRadius = radius * ringPercent
-                        val ringPath = Path()
+                // Box with fixed height so the Canvas can fill it
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(280.dp)
+                ) {
+                    Canvas(
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        val centerX = size.width / 2f
+                        val centerY = size.height / 2f
+                        // Shrink radius to leave generous room for labels outside
+                        val radius = min(centerX, centerY) * 0.5f
+                        val sides = traitBars.size
+                        val angleStep = (2 * PI / sides).toFloat()
+                        val startAngle = (-PI / 2).toFloat()
+
+                        // Grid rings — broader, brighter, theme-aware
+                        for (ringPercent in listOf(0.25f, 0.5f, 0.75f, 1.0f)) {
+                            val ringRadius = radius * ringPercent
+                            val ringPath = Path()
+                            for (i in 0 until sides) {
+                                val angle = startAngle + i * angleStep
+                                val x = centerX + ringRadius * cos(angle)
+                                val y = centerY + ringRadius * sin(angle)
+                                if (i == 0) ringPath.moveTo(x, y) else ringPath.lineTo(x, y)
+                            }
+                            ringPath.close()
+                            drawPath(ringPath, color = gridColor, style = Stroke(width = 1.5f))
+                        }
+
+                        // Axis lines — broader, brighter, theme-aware
                         for (i in 0 until sides) {
                             val angle = startAngle + i * angleStep
-                            val x = centerX + ringRadius * cos(angle)
-                            val y = centerY + ringRadius * sin(angle)
-                            if (i == 0) ringPath.moveTo(x, y) else ringPath.lineTo(x, y)
+                            val x = centerX + radius * cos(angle)
+                            val y = centerY + radius * sin(angle)
+                            drawLine(gridColor, Offset(centerX, centerY), Offset(x, y), strokeWidth = 1.5f)
                         }
-                        ringPath.close()
-                        drawPath(ringPath, color = gridColor, style = Stroke(width = 1.5f))
-                    }
 
-                    // Axis lines — broader, brighter, theme-aware
-                    for (i in 0 until sides) {
-                        val angle = startAngle + i * angleStep
-                        val x = centerX + radius * cos(angle)
-                        val y = centerY + radius * sin(angle)
-                        drawLine(gridColor, Offset(centerX, centerY), Offset(x, y), strokeWidth = 1.5f)
-                    }
+                        // MP value polygon — uses traitDisplayPercent (mpValue for
+                        // rate-based traits, percentile for count-based) so the
+                        // polygon reflects the displayed percentage, not just rank.
+                        // A minimum radius (15% of chart) ensures 0% values still
+                        // produce a visible shape instead of a flat line to center.
+                        val minRadius = radius * 0.15f
+                        val mpPath = Path()
+                        for (i in traitBars.indices) {
+                            val angle = startAngle + i * angleStep
+                            val value = traitDisplayPercent(traitBars[i]) / 100f
+                            val r = minRadius + (radius - minRadius) * value
+                            val x = centerX + r * cos(angle)
+                            val y = centerY + r * sin(angle)
+                            if (i == 0) mpPath.moveTo(x, y) else mpPath.lineTo(x, y)
+                        }
+                        mpPath.close()
+                        drawPath(mpPath, color = primaryColor.copy(alpha = 0.2f))
+                        drawPath(mpPath, color = primaryColor, style = Stroke(width = 2.5f))
 
-                    // MP value polygon — uses traitDisplayPercent (mpValue for
-                    // rate-based traits, percentile for count-based) so the
-                    // polygon reflects the displayed percentage, not just rank.
-                    val mpPath = Path()
-                    for (i in traitBars.indices) {
-                        val angle = startAngle + i * angleStep
-                        val value = traitDisplayPercent(traitBars[i]) / 100f
-                        val r = radius * value
-                        val x = centerX + r * cos(angle)
-                        val y = centerY + r * sin(angle)
-                        if (i == 0) mpPath.moveTo(x, y) else mpPath.lineTo(x, y)
-                    }
-                    mpPath.close()
-                    drawPath(mpPath, color = primaryColor.copy(alpha = 0.2f))
-                    drawPath(mpPath, color = primaryColor, style = Stroke(width = 2.5f))
+                        // Dots at vertices + labels well outside the chart
+                        for (i in traitBars.indices) {
+                            val angle = startAngle + i * angleStep
+                            val value = traitDisplayPercent(traitBars[i]) / 100f
+                            val r = minRadius + (radius - minRadius) * value
+                            val dotX = centerX + r * cos(angle)
+                            val dotY = centerY + r * sin(angle)
+                            drawCircle(primaryColor, 5f, Offset(dotX, dotY))
 
-                    // Dots at vertices + labels well outside the chart
-                    for (i in traitBars.indices) {
-                        val angle = startAngle + i * angleStep
-                        val value = traitDisplayPercent(traitBars[i]) / 100f
-                        val r = radius * value
-                        val dotX = centerX + r * cos(angle)
-                        val dotY = centerY + r * sin(angle)
-                        drawCircle(primaryColor, 5f, Offset(dotX, dotY))
-
-                        // Labels further from the chart — 68px beyond radius
-                        val labelRadius = radius + 68f
-                        val labelX = centerX + labelRadius * cos(angle)
-                        val labelY = centerY + labelRadius * sin(angle)
-                        drawContext.canvas.nativeCanvas.drawText(
-                            traitBars[i].label,
-                            labelX,
-                            labelY + labelTextSize / 3f,
-                            paint
-                        )
-                        // Show the display percentage (same as polygon fill)
-                        drawContext.canvas.nativeCanvas.drawText(
-                            "${traitDisplayPercent(traitBars[i]).toInt()}%",
-                            labelX,
-                            labelY + labelTextSize * 1.5f,
-                            valuePaint
-                        )
+                            // Labels further from the chart — 68px beyond radius
+                            val labelRadius = radius + 68f
+                            val labelX = centerX + labelRadius * cos(angle)
+                            val labelY = centerY + labelRadius * sin(angle)
+                            drawContext.canvas.nativeCanvas.drawText(
+                                traitBars[i].label,
+                                labelX,
+                                labelY + labelTextSize / 3f,
+                                paint
+                            )
+                            // Show the display percentage (same as polygon fill)
+                            drawContext.canvas.nativeCanvas.drawText(
+                                "${traitDisplayPercent(traitBars[i]).toInt()}%",
+                                labelX,
+                                labelY + labelTextSize * 1.5f,
+                                valuePaint
+                            )
+                        }
                     }
                 }
             }

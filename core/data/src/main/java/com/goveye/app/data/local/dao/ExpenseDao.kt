@@ -20,4 +20,18 @@ interface ExpenseDao {
 
     @Upsert
     suspend fun upsertAll(expenses: List<ExpenseEntity>)
+
+    @Query("SELECT COUNT(*) FROM expenses WHERE mpId = :mpId")
+    suspend fun countExpensesForMember(mpId: Int): Int
+
+    @Query(
+        """
+        SELECT AVG(cnt) FROM (
+            SELECT COUNT(*) as cnt FROM expenses
+            WHERE mpId IN (SELECT id FROM mps WHERE isActive = 1 AND house = :house)
+            GROUP BY mpId
+        )
+        """
+    )
+    suspend fun getAverageExpenseCount(house: Int): Float?
 }

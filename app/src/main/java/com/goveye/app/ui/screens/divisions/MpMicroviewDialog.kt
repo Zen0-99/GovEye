@@ -1,5 +1,7 @@
 package com.goveye.app.ui.screens.divisions
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -35,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -242,7 +245,16 @@ fun MpMicroviewDialog(
                     }
                 }
 
-                // Content — votes or finances depending on mode
+                // Content — votes or finances depending on mode.
+                // The header (gradient + avatar + name + party) renders
+                // instantly from the MP data. Content sections fade in
+                // with a staggered animation as votes/finances load.
+                val contentAlpha by animateFloatAsState(
+                    targetValue = if (uiState.isLoading && uiState.mp == null) 0f else 1f,
+                    animationSpec = tween(durationMillis = 300),
+                    label = "microviewContentFade"
+                )
+
                 if (uiState.isLoading && uiState.mp == null) {
                     Box(
                         modifier = Modifier
@@ -261,6 +273,7 @@ fun MpMicroviewDialog(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .weight(1f)
+                                .graphicsLayer(alpha = contentAlpha)
                         )
 
                         MpMicroviewMode.FINANCES -> FinancesContent(
@@ -270,6 +283,7 @@ fun MpMicroviewDialog(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .weight(1f)
+                                .graphicsLayer(alpha = contentAlpha)
                         )
                     }
                 }
@@ -340,7 +354,7 @@ private fun VotesContent(
 
         if (voteMapTiles.isNotEmpty()) {
             item {
-                ChartCard {
+                Column {
                     ChartHeaderWithLegend(
                         title = "Vote Map",
                         legendItems = listOf(
@@ -349,10 +363,12 @@ private fun VotesContent(
                             "No vote" to MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
                         )
                     )
-                    VoteMapGrid(
-                        tiles = voteMapTiles,
-                        onTileClick = { _, _ -> }
-                    )
+                    ChartCard {
+                        VoteMapGrid(
+                            tiles = voteMapTiles,
+                            onTileClick = { _, _ -> }
+                        )
+                    }
                 }
             }
         }
