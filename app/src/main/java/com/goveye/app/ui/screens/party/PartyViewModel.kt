@@ -6,6 +6,7 @@ import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
+import com.goveye.app.data.local.dao.BioDataDao
 import com.goveye.app.data.local.dao.ManifestoSearchResult
 import com.goveye.app.data.local.dao.MpDao
 import com.goveye.app.data.local.dao.PartySummary
@@ -15,6 +16,7 @@ import com.goveye.app.data.local.entity.PartyStatsEntity
 import com.goveye.app.data.repo.GovernmentAnnouncementsRepository
 import com.goveye.app.data.repo.ManifestoRepository
 import com.goveye.app.data.repo.PartyStatsRepository
+import com.goveye.app.data.repo.StatsRepository
 import com.goveye.app.domain.model.PartyLeaderDetail
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -46,7 +48,9 @@ class PartyViewModel @Inject constructor(
     private val mpDao: MpDao,
     private val partyStatsRepository: PartyStatsRepository,
     private val manifestoRepository: ManifestoRepository,
-    private val governmentAnnouncementsRepository: GovernmentAnnouncementsRepository
+    private val governmentAnnouncementsRepository: GovernmentAnnouncementsRepository,
+    private val statsRepository: StatsRepository,
+    private val bioDataDao: BioDataDao
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PartyUiState())
@@ -130,5 +134,15 @@ class PartyViewModel @Inject constructor(
     // TODO: Implement party follow/notifications persistence (no PartyFollowDao yet)
     fun toggleFollow(partyId: Int) {
         _uiState.value = _uiState.value.copy(isFollowing = !_uiState.value.isFollowing)
+    }
+
+    /**
+     * Compute the activity score and DOB for the optimistic profile header.
+     * Same pattern as DirectoryViewModel — single DB reads, <1ms each.
+     */
+    suspend fun getActivityScoreAndDob(memberId: Int, house: Int, partyName: String?): Pair<Float?, String?> {
+        val score = statsRepository.getActivityScore(memberId, house, partyName)?.score
+        val dob = bioDataDao.getByMpId(memberId)?.dateOfBirth
+        return score to dob
     }
 }

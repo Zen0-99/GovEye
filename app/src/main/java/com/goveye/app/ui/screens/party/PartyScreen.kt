@@ -50,6 +50,7 @@ import com.goveye.app.ui.components.SubTabPager
 import com.goveye.app.ui.theme.padding
 import com.goveye.app.ui.theme.partyColorForId
 import com.goveye.app.ui.utils.partyLogoResId
+import kotlinx.coroutines.launch
 
 enum class PartyTab(val label: String) {
     INFO("Info"),
@@ -72,6 +73,25 @@ fun PartyScreen(
     LaunchedEffect(partyId) {
         viewModel.loadParty(partyId)
     }
+
+    // Coroutine scope for looking up activity score + DOB before navigating,
+    // so the optimistic header has the same data as Directory > Officials.
+    val navScope = androidx.compose.runtime.rememberCoroutineScope()
+    val navigateToProfileWithScore: (Int, String?, String?, String?, String?, Int) -> Unit =
+        { memberId, name, partyName, partyColor, thumbnailUrl, house ->
+            navScope.launch {
+                val (score, dob) = viewModel.getActivityScoreAndDob(memberId, house, partyName)
+                val fallback = com.goveye.app.ui.navigation.MpHeaderFallback(
+                    name = name ?: "",
+                    partyName = partyName,
+                    partyColor = partyColor,
+                    thumbnailUrl = thumbnailUrl,
+                    activityScore = score,
+                    dateOfBirth = dob
+                )
+                onNavigateToProfile(memberId, fallback)
+            }
+        }
 
     // Track the current tab index — needed for search bar config.
     var currentPage by remember { mutableIntStateOf(0) }
@@ -166,7 +186,16 @@ fun PartyScreen(
                         party = uiState.party,
                         stats = uiState.stats,
                         leader = uiState.leader,
-                        onNavigateToProfile = onNavigateToProfile
+                        onNavigateToProfile = { memberId, fallback ->
+                            navigateToProfileWithScore(
+                                memberId,
+                                fallback?.name,
+                                fallback?.partyName,
+                                fallback?.partyColor,
+                                fallback?.thumbnailUrl,
+                                1
+                            )
+                        }
                     )
 
                     PartyTab.MEMBERS -> {
@@ -177,7 +206,16 @@ fun PartyScreen(
                             pagedMps = pagedMps,
                             partyName = uiState.party?.partyName,
                             partyColor = uiState.party?.partyBackgroundColour,
-                            onNavigateToProfile = onNavigateToProfile
+                            onNavigateToProfile = { memberId, fallback ->
+                                navigateToProfileWithScore(
+                                    memberId,
+                                    fallback?.name,
+                                    fallback?.partyName,
+                                    fallback?.partyColor,
+                                    fallback?.thumbnailUrl,
+                                    1
+                                )
+                            }
                         )
                     }
 

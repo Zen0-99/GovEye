@@ -71,19 +71,14 @@ fun PartyInfoTab(
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
+                        val subtitleParts = mutableListOf<String>()
+                        subtitleParts.add(it.constituency)
+                        it.leaderSinceLabel?.let { label -> subtitleParts.add(label) }
                         Text(
-                            text = it.constituency,
+                            text = subtitleParts.joinToString("  ·  "),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        it.leaderSinceLabel?.let { label ->
-                            Text(
-                                text = label,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(top = 2.dp)
-                            )
-                        }
                     }
                 }
             }
