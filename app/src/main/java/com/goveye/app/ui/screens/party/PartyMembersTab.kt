@@ -33,7 +33,9 @@ import kotlinx.coroutines.flow.Flow
 @Composable
 fun PartyMembersTab(
     pagedMps: Flow<PagingData<MpEntity>>,
-    onNavigateToProfile: (Int) -> Unit,
+    partyName: String?,
+    partyColor: String?,
+    onNavigateToProfile: (Int, com.goveye.app.ui.navigation.MpHeaderFallback?) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val lazyPagingItems: LazyPagingItems<MpEntity> = pagedMps.collectAsLazyPagingItems()
@@ -68,7 +70,16 @@ fun PartyMembersTab(
                     color = MaterialTheme.colorScheme.surfaceContainer,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onNavigateToProfile(mp.id) }
+                        .clickable {
+                            val fallback = com.goveye.app.ui.navigation.MpHeaderFallback(
+                                name = mp.nameDisplayAs ?: mp.nameListAs,
+                                partyName = partyName,
+                                partyColor = partyColor ?: mp.partyBackgroundColour,
+                                thumbnailUrl = mp.thumbnailUrl,
+                                constituency = mp.constituencyName
+                            )
+                            onNavigateToProfile(mp.id, fallback)
+                        }
                 ) {
                     Row(
                         modifier = Modifier.padding(MaterialTheme.padding.medium),

@@ -28,7 +28,7 @@ fun PartyInfoTab(
     stats: PartyStatsEntity?,
     modifier: Modifier = Modifier,
     leader: PartyLeaderDetail? = null,
-    onNavigateToProfile: (Int) -> Unit = {}
+    onNavigateToProfile: (Int, com.goveye.app.ui.navigation.MpHeaderFallback?) -> Unit = { _, _ -> }
 ) {
     val partyId = party?.partyId
     val history = partyId?.let { getPartyHistory(it) }
@@ -44,7 +44,17 @@ fun PartyInfoTab(
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxWidth().clickable { onNavigateToProfile(it.memberId) }
+                    modifier = Modifier.fillMaxWidth().clickable {
+                        val fallback = com.goveye.app.ui.navigation.MpHeaderFallback(
+                            name = it.name,
+                            partyName = party?.partyName,
+                            partyColor = it.partyBackgroundColour,
+                            thumbnailUrl = it.thumbnailUrl,
+                            constituency = it.constituency,
+                            dateOfBirth = null
+                        )
+                        onNavigateToProfile(it.memberId, fallback)
+                    }
                 ) {
                     MpAvatar(
                         thumbnailUrl = it.thumbnailUrl,
@@ -54,17 +64,15 @@ fun PartyInfoTab(
                         borderWidth = 2.dp
                     )
                     Column(modifier = Modifier.weight(1f)) {
+                        val nameText = if (it.age != null) "${it.name} (${it.age})" else it.name
                         Text(
-                            text = it.name,
+                            text = nameText,
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
-                        val subtitleParts = mutableListOf<String>()
-                        it.age?.let { age -> subtitleParts.add("$age years old") }
-                        subtitleParts.add(it.constituency)
                         Text(
-                            text = subtitleParts.joinToString("  ·  "),
+                            text = it.constituency,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

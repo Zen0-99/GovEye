@@ -126,22 +126,22 @@ fun FeedMpVoteCard(
                 )
             }
 
-            // 3. Bottom row: Date (left) + Commons/Lords (right)
+            // 3. Bottom row: Commons/Lords (left) + Date (right) — matches other feed cards
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = formatVoteDate(item.date),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
                     text = if (item.divisionHouse == 2) "Lords" else "Commons",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = formatVoteDate(item.date),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }

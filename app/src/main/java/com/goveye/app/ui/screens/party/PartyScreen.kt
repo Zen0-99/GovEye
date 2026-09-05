@@ -62,7 +62,7 @@ enum class PartyTab(val label: String) {
 fun PartyScreen(
     partyId: Int,
     onBack: () -> Unit,
-    onNavigateToProfile: (Int) -> Unit,
+    onNavigateToProfile: (Int, com.goveye.app.ui.navigation.MpHeaderFallback?) -> Unit,
     contentTopPadding: Dp,
     modifier: Modifier = Modifier,
     viewModel: PartyViewModel = hiltViewModel()
@@ -175,6 +175,8 @@ fun PartyScreen(
                         }
                         PartyMembersTab(
                             pagedMps = pagedMps,
+                            partyName = uiState.party?.partyName,
+                            partyColor = uiState.party?.partyBackgroundColour,
                             onNavigateToProfile = onNavigateToProfile
                         )
                     }

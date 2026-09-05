@@ -372,8 +372,10 @@ private fun GovEyeAppContent(
                         PartyScreen(
                             partyId = key.partyId,
                             onBack = { currentBackStack.removeLastOrNull() },
-                            onNavigateToProfile = { targetId ->
-                                currentBackStack.add(ProfileRoute(targetId))
+                            onNavigateToProfile = { targetId, fallback ->
+                                currentBackStack.add(
+                                    fallback?.toRoute(targetId) ?: ProfileRoute(targetId)
+                                )
                             },
                             contentTopPadding = topBarHeight,
                             modifier = Modifier.fillMaxSize()
