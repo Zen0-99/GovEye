@@ -10,7 +10,7 @@ package com.goveye.app.domain.model
  * @param partyBackgroundColour Party colour hex (for the avatar border)
  * @param title Leader title from party_leaders (e.g. "Prime Minister", "Leader of the Opposition")
  * @param age Age computed from bio_data.dateOfBirth, or null if DOB is unknown
- * @param leaderSinceYears Years as leader, computed from bio_data.postsJson post startDate, or null if unknown
+ * @param leaderSinceLabel Human-readable tenure label (e.g. "Leader for 2 years", "Leader for 3 months"), or null if unknown
  */
 data class PartyLeaderDetail(
     val memberId: Int,
@@ -20,5 +20,5 @@ data class PartyLeaderDetail(
     val partyBackgroundColour: String,
     val title: String,
     val age: Int? = null,
-    val leaderSinceYears: Int? = null
+    val leaderSinceLabel: String? = null
 )

@@ -12,7 +12,14 @@ import kotlinx.serialization.Serializable
  * - partyId: Parliament party ID
  * - memberId: the MP who leads this party
  * - title: leader-type title (e.g. "Prime Minister", "Leader of the Opposition")
+ * - leaderSinceDate: ISO date when the MP became leader (optional — populated
+ *   by migration 28→29 for known leaders, or from postsJson startDate)
  */
 @Serializable
 @Entity(tableName = "party_leaders")
-data class PartyLeaderEntity(@PrimaryKey val partyId: Int, val memberId: Int, val title: String)
+data class PartyLeaderEntity(
+    @PrimaryKey val partyId: Int,
+    val memberId: Int,
+    val title: String,
+    val leaderSinceDate: String? = null
+)

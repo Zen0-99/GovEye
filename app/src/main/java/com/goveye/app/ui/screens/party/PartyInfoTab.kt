@@ -68,9 +68,9 @@ fun PartyInfoTab(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        it.leaderSinceYears?.let { years ->
+                        it.leaderSinceLabel?.let { label ->
                             Text(
-                                text = "Leader for $years year${if (years != 1) "s" else ""}",
+                                text = label,
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(top = 2.dp)

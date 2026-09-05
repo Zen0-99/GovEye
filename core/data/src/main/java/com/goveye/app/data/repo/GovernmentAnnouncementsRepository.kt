@@ -230,10 +230,11 @@ class GovernmentAnnouncementsRepository @Inject constructor(
         }
 
         val age = bioData?.dateOfBirth?.let { computeAge(it) }
-        val leaderSinceYears = bioData?.postsJson?.let { postsJson ->
-            parseLeaderStartDate(postsJson, leaderEntity.title)?.let { startDate ->
-                computeYearsSince(startDate)
-            }
+        // Use leaderSinceDate from the entity (populated by migration 28→29)
+        // instead of parsing postsJson — the MNIS API uses <Name> not <Title>
+        // for post names, so postsJson titles were null in older seed builds.
+        val leaderSinceLabel = leaderEntity.leaderSinceDate?.let { startDate ->
+            computeLeaderTenureLabel(startDate)
         }
 
         return PartyLeaderDetail(
@@ -244,7 +245,7 @@ class GovernmentAnnouncementsRepository @Inject constructor(
             partyBackgroundColour = mp.partyBackgroundColour,
             title = leaderEntity.title,
             age = age,
-            leaderSinceYears = leaderSinceYears
+            leaderSinceLabel = leaderSinceLabel
         )
     }
 
@@ -270,44 +271,23 @@ class GovernmentAnnouncementsRepository @Inject constructor(
     }
 
     /**
-     * Compute whole years since the given date (expected format: "YYYY-MM-DD").
+     * Compute a human-readable tenure label from a start date.
+     * Shows "Leader for X years" for >= 1 year, "Leader for X months" for < 1 year.
      */
-    private fun computeYearsSince(startDate: String): Int? {
+    private fun computeLeaderTenureLabel(startDate: String): String? {
         return try {
             val parts = startDate.split("-")
             if (parts.size < 3) return null
-            val startYear = parts[0].toInt()
-            val startMonth = parts[1].toInt()
-            val startDay = parts[2].toInt()
+            val start = java.time.LocalDate.of(parts[0].toInt(), parts[1].toInt(), parts[2].toInt())
             val now = java.time.LocalDate.now()
-            var years = now.year - startYear
-            if (now.monthValue < startMonth || (now.monthValue == startMonth && now.dayOfMonth < startDay)) {
-                years--
+            val years = java.time.Period.between(start, now).years
+            val months = java.time.Period.between(start, now).months
+            val totalMonths = years * 12 + months
+            when {
+                years >= 1 -> "Leader for $years year${if (years != 1) "s" else ""}"
+                totalMonths >= 1 -> "Leader for $totalMonths month${if (totalMonths != 1) "s" else ""}"
+                else -> "Leader for less than a month"
             }
-            years
-        } catch (e: Exception) {
-            null
-        }
-    }
-
-    /**
-     * Parse bio_data.postsJson (a JSON array of posts) and find the startDate
-     * of the post whose title matches the leader title.
-     *
-     * postsJson format: [{"type":"...","title":"...","department":"...","startDate":"...","endDate":"..."}, ...]
-     */
-    private fun parseLeaderStartDate(postsJson: String, leaderTitle: String): String? {
-        return try {
-            val array = org.json.JSONArray(postsJson)
-            for (i in 0 until array.length()) {
-                val post = array.getJSONObject(i)
-                val title = post.optString("title", "")
-                if (title.contains(leaderTitle, ignoreCase = true)) {
-                    val startDate = post.optString("startDate", null)
-                    if (!startDate.isNullOrBlank()) return startDate
-                }
-            }
-            null
         } catch (e: Exception) {
             null
         }

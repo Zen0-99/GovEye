@@ -598,6 +598,58 @@ object DatabaseModule {
         }
     }
 
+    // Add leaderSinceDate column to party_leaders and populate it with known
+    // leader start dates. Also backfill bio_data.dateOfBirth for leaders where
+    // the MNIS API returned null (Wikidata values from build_ages.py).
+    private val MIGRATION_28_29 = object : Migration(28, 29) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Add leaderSinceDate column
+            db.execSQL("ALTER TABLE party_leaders ADD COLUMN leaderSinceDate TEXT")
+
+            // Populate leaderSinceDate with known dates for each leader
+            // Andy Burnham (PM) — from MNIS GovernmentPosts
+            db.execSQL("UPDATE party_leaders SET leaderSinceDate = '2026-07-20' WHERE partyId = 15")
+            // Kemi Badenoch (Opposition) — from MNIS OppositionPosts
+            db.execSQL("UPDATE party_leaders SET leaderSinceDate = '2024-11-02' WHERE partyId = 4")
+            // Ed Davey (Lib Dem leader) — became leader 2019-12-22
+            db.execSQL("UPDATE party_leaders SET leaderSinceDate = '2019-12-22' WHERE partyId = 17")
+            // Pete Wishart (SNP Westminster leader) — from MNIS OppositionPosts
+            db.execSQL("UPDATE party_leaders SET leaderSinceDate = '2024-07-10' WHERE partyId = 29")
+            // Gavin Robinson (DUP leader) — became interim leader 2024-02-03
+            db.execSQL("UPDATE party_leaders SET leaderSinceDate = '2024-02-03' WHERE partyId = 7")
+            // Liz Saville Roberts (Plaid Cymru Westminster leader) — from MNIS
+            db.execSQL("UPDATE party_leaders SET leaderSinceDate = '2017-06-08' WHERE partyId = 22")
+            // Adrian Ramsay (Green co-leader) — became co-leader 2021-09-04
+            db.execSQL("UPDATE party_leaders SET leaderSinceDate = '2021-09-04' WHERE partyId = 44")
+            // Nigel Farage (Reform UK leader) — became leader 2024-06-11
+            db.execSQL("UPDATE party_leaders SET leaderSinceDate = '2024-06-11' WHERE partyId = 1036")
+
+            // Backfill bio_data.dateOfBirth for leaders where MNIS returned null.
+            // Values from Wikidata (build_ages.py).
+            db.execSQL(
+                "UPDATE bio_data SET dateOfBirth = '1970-01-07' WHERE mpId = 1427 AND (dateOfBirth IS NULL OR dateOfBirth = '')"
+            )
+            db.execSQL(
+                "UPDATE bio_data SET dateOfBirth = '1980-01-02' WHERE mpId = 4597 AND (dateOfBirth IS NULL OR dateOfBirth = '')"
+            )
+            db.execSQL(
+                "UPDATE bio_data SET dateOfBirth = '1965-12-25' WHERE mpId = 188 AND (dateOfBirth IS NULL OR dateOfBirth = '')"
+            )
+            db.execSQL(
+                "UPDATE bio_data SET dateOfBirth = '1962-03-09' WHERE mpId = 1440 AND (dateOfBirth IS NULL OR dateOfBirth = '')"
+            )
+            db.execSQL(
+                "UPDATE bio_data SET dateOfBirth = '1984-11-22' WHERE mpId = 4360 AND (dateOfBirth IS NULL OR dateOfBirth = '')"
+            )
+            db.execSQL(
+                "UPDATE bio_data SET dateOfBirth = '1964-12-16' WHERE mpId = 4521 AND (dateOfBirth IS NULL OR dateOfBirth = '')"
+            )
+            db.execSQL(
+                "UPDATE bio_data SET dateOfBirth = '1964-04-03' WHERE mpId = 5091 AND (dateOfBirth IS NULL OR dateOfBirth = '')"
+            )
+        }
+    }
+
     @Provides
     @Singleton
     fun provideBundledDatabase(@ApplicationContext context: Context): BundledDatabase {
@@ -656,7 +708,8 @@ object DatabaseModule {
                 MIGRATION_24_25,
                 MIGRATION_25_26,
                 MIGRATION_26_27,
-                MIGRATION_27_28
+                MIGRATION_27_28,
+                MIGRATION_28_29
             )
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
