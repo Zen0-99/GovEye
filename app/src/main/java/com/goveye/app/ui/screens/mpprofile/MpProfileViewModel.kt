@@ -178,23 +178,34 @@ class ProfileViewModel @Inject constructor(
             val house = mp?.house ?: 1
             val partyName = mp?.party?.name
 
-            // Stats depend on mp (house, partyName) so they start after mp resolves.
-            // But bioData and mpTags are already done by this point.
-            val stats = runCatching {
-                statsRepository.getActivityScore(memberId, house, partyName) to
-                    statsRepository.getTraitBars(memberId, house, partyName)
-            }.getOrNull()
-
-            // Single state update — one recomposition with all header data
+            // Single state update — one recomposition with all header data.
+            // Stats (activityScore, traitBars) are NOT included here because
+            // the fallback runtime computation iterates over all 650 MPs and
+            // can take minutes when precomputed stats are unavailable. Loading
+            // them in Stage 1 would block the state update that sets mp and
+            // isLoading=false, leaving the optimistic header's contentAlpha=0
+            // and making all tab content invisible. Stats are loaded in a
+            // separate coroutine below and update state independently.
             _uiState.value = _uiState.value.copy(
                 mp = mp,
                 mpTags = mpTags,
                 bioData = bioData,
-                activityScore = stats?.first,
-                traitBars = stats?.second ?: emptyList(),
                 syncStatus = if (mp != null) SyncStatus.FRESH else SyncStatus.EMPTY,
                 isLoading = false
             )
+
+            // Stats load asynchronously — updates the activity score pill
+            // and Stats tab when ready. Does not block first paint.
+            launch {
+                val stats = runCatching {
+                    statsRepository.getActivityScore(memberId, house, partyName) to
+                        statsRepository.getTraitBars(memberId, house, partyName)
+                }.getOrNull()
+                _uiState.value = _uiState.value.copy(
+                    activityScore = stats?.first,
+                    traitBars = stats?.second ?: emptyList()
+                )
+            }
 
             // === Stage 2: Remaining data in parallel ===
             val partyId = mp?.party?.id
@@ -357,18 +368,26 @@ class ProfileViewModel @Inject constructor(
             val bioData = runCatching { bioDataRepository.getBioData(memberId) }.getOrNull()
             val house = mp?.house ?: 1
             val partyName = mp?.party?.name
-            val stats = runCatching {
-                statsRepository.getActivityScore(memberId, house, partyName) to
-                    statsRepository.getTraitBars(memberId, house, partyName)
-            }.getOrNull()
 
             _uiState.value = _uiState.value.copy(
                 mp = mp,
                 mpTags = mpTags,
-                bioData = bioData,
-                activityScore = stats?.first,
-                traitBars = stats?.second ?: emptyList()
+                bioData = bioData
             )
+
+            // Stats load asynchronously — same reason as loadProfile Stage 1:
+            // the fallback runtime computation can take minutes when precomputed
+            // stats are unavailable. Don't let it block Stage 2 data.
+            launch {
+                val stats = runCatching {
+                    statsRepository.getActivityScore(memberId, house, partyName) to
+                        statsRepository.getTraitBars(memberId, house, partyName)
+                }.getOrNull()
+                _uiState.value = _uiState.value.copy(
+                    activityScore = stats?.first,
+                    traitBars = stats?.second ?: emptyList()
+                )
+            }
 
             // Stage 2 in parallel — reload ALL fields, not just header data
             val partyId = mp?.party?.id
