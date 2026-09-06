@@ -247,19 +247,25 @@ fun MpMicroviewDialog(
 
                 // Content — votes or finances depending on mode.
                 // The header (gradient + avatar + name + party) renders
-                // instantly from the MP data. Content sections fade in
-                // with a staggered animation as votes/finances load.
+                // instantly from the optimistic fallback data. Content
+                // sections fade in as votes/finances load.
+                val hasContent = when (mode) {
+                    MpMicroviewMode.VOTES -> uiState.memberVotes.isNotEmpty()
+
+                    MpMicroviewMode.FINANCES -> uiState.interests.isNotEmpty() ||
+                        uiState.expenseBucketTotals.isNotEmpty()
+                }
                 val contentAlpha by animateFloatAsState(
-                    targetValue = if (uiState.isLoading && uiState.mp == null) 0f else 1f,
+                    targetValue = if (hasContent) 1f else 0f,
                     animationSpec = tween(durationMillis = 300),
                     label = "microviewContentFade"
                 )
 
-                if (uiState.isLoading && uiState.mp == null) {
+                if (!hasContent) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(200.dp),
+                            .weight(1f),
                         contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator()

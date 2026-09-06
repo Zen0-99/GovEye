@@ -70,6 +70,28 @@ class MpMicroviewViewModel @Inject constructor(
         fallbackPartyColour: String?,
         fallbackConstituency: String?
     ) {
+        // Optimistic header: build a temporary Mp from fallback data so the
+        // header (gradient, avatar, name, party) renders instantly before the
+        // DB lookup completes. Same pattern as MpProfileScreen.
+        val optimisticMp = Mp(
+            id = memberId,
+            nameListAs = fallbackName,
+            nameDisplayAs = fallbackName,
+            nameFullTitle = null,
+            gender = null,
+            party = fallbackPartyName?.let {
+                com.goveye.app.domain.model.Party(0, it, "", fallbackPartyColour ?: "", "")
+            },
+            constituency = fallbackConstituency?.let {
+                com.goveye.app.domain.model.Constituency(0, it)
+            },
+            house = 1,
+            membershipStartDate = null,
+            isActive = true,
+            thumbnailUrl = null
+        )
+        _uiState.value = _uiState.value.copy(mp = optimisticMp, isLoading = false)
+
         viewModelScope.launch {
             // 1. Try to load from bundled DB first (all 650 Commons MPs are in the DB)
             val mpEntity = mpDao.getMp(memberId)
@@ -96,7 +118,7 @@ class MpMicroviewViewModel @Inject constructor(
                     isActive = mpEntity.isActive,
                     thumbnailUrl = mpEntity.thumbnailUrl
                 )
-                _uiState.value = _uiState.value.copy(mp = mp, isLoading = false)
+                _uiState.value = _uiState.value.copy(mp = mp)
                 loadVotesAndFollow(memberId, mpEntity.house, mpEntity.partyName)
                 loadFinances(memberId)
             } else {
@@ -123,31 +145,11 @@ class MpMicroviewViewModel @Inject constructor(
                         isActive = historicalMember.isCurrent == 1,
                         thumbnailUrl = null
                     )
-                    _uiState.value = _uiState.value.copy(mp = mp, isLoading = false)
+                    _uiState.value = _uiState.value.copy(mp = mp)
                     loadVotesAndFollow(votesMemberId, house, historicalMember.party ?: fallbackPartyName)
                     loadFinances(memberId)
                 } else {
-                    // 3. Fallback — use data from the DivisionVote
-                    val fallbackMp = Mp(
-                        id = memberId,
-                        nameListAs = fallbackName,
-                        nameDisplayAs = fallbackName,
-                        nameFullTitle = null,
-                        gender = null,
-                        party = fallbackPartyName?.let {
-                            com.goveye.app.domain.model.Party(0, it, "", fallbackPartyColour ?: "", "")
-                        },
-                        constituency = fallbackConstituency?.let {
-                            com.goveye.app.domain.model.Constituency(0, it)
-                        },
-                        house = 1,
-                        membershipStartDate = null,
-                        isActive = true,
-                        thumbnailUrl = null
-                    )
-                    _uiState.value = _uiState.value.copy(mp = fallbackMp, isLoading = false)
-                    // For division detail, the memberId is already the correct one
-                    // (Lords votes store memberId + offset directly in division_votes)
+                    // 3. Fallback — keep the optimistic Mp, load votes with the raw memberId
                     loadVotesAndFollow(memberId, 1, fallbackPartyName)
                     loadFinances(memberId)
                 }
@@ -209,14 +211,21 @@ class MpMicroviewViewModel @Inject constructor(
     }
 
     fun toggleFollow(memberId: Int) {
+        // Optimistic UI: flip the follow icon immediately so the user sees
+        // the change without waiting for the repository round-trip (issue #7).
+        val wasFollowing = _uiState.value.isFollowing
+        _uiState.value = _uiState.value.copy(isFollowing = !wasFollowing)
         viewModelScope.launch {
-            if (_uiState.value.isFollowing) {
-                followRepository.unfollow(memberId)
-            } else {
-                followRepository.follow(memberId)
+            try {
+                if (wasFollowing) {
+                    followRepository.unfollow(memberId)
+                } else {
+                    followRepository.follow(memberId)
+                }
+            } catch (e: Exception) {
+                // Revert on failure
+                _uiState.value = _uiState.value.copy(isFollowing = wasFollowing)
             }
-            val isFollowing = followRepository.isFollowing(memberId)
-            _uiState.value = _uiState.value.copy(isFollowing = isFollowing)
         }
     }
 }

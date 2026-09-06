@@ -100,7 +100,7 @@ fun FeedMpFinancialComboCard(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = item.memberName,
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
