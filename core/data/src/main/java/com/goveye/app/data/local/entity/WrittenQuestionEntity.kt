@@ -24,6 +24,14 @@ import kotlinx.serialization.Serializable
  * - answeringBodyId / answeringBodyName: the government department
  * - questionText: the full question text (255-char truncation fallback applied)
  * - house: 1 (Commons) or 2 (Lords)
+ * - heading: the topic heading (e.g. "Pets: Theft")
+ * - dateForAnswer: ISO date string (when the answer is expected)
+ * - dateAnswered: ISO date string (when the answer was provided, or empty)
+ * - answerText: the full answer text (may be empty if not yet answered)
+ * - answeringMemberId: the MP who provided the answer (0 if not answered)
+ * - isWithdrawn: 1 if the question was withdrawn
+ * - answerIsHolding: 1 if a holding answer was given
+ * - answerIsCorrection: 1 if the answer is a correction
  */
 @Serializable
 @Entity(tableName = "written_questions")
@@ -36,5 +44,13 @@ data class WrittenQuestionEntity(
     val answeringBodyName: String,
     val questionText: String,
     val house: Int,
-    val lastUpdated: Long
+    val lastUpdated: Long,
+    val heading: String = "",
+    val dateForAnswer: String = "",
+    val dateAnswered: String = "",
+    val answerText: String = "",
+    val answeringMemberId: Int = 0,
+    val isWithdrawn: Int = 0,
+    val answerIsHolding: Int = 0,
+    val answerIsCorrection: Int = 0
 )

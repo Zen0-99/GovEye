@@ -38,7 +38,8 @@ fun MpAvatar(
     partyColorHex: String?,
     modifier: Modifier = Modifier,
     size: Dp = 40.dp,
-    borderWidth: Dp = 0.dp
+    borderWidth: Dp = 0.dp,
+    borderColorOverride: Color? = null
 ) {
     MpAvatarImpl(
         imageData = thumbnailUrl,
@@ -46,7 +47,8 @@ fun MpAvatar(
         partyColorHex = partyColorHex,
         modifier = modifier,
         size = size,
-        borderWidth = borderWidth
+        borderWidth = borderWidth,
+        borderColorOverride = borderColorOverride
     )
 }
 
@@ -60,7 +62,8 @@ fun MpAvatar(
     partyColorHex: String?,
     modifier: Modifier = Modifier,
     size: Dp = 40.dp,
-    borderWidth: Dp = 0.dp
+    borderWidth: Dp = 0.dp,
+    borderColorOverride: Color? = null
 ) {
     MpAvatarImpl(
         imageData = photoBytes,
@@ -68,7 +71,8 @@ fun MpAvatar(
         partyColorHex = partyColorHex,
         modifier = modifier,
         size = size,
-        borderWidth = borderWidth
+        borderWidth = borderWidth,
+        borderColorOverride = borderColorOverride
     )
 }
 
@@ -79,12 +83,14 @@ private fun MpAvatarImpl(
     partyColorHex: String?,
     modifier: Modifier = Modifier,
     size: Dp = 40.dp,
-    borderWidth: Dp = 0.dp
+    borderWidth: Dp = 0.dp,
+    borderColorOverride: Color? = null
 ) {
     val partyColor = remember(partyColorHex) { parseMutedPartyColor(partyColorHex) }
     val initials = remember(displayName) { deriveInitials(displayName) }
     val borderModifier = if (borderWidth > 0.dp) {
-        val borderColor = remember(partyColorHex) { parsePartyColor(partyColorHex) }
+        val borderColor = borderColorOverride
+            ?: remember(partyColorHex) { parsePartyColor(partyColorHex) }
         Modifier.border(borderWidth, borderColor, CircleShape)
     } else {
         Modifier

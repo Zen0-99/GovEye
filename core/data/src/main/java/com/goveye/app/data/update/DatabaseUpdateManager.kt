@@ -228,20 +228,26 @@ class DatabaseUpdateManager @Inject constructor(
                     }
 
                     else -> {
-                        // Multiple versions behind. If the DB file exists, skip
-                        // this stream and keep using the existing data — the user
-                        // stays on their current data until a patch brings them
-                        // back in range. Only force a full re-download on first
-                        // launch (no DB file). This prevents the app from killing
-                        // Room flows via database.close() during a background
-                        // download when the user already has perfectly good data.
+                        // Multiple versions behind. Apply the latest patch
+                        // anyway — patches are upserts (INSERT OR REPLACE), so
+                        // applying the latest patch is safe even if we skipped
+                        // intermediate versions. Rows that changed in the
+                        // latest version will be updated; rows that didn't
+                        // change will be left as-is (which is fine — they're
+                        // already correct from a prior patch or seed).
+                        //
+                        // Only force a full re-download on first launch (no
+                        // DB file). This prevents the app from killing Room
+                        // flows via database.close() during a background
+                        // download when the user already has data.
                         if (context.getDatabasePath(BundledDatabase.DATABASE_NAME).exists()) {
                             Log.w(
                                 TAG,
-                                "Stream $streamName multiple versions behind (local=$localVersion, remote=${manifest.version}) — skipping, keeping existing data"
+                                "Stream $streamName multiple versions behind (local=$localVersion, remote=${manifest.version}) — applying latest patch anyway"
                             )
-                            // Mark as current so we don't re-check every launch
-                            setStreamVersion(streamName, manifest.version)
+                            val (tag, _) = streamTags[index]
+                            val patchUrl = "$githubDownloadBase/$tag/$PATCH_ASSET_NAME"
+                            patches.add(PatchInfo(streamName, manifest, patchUrl))
                         } else {
                             return@withContext DatabaseUpdateState.NeedsFullDownload(null)
                         }
@@ -896,7 +902,7 @@ class DatabaseUpdateManager @Inject constructor(
          * corrected data). When this is higher than the user's stored
          * seedVersion, the app treats it as a first launch and re-downloads.
          */
-        const val CURRENT_SEED_VERSION = 7
+        const val CURRENT_SEED_VERSION = 8
 
         internal const val MANIFEST_ASSET_NAME = "manifest.json"
         internal const val PATCH_ASSET_NAME = "patch.json"

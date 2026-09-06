@@ -2,6 +2,7 @@ package com.goveye.app.data.repo
 
 import com.goveye.app.data.local.dao.AnnouncementTagDao
 import com.goveye.app.data.local.dao.BioDataDao
+import com.goveye.app.data.local.dao.CachedPublicationDao
 import com.goveye.app.data.local.dao.GovernmentPublicationDao
 import com.goveye.app.data.local.dao.LegislationDao
 import com.goveye.app.data.local.dao.MpDao
@@ -10,6 +11,7 @@ import com.goveye.app.data.local.dao.PartyLeaderDao
 import com.goveye.app.data.local.dao.SourceRecommendationDao
 import com.goveye.app.data.local.dao.WrittenStatementDao
 import com.goveye.app.data.local.entity.BioDataEntity
+import com.goveye.app.data.local.entity.CachedPublicationEntity
 import com.goveye.app.data.local.entity.GovernmentPublicationEntity
 import com.goveye.app.data.local.entity.LegislationEntity
 import com.goveye.app.data.local.entity.MpTagEntity
@@ -18,16 +20,30 @@ import com.goveye.app.data.local.entity.SourceRecommendationEntity
 import com.goveye.app.data.local.entity.WrittenStatementEntity
 import com.goveye.app.domain.model.GovernmentPublication
 import com.goveye.app.domain.model.Legislation
+import com.goveye.app.domain.model.LinkedStatement
 import com.goveye.app.domain.model.MpTag
 import com.goveye.app.domain.model.PartyLeader
 import com.goveye.app.domain.model.PartyLeaderDetail
 import com.goveye.app.domain.model.SourceRecommendation
+import com.goveye.app.domain.model.TagWithCount
 import com.goveye.app.domain.model.WrittenStatement
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import okhttp3.OkHttpClient
+import okhttp3.Request
 
 /**
  * DB-only repository for government announcements (publications, written
@@ -49,7 +65,9 @@ class GovernmentAnnouncementsRepository @Inject constructor(
     private val partyLeaderDao: PartyLeaderDao,
     private val sourceRecommendationDao: SourceRecommendationDao,
     private val mpDao: MpDao,
-    private val bioDataDao: BioDataDao
+    private val bioDataDao: BioDataDao,
+    private val cachedPublicationDao: CachedPublicationDao,
+    private val okHttpClient: OkHttpClient
 ) {
     // --- Written statements ---
 
@@ -70,6 +88,9 @@ class GovernmentAnnouncementsRepository @Inject constructor(
 
     suspend fun getStatement(id: Int): WrittenStatement? = writtenStatementDao.getStatement(id)?.toDomain()
 
+    suspend fun getStatementsByIds(ids: List<Int>): List<WrittenStatement> =
+        writtenStatementDao.getStatementsByIds(ids).map { it.toDomain() }
+
     // --- Government publications ---
 
     fun observePublications(limit: Int = 50): Flow<List<GovernmentPublication>> =
@@ -89,6 +110,109 @@ class GovernmentAnnouncementsRepository @Inject constructor(
 
     suspend fun getPublication(id: Int): GovernmentPublication? =
         governmentPublicationDao.getPublication(id)?.toDomain()
+
+    /**
+     * Fetches publication body text on-demand from the GOV.UK Content API (D-02).
+     *
+     * Used when [GovernmentPublication.bodyText] is null (publications from
+     * seed DBs that predate the bodyText column). Checks the local cache
+     * ([cached_publications] table) first, then fetches from
+     * `www.gov.uk/api/content/{path}`, strips HTML, and caches the result.
+     *
+     * @param url The GOV.UK content path (e.g. "/government/news/budget-2026")
+     * @return HTML-stripped plain text body, or null if the fetch fails
+     */
+    suspend fun fetchPublicationBodyText(url: String): String? = withContext(Dispatchers.IO) {
+        // Check cache first
+        val cached = cachedPublicationDao.getCachedPublication(url)
+        if (cached != null && cached.bodyText.isNotBlank()) {
+            return@withContext cached.bodyText
+        }
+
+        // Fetch from GOV.UK Content API
+        val apiUrl = "https://www.gov.uk/api/content$url"
+        val request = Request.Builder().url(apiUrl).build()
+        try {
+            okHttpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@withContext null
+                val bodyStr = response.body?.string() ?: return@withContext null
+                val json = Json { ignoreUnknownKeys = true }
+                val content = json.parseToJsonElement(bodyStr) as? JsonObject ?: return@withContext null
+                val details = content["details"] as? JsonObject ?: return@withContext null
+                val rawHtml = (details["body"] as? JsonPrimitive)?.content ?: return@withContext null
+                val stripped = stripGovukHtml(rawHtml).takeIf { it.isNotBlank() } ?: return@withContext null
+
+                // Cache for future use
+                val title = (content["title"] as? JsonPrimitive)?.content ?: ""
+                val description = (content["description"] as? JsonPrimitive)?.content ?: ""
+                val documentType = (content["document_type"] as? JsonPrimitive)?.content ?: ""
+                val orgs = content["links"] as? JsonObject
+                val primaryOrg = orgs?.get("primary_publishing_organisation") as? JsonArray
+                val orgName =
+                    (primaryOrg?.firstOrNull() as? JsonObject)?.get("title")?.let { (it as? JsonPrimitive)?.content }
+                        ?: ""
+                val imageObj = details["image"] as? JsonObject
+                val imageUrl = (imageObj?.get("url") as? JsonPrimitive)?.content
+                val firstPublished = (content["first_published_at"] as? JsonPrimitive)?.content ?: ""
+
+                cachedPublicationDao.insertCachedPublication(
+                    CachedPublicationEntity(
+                        url = url,
+                        title = title,
+                        summary = description,
+                        bodyText = stripped,
+                        documentType = documentType,
+                        organisation = orgName,
+                        imageUrl = imageUrl,
+                        firstPublishedAt = firstPublished,
+                        fetchedAt = System.currentTimeMillis()
+                    )
+                )
+                stripped
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Strips HTML/Govspeak to plain text, preserving paragraph breaks.
+     * Mirrors strip_html_for_tag_matching() in build_gov_publications.py.
+     */
+    private fun stripGovukHtml(html: String): String {
+        if (html.isBlank()) return ""
+        // Simple HTML strip without Jsoup (not available in Android core)
+        var text = html
+        // Block-level elements → paragraph breaks
+        text = text.replace(Regex("(?i)<(?:p|h[1-6])[^>]*>"), "\n\n")
+        text = text.replace(Regex("(?i)</(?:p|h[1-6])>"), "\n\n")
+        text = text.replace(Regex("(?i)<li[^>]*>"), "\n• ")
+        text = text.replace(Regex("(?i)<br\\s*/?>"), "\n")
+        // Strip all remaining tags
+        text = text.replace(Regex("<[^>]+>"), "")
+        // Decode common HTML entities
+        text = text.replace("&amp;", "&")
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("&quot;", "\"")
+            .replace("&#39;", "'")
+            .replace("&nbsp;", " ")
+            .replace("&pound;", "£")
+        // Collapse excessive blank lines
+        val lines = text.split("\n")
+        val cleaned = mutableListOf<String>()
+        var blankCount = 0
+        for (line in lines) {
+            if (line.isBlank()) {
+                blankCount++
+                if (blankCount <= 2) cleaned.add("")
+            } else {
+                blankCount = 0
+                cleaned.add(line.trim())
+            }
+        }
+        return cleaned.joinToString("\n").trim()
+    }
 
     // --- Legislation ---
 
@@ -147,28 +271,28 @@ class GovernmentAnnouncementsRepository @Inject constructor(
      * Use this instead of calling [getTagsForPublication] in a loop —
      * eliminates N+1 query overhead in the feed.
      */
-    suspend fun getTagsForPublications(ids: List<Int>): Map<Int, List<String>> =
+    suspend fun getTagsForPublications(ids: List<Int>): Map<Int, List<TagWithCount>> =
         announcementTagDao.getTagRowsForPublications(ids)
             .groupBy { it.publicationId }
-            .mapValues { (_, rows) -> rows.map { it.tag } }
+            .mapValues { (_, rows) -> rows.map { TagWithCount(it.tag, it.hitCount) } }
 
     /**
      * Batch fetch tags for multiple statements in a single query.
      * Returns a map of statementId → list of tags (ordered by hitCount desc).
      */
-    suspend fun getTagsForStatements(ids: List<Int>): Map<Int, List<String>> =
+    suspend fun getTagsForStatements(ids: List<Int>): Map<Int, List<TagWithCount>> =
         announcementTagDao.getTagRowsForStatements(ids)
             .groupBy { it.statementId }
-            .mapValues { (_, rows) -> rows.map { it.tag } }
+            .mapValues { (_, rows) -> rows.map { TagWithCount(it.tag, it.hitCount) } }
 
     /**
      * Batch fetch tags for multiple legislation items in a single query.
      * Returns a map of legislationId → list of tags (ordered by hitCount desc).
      */
-    suspend fun getTagsForLegislationBatch(ids: List<Int>): Map<Int, List<String>> =
+    suspend fun getTagsForLegislationBatch(ids: List<Int>): Map<Int, List<TagWithCount>> =
         announcementTagDao.getTagRowsForLegislation(ids)
             .groupBy { it.legislationId }
-            .mapValues { (_, rows) -> rows.map { it.tag } }
+            .mapValues { (_, rows) -> rows.map { TagWithCount(it.tag, it.hitCount) } }
 
     suspend fun getPublicationIdsForTag(tag: String): List<Int> = announcementTagDao.getPublicationIdsForTag(tag)
 
@@ -318,7 +442,11 @@ class GovernmentAnnouncementsRepository @Inject constructor(
         title = title,
         text = text,
         house = house,
-        url = "https://questions-statements.parliament.uk/written-statements/detail/$uin"
+        url = "https://questions-statements.parliament.uk/written-statements/detail/${dateMade.split(
+            "T"
+        ).first()}/${uin.lowercase()}",
+        hasLinkedStatements = hasLinkedStatements,
+        linkedStatements = linkedStatementsJson?.let { parseLinkedStatements(it) }
     )
 
     private fun GovernmentPublicationEntity.toDomain(): GovernmentPublication = GovernmentPublication(
@@ -365,4 +493,22 @@ class GovernmentAnnouncementsRepository @Inject constructor(
         tag = tag,
         hitCount = hitCount
     )
+
+    companion object {
+        private val jsonParser = Json { ignoreUnknownKeys = true }
+
+        private fun parseLinkedStatements(jsonStr: String): List<LinkedStatement>? = try {
+            val array = jsonParser.parseToJsonElement(jsonStr) as? JsonArray ?: return null
+            array.mapNotNull { element ->
+                val obj = element as? JsonObject ?: return@mapNotNull null
+                LinkedStatement(
+                    linkedStatementId = obj["linkedStatementId"]?.jsonPrimitive?.intOrNull ?: return@mapNotNull null,
+                    linkType = obj["linkType"]?.jsonPrimitive?.contentOrNull ?: "",
+                    linkDate = obj["linkDate"]?.jsonPrimitive?.contentOrNull ?: ""
+                )
+            }.takeIf { it.isNotEmpty() }
+        } catch (e: Exception) {
+            null
+        }
+    }
 }

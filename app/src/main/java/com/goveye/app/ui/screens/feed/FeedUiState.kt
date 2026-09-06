@@ -4,6 +4,7 @@ import com.goveye.app.data.local.entity.RecessDateEntity
 import com.goveye.app.domain.model.Division
 import com.goveye.app.domain.model.GovernmentPublication
 import com.goveye.app.domain.model.Legislation
+import com.goveye.app.domain.model.TagWithCount
 import com.goveye.app.domain.model.WrittenStatement
 
 /**
@@ -16,7 +17,8 @@ enum class CardType {
     LEGISLATION,
     FINANCIAL,
     SPEECH,
-    MP_VOTE
+    MP_VOTE,
+    MP_FINANCIAL_COMBO
 }
 
 /**
@@ -34,7 +36,7 @@ sealed interface FeedItem {
 
     data class DivisionItem(
         val division: Division,
-        val tags: List<String> = emptyList(),
+        val tags: List<TagWithCount> = emptyList(),
         val followedVotes: List<com.goveye.app.data.local.entity.FollowedMpVote> = emptyList()
     ) : FeedItem {
         override val date: String get() = division.date
@@ -43,7 +45,7 @@ sealed interface FeedItem {
         override val cardType: CardType = CardType.DIVISION
     }
 
-    data class PublicationItem(val publication: GovernmentPublication, val tags: List<String> = emptyList()) :
+    data class PublicationItem(val publication: GovernmentPublication, val tags: List<TagWithCount> = emptyList()) :
         FeedItem {
         override val date: String get() = publication.firstPublishedAt
         override val id: Int get() = publication.id
@@ -51,14 +53,14 @@ sealed interface FeedItem {
         override val cardType: CardType = CardType.PUBLICATION
     }
 
-    data class StatementItem(val statement: WrittenStatement, val tags: List<String> = emptyList()) : FeedItem {
+    data class StatementItem(val statement: WrittenStatement, val tags: List<TagWithCount> = emptyList()) : FeedItem {
         override val date: String get() = statement.dateMade
         override val id: Int get() = statement.id
         override val typePrefix: String = "statement"
         override val cardType: CardType = CardType.STATEMENT
     }
 
-    data class LegislationItem(val legislation: Legislation, val tags: List<String> = emptyList()) : FeedItem {
+    data class LegislationItem(val legislation: Legislation, val tags: List<TagWithCount> = emptyList()) : FeedItem {
         override val date: String get() = legislation.date
         override val id: Int get() = legislation.id
         override val typePrefix: String = "legislation"
@@ -81,13 +83,36 @@ sealed interface FeedItem {
         val isIncome: Boolean,
         override val date: String,
         override val id: Int = listOf(memberId, amount, date, whoOrWhere, description).hashCode(),
-        val tags: List<String> = emptyList(),
+        val tags: List<TagWithCount> = emptyList(),
         // Phase 18: structured detail fields for expandable content
         val expandableFields: List<FinancialDetailField>? = null,
         val bucket: String? = null
     ) : FeedItem {
         override val typePrefix: String = "financial"
         override val cardType: CardType = CardType.FINANCIAL
+    }
+
+    /**
+     * A combo card grouping multiple [FinancialItem]s for a single followed MP
+     * on the same date. Shows the MP's avatar, name, a list of individual
+     * entries (amount + source), and a total sum with trend icon.
+     *
+     * UI-only grouping for now — computed client-side in the ViewModel.
+     * Future: pre-computed in goveye-data Actions.
+     */
+    data class MpFinancialComboItem(
+        val memberId: Int,
+        val memberName: String,
+        val memberPartyColorHex: String?,
+        val memberPhotoUrl: String?,
+        val entries: List<FinancialItem>,
+        val totalAmountPence: Long,
+        val isIncomeNet: Boolean,
+        override val date: String,
+        override val id: Int = listOf(memberId, date, "combo").hashCode()
+    ) : FeedItem {
+        override val typePrefix: String = "mp_financial_combo"
+        override val cardType: CardType = CardType.MP_FINANCIAL_COMBO
     }
 
     /**
@@ -106,7 +131,7 @@ sealed interface FeedItem {
         val divisionTitle: String,
         override val date: String,
         override val id: Int = listOf(memberId, divisionId, speechText.take(50)).hashCode(),
-        val tags: List<String> = emptyList()
+        val tags: List<TagWithCount> = emptyList()
     ) : FeedItem {
         override val typePrefix: String = "speech"
         override val cardType: CardType = CardType.SPEECH
@@ -131,7 +156,7 @@ sealed interface FeedItem {
         val noCount: Int,
         override val date: String,
         override val id: Int = listOf(memberId, divisionId, "vote").hashCode(),
-        val tags: List<String> = emptyList()
+        val tags: List<TagWithCount> = emptyList()
     ) : FeedItem {
         override val typePrefix: String = "mp-vote"
         override val cardType: CardType = CardType.MP_VOTE
@@ -155,8 +180,8 @@ data class FeedUiState(
     val followedMemberIds: Set<Int> = emptySet(),
     val divisionsWithFollowedVotes: Set<Int> = emptySet(),
     val followedMpVotes: Map<Int, List<com.goveye.app.data.local.entity.FollowedMpVote>> = emptyMap(),
-    val divisionTags: Map<Int, List<String>> = emptyMap(),
-    val announcementTags: Map<String, List<String>> = emptyMap(),
+    val divisionTags: Map<Int, List<TagWithCount>> = emptyMap(),
+    val announcementTags: Map<String, List<TagWithCount>> = emptyMap(),
     val followingOnly: Boolean = false,
     val searchQuery: String = "",
     val houseFilter: Int = 0,

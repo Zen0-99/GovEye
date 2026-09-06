@@ -244,12 +244,76 @@ fun ActivityQuestionCard(entry: ActivityEntry) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
+            // Heading (topic) if available
+            entry.heading?.let { heading ->
+                Text(
+                    text = heading,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+            }
+            // Question text
             Text(
                 text = entry.questionText ?: entry.summary,
                 style = MaterialTheme.typography.bodyMedium,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
+            // Answer text (if answered)
+            val answerText = entry.answerText
+            if (!answerText.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHighest
+                ) {
+                    Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                        Text(
+                            text = if (entry.answerIsHolding == true) "Holding Answer" else "Answer",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = answerText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        entry.dateAnswered?.let { dateAns ->
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "Answered ${formatActivityDate(dateAns)}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            } else if (entry.isWithdrawn == true) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Withdrawn",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.error
+                )
+            } else {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Awaiting answer",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            // Answering body + date tabled
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically

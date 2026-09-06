@@ -3,11 +3,11 @@ package com.goveye.app.ui.screens.feed
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -18,24 +18,21 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.goveye.app.ui.components.MpAvatar
 import com.goveye.app.ui.components.VoteColors
 import com.goveye.app.ui.components.cardClickable
 
 /**
- * Feed card showing a followed MP's vote (Aye/No) on a division.
+ * **MP vote — verdict-led quote card.**
  *
- * Layout matches the financial card convention:
- * 1. Top row: MP avatar (32dp) inline with division title (bodyLarge, Bold)
- * 2. Below title: "Aye" / "No" vote badge (colored pill)
- * 3. Bottom row: Date (left) + Commons/Lords (right)
- *
- * Tapping the card navigates to the division detail.
+ * The division title and the MP's vote (AYE/NO) take the main stage —
+ * large, coloured, in caps, without a coloured box. Below them, an
+ * attribution bar (matching the speech card) carries the MP's avatar,
+ * name, house, and date.
  */
 @Composable
 fun FeedMpVoteCard(
@@ -44,20 +41,18 @@ fun FeedMpVoteCard(
     modifier: Modifier = Modifier,
     onProfileClick: (() -> Unit)? = null
 ) {
-    val ayeColor = VoteColors.aye
-    val noColor = VoteColors.no
     val voteUpper = item.vote.uppercase()
     val isAye = voteUpper == "AYE"
     val isNoVote = voteUpper == "NO VOTE RECORDED" || voteUpper == "NOVOTERECORDED" || voteUpper.isBlank()
     val voteColor = when {
-        isAye -> ayeColor
-        isNoVote -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-        else -> noColor
+        isAye -> VoteColors.aye
+        isNoVote -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+        else -> VoteColors.no
     }
     val voteText = when {
-        isAye -> "Aye"
-        isNoVote -> "No vote recorded"
-        else -> "No"
+        isAye -> "AYE"
+        isNoVote -> "NO VOTE"
+        else -> "NO"
     }
 
     Surface(
@@ -67,23 +62,44 @@ fun FeedMpVoteCard(
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surfaceContainer
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            // 1. Avatar + division title (inline, same as financial card)
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // Main stage — division title + vote verdict, large and coloured
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = item.divisionTitle,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = voteText,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.sp,
+                    color = voteColor
+                )
+            }
+
+            // Attribution bar — tinted strip matching the speech card.
+            // MP avatar + name on the left, house + date on the right.
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Avatar is clickable to open the MP microview (voting stats)
                 MpAvatar(
                     thumbnailUrl = item.memberPhotoUrl,
                     displayName = item.memberName,
                     partyColorHex = item.memberPartyColorHex,
-                    size = 32.dp,
+                    size = 28.dp,
                     borderWidth = 1.dp,
                     modifier = if (onProfileClick != null) {
                         Modifier.clickable { onProfileClick() }
@@ -91,57 +107,28 @@ fun FeedMpVoteCard(
                         Modifier
                     }
                 )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = item.divisionTitle,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            // 2. Vote badge — "Aye" / "No" pill in the vote color
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = voteColor.copy(alpha = 0.15f)
-                ) {
+                Spacer(modifier = Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = voteText,
+                        text = item.memberName,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = if (item.divisionHouse == 2) "Lords" else "Commons",
                         style = MaterialTheme.typography.labelSmall,
-                        color = voteColor,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
                     )
                 }
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = item.memberName,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            // 3. Bottom row: Commons/Lords (left) + Date (right) — matches other feed cards
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = if (item.divisionHouse == 2) "Lords" else "Commons",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.Bold
-                )
+                Spacer(modifier = Modifier.width(10.dp))
                 Text(
                     text = formatVoteDate(item.date),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
                 )
             }
         }

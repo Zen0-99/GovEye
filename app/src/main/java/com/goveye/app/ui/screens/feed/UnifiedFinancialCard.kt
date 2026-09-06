@@ -1,11 +1,13 @@
 package com.goveye.app.ui.screens.feed
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -30,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.goveye.app.ui.components.ExpandableContent
 import com.goveye.app.ui.components.MpAvatar
 import com.goveye.app.ui.components.VoteColors
@@ -76,6 +79,7 @@ fun UnifiedFinancialCard(
     showProfileIcon: Boolean = false,
     profileImageUrl: String? = null,
     profileInitials: String = "",
+    profileName: String = "",
     onProfileClick: (() -> Unit)? = null,
     expandableContent: String? = null,
     expandableFields: List<FinancialDetailField>? = null,
@@ -101,159 +105,177 @@ fun UnifiedFinancialCard(
         shape = RoundedCornerShape(16.dp),
         color = pillColor.copy(alpha = 0.08f)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            // 1. Amount + trend pill row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                // 1. Main row — left column (MP avatar + name + who/from)
+                // and right column (signed amount + trend icon).
+                // The trend icon sits to the RIGHT of the £ amount.
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    if (showProfileIcon) {
-                        MpAvatar(
-                            thumbnailUrl = profileImageUrl,
-                            displayName = profileInitials,
-                            partyColorHex = partyColorHex,
-                            size = 32.dp,
-                            borderWidth = 1.dp,
-                            modifier = if (onProfileClick != null) {
-                                Modifier.clickable { onProfileClick() }
-                            } else {
-                                Modifier
-                            }
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-                    Text(
-                        text = amount,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                // Trend icon — income = TrendingUp (green), expense = TrendingDown (red),
-                // unpaid = gray HorizontalRule (dash). No circle — the whole card
-                // is tinted with the trend color instead.
-                val trendIcon = when {
-                    isUnpaid -> Icons.Outlined.HorizontalRule
-                    isIncome -> Icons.AutoMirrored.Outlined.TrendingUp
-                    else -> Icons.AutoMirrored.Outlined.TrendingDown
-                }
-                Icon(
-                    imageVector = trendIcon,
-                    contentDescription = when {
-                        isUnpaid -> "Unpaid"
-                        isIncome -> "Income"
-                        else -> "Expense"
-                    },
-                    tint = pillColor,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-
-            // 2. "by X" / "for X" subtext — prefix normal, name bold
-            if (whoOrWhere.isNotBlank()) {
-                val prefix = if (isIncome) "by " else "for "
-                // Strip trailing " - £amount" if present (amount already shown in title)
-                val cleanName = whoOrWhere.replace(Regex("\\s*[-\u2013]\\s*\u00a3[\\d,.]+\\s*$"), "").trim()
-                if (cleanName.isNotBlank()) {
-                    Text(
-                        text = buildAnnotatedString {
-                            append(prefix)
-                            withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                                append(cleanName)
-                            }
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-
-            // 3. Short description (2 lines, truncated, italic for context)
-            if (description.isNotBlank()) {
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodySmall.copy(fontStyle = FontStyle.Italic),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            // 4. [Expandable] Extra detail — pure height morph (no fade) per
-            // convention. Placed BETWEEN description and category/date row so the
-            // category/date stays at the bottom and expands with the card.
-            ExpandableContent(state = expandState) {
-                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
                 ) {
-                    if (!expandableFields.isNullOrEmpty()) {
-                        // Render fields with group sub-headings.
-                        // Sub-headings use onSurface (darker) color, semibold,
-                        // with a thin divider above (except the first group).
-                        var currentGroup: String? = null
-                        var groupIndex = 0
-                        expandableFields.forEach { field ->
-                            if (field.group != null && field.group != currentGroup) {
-                                if (groupIndex > 0) {
-                                    HorizontalDivider(
-                                        modifier = Modifier.padding(top = 2.dp),
-                                        thickness = 0.5.dp,
-                                        color = MaterialTheme.colorScheme.outlineVariant
+                    // Left column — MP avatar + name on the first row,
+                    // who/from underneath
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (showProfileIcon) {
+                                MpAvatar(
+                                    thumbnailUrl = profileImageUrl,
+                                    displayName = profileInitials,
+                                    partyColorHex = partyColorHex,
+                                    size = 28.dp,
+                                    borderWidth = 1.dp,
+                                    modifier = if (onProfileClick != null) {
+                                        Modifier.clickable { onProfileClick() }
+                                    } else {
+                                        Modifier
+                                    }
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                            }
+                            Text(
+                                text = profileName,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        val cleanName = whoOrWhere
+                            .replace(Regex("\\s*[-\u2013]\\s*\u00a3[\\d,.]+\\s*$"), "")
+                            .trim()
+                        if (cleanName.isNotBlank()) {
+                            Text(
+                                text = cleanName,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.padding(start = if (showProfileIcon) 36.dp else 0.dp)
+                            )
+                        }
+                    }
+
+                    // Right column — signed amount + trend icon
+                    val signedAmount = when {
+                        isUnpaid -> amount
+                        isIncome -> "+$amount"
+                        else -> "-$amount"
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        Text(
+                            text = signedAmount,
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = pillColor,
+                            maxLines = 1
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        val trendIcon = when {
+                            isUnpaid -> Icons.Outlined.HorizontalRule
+                            isIncome -> Icons.AutoMirrored.Outlined.TrendingUp
+                            else -> Icons.AutoMirrored.Outlined.TrendingDown
+                        }
+                        Icon(
+                            imageVector = trendIcon,
+                            contentDescription = when {
+                                isUnpaid -> "Unpaid"
+                                isIncome -> "Income"
+                                else -> "Expense"
+                            },
+                            tint = pillColor,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+
+                // 2. Short description (2 lines, truncated, italic for context)
+                if (description.isNotBlank()) {
+                    Text(
+                        text = description,
+                        style = MaterialTheme.typography.bodySmall.copy(fontStyle = FontStyle.Italic),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                // 4. [Expandable] Extra detail — pure height morph (no fade) per
+                // convention. Placed BETWEEN description and category/date row so the
+                // category/date stays at the bottom and expands with the card.
+                ExpandableContent(state = expandState) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        if (!expandableFields.isNullOrEmpty()) {
+                            // Render fields with group sub-headings.
+                            // Sub-headings use onSurface (darker) color, semibold,
+                            // with a thin divider above (except the first group).
+                            var currentGroup: String? = null
+                            var groupIndex = 0
+                            expandableFields.forEach { field ->
+                                if (field.group != null && field.group != currentGroup) {
+                                    if (groupIndex > 0) {
+                                        HorizontalDivider(
+                                            modifier = Modifier.padding(top = 2.dp),
+                                            thickness = 0.5.dp,
+                                            color = MaterialTheme.colorScheme.outlineVariant
+                                        )
+                                    }
+                                    currentGroup = field.group
+                                    groupIndex++
+                                    Text(
+                                        text = field.group,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
                                 }
-                                currentGroup = field.group
-                                groupIndex++
                                 Text(
-                                    text = field.group,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurface
+                                    text = buildAnnotatedString {
+                                        withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                                            append("${field.label}: ")
+                                        }
+                                        append(field.value)
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                            Text(
-                                text = buildAnnotatedString {
-                                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                                        append("${field.label}: ")
-                                    }
-                                    append(field.value)
-                                },
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    } else if (!expandableContent.isNullOrBlank()) {
-                        // Fallback: split plain text into paragraphs for readability.
-                        // The full summary is shown here — the card's description
-                        // line is a truncated preview.
-                        expandableContent.split("\n").filter { it.isNotBlank() }.forEach { line ->
-                            Text(
-                                text = line.trim(),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                        } else if (!expandableContent.isNullOrBlank()) {
+                            // Fallback: split plain text into paragraphs for readability.
+                            // The full summary is shown here — the card's description
+                            // line is a truncated preview.
+                            expandableContent.split("\n").filter { it.isNotBlank() }.forEach { line ->
+                                Text(
+                                    text = line.trim(),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
                 }
             }
 
-            // 5. Category icon + short text (left) + Date (right)
-            // Stays at the bottom, expanding with the card.
+            // 5. Category + date in a tinted strip closing the card, edge to edge.
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(pillColor.copy(alpha = 0.10f))
+                    .padding(horizontal = 16.dp, vertical = 9.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -265,12 +287,13 @@ fun UnifiedFinancialCard(
                         imageVector = categoryIcon,
                         contentDescription = category,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(15.dp)
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = category,
-                        style = MaterialTheme.typography.bodySmall,
+                        text = category.lowercase().replaceFirstChar { it.uppercase() },
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -280,7 +303,7 @@ fun UnifiedFinancialCard(
                 if (date.isNotBlank()) {
                     Text(
                         text = date,
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1
                     )

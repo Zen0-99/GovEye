@@ -24,7 +24,20 @@ data class AnnouncementDetailUiState(
     val statement: WrittenStatement? = null,
     val legislation: Legislation? = null,
     val tags: List<String> = emptyList(),
+    val linkedStatements: List<LinkedStatementInfo> = emptyList(),
     val isLoading: Boolean = true
+)
+
+/**
+ * Info about a linked statement for display on the detail screen.
+ * The [statement] is null if the linked statement is not in our DB
+ * (e.g. outside the 90-day window).
+ */
+data class LinkedStatementInfo(
+    val linkedStatementId: Int,
+    val linkType: String,
+    val linkDate: String,
+    val statement: WrittenStatement? = null
 )
 
 /**
@@ -54,8 +67,16 @@ class AnnouncementDetailViewModel @Inject constructor(
             } else {
                 emptyList()
             }
+            // If bodyText is missing, fetch on-demand from GOV.UK Content API (D-02)
+            var enrichedPublication = publication
+            if (publication != null && publication.bodyText.isNullOrBlank()) {
+                val bodyText = governmentAnnouncementsRepository.fetchPublicationBodyText(publication.url)
+                if (bodyText != null) {
+                    enrichedPublication = publication.copy(bodyText = bodyText)
+                }
+            }
             _state.value = AnnouncementDetailUiState(
-                publication = publication,
+                publication = enrichedPublication,
                 tags = tags,
                 isLoading = false
             )
@@ -74,9 +95,27 @@ class AnnouncementDetailViewModel @Inject constructor(
             } else {
                 emptyList()
             }
+            // Fetch linked statements info
+            val linked = statement?.linkedStatements
+            val linkedInfos = if (linked != null) {
+                val ids = linked.map { it.linkedStatementId }
+                val linkedEntities = governmentAnnouncementsRepository.getStatementsByIds(ids)
+                val entityMap = linkedEntities.associateBy { it.id }
+                linked.map { ls ->
+                    LinkedStatementInfo(
+                        linkedStatementId = ls.linkedStatementId,
+                        linkType = ls.linkType,
+                        linkDate = ls.linkDate,
+                        statement = entityMap[ls.linkedStatementId]
+                    )
+                }
+            } else {
+                emptyList()
+            }
             _state.value = AnnouncementDetailUiState(
                 statement = statement,
                 tags = tags,
+                linkedStatements = linkedInfos,
                 isLoading = false
             )
         }

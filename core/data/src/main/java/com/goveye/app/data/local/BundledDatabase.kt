@@ -135,7 +135,7 @@ import com.goveye.app.data.local.entity.WrittenStatementEntity
         PartyLeaderEntity::class,
         SourceRecommendationEntity::class
     ],
-    version = 30,
+    version = 33,
     exportSchema = true
 )
 @TypeConverters(Converters::class)

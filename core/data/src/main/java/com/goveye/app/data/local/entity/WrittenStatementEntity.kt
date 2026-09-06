@@ -20,6 +20,8 @@ import kotlinx.serialization.Serializable
  * - answeringBodyId / answeringBodyName: the government department
  * - title / text: statement content
  * - house: 1 (Commons) or 2 (Lords)
+ * - hasLinkedStatements: whether this statement has linked statements (e.g. joint statements)
+ * - linkedStatementsJson: JSON array of {linkedStatementId, linkType, linkDate}
  */
 @Serializable
 @Entity(tableName = "written_statements")
@@ -34,5 +36,7 @@ data class WrittenStatementEntity(
     val title: String,
     val text: String,
     val house: Int,
-    val lastUpdated: Long
+    val lastUpdated: Long,
+    val hasLinkedStatements: Boolean = false,
+    val linkedStatementsJson: String? = null
 )

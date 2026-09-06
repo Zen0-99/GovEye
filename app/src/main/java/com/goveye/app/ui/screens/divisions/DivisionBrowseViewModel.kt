@@ -6,6 +6,7 @@ import com.goveye.app.data.local.dao.TagDao
 import com.goveye.app.data.repo.VotesRepository
 import com.goveye.app.domain.model.Division
 import com.goveye.app.domain.model.SyncStatus
+import com.goveye.app.domain.model.TagWithCount
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
@@ -21,7 +22,7 @@ import kotlinx.coroutines.flow.stateIn
 
 data class DivisionBrowseState(
     val divisions: List<Division> = emptyList(),
-    val divisionTags: Map<Int, List<String>> = emptyMap(),
+    val divisionTags: Map<Int, List<TagWithCount>> = emptyMap(),
     val isLoading: Boolean = false,
     val syncStatus: SyncStatus = SyncStatus.EMPTY,
     val searchQuery: String = "",
@@ -57,7 +58,7 @@ class DivisionBrowseViewModel @Inject constructor(
             combine(resultFlow, tagDao.observeAllDivisionTagRows()) { result, tagRows ->
                 val divisionTags = tagRows
                     .groupBy { it.divisionId }
-                    .mapValues { (_, rows) -> rows.map { it.tag } }
+                    .mapValues { (_, rows) -> rows.map { TagWithCount(it.tag, it.hitCount) } }
                 DivisionBrowseState(
                     divisions = result.data,
                     divisionTags = divisionTags,

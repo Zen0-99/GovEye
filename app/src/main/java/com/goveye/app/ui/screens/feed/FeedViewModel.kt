@@ -161,7 +161,7 @@ class FeedViewModel @Inject constructor(
                             followedVotes = feedData.followedMpVotes[division.id] ?: emptyList()
                         )
                     }
-                    .filter { filter.tagFilter.isEmpty() || it.tags.any { tag -> tag in filter.tagFilter } }
+                    .filter { filter.tagFilter.isEmpty() || it.tags.any { it.tag in filter.tagFilter } }
 
                 // Batch fetch all announcement tags in 3 queries (instead of
                 // 150 individual per-item queries). This eliminates N+1 query
@@ -186,7 +186,7 @@ class FeedViewModel @Inject constructor(
 
                 // Build publication items (filter-based, soft — D-12)
                 // Tags fetched in batch above — no per-item DB calls here.
-                val publicationTagsMap = mutableMapOf<String, List<String>>()
+                val publicationTagsMap = mutableMapOf<String, List<com.goveye.app.domain.model.TagWithCount>>()
                 val publicationItems = publications
                     .filter { filter.query.isBlank() || it.title.contains(filter.query, ignoreCase = true) }
                     .filter { filter.departmentFilter.isEmpty() || it.organisationSlug in filter.departmentFilter }
@@ -198,10 +198,10 @@ class FeedViewModel @Inject constructor(
                             tags = tags
                         )
                     }
-                    .filter { filter.tagFilter.isEmpty() || it.tags.any { tag -> tag in filter.tagFilter } }
+                    .filter { filter.tagFilter.isEmpty() || it.tags.any { it.tag in filter.tagFilter } }
 
                 // Build statement items (filter-based, soft — D-12)
-                val statementTagsMap = mutableMapOf<String, List<String>>()
+                val statementTagsMap = mutableMapOf<String, List<com.goveye.app.domain.model.TagWithCount>>()
                 val statementItems = statements
                     .filter { filter.query.isBlank() || it.title.contains(filter.query, ignoreCase = true) }
                     .filter { filter.departmentFilter.isEmpty() || it.answeringBodyName in filter.departmentFilter }
@@ -213,10 +213,10 @@ class FeedViewModel @Inject constructor(
                             tags = tags
                         )
                     }
-                    .filter { filter.tagFilter.isEmpty() || it.tags.any { tag -> tag in filter.tagFilter } }
+                    .filter { filter.tagFilter.isEmpty() || it.tags.any { it.tag in filter.tagFilter } }
 
                 // Build legislation items (filter-based, soft — D-12)
-                val legislationTagsMap = mutableMapOf<String, List<String>>()
+                val legislationTagsMap = mutableMapOf<String, List<com.goveye.app.domain.model.TagWithCount>>()
                 val legislationItems = legislation
                     .filter { filter.query.isBlank() || it.title.contains(filter.query, ignoreCase = true) }
                     .map { legislation ->
@@ -227,7 +227,7 @@ class FeedViewModel @Inject constructor(
                             tags = tags
                         )
                     }
-                    .filter { filter.tagFilter.isEmpty() || it.tags.any { tag -> tag in filter.tagFilter } }
+                    .filter { filter.tagFilter.isEmpty() || it.tags.any { it.tag in filter.tagFilter } }
 
                 // Apply type filter
                 val allItems = mutableListOf<FeedItem>()
@@ -394,8 +394,37 @@ class FeedViewModel @Inject constructor(
                     }
                 }
 
+                // Group financial items by (memberId, date) — if an MP has
+                // multiple entries on the same date, combine them into a
+                // MpFinancialComboItem. Single entries stay as FinancialItem.
+                val comboItems = mutableListOf<FeedItem.MpFinancialComboItem>()
                 if (filter.typeFilter.isEmpty() || CardType.FINANCIAL in filter.typeFilter) {
-                    allItems.addAll(financialItems)
+                    val grouped = financialItems.groupBy { it.memberId to it.date }
+                    grouped.forEach { (_, items) ->
+                        if (items.size > 1) {
+                            val first = items.first()
+                            val totalPence = items.sumOf { item ->
+                                parseAmountToPence(item.amount, item.isIncome)
+                            }
+                            comboItems.add(
+                                FeedItem.MpFinancialComboItem(
+                                    memberId = first.memberId,
+                                    memberName = first.memberName,
+                                    memberPartyColorHex = first.memberPartyColorHex,
+                                    memberPhotoUrl = first.memberPhotoUrl,
+                                    entries = items,
+                                    totalAmountPence = totalPence,
+                                    isIncomeNet = totalPence >= 0,
+                                    date = first.date
+                                )
+                            )
+                        } else {
+                            allItems.addAll(items)
+                        }
+                    }
+                }
+                if (filter.typeFilter.isEmpty() || CardType.MP_FINANCIAL_COMBO in filter.typeFilter) {
+                    allItems.addAll(comboItems)
                 }
                 if (filter.typeFilter.isEmpty() || CardType.SPEECH in filter.typeFilter) {
                     allItems.addAll(speechItems)
@@ -443,8 +472,9 @@ class FeedViewModel @Inject constructor(
                     "State built — dateGroups=${dateGroups.size} divisions=${divisionItems.size} " +
                         "publications=${publicationItems.size} statements=${statementItems.size} " +
                         "legislation=${legislationItems.size} financial=${financialItems.size} " +
-                        "speeches=${speechItems.size} mpVotes=${mpVoteItems.size} isEmpty=$isEmpty " +
-                        "isRecessEmpty=$isRecessEmpty hasMore=$hasMore processingTime=${processingTime}ms"
+                        "combo=${comboItems.size} speeches=${speechItems.size} mpVotes=${mpVoteItems.size} " +
+                        "isEmpty=$isEmpty isRecessEmpty=$isRecessEmpty hasMore=$hasMore " +
+                        "processingTime=${processingTime}ms"
                 )
                 // Progressive loading: after the first emission with the
                 // small initial limit (10), expand to 50 in the background.
@@ -546,4 +576,15 @@ class FeedViewModel @Inject constructor(
 private fun formatFeedPence(pence: Long): String {
     val pounds = pence / 100.0
     return "£${String.format(Locale.UK, "%,.0f", pounds)}"
+}
+
+/**
+ * Parses a formatted amount string (e.g. "£1,235") back to pence for
+ * combo card total calculation. Income is positive, expenses negative.
+ */
+private fun parseAmountToPence(amount: String, isIncome: Boolean): Long {
+    val cleaned = amount.replace("£", "").replace(",", "").trim()
+    val pounds = cleaned.toDoubleOrNull() ?: 0.0
+    val pence = (pounds * 100).toLong()
+    return if (isIncome) pence else -pence
 }

@@ -206,16 +206,41 @@ fun PublicationDetailScreen(
                 }
             }
 
-            // Full body text (HTML-stripped plain text from build_gov_publications.py)
+            // Full body text — rendered paragraph by paragraph for readability.
+            // The bodyText is HTML-stripped plain text from build_gov_publications.py.
             val bodyText = publication.bodyText
             if (!bodyText.isNullOrBlank()) {
                 item {
-                    DetailSectionCard(title = "Full text", body = bodyText)
+                    Text(
+                        text = "Full letter",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+                // Split into paragraphs on double-newline boundaries and render
+                // each as its own item so the LazyColumn can virtualize them.
+                val paragraphs = bodyText.split(Regex("\\n\\n+"))
+                    .map { it.trim() }
+                    .filter { it.isNotBlank() }
+                paragraphs.forEach { paragraph ->
+                    item {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainer
+                        ) {
+                            Text(
+                                text = paragraph,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(16.dp)
+                            )
+                        }
+                    }
                 }
             }
-
-            // Tags — below title, no heading (moved to right after title block)
-            // Tags shown after summary/full text
         }
     }
 }

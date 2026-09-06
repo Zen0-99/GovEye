@@ -625,7 +625,13 @@ class ProfileViewModel @Inject constructor(
                     summary = q.questionText.take(100),
                     questionText = q.questionText,
                     answeringBodyName = q.answeringBodyName,
-                    uin = q.uin
+                    uin = q.uin,
+                    heading = q.heading.takeIf { it.isNotBlank() },
+                    answerText = q.answerText.takeIf { it.isNotBlank() },
+                    dateAnswered = q.dateAnswered.takeIf { it.isNotBlank() },
+                    answeringMemberId = q.answeringMemberId.takeIf { it != 0 },
+                    isWithdrawn = q.isWithdrawn == 1,
+                    answerIsHolding = q.answerIsHolding == 1
                 )
             }
     }.getOrDefault(emptyList())

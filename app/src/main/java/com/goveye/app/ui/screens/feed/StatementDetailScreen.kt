@@ -7,8 +7,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,6 +20,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -164,10 +167,91 @@ fun StatementDetailScreen(
                 }
             }
 
-            // Full text
+            // Full text — rendered paragraph by paragraph for readability
             if (statement.text.isNotBlank()) {
                 item {
-                    DetailSectionCard(title = "Statement", body = statement.text)
+                    Text(
+                        text = "Statement",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+                val paragraphs = statement.text
+                    .split(Regex("\\n\\n+"))
+                    .map { it.trim() }
+                    .filter { it.isNotBlank() }
+                paragraphs.forEach { paragraph ->
+                    item {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainer
+                        ) {
+                            Text(
+                                text = paragraph,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(16.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Linked statements — show at the bottom
+            if (state.linkedStatements.isNotEmpty()) {
+                item {
+                    Text(
+                        text = "Linked Statements",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+                state.linkedStatements.forEach { linked ->
+                    item {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainer
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                    text = formatLinkType(linked.linkType),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = linked.statement?.title ?: "Statement #${linked.linkedStatementId}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                if (linked.statement != null) {
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "${linked.statement.memberRole.ifBlank {
+                                            linked.statement.answeringBodyName
+                                        }} · ${formatDivisionDate(linked.linkDate)}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                } else {
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = formatDivisionDate(linked.linkDate),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

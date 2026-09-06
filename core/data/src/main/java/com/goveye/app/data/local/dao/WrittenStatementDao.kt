@@ -18,4 +18,7 @@ interface WrittenStatementDao {
 
     @Query("SELECT * FROM written_statements WHERE id = :id")
     suspend fun getStatement(id: Int): WrittenStatementEntity?
+
+    @Query("SELECT * FROM written_statements WHERE id IN (:ids)")
+    suspend fun getStatementsByIds(ids: List<Int>): List<WrittenStatementEntity>
 }

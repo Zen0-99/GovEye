@@ -46,6 +46,12 @@ data class ActivityEntry(
     val questionText: String? = null,
     val answeringBodyName: String? = null,
     val uin: String? = null,
+    val heading: String? = null,
+    val answerText: String? = null,
+    val dateAnswered: String? = null,
+    val answeringMemberId: Int? = null,
+    val isWithdrawn: Boolean? = null,
+    val answerIsHolding: Boolean? = null,
     // Income-specific (D-10 — all interests as events on registration date)
     val categoryName: String? = null,
     val amountPence: Long? = null,

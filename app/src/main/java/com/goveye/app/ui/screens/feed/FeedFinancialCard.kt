@@ -30,6 +30,7 @@ fun FeedFinancialCard(
         showProfileIcon = true,
         profileImageUrl = item.memberPhotoUrl,
         profileInitials = item.memberName.take(2).uppercase(),
+        profileName = item.memberName,
         onProfileClick = onProfileClick,
         expandableFields = item.expandableFields,
         expandableContent = if (item.expandableFields == null) {

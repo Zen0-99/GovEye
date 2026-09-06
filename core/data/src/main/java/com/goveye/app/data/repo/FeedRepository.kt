@@ -9,6 +9,7 @@ import com.goveye.app.data.local.entity.DivisionEntity
 import com.goveye.app.data.local.entity.DivisionTagEntity
 import com.goveye.app.data.local.entity.RecessDateEntity
 import com.goveye.app.domain.model.Division
+import com.goveye.app.domain.model.TagWithCount
 import java.time.LocalDate
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -32,7 +33,7 @@ data class FeedData(
     val followedMemberIds: Set<Int> = emptySet(),
     val divisionsWithFollowedVotes: Set<Int> = emptySet(),
     val followedMpVotes: Map<Int, List<com.goveye.app.data.local.entity.FollowedMpVote>> = emptyMap(),
-    val divisionTags: Map<Int, List<String>> = emptyMap(),
+    val divisionTags: Map<Int, List<TagWithCount>> = emptyMap(),
     val currentRecess: RecessDateEntity? = null,
     val isLoading: Boolean = true
 )
@@ -114,7 +115,7 @@ class FeedRepository @Inject constructor(
         // Build divisionId → tags map from tag rows
         val divisionTags = tagRows
             .groupBy { it.divisionId }
-            .mapValues { (_, rows) -> rows.map { it.tag } }
+            .mapValues { (_, rows) -> rows.map { TagWithCount(it.tag, it.hitCount) } }
 
         FeedData(
             divisions = divisionEntities.map { it.toDomain() },

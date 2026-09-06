@@ -1,22 +1,19 @@
 package com.goveye.app.ui.screens.feed
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Article
-import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.FormatQuote
 import androidx.compose.material.icons.outlined.Gavel
-import androidx.compose.material.icons.outlined.HowToVote
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -24,41 +21,17 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.goveye.app.domain.model.Division
+import androidx.compose.ui.unit.sp
 import com.goveye.app.ui.components.VoteColors
 import com.goveye.app.ui.components.cardClickable
-import com.goveye.app.ui.screens.divisions.DivisionResultBar
 
 // Theme-aware vote colors — teal for Aye, orange for No
 private val AyeColor @Composable get() = VoteColors.aye
 private val NoColor @Composable get() = VoteColors.no
-
-/**
- * Extracted per-type card data used by [UnifiedFeedCard]. Each [FeedItem]
- * subtype maps to a [CardTypeData] instance via [getCardTypeData].
- */
-private data class CardTypeData(
-    val imageUrl: String?,
-    val title: String,
-    val typeLabel: String,
-    val byWho: String,
-    val source: String,
-    val date: String,
-    val tags: List<String>,
-    val divisionData: DivisionData?,
-    val cardTypeIcon: ImageVector? = null,
-    val cardTypeColor: Color = Color.Unspecified,
-    val followedVotes: List<com.goveye.app.data.local.entity.FollowedMpVote> = emptyList(),
-    val showImagePlaceholder: Boolean = true
-)
-
-private data class DivisionData(val ayeCount: Int, val noCount: Int)
 
 /**
  * Formats raw legislation API type strings into human-readable labels.
@@ -80,20 +53,122 @@ fun formatLegislationType(type: String): String {
 }
 
 /**
- * Unified feed card — renders all [FeedItem] subtypes (Division, Publication,
- * Statement, Legislation) with a single consistent layout.
+ * Formats an ISO date string (e.g. "2026-08-24T...") to DD/MM/YYYY.
+ */
+fun formatDivisionDate(dateString: String): String {
+    if (dateString.isBlank()) return ""
+    val cleaned = dateString.split("T").first()
+    if (cleaned.matches(Regex("\\d{2}/\\d{2}/\\d{4}"))) return cleaned
+    return try {
+        val parts = cleaned.split("-")
+        "${parts[2]}/${parts[1]}/${parts[0]}"
+    } catch (e: Exception) {
+        cleaned
+    }
+}
+
+/**
+ * Formats a Parliament link type (e.g. "JointStatement") into a human-readable
+ * label for statement cards (e.g. "Joint Statement").
+ */
+fun formatLinkType(linkType: String): String = when (linkType) {
+    "JointStatement" -> "Joint Statement"
+    "Response" -> "Response"
+    "Correction" -> "Correction"
+    "Update" -> "Update"
+    else -> linkType.replace(Regex("([a-z])([A-Z])"), "$1 $2")
+}
+
+/**
+ * Strips parliamentary filler phrases from the start of a written statement's
+ * text so the actual content leads the quote instead of formalities.
  *
- * Layout (top to bottom):
- * 1. Title (left, weight(1f)) + Colored source icon section (top-right)
- * 2. "By who" line (bodySmall, onSurfaceVariant)
- * 3. Division bar (4dp, only for DivisionItem) + vote counts
- * 4. Source (left) + Date (right, DD/MM/YYYY) — Row, SpaceBetween
+ * Based on scanning the actual statement database, the dominant pattern (65%+)
+ * is: "My [Hon/Right Honourable/Rt Hon/Honourable/rt hon] Friend the [role]
+ * ([name]) has [today] made the following [Written Ministerial] Statement[.:]"
  *
- * Images are not shown — per user request, the feed is text-only with
- * color-coded source icons in the top-right corner of each card.
+ * Instead of guessing individual phrases, we find the "has ... made the
+ * following ... statement" marker and return everything after it. This
+ * handles all the "My ... Friend ..." variants in one pass. Falls back to
+ * stripping other known openings if no marker is found.
+ */
+fun stripStatementFiller(text: String): String {
+    var cleaned = text.trim()
+
+    // Pattern 1 (dominant): "My ... Friend ... has [today] made the following
+    // [Written Ministerial] Statement[:.]" — return everything after.
+    val markerPattern = Regex(
+        """(?is)^My\s+[^.]*?\s+has\s+(?:today\s+)?made\s+the\s+following\s+(?:Written\s+Ministerial\s+)?[Ss]tatement\s*[:\.]\s*"""
+    )
+    val afterMarker = markerPattern.find(cleaned)
+    if (afterMarker != null) {
+        cleaned = cleaned.substring(afterMarker.range.last + 1).trim()
+        if (cleaned.isNotBlank()) return cleaned
+    }
+
+    // Pattern 2: "The [role] has [today] made the following ... Statement[:.]"
+    val markerPattern2 = Regex(
+        """(?is)^The\s+[^.]*?\s+has\s+(?:today\s+)?made\s+the\s+following\s+(?:Written\s+Ministerial\s+)?[Ss]tatement\s*[:\.]\s*"""
+    )
+    val afterMarker2 = markerPattern2.find(cleaned)
+    if (afterMarker2 != null) {
+        cleaned = cleaned.substring(afterMarker2.range.last + 1).trim()
+        if (cleaned.isNotBlank()) return cleaned
+    }
+
+    // Fallback: strip other known openings
+    // "I am writing to inform the House that" / "I would like to inform the House that"
+    cleaned = cleaned.replace(
+        Regex(
+            """(?i)^I\s+(?:am\s+writing\s+to|would\s+like\s+to)\s+inform\s+(?:the\s+House|Members)\s+that\s*""",
+            RegexOption.IGNORE_CASE
+        ),
+        ""
+    )
+
+    // "The Government has today published/announced" / "The government has today announced"
+    cleaned = cleaned.replace(
+        Regex(
+            """(?i)^The\s+[Gg]overnment\s+(?:has\s+today\s+(?:published|announced)|is\s+today\s+(?:publishing|announcing))\s*(?:that\s+)?""",
+            RegexOption.IGNORE_CASE
+        ),
+        ""
+    )
+
+    // "I am today publishing/announcing" / "I have today published/announced"
+    cleaned = cleaned.replace(
+        Regex(
+            """(?i)^I\s+(?:am\s+today\s+(?:publishing|announcing|informing)|have\s+today\s+(?:published|announced))\s*(?:that\s+)?""",
+            RegexOption.IGNORE_CASE
+        ),
+        ""
+    )
+
+    // "I wish to inform the House that" / "I am making this statement on behalf of"
+    cleaned = cleaned.replace(
+        Regex(
+            """(?i)^I\s+(?:wish\s+to\s+inform|am\s+making\s+this\s+statement\s+on\s+behalf\s+of)\s+[^.]*?\.\s*""",
+            RegexOption.IGNORE_CASE
+        ),
+        ""
+    )
+
+    return cleaned.trim()
+}
+
+/**
+ * Unified feed card — each [FeedItem] subtype gets its own card architecture.
  *
- * When [hasFollowedVotes] is true (division only), the card background uses
- * primary at 0.05 alpha and a 4dp left-edge strip signals the highlight.
+ * Iteration 5. The verdict word on divisions is a keeper and survives; where
+ * source and date live is now type-specific rather than a fixed footer.
+ *
+ * - **Division** — tinted verdict band across the top carrying the outcome,
+ *   the date, and the split. Content hangs below it.
+ * - **Publication** — full-bleed image with a magazine issue-date block
+ *   overlaid top-left and the headline bottom-left.
+ * - **Statement** — letterhead: department and date sit *above* a rule, with
+ *   an italic signature closing the card.
+ * - **Legislation** — index row with the date in a fixed left column.
  */
 @Composable
 fun UnifiedFeedCard(
@@ -103,7 +178,33 @@ fun UnifiedFeedCard(
     modifier: Modifier = Modifier,
     onTagClick: (String) -> Unit = {}
 ) {
-    val data = getCardTypeData(item)
+    CardShell(hasFollowedVotes = hasFollowedVotes, onClick = onClick, modifier = modifier) {
+        when (item) {
+            is FeedItem.DivisionItem -> DivisionCardBody(item, onTagClick)
+
+            is FeedItem.PublicationItem -> PublicationCardBody(item, onTagClick)
+
+            is FeedItem.StatementItem -> StatementCardBody(item, onTagClick)
+
+            is FeedItem.LegislationItem -> LegislationCardBody(item)
+
+            // Financial, Speech and MpVote render through their own composables.
+            else -> Unit
+        }
+    }
+}
+
+/**
+ * Shared card container. Applies **no padding** — each architecture owns its
+ * own insets so full-bleed images and edge-to-edge bands are possible.
+ */
+@Composable
+private fun CardShell(
+    hasFollowedVotes: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit
+) {
     val cardColor = if (hasFollowedVotes) {
         MaterialTheme.colorScheme.primary.copy(alpha = 0.05f)
     } else {
@@ -116,315 +217,418 @@ fun UnifiedFeedCard(
         shape = RoundedCornerShape(16.dp),
         color = cardColor
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+        Column(modifier = Modifier.fillMaxWidth(), content = content)
+    }
+}
+
+/**
+ * Metadata line used where a card still wants source and date together.
+ * Kept internal so the MP-vote and speech cards can share it.
+ */
+@Composable
+internal fun CardFooter(
+    source: String,
+    date: String,
+    leadingIcon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.weight(1f, fill = false)
         ) {
-            // 1. Title (left, weight 1f) + Colored source icon section (top-right)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Top
-            ) {
-                Text(
-                    text = data.title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
+            if (leadingIcon != null) {
+                Icon(
+                    imageVector = leadingIcon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(14.dp)
                 )
-                if (data.cardTypeIcon != null) {
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Surface(
-                        shape = RoundedCornerShape(
-                            topStart = 0.dp,
-                            topEnd = 16.dp,
-                            bottomStart = 12.dp,
-                            bottomEnd = 0.dp
-                        ),
-                        color = data.cardTypeColor.copy(alpha = 0.15f),
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = data.cardTypeIcon,
-                                contentDescription = data.typeLabel,
-                                tint = data.cardTypeColor,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
-                }
+                Spacer(modifier = Modifier.width(5.dp))
             }
+            Text(
+                text = source,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = date,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1
+        )
+    }
+}
 
-            // 2. "By who" line (only if non-blank AND different from source
-            // to avoid duplicate text — source is shown at the bottom-left)
-            if (data.byWho.isNotBlank() && data.byWho != data.source) {
-                Text(
-                    text = data.byWho,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
+/**
+ * **Division — verdict band.**
+ *
+ * The outcome word (the keeper) is promoted out of a side rail into a tinted
+ * band that spans the full card width, carrying the date with it. The house
+ * closes the card alone, so there is no symmetric footer.
+ */
+@Composable
+private fun DivisionCardBody(item: FeedItem.DivisionItem, onTagClick: (String) -> Unit) {
+    val division = item.division
+    val passed = division.ayeCount > division.noCount
+    val verdictColor = if (passed) AyeColor else NoColor
 
-            // 3. Division bar (4dp, only for DivisionItem) + vote counts
-            if (data.divisionData != null) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    DivisionResultBar(
-                        ayeCount = data.divisionData.ayeCount,
-                        noCount = data.divisionData.noCount,
-                        barHeight = 4.dp,
+    // Tinted band — verdict + date left, split right
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(verdictColor.copy(alpha = 0.13f))
+            .padding(horizontal = 16.dp, vertical = 9.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = if (passed) "PASSED" else "FAILED",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 0.6.sp,
+                color = verdictColor
+            )
+            Text(
+                text = "  ·  ${formatDivisionDate(division.date)}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "${division.ayeCount}",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = AyeColor
+            )
+            Text(
+                text = " – ",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "${division.noCount}",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = NoColor
+            )
+        }
+    }
+
+    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+        Text(
+            text = division.title,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        if (item.followedVotes.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(10.dp))
+            item.followedVotes.take(10).forEach { vote ->
+                val isAye = vote.vote.equals("Aye", ignoreCase = true)
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = vote.memberName,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
                     )
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "${data.divisionData.ayeCount}",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = AyeColor,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "-",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "${data.divisionData.noCount}",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = NoColor,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-
-                // 3b. Followed MP votes — show each followed MP's Aye/No
-                if (data.followedVotes.isNotEmpty()) {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        data.followedVotes.take(3).forEach { vote ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = vote.memberName,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Text(
-                                    text = vote.vote.uppercase(),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (vote.vote.uppercase() == "AYE") AyeColor else NoColor
-                                )
-                            }
-                        }
-                        if (data.followedVotes.size > 3) {
-                            Text(
-                                text = "+${data.followedVotes.size - 3} more",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
+                    Text(
+                        text = if (isAye) "Aye" else "No",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (isAye) AyeColor else NoColor
+                    )
                 }
             }
-
-            // 4. Source (left) + Date (right) row — no icon (moved to top-right)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = data.source,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = data.date,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+        }
+        Spacer(modifier = Modifier.height(10.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = if (division.house == 2) "Lords" else "Commons",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            if (item.tags.isNotEmpty()) {
+                Spacer(modifier = Modifier.width(10.dp))
+                FeedTagPillRow(tags = item.tags, onTagClick = onTagClick, maxTags = 2)
             }
         }
     }
 }
 
 /**
- * Type badge — labelSmall text in a RoundedCornerShape(4.dp) chip with
- * primaryContainer background and onPrimaryContainer text.
+ * **Publication — letter card.**
  *
- * Moved from FeedDivisionCard.kt — shared by all card types via
- * [UnifiedFeedCard]. Replaces the old [CardIconBadge] in the top-right
- * position per the UI-SPEC LOCKED decision.
+ * The publication title leads as the heading. The publishing ministry or
+ * organisation sits underneath as sub-text (the sender). A short preview
+ * of the letter body follows to draw the reader in. Tags and date close
+ * the card in a bottom row.
  */
 @Composable
-fun TypeBadge(text: String, modifier: Modifier = Modifier) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onPrimaryContainer,
-        fontWeight = FontWeight.Bold,
-        maxLines = 1,
-        modifier = modifier
-            .clip(RoundedCornerShape(4.dp))
-            .background(MaterialTheme.colorScheme.primaryContainer)
-            .padding(horizontal = 6.dp, vertical = 2.dp)
-    )
+private fun PublicationCardBody(item: FeedItem.PublicationItem, onTagClick: (String) -> Unit) {
+    val publication = item.publication
+
+    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+        // Title — the letter's headline
+        Text(
+            text = publication.title,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis
+        )
+
+        // Sender — the ministry/organisation as sub-text
+        if (publication.organisation.isNotBlank()) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = publication.organisation,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        // Letter preview — first few lines of the body text to interest
+        // the viewer into reading more. Falls back to the summary if
+        // bodyText is not available.
+        val preview = publication.bodyText
+            ?.takeIf { it.isNotBlank() }
+            ?.trim()
+            ?.take(280)
+            ?: publication.summary
+                .takeIf { it.isNotBlank() }
+                ?.trim()
+        if (!preview.isNullOrBlank()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = preview,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Tags + date in one row
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (item.tags.isNotEmpty()) {
+                FeedTagPillRow(
+                    tags = item.tags,
+                    onTagClick = onTagClick,
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+            Text(
+                text = formatDivisionDate(publication.firstPublishedAt),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1
+            )
+        }
+    }
 }
 
 /**
- * Formats an ISO date string (e.g. "2026-08-24T...") to DD/MM/YYYY.
+ * **Statement — pull-quote.**
  *
- * Moved from FeedDivisionCard.kt — shared by all card types via
- * [UnifiedFeedCard].
+ * Mirrors the speech card's inverted pull-quote design. A large quote
+ * glyph opens the card, the statement text runs in italic, and the
+ * title + source arrive underneath as an attribution — the statement
+ * title (e.g. "NHS Pension Scheme") where the MP's name would be on a
+ * speech card, and the member's role (e.g. "Minister of State for
+ * Health") as the sub-line.
  */
-fun formatDivisionDate(dateString: String): String {
-    if (dateString.isBlank()) return ""
-    val cleaned = dateString.split("T").first()
-    // Already DD/MM/YYYY?
-    if (cleaned.matches(Regex("\\d{2}/\\d{2}/\\d{4}"))) return cleaned
-    // ISO format YYYY-MM-DD → DD/MM/YYYY
-    return try {
-        val parts = cleaned.split("-")
-        "${parts[2]}/${parts[1]}/${parts[0]}"
-    } catch (e: Exception) {
-        cleaned
+@Composable
+private fun StatementCardBody(item: FeedItem.StatementItem, onTagClick: (String) -> Unit) {
+    val statement = item.statement
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // Quote glyph + tags row — the quote mark on the left, top 3 tags
+        // in the empty space on the right.
+        // Quote glyph + linked statement label + tags row
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 14.dp, end = 16.dp, top = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.FormatQuote,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
+                modifier = Modifier.size(30.dp)
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                if (statement.hasLinkedStatements) {
+                    val linkTypes = statement.linkedStatements
+                        ?.map { it.linkType }
+                        ?.distinct()
+                        ?: listOf("JointStatement")
+                    val label = linkTypes.joinToString(", ") { formatLinkType(it) }
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1
+                    )
+                }
+                if (item.tags.isNotEmpty()) {
+                    FeedTagPillRow(
+                        tags = item.tags,
+                        onTagClick = onTagClick,
+                        maxTags = 3
+                    )
+                }
+            }
+        }
+
+        // Statement text as the quote body — first paragraph (up to 3 lines,
+        // whichever comes first). The full text is on the detail page.
+        // Parliamentary filler phrases are stripped so the actual content
+        // leads the quote instead of formalities.
+        val quoteText = stripStatementFiller(statement.text)
+            .replace(Regex("<[^>]+>"), "")
+            .trim()
+            .takeIf { it.isNotBlank() }
+            ?: statement.title
+
+        // Extract the first paragraph — split on double newline or first
+        // sentence boundary. Show the full first paragraph, capped at 3 lines.
+        val firstParagraph = quoteText.split(Regex("\\n\\n+")).firstOrNull()?.trim() ?: quoteText
+
+        Text(
+            text = firstParagraph,
+            style = MaterialTheme.typography.bodyLarge.copy(fontStyle = FontStyle.Italic),
+            lineHeight = 25.sp,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(start = 20.dp, end = 18.dp, top = 2.dp)
+        )
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // Attribution bar — tinted strip matching the speech card.
+        // Statement title where MP name would be, member role underneath.
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = statement.title,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = statement.memberRole.ifBlank { statement.answeringBodyName },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+                text = formatDivisionDate(statement.dateMade),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1
+            )
+        }
     }
 }
 
 /**
- * Extracts the per-type card data (image, title, type label, by-who, source,
- * date, tags, division data) from a [FeedItem] subtype.
+ * **Legislation — docket row.**
+ *
+ * The title leads at body weight. Underneath, the legislation type and tags
+ * run inline with a leading glyph, and the date closes the card
+ * right-aligned. Deliberately the shortest card in the feed.
  */
-// Per-type colors for the top-right source icon section
-private val DivisionColor = Color(0xFF6750A4) // purple
-private val PublicationColor = Color(0xFF0061A4) // blue
-private val StatementColor = Color(0xFFB3261E) // red
-private val LegislationColor = Color(0xFF2E7D32) // green
+@Composable
+private fun LegislationCardBody(item: FeedItem.LegislationItem) {
+    val legislation = item.legislation
 
-private fun getCardTypeData(item: FeedItem): CardTypeData = when (item) {
-    is FeedItem.DivisionItem -> {
-        val division: Division = item.division
-        CardTypeData(
-            imageUrl = null,
-            title = division.title,
-            typeLabel = "Division",
-            byWho = "", // Removed — source line at bottom already shows Lords/Commons
-            source = if (division.house == 2) "Lords" else "Commons",
-            date = formatDivisionDate(division.date),
-            tags = item.tags,
-            divisionData = DivisionData(ayeCount = division.ayeCount, noCount = division.noCount),
-            cardTypeIcon = Icons.Outlined.HowToVote,
-            cardTypeColor = DivisionColor,
-            followedVotes = item.followedVotes,
-            showImagePlaceholder = false
+    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+        Text(
+            text = legislation.title,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
         )
+        Spacer(modifier = Modifier.height(6.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Gavel,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(13.dp)
+            )
+            Spacer(modifier = Modifier.width(5.dp))
+            Text(
+                text = formatLegislationType(legislation.type),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false)
+            )
+            if (item.tags.isNotEmpty()) {
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = item.tags.take(3).joinToString(" · ") { "${it.tag} ${it.hitCount}" },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = true)
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = formatDivisionDate(legislation.date),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1
+            )
+        }
     }
-
-    is FeedItem.PublicationItem -> {
-        val publication = item.publication
-        CardTypeData(
-            imageUrl = publication.imageUrl,
-            title = publication.title,
-            typeLabel = "Publication",
-            byWho = "", // No "by who" line — source is already shown at the bottom
-            source = publication.organisation,
-            date = formatDivisionDate(publication.firstPublishedAt),
-            tags = item.tags,
-            divisionData = null,
-            cardTypeIcon = Icons.Outlined.Article,
-            cardTypeColor = PublicationColor
-        )
-    }
-
-    is FeedItem.StatementItem -> {
-        val statement = item.statement
-        CardTypeData(
-            imageUrl = null,
-            title = statement.title,
-            typeLabel = "Statement",
-            byWho = "by ${statement.memberRole}",
-            source = statement.answeringBodyName,
-            date = formatDivisionDate(statement.dateMade),
-            tags = item.tags,
-            divisionData = null,
-            cardTypeIcon = Icons.Outlined.Description,
-            cardTypeColor = StatementColor
-        )
-    }
-
-    is FeedItem.LegislationItem -> {
-        val legislation = item.legislation
-        val prettyType = formatLegislationType(legislation.type)
-        CardTypeData(
-            imageUrl = null,
-            title = legislation.title,
-            typeLabel = "Legislation",
-            byWho = prettyType,
-            source = prettyType,
-            date = formatDivisionDate(legislation.date),
-            tags = item.tags,
-            divisionData = null,
-            cardTypeIcon = Icons.Outlined.Gavel,
-            cardTypeColor = LegislationColor
-        )
-    }
-
-    // Financial and Speech items are rendered by their own card composables
-    // (FeedFinancialCard / FeedSpeechCard), never via UnifiedFeedCard. These
-    // branches exist only to satisfy the exhaustive `when` over FeedItem.
-    is FeedItem.FinancialItem -> CardTypeData(
-        imageUrl = null,
-        title = item.amount,
-        typeLabel = if (item.isIncome) "Income" else "Expense",
-        byWho = item.whoOrWhere,
-        source = item.category,
-        date = formatDivisionDate(item.date),
-        tags = item.tags,
-        divisionData = null
-    )
-
-    is FeedItem.SpeechItem -> CardTypeData(
-        imageUrl = null,
-        title = item.speechText,
-        typeLabel = "Speech",
-        byWho = item.memberName,
-        source = item.divisionTitle,
-        date = formatDivisionDate(item.date),
-        tags = item.tags,
-        divisionData = null
-    )
-
-    // MpVoteItem is rendered by FeedMpVoteCard, never via UnifiedFeedCard.
-    // This branch exists only to satisfy the exhaustive `when` over FeedItem.
-    is FeedItem.MpVoteItem -> CardTypeData(
-        imageUrl = null,
-        title = item.divisionTitle,
-        typeLabel = "Vote",
-        byWho = item.memberName,
-        source = if (item.divisionHouse == 2) "Lords" else "Commons",
-        date = formatDivisionDate(item.date),
-        tags = item.tags,
-        divisionData = null
-    )
 }
