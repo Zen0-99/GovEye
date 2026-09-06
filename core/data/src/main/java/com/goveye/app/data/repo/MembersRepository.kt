@@ -6,11 +6,13 @@ import androidx.paging.PagingData
 import androidx.paging.map
 import com.goveye.app.data.api.MembersApi
 import com.goveye.app.data.local.dao.HistoricalMemberDao
+import com.goveye.app.data.local.dao.MpCareerEventDao
 import com.goveye.app.data.local.dao.MpContactDao
 import com.goveye.app.data.local.dao.MpDao
 import com.goveye.app.data.local.dao.MpExperienceDao
 import com.goveye.app.data.local.dao.MpSynopsisDao
 import com.goveye.app.data.local.dao.SearchDao
+import com.goveye.app.data.local.entity.MpCareerEventEntity
 import com.goveye.app.data.local.entity.MpContactEntity
 import com.goveye.app.data.local.entity.MpEntity
 import com.goveye.app.data.local.entity.MpExperienceEntity
@@ -18,6 +20,8 @@ import com.goveye.app.data.local.entity.MpSynopsisEntity
 import com.goveye.app.data.mapper.MemberMapper
 import com.goveye.app.domain.model.BiographyExperience
 import com.goveye.app.domain.model.BiographyItem
+import com.goveye.app.domain.model.CareerCategory
+import com.goveye.app.domain.model.CareerEvent
 import com.goveye.app.domain.model.Contact
 import com.goveye.app.domain.model.Mp
 import com.goveye.app.domain.model.RepositoryResult
@@ -41,6 +45,7 @@ class MembersRepository @Inject constructor(
     private val historicalMemberDao: HistoricalMemberDao,
     private val mpSynopsisDao: MpSynopsisDao,
     private val mpContactDao: MpContactDao,
+    private val mpCareerEventDao: MpCareerEventDao,
     private val mpExperienceDao: MpExperienceDao
 ) {
 
@@ -325,6 +330,26 @@ class MembersRepository @Inject constructor(
         }
     }
 
+    private val careerEventCache = mutableMapOf<Int, Pair<List<CareerEvent>, Long>>()
+
+    /**
+     * Unified career timeline from the Parliament Biography API and
+     * Wikipedia/Wikidata. Merges government posts, opposition posts,
+     * other posts, committee memberships, representations, party
+     * affiliations, house memberships, education, and occupations into
+     * a single list sorted by start date (most recent first).
+     */
+    suspend fun getCareerEvents(memberId: Int): List<CareerEvent> {
+        val cached = careerEventCache[memberId]
+        if (cached != null && System.currentTimeMillis() - cached.second < CacheTtl.MPS_MS) {
+            return cached.first
+        }
+        val entities = mpCareerEventDao.getByMpId(memberId)
+        val events = entities.map { it.toDomain() }
+        careerEventCache[memberId] = events to System.currentTimeMillis()
+        return events
+    }
+
     suspend fun getBiography(memberId: Int): List<BiographyItem> {
         val cached = biographyCache[memberId]
         if (cached != null && System.currentTimeMillis() - cached.second < CacheTtl.MPS_MS) {
@@ -412,5 +437,19 @@ class MembersRepository @Inject constructor(
         startYear = startYear,
         endMonth = endMonth,
         endYear = endYear
+    )
+
+    private fun MpCareerEventEntity.toDomain(): CareerEvent = CareerEvent(
+        id = id,
+        category = CareerCategory.fromApiName(category),
+        name = name ?: "",
+        house = house,
+        startDate = startDate,
+        endDate = endDate,
+        additionalInfo = additionalInfo,
+        additionalInfoLink = additionalInfoLink,
+        constituencyName = constituencyName,
+        constituencyId = constituencyId,
+        source = source
     )
 }

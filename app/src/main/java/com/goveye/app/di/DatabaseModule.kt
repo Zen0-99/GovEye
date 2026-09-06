@@ -23,6 +23,7 @@ import com.goveye.app.data.local.dao.HistoricalMemberDao
 import com.goveye.app.data.local.dao.InterestDao
 import com.goveye.app.data.local.dao.LegislationDao
 import com.goveye.app.data.local.dao.ManifestoDao
+import com.goveye.app.data.local.dao.MpCareerEventDao
 import com.goveye.app.data.local.dao.MpContactDao
 import com.goveye.app.data.local.dao.MpDao
 import com.goveye.app.data.local.dao.MpExperienceDao
@@ -872,6 +873,35 @@ object DatabaseModule {
         }
     }
 
+    // Migration 33 → 34: Add mp_career_events table for the Parliament Biography API
+    // endpoint data (government posts, opposition posts, committees, representations,
+    // party affiliations, house memberships) and Wikipedia/Wikidata career data.
+    // Idempotent — the seed DB may already have this table.
+    private val MIGRATION_33_34 = object : Migration(33, 34) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS `mp_career_events` (
+                    `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    `mpId` INTEGER NOT NULL,
+                    `category` TEXT NOT NULL,
+                    `name` TEXT,
+                    `house` INTEGER,
+                    `startDate` TEXT,
+                    `endDate` TEXT,
+                    `additionalInfo` TEXT,
+                    `additionalInfoLink` TEXT,
+                    `constituencyName` TEXT,
+                    `constituencyId` INTEGER,
+                    `source` TEXT NOT NULL DEFAULT 'parliament',
+                    `lastUpdated` INTEGER NOT NULL
+                )"""
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS index_mp_career_events_mpId ON mp_career_events(mpId)"
+            )
+        }
+    }
+
     @Provides
     @Singleton
     fun provideBundledDatabase(@ApplicationContext context: Context): BundledDatabase {
@@ -935,7 +965,8 @@ object DatabaseModule {
                 MIGRATION_29_30,
                 MIGRATION_30_31,
                 MIGRATION_31_32,
-                MIGRATION_32_33
+                MIGRATION_32_33,
+                MIGRATION_33_34
             )
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
@@ -1048,6 +1079,9 @@ object DatabaseModule {
     fun provideMpExperienceDao(database: BundledDatabase): MpExperienceDao = database.mpExperienceDao()
 
     @Provides
+    fun provideMpCareerEventDao(database: BundledDatabase): MpCareerEventDao = database.mpCareerEventDao()
+
+    @Provides
     fun provideTagDao(database: BundledDatabase): com.goveye.app.data.local.dao.TagDao = database.tagDao()
 
     @Provides
@@ -1123,6 +1157,7 @@ object DatabaseModule {
         historicalMemberDao: com.goveye.app.data.local.dao.HistoricalMemberDao,
         mpSynopsisDao: com.goveye.app.data.local.dao.MpSynopsisDao,
         mpContactDao: com.goveye.app.data.local.dao.MpContactDao,
+        mpCareerEventDao: com.goveye.app.data.local.dao.MpCareerEventDao,
         mpExperienceDao: com.goveye.app.data.local.dao.MpExperienceDao
     ): MembersRepository = MembersRepository(
         mpDao,
@@ -1132,6 +1167,7 @@ object DatabaseModule {
         historicalMemberDao,
         mpSynopsisDao,
         mpContactDao,
+        mpCareerEventDao,
         mpExperienceDao
     )
 

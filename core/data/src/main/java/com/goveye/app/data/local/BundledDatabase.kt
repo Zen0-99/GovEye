@@ -19,6 +19,7 @@ import com.goveye.app.data.local.dao.InterestDao
 import com.goveye.app.data.local.dao.LegislationDao
 import com.goveye.app.data.local.dao.ManifestoDao
 import com.goveye.app.data.local.dao.MpApiIdDao
+import com.goveye.app.data.local.dao.MpCareerEventDao
 import com.goveye.app.data.local.dao.MpContactDao
 import com.goveye.app.data.local.dao.MpDao
 import com.goveye.app.data.local.dao.MpExperienceDao
@@ -53,6 +54,7 @@ import com.goveye.app.data.local.entity.InterestEntity
 import com.goveye.app.data.local.entity.LegislationEntity
 import com.goveye.app.data.local.entity.LegislationTagEntity
 import com.goveye.app.data.local.entity.MpApiIdEntity
+import com.goveye.app.data.local.entity.MpCareerEventEntity
 import com.goveye.app.data.local.entity.MpCommitteeCrossRef
 import com.goveye.app.data.local.entity.MpContactEntity
 import com.goveye.app.data.local.entity.MpEntity
@@ -119,6 +121,7 @@ import com.goveye.app.data.local.entity.WrittenStatementEntity
         MpSynopsisEntity::class,
         MpContactEntity::class,
         MpExperienceEntity::class,
+        MpCareerEventEntity::class,
         DivisionTagEntity::class,
         BillTagEntity::class,
         CouncilEntity::class,
@@ -135,7 +138,7 @@ import com.goveye.app.data.local.entity.WrittenStatementEntity
         PartyLeaderEntity::class,
         SourceRecommendationEntity::class
     ],
-    version = 33,
+    version = 34,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -159,6 +162,7 @@ abstract class BundledDatabase : RoomDatabase() {
     abstract fun mpSynopsisDao(): MpSynopsisDao
     abstract fun mpContactDao(): MpContactDao
     abstract fun mpExperienceDao(): MpExperienceDao
+    abstract fun mpCareerEventDao(): MpCareerEventDao
     abstract fun councilDao(): CouncilDao
     abstract fun tagDao(): TagDao
     abstract fun mpApiIdDao(): MpApiIdDao

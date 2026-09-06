@@ -355,7 +355,8 @@ fun ProfileScreen(
                                 )
 
                                 ProfileTab.CAREER -> CareerTabContent(
-                                    experiences = uiState.experiences
+                                    experiences = uiState.experiences,
+                                    careerEvents = uiState.careerEvents
                                 )
 
                                 ProfileTab.COMMITTEES -> CommitteesTabContent(
@@ -711,12 +712,15 @@ private fun SectionHeader(title: String) {
 }
 
 @Composable
-private fun CareerTabContent(experiences: List<com.goveye.app.domain.model.BiographyExperience>) {
+private fun CareerTabContent(
+    experiences: List<com.goveye.app.domain.model.BiographyExperience>,
+    careerEvents: List<com.goveye.app.domain.model.CareerEvent>
+) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 20.dp)
     ) {
-        item { CareerTimelineSection(experiences = experiences) }
+        item { CareerTimelineSection(experiences = experiences, careerEvents = careerEvents) }
     }
 }
 

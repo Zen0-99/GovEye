@@ -6,6 +6,7 @@ import com.goveye.app.data.local.entity.ExpenseEntity
 import com.goveye.app.data.local.entity.MpLinkEntity
 import com.goveye.app.data.local.entity.MpTagEntity
 import com.goveye.app.domain.model.BiographyExperience
+import com.goveye.app.domain.model.CareerEvent
 import com.goveye.app.domain.model.Committee
 import com.goveye.app.domain.model.Contact
 import com.goveye.app.domain.model.DivisionVote
@@ -47,7 +48,8 @@ data class CachedProfileData(
     val expenseBucketTotals: List<ExpenseBucketTotal>,
     val expenses: List<ExpenseEntity>,
     val committees: List<Committee>,
-    val experiences: List<BiographyExperience>
+    val experiences: List<BiographyExperience>,
+    val careerEvents: List<CareerEvent> = emptyList()
 )
 
 /**

@@ -26,6 +26,8 @@ import com.goveye.app.data.repo.WrittenQuestionsRepository
 import com.goveye.app.domain.model.ActivityEntry
 import com.goveye.app.domain.model.ActivityEntryType
 import com.goveye.app.domain.model.BiographyExperience
+import com.goveye.app.domain.model.CareerCategory
+import com.goveye.app.domain.model.CareerEvent
 import com.goveye.app.domain.model.Committee
 import com.goveye.app.domain.model.Contact
 import com.goveye.app.domain.model.DivisionVote
@@ -55,6 +57,7 @@ data class ProfileUiState(
     val contacts: List<Contact> = emptyList(),
     val committees: List<Committee> = emptyList(),
     val experiences: List<BiographyExperience> = emptyList(),
+    val careerEvents: List<CareerEvent> = emptyList(),
     val samePartyMps: List<Mp> = emptyList(),
     val committeePeerMps: List<Mp> = emptyList(),
     val memberVotes: List<MemberVoteWithDivision> = emptyList(),
@@ -140,6 +143,7 @@ class ProfileViewModel @Inject constructor(
                 expenses = cached.expenses,
                 committees = cached.committees,
                 experiences = cached.experiences,
+                careerEvents = cached.careerEvents,
                 syncStatus = if (cached.mp != null) SyncStatus.FRESH else SyncStatus.EMPTY,
                 isLoading = false
             )
@@ -245,6 +249,16 @@ class ProfileViewModel @Inject constructor(
                     _uiState.value = _uiState.value.copy(experiences = merged)
                 }
                 launch {
+                    // Career events from the Parliament Biography API
+                    // (government posts, opposition posts, committees,
+                    // representations, party affiliations, house memberships)
+                    // and Wikipedia/Wikidata (education, occupations).
+                    val careerEvents = runCatching {
+                        membersRepository.getCareerEvents(memberId)
+                    }.getOrDefault(emptyList())
+                    _uiState.value = _uiState.value.copy(careerEvents = careerEvents)
+                }
+                launch {
                     val mpLinks = runCatching { mpLinksRepository.getLinks(memberId) }.getOrNull()
                     _uiState.value = _uiState.value.copy(mpLinks = mpLinks)
                 }
@@ -343,7 +357,8 @@ class ProfileViewModel @Inject constructor(
                     expenseBucketTotals = state.expenseBucketTotals,
                     expenses = state.expenses,
                     committees = state.committees,
-                    experiences = state.experiences
+                    experiences = state.experiences,
+                    careerEvents = state.careerEvents
                 )
             )
         }
@@ -462,6 +477,12 @@ class ProfileViewModel @Inject constructor(
                     val merged = mergeExperiencesWithMnisPosts(experiences, bioDataForMerge)
                     _uiState.value = _uiState.value.copy(experiences = merged)
                 }
+                launch {
+                    val careerEvents = runCatching {
+                        membersRepository.getCareerEvents(memberId)
+                    }.getOrDefault(emptyList())
+                    _uiState.value = _uiState.value.copy(careerEvents = careerEvents)
+                }
             }
 
             // Update cache with refreshed data — include ALL fields
@@ -488,7 +509,8 @@ class ProfileViewModel @Inject constructor(
                     expenseBucketTotals = state.expenseBucketTotals,
                     expenses = state.expenses,
                     committees = state.committees,
-                    experiences = state.experiences
+                    experiences = state.experiences,
+                    careerEvents = state.careerEvents
                 )
             )
 
