@@ -892,7 +892,36 @@ object DatabaseModule {
                     `additionalInfoLink` TEXT,
                     `constituencyName` TEXT,
                     `constituencyId` INTEGER,
-                    `source` TEXT NOT NULL DEFAULT 'parliament',
+                    `source` TEXT NOT NULL,
+                    `lastUpdated` INTEGER NOT NULL
+                )"""
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS index_mp_career_events_mpId ON mp_career_events(mpId)"
+            )
+        }
+    }
+
+    // Migration 34 → 35: Recreate mp_career_events without DEFAULT on source
+    // column. The table was left in a bad state by destructive fallback on
+    // prior builds where @ColumnInfo(defaultValue) was added then removed.
+    private val MIGRATION_34_35 = object : Migration(34, 35) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("DROP TABLE IF EXISTS `mp_career_events`")
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS `mp_career_events` (
+                    `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    `mpId` INTEGER NOT NULL,
+                    `category` TEXT NOT NULL,
+                    `name` TEXT,
+                    `house` INTEGER,
+                    `startDate` TEXT,
+                    `endDate` TEXT,
+                    `additionalInfo` TEXT,
+                    `additionalInfoLink` TEXT,
+                    `constituencyName` TEXT,
+                    `constituencyId` INTEGER,
+                    `source` TEXT NOT NULL,
                     `lastUpdated` INTEGER NOT NULL
                 )"""
             )
@@ -966,7 +995,8 @@ object DatabaseModule {
                 MIGRATION_30_31,
                 MIGRATION_31_32,
                 MIGRATION_32_33,
-                MIGRATION_33_34
+                MIGRATION_33_34,
+                MIGRATION_34_35
             )
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()

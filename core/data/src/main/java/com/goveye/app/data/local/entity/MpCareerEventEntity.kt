@@ -1,7 +1,7 @@
 package com.goveye.app.data.local.entity
 
-import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import kotlinx.serialization.Serializable
 
@@ -23,7 +23,7 @@ import kotlinx.serialization.Serializable
  * Source is 'parliament' for Biography API data, 'wikipedia' for Wikidata.
  */
 @Serializable
-@Entity(tableName = "mp_career_events")
+@Entity(tableName = "mp_career_events", indices = [Index("mpId")])
 data class MpCareerEventEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val mpId: Int,
@@ -36,6 +36,6 @@ data class MpCareerEventEntity(
     val additionalInfoLink: String? = null,
     val constituencyName: String? = null,
     val constituencyId: Int? = null,
-    @ColumnInfo(defaultValue = "parliament") val source: String = "parliament",
+    val source: String = "parliament",
     val lastUpdated: Long
 )

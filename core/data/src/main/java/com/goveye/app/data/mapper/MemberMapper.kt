@@ -1,7 +1,7 @@
 package com.goveye.app.data.mapper
 
 import com.goveye.app.data.dto.members.BiographyExperienceDto
-import com.goveye.app.data.dto.members.BiographyItemDto
+import com.goveye.app.data.dto.members.BiographyPostDto
 import com.goveye.app.data.dto.members.ContactDto
 import com.goveye.app.data.dto.members.MemberDto
 import com.goveye.app.data.dto.members.MemberItem
@@ -86,7 +86,7 @@ object MemberMapper {
         endYear = dto.endYear
     )
 
-    fun toBiographyDomain(dto: BiographyItemDto): BiographyItem = BiographyItem(
+    fun toBiographyDomain(dto: BiographyPostDto): BiographyItem = BiographyItem(
         house = dto.house?.name,
         name = dto.name,
         startDate = dto.startDate,

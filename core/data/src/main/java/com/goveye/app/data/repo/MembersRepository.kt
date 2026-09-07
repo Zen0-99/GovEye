@@ -338,6 +338,11 @@ class MembersRepository @Inject constructor(
      * other posts, committee memberships, representations, party
      * affiliations, house memberships, education, and occupations into
      * a single list sorted by start date (most recent first).
+     *
+     * If the DB table is empty for this MP (e.g. the seed DB hasn't been
+     * rebuilt yet with Biography data), falls back to fetching from the
+     * Parliament Biography API at runtime and caches the result to the DB
+     * so subsequent loads are instant.
      */
     suspend fun getCareerEvents(memberId: Int): List<CareerEvent> {
         val cached = careerEventCache[memberId]
@@ -345,9 +350,63 @@ class MembersRepository @Inject constructor(
             return cached.first
         }
         val entities = mpCareerEventDao.getByMpId(memberId)
-        val events = entities.map { it.toDomain() }
+        if (entities.isNotEmpty()) {
+            val events = entities.map { it.toDomain() }
+            careerEventCache[memberId] = events to System.currentTimeMillis()
+            return events
+        }
+        // DB is empty — fetch from the Biography API and cache to DB
+        val events = fetchCareerEventsFromApi(memberId)
         careerEventCache[memberId] = events to System.currentTimeMillis()
         return events
+    }
+
+    /**
+     * Fetch career events from the Parliament Biography API, convert to
+     * CareerEvent entities, upsert to the DB, and return as domain models.
+     */
+    private suspend fun fetchCareerEventsFromApi(memberId: Int): List<CareerEvent> = try {
+        val response = membersApi.getMemberBiography(memberId)
+        val v = response.value
+        val now = System.currentTimeMillis()
+        val entities = mutableListOf<MpCareerEventEntity>()
+
+        fun addPosts(posts: List<com.goveye.app.data.dto.members.BiographyPostDto>, category: CareerCategory) {
+            posts.forEach { post ->
+                entities.add(
+                    MpCareerEventEntity(
+                        mpId = memberId,
+                        category = category.apiName,
+                        name = post.name ?: "Unknown",
+                        house = post.house?.id,
+                        startDate = post.startDate,
+                        endDate = post.endDate,
+                        additionalInfo = post.additionalInfo,
+                        additionalInfoLink = post.additionalInfoLink,
+                        constituencyName = if (category == CareerCategory.REPRESENTATION) post.name else null,
+                        constituencyId = if (category == CareerCategory.REPRESENTATION) post.id else null,
+                        source = "parliament",
+                        lastUpdated = now
+                    )
+                )
+            }
+        }
+
+        addPosts(v.governmentPosts, CareerCategory.GOVERNMENT_POST)
+        addPosts(v.oppositionPosts, CareerCategory.OPPOSITION_POST)
+        addPosts(v.otherPosts, CareerCategory.OTHER_POST)
+        addPosts(v.committeeMemberships, CareerCategory.COMMITTEE)
+        addPosts(v.representations, CareerCategory.REPRESENTATION)
+        addPosts(v.partyAffiliations, CareerCategory.PARTY_AFFILIATION)
+        addPosts(v.houseMemberships, CareerCategory.HOUSE_MEMBERSHIP)
+
+        if (entities.isNotEmpty()) {
+            mpCareerEventDao.upsertAll(entities)
+        }
+
+        entities.map { it.toDomain() }
+    } catch (e: Exception) {
+        emptyList()
     }
 
     suspend fun getBiography(memberId: Int): List<BiographyItem> {
@@ -357,7 +416,12 @@ class MembersRepository @Inject constructor(
         }
         return try {
             val response = membersApi.getMemberBiography(memberId)
-            val biographies = response.value.map { mapper.toBiographyDomain(it) }
+            val v = response.value
+            val biographies = (
+                v.governmentPosts + v.oppositionPosts + v.otherPosts +
+                    v.committeeMemberships + v.representations +
+                    v.partyAffiliations + v.houseMemberships
+                ).map { mapper.toBiographyDomain(it) }
             biographyCache[memberId] = biographies to System.currentTimeMillis()
             biographies
         } catch (e: Exception) {

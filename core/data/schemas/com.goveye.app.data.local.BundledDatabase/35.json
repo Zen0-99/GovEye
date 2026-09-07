@@ -1,8 +1,8 @@
 {
   "formatVersion": 1,
   "database": {
-    "version": 34,
-    "identityHash": "ab1f85f0a2c842af7df125d4ed00309d",
+    "version": 35,
+    "identityHash": "a71fe6417839101ec92a8f27145043b8",
     "entities": [
       {
         "tableName": "mps",
@@ -1918,7 +1918,18 @@
           "columnNames": [
             "id"
           ]
-        }
+        },
+        "indices": [
+          {
+            "name": "index_mp_career_events_mpId",
+            "unique": false,
+            "columnNames": [
+              "mpId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_mp_career_events_mpId` ON `${TABLE_NAME}` (`mpId`)"
+          }
+        ]
       },
       {
         "tableName": "division_tags",
@@ -2693,7 +2704,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'ab1f85f0a2c842af7df125d4ed00309d')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'a71fe6417839101ec92a8f27145043b8')"
     ]
   }
 }

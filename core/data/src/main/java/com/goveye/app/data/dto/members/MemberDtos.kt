@@ -97,17 +97,31 @@ data class BiographyExperienceDto(
 )
 
 @Serializable
-data class BiographyResponse(val value: List<BiographyItemDto> = emptyList(), val links: List<LinkDto> = emptyList())
+data class BiographyResponse(val value: BiographyValueDto = BiographyValueDto(), val links: List<LinkDto> = emptyList())
 
 @Serializable
-data class BiographyItemDto(
+data class BiographyValueDto(
+    val representations: List<BiographyPostDto> = emptyList(),
+    val electionsContested: List<BiographyPostDto> = emptyList(),
+    val houseMemberships: List<BiographyPostDto> = emptyList(),
+    val governmentPosts: List<BiographyPostDto> = emptyList(),
+    val oppositionPosts: List<BiographyPostDto> = emptyList(),
+    val otherPosts: List<BiographyPostDto> = emptyList(),
+    val partyAffiliations: List<BiographyPostDto> = emptyList(),
+    val committeeMemberships: List<BiographyPostDto> = emptyList()
+)
+
+@Serializable
+data class BiographyPostDto(
     val house: HouseDto? = null,
     val name: String? = null,
     val id: Int? = null,
     val startDate: String? = null,
     val endDate: String? = null,
     val additionalInfo: String? = null,
-    val additionalInfoLink: String? = null
+    val additionalInfoLink: String? = null,
+    val constituencyStart: String? = null,
+    val constituencyEnd: String? = null
 )
 
 @Serializable
