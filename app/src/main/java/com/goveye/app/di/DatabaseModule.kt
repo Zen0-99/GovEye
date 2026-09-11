@@ -928,6 +928,12 @@ object DatabaseModule {
             db.execSQL(
                 "CREATE INDEX IF NOT EXISTS index_mp_career_events_mpId ON mp_career_events(mpId)"
             )
+            // Seed DBs built at schema v33+ never ran the 26→27/32→33
+            // migrations that create this index (the seed pipeline doesn't
+            // create user indices) — create it here so validation passes.
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS index_division_votes_memberId ON division_votes(memberId)"
+            )
         }
     }
 
