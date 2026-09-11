@@ -20,9 +20,13 @@ import com.goveye.app.data.local.entity.HansardContributionEntity
 import com.goveye.app.data.local.entity.HistoricalMemberEntity
 import com.goveye.app.data.local.entity.InterestEntity
 import com.goveye.app.data.local.entity.LegislationEntity
+import com.goveye.app.data.local.entity.MpCareerEventEntity
 import com.goveye.app.data.local.entity.MpCommitteeCrossRef
+import com.goveye.app.data.local.entity.MpContactEntity
 import com.goveye.app.data.local.entity.MpEntity
+import com.goveye.app.data.local.entity.MpExperienceEntity
 import com.goveye.app.data.local.entity.MpLinkEntity
+import com.goveye.app.data.local.entity.MpSynopsisEntity
 import com.goveye.app.data.local.entity.PartyManifestoEntity
 import com.goveye.app.data.local.entity.PartyStatsEntity
 import com.goveye.app.data.local.entity.RecessDateEntity
@@ -158,36 +162,41 @@ class DatabaseUpdateManager @Inject constructor(
     suspend fun checkForUpdates(): DatabaseUpdateState = withContext(Dispatchers.IO) {
         return@withContext try {
             // First launch or outdated seed — need full download.
-            // BUT: if the DB file already exists AND seedVersion was previously
-            // set (app reinstall scenario), recover by setting seedVersion =
-            // CURRENT_SEED_VERSION and falling through to the patch check.
-            // This avoids a pointless 600MB redownload when the app is
-            // reinstalled but data persists.
-            //
-            // IMPORTANT: if seedVersion is null AND the DB exists, this is NOT
-            // a reinstall — it's an old install from a prior app version that
-            // was never properly tracked. The DB data is stale and marking
-            // streams as "up to date" would skip all patches. Force a full
-            // re-download instead.
+            // BUT: if the DB file already exists, recover by setting
+            // seedVersion = CURRENT_SEED_VERSION and falling through to
+            // the patch check. This avoids a pointless 600MB redownload
+            // when the app is reinstalled or preferences are cleared but
+            // data persists. The untracked stream logic will download
+            // patches for any streams with missing data (e.g. new streams
+            // added after the user's seed was built).
             val seedVer = preferences.seedVersion.first()
             if (seedVer == null || seedVer < CURRENT_SEED_VERSION) {
-                if (seedVer != null && context.getDatabasePath(BundledDatabase.DATABASE_NAME).exists()) {
-                    Log.i(TAG, "DB exists but seedVersion=$seedVer — recovering (app reinstall)")
+                if (context.getDatabasePath(BundledDatabase.DATABASE_NAME).exists()) {
+                    Log.i(TAG, "DB exists but seedVersion=$seedVer — recovering (app reinstall or cleared prefs)")
                     preferences.setSeedVersion(CURRENT_SEED_VERSION)
                     // Fall through to patch check — stream versions may also be
-                    // missing, but checkForUpdates handles null localVersion
-                    // gracefully (skips that stream).
+                    // missing, but the untracked stream logic handles this:
+                    // streams with data are marked as up-to-date, streams
+                    // with missing data download their patches.
                 } else {
                     return@withContext DatabaseUpdateState.NeedsFullDownload(null)
                 }
             }
 
-            // Fetch all 7 manifests in parallel via direct GitHub download URLs
-            // (bypasses the 60 req/hour unauthenticated API rate limit)
-            val results = fetchAllManifests()
+            // Fetch all manifests in parallel via direct GitHub download URLs
+            // (bypasses the 60 req/hour unauthenticated API rate limit).
+            // Retry up to 3 times with increasing delay — the device's DNS
+            // resolver may not be ready immediately after app launch.
+            var results: List<Pair<String, DatabaseManifest>?>? = null
+            for (attempt in 1..3) {
+                results = fetchAllManifests()
+                if (results.any { it != null }) break
+                Log.w(TAG, "All manifest fetches failed (attempt $attempt/3) — retrying in ${attempt * 3}s")
+                kotlinx.coroutines.delay(attempt * 3000L)
+            }
 
-            // If all 7 failed, return Failed
-            if (results.all { it == null }) {
+            // If all failed after retries, return Failed
+            if (results?.all { it == null } != false) {
                 return@withContext DatabaseUpdateState.Failed("All manifest fetches failed")
             }
 
@@ -203,17 +212,34 @@ class DatabaseUpdateManager @Inject constructor(
                 )
 
                 when {
-                    // Local version null — stream was never tracked (new stream
-                    // or version key was missing from a prior first-launch /
-                    // app reinstall). The data is already in the DB from the
-                    // original first-launch merge. Mark it as up to date at the
-                    // current manifest version — applying all patches for all
-                    // untracked streams at once would OOM the heap. The next
-                    // real patch (when new data is published) will apply
-                    // normally since the version is now tracked.
+                    // Local version null — stream was never tracked. This could
+                    // be a reinstall (data already in DB from seed) or a genuinely
+                    // new stream added after the user's seed was built.
+                    // Check if the stream's first table has rows — if empty, the
+                    // data is missing and we need to download the patch.
                     localVersion == null -> {
-                        Log.w(TAG, "Stream $streamName untracked — marking as v${manifest.version}")
-                        setStreamVersion(streamName, manifest.version)
+                        // Check if ALL the stream's tables have data. If any
+                        // table is empty, the stream is genuinely new (added
+                        // after the user's seed was built) and needs the patch.
+                        val tables = perApiTables(streamName)
+                        val allTablesHaveData = tables.isNotEmpty() && try {
+                            tables.all { table ->
+                                database.openHelper.readableDatabase
+                                    .query("SELECT EXISTS(SELECT 1 FROM $table LIMIT 1)")
+                                    .use { it.moveToFirst() && it.getInt(0) == 1 }
+                            }
+                        } catch (e: Exception) {
+                            false
+                        }
+                        if (allTablesHaveData) {
+                            Log.w(TAG, "Stream $streamName untracked but has data — marking as v${manifest.version}")
+                            setStreamVersion(streamName, manifest.version)
+                        } else {
+                            Log.w(TAG, "Stream $streamName untracked and missing data — downloading patch")
+                            val (tag, _) = streamTags[index]
+                            val patchUrl = "$githubDownloadBase/$tag/$PATCH_ASSET_NAME"
+                            patches.add(PatchInfo(streamName, manifest, patchUrl))
+                        }
                     }
 
                     manifest.version == localVersion -> {
@@ -312,7 +338,32 @@ class DatabaseUpdateManager @Inject constructor(
             // 2. Apply all merged changes in a single Room transaction
             database.withTransaction {
                 for ((tableName, changes) in combinedChanges) {
+                    Log.i(TAG, "Applying $tableName: ${changes.upsert.size} upserts, ${changes.delete.size} deletes")
                     applyTableChanges(tableName, changes)
+                }
+            }
+
+            // 2.5. Verify publications bodyText after patch
+            if ("government_publications" in combinedChanges) {
+                try {
+                    val cursor = database.openHelper.readableDatabase
+                        .query(
+                            "SELECT COUNT(*) FROM government_publications WHERE bodyText IS NOT NULL AND bodyText != ''"
+                        )
+                    cursor.use {
+                        if (it.moveToFirst()) {
+                            Log.i(TAG, "Post-patch verification: ${it.getInt(0)} publications with bodyText")
+                        }
+                    }
+                    val totalCursor = database.openHelper.readableDatabase
+                        .query("SELECT COUNT(*) FROM government_publications")
+                    totalCursor.use {
+                        if (it.moveToFirst()) {
+                            Log.i(TAG, "Post-patch verification: ${it.getInt(0)} total publications")
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Post-patch verification failed: ${e.message}")
                 }
             }
 
@@ -594,6 +645,30 @@ class DatabaseUpdateManager @Inject constructor(
                         json.decodeFromJsonElement<HistoricalMemberEntity>(it)
                     }
                 )
+
+                "mp_synopsis" -> updateDao.upsertMpSynopsis(
+                    upsertList.map {
+                        json.decodeFromJsonElement<MpSynopsisEntity>(it)
+                    }
+                )
+
+                "mp_contacts" -> updateDao.upsertMpContacts(
+                    upsertList.map {
+                        json.decodeFromJsonElement<MpContactEntity>(it)
+                    }
+                )
+
+                "mp_experience" -> updateDao.upsertMpExperience(
+                    upsertList.map {
+                        json.decodeFromJsonElement<MpExperienceEntity>(it)
+                    }
+                )
+
+                "mp_career_events" -> updateDao.upsertMpCareerEvents(
+                    upsertList.map {
+                        json.decodeFromJsonElement<MpCareerEventEntity>(it)
+                    }
+                )
                 // mps_fts is NOT handled — auto-synced by FTS4 triggers (Pitfall 2)
             }
         }
@@ -663,6 +738,23 @@ class DatabaseUpdateManager @Inject constructor(
                 "historical_members" -> updateDao.deleteHistoricalMember(
                     obj["twfyPersonId"]!!.jsonPrimitive.intOrNull!!
                 )
+
+                "mp_synopsis" -> updateDao.deleteMpSynopsis(
+                    obj["mpId"]!!.jsonPrimitive.intOrNull!!
+                )
+
+                "mp_contacts" -> updateDao.deleteMpContact(
+                    obj["mpId"]!!.jsonPrimitive.intOrNull!!,
+                    obj["typeId"]!!.jsonPrimitive.intOrNull!!
+                )
+
+                "mp_experience" -> updateDao.deleteMpExperience(
+                    obj["id"]!!.jsonPrimitive.intOrNull!!
+                )
+
+                "mp_career_events" -> updateDao.deleteMpCareerEvent(
+                    obj["id"]!!.jsonPrimitive.intOrNull!!
+                )
             }
         }
     }
@@ -691,7 +783,8 @@ class DatabaseUpdateManager @Inject constructor(
         DatabaseUpdateApi.GOV_PUBLICATIONS_TAG to "gov-publications",
         DatabaseUpdateApi.WRITTEN_STATEMENTS_TAG to "written-statements",
         DatabaseUpdateApi.WRITTEN_QUESTIONS_TAG to "written-questions",
-        DatabaseUpdateApi.LEGISLATION_TAG to "legislation"
+        DatabaseUpdateApi.LEGISLATION_TAG to "legislation",
+        DatabaseUpdateApi.MEMBER_DETAILS_TAG to "member-details"
     )
 
     private suspend fun fetchAllManifests(): List<Pair<String, DatabaseManifest>?> = coroutineScope {
@@ -733,6 +826,7 @@ class DatabaseUpdateManager @Inject constructor(
         "written-statements" -> "written_statements.db"
         "written-questions" -> "written_questions.db"
         "legislation" -> "legislation.db"
+        "member-details" -> "member_details.db"
         else -> "$streamName.db"
     }
 
@@ -759,6 +853,7 @@ class DatabaseUpdateManager @Inject constructor(
         "written-statements" -> listOf("written_statements")
         "written-questions" -> listOf("written_questions")
         "legislation" -> listOf("legislation")
+        "member-details" -> listOf("mp_synopsis", "mp_contacts", "mp_experience", "mp_career_events")
         else -> emptyList()
     }
 
@@ -784,6 +879,7 @@ class DatabaseUpdateManager @Inject constructor(
         "written-statements" -> preferences.writtenStatementsVersion.first()
         "written-questions" -> preferences.writtenQuestionsVersion.first()
         "legislation" -> preferences.legislationVersion.first()
+        "member-details" -> preferences.memberDetailsVersion.first()
         else -> null
     }
 
@@ -810,7 +906,28 @@ class DatabaseUpdateManager @Inject constructor(
             "written-statements" -> preferences.setWrittenStatementsVersion(version)
             "written-questions" -> preferences.setWrittenQuestionsVersion(version)
             "legislation" -> preferences.setLegislationVersion(version)
+            "member-details" -> preferences.setMemberDetailsVersion(version)
         }
+    }
+
+    /**
+     * Debug method: returns the count of publications with bodyText.
+     * Used to verify that the publications patch was applied correctly.
+     */
+    fun countPublicationsWithBodyText(): Pair<Int, Int> = try {
+        val db = database.openHelper.readableDatabase
+        val total = db.query("SELECT COUNT(*) FROM government_publications").use {
+            if (it.moveToFirst()) it.getInt(0) else 0
+        }
+        val withBody = db.query(
+            "SELECT COUNT(*) FROM government_publications WHERE bodyText IS NOT NULL AND bodyText != ''"
+        ).use {
+            if (it.moveToFirst()) it.getInt(0) else 0
+        }
+        total to withBody
+    } catch (e: Exception) {
+        Log.w(TAG, "countPublicationsWithBodyText failed: ${e.message}")
+        -1 to -1
     }
 
     /**
@@ -902,7 +1019,7 @@ class DatabaseUpdateManager @Inject constructor(
          * corrected data). When this is higher than the user's stored
          * seedVersion, the app treats it as a first launch and re-downloads.
          */
-        const val CURRENT_SEED_VERSION = 8
+        const val CURRENT_SEED_VERSION = 9
 
         internal const val MANIFEST_ASSET_NAME = "manifest.json"
         internal const val PATCH_ASSET_NAME = "patch.json"
