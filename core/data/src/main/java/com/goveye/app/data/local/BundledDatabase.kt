@@ -19,11 +19,13 @@ import com.goveye.app.data.local.dao.InterestDao
 import com.goveye.app.data.local.dao.LegislationDao
 import com.goveye.app.data.local.dao.ManifestoDao
 import com.goveye.app.data.local.dao.MpApiIdDao
+import com.goveye.app.data.local.dao.MpAppointmentDao
 import com.goveye.app.data.local.dao.MpCareerEventDao
 import com.goveye.app.data.local.dao.MpContactDao
 import com.goveye.app.data.local.dao.MpDao
 import com.goveye.app.data.local.dao.MpExperienceDao
 import com.goveye.app.data.local.dao.MpLinkDao
+import com.goveye.app.data.local.dao.MpOfficerIdentityDao
 import com.goveye.app.data.local.dao.MpStatsDao
 import com.goveye.app.data.local.dao.MpSynopsisDao
 import com.goveye.app.data.local.dao.MpTagDao
@@ -54,6 +56,7 @@ import com.goveye.app.data.local.entity.InterestEntity
 import com.goveye.app.data.local.entity.LegislationEntity
 import com.goveye.app.data.local.entity.LegislationTagEntity
 import com.goveye.app.data.local.entity.MpApiIdEntity
+import com.goveye.app.data.local.entity.MpAppointmentEntity
 import com.goveye.app.data.local.entity.MpCareerEventEntity
 import com.goveye.app.data.local.entity.MpCommitteeCrossRef
 import com.goveye.app.data.local.entity.MpContactEntity
@@ -61,6 +64,7 @@ import com.goveye.app.data.local.entity.MpEntity
 import com.goveye.app.data.local.entity.MpExperienceEntity
 import com.goveye.app.data.local.entity.MpFtsEntity
 import com.goveye.app.data.local.entity.MpLinkEntity
+import com.goveye.app.data.local.entity.MpOfficerIdentityEntity
 import com.goveye.app.data.local.entity.MpStatsEntity
 import com.goveye.app.data.local.entity.MpSynopsisEntity
 import com.goveye.app.data.local.entity.MpTagEntity
@@ -136,9 +140,11 @@ import com.goveye.app.data.local.entity.WrittenStatementEntity
         LegislationTagEntity::class,
         MpTagEntity::class,
         PartyLeaderEntity::class,
-        SourceRecommendationEntity::class
+        SourceRecommendationEntity::class,
+        MpOfficerIdentityEntity::class,
+        MpAppointmentEntity::class
     ],
-    version = 35,
+    version = 36,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -175,6 +181,8 @@ abstract class BundledDatabase : RoomDatabase() {
     abstract fun partyLeaderDao(): PartyLeaderDao
     abstract fun sourceRecommendationDao(): SourceRecommendationDao
     abstract fun databaseUpdateDao(): DatabaseUpdateDao
+    abstract fun mpOfficerIdentityDao(): MpOfficerIdentityDao
+    abstract fun mpAppointmentDao(): MpAppointmentDao
 
     companion object {
         const val DATABASE_NAME = "goveye.db"

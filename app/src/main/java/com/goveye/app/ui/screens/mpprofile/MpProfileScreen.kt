@@ -73,6 +73,7 @@ import com.goveye.app.ui.theme.LocalPartyAccent
 import com.goveye.app.ui.theme.padding
 import com.goveye.app.ui.theme.parsePartyColor
 import com.goveye.app.ui.theme.partyAccentColorScheme
+import com.goveye.app.ui.utils.ageFromDob
 
 private enum class ProfileTab(val title: String) {
     PROFILE("Profile"),
@@ -185,14 +186,7 @@ fun ProfileScreen(
     val displayMp = mp ?: optimisticMp
     // Compute age from bioData.dateOfBirth (Stage 1) or fallback DOB
     // (optimistic header) so age appears instantly with the MP image.
-    val bioDataAge = (uiState.bioData?.dateOfBirth ?: fallbackDateOfBirth)?.let { dob ->
-        try {
-            val birth = java.time.LocalDate.parse(dob.take(10))
-            java.time.Period.between(birth, java.time.LocalDate.now()).years
-        } catch (e: Exception) {
-            null
-        }
-    }
+    val bioDataAge = ageFromDob(uiState.bioData?.dateOfBirth ?: fallbackDateOfBirth)
     val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     val headerIconTint = if (isDark) Color.White else Color(0xFF1A1A1A)
     val isInterestsTab = currentPage == ProfileTab.INTERESTS.ordinal

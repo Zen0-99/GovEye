@@ -937,6 +937,51 @@ object DatabaseModule {
         }
     }
 
+    // v35 → v36: Companies House officer layer — matched officer identity
+    // per MP + their full appointment history.
+    private val MIGRATION_35_36 = object : Migration(35, 36) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS `mp_officer_identity` (
+                    `mpId` INTEGER NOT NULL PRIMARY KEY,
+                    `officerId` TEXT NOT NULL,
+                    `officerName` TEXT NOT NULL,
+                    `dobMonth` INTEGER,
+                    `dobYear` INTEGER,
+                    `nationality` TEXT,
+                    `countryOfResidence` TEXT,
+                    `matchMethod` TEXT,
+                    `matchConfidence` REAL,
+                    `isDisqualified` INTEGER NOT NULL,
+                    `disqualificationJson` TEXT,
+                    `lastUpdated` INTEGER NOT NULL
+                )"""
+            )
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS `mp_appointments` (
+                    `mpId` INTEGER NOT NULL,
+                    `companyNumber` TEXT NOT NULL,
+                    `officerRole` TEXT NOT NULL,
+                    `appointedOn` TEXT NOT NULL,
+                    `officerId` TEXT,
+                    `companyName` TEXT NOT NULL,
+                    `resignedOn` TEXT,
+                    `isCurrent` INTEGER NOT NULL,
+                    `companyStatus` TEXT,
+                    `companyType` TEXT,
+                    `companySicCodes` TEXT,
+                    `companyIncorporated` TEXT,
+                    `pscNatures` TEXT,
+                    `lastUpdated` INTEGER NOT NULL,
+                    PRIMARY KEY(`mpId`, `companyNumber`, `officerRole`, `appointedOn`)
+                )"""
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS index_mp_appointments_mpId ON mp_appointments(mpId)"
+            )
+        }
+    }
+
     @Provides
     @Singleton
     fun provideBundledDatabase(@ApplicationContext context: Context): BundledDatabase {
@@ -1002,7 +1047,8 @@ object DatabaseModule {
                 MIGRATION_31_32,
                 MIGRATION_32_33,
                 MIGRATION_33_34,
-                MIGRATION_34_35
+                MIGRATION_34_35,
+                MIGRATION_35_36
             )
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()

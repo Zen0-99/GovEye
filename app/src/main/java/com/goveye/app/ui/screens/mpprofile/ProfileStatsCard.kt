@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import com.goveye.app.data.local.entity.BioDataEntity
 import com.goveye.app.domain.model.Mp
 import com.goveye.app.ui.theme.padding
+import com.goveye.app.ui.utils.formatDob
 import java.time.LocalDate
 import java.time.Period
 import java.time.format.DateTimeFormatter
@@ -41,14 +42,7 @@ fun ProfileStatsCard(mp: Mp, bioData: BioDataEntity? = null, modifier: Modifier 
         }
     }
 
-    val birthDateFormatted = bioData?.dateOfBirth?.let { dob ->
-        try {
-            val parsed = LocalDate.parse(dob.take(10))
-            parsed.format(DateTimeFormatter.ofPattern("d MMM yyyy"))
-        } catch (e: Exception) {
-            null
-        }
-    }
+    val birthDateFormatted = formatDob(bioData?.dateOfBirth)
 
     // Stats: label on top, value below. Order: Year of Birth, Maiden Speech,
     // Years in Parliament.
