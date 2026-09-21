@@ -57,6 +57,8 @@ interface DatabaseUpdateApi {
         const val WRITTEN_STATEMENTS_TAG = "written-statements-latest"
         const val WRITTEN_QUESTIONS_TAG = "written-questions-latest"
         const val LEGISLATION_TAG = "legislation-latest"
+        const val MEMBER_DETAILS_TAG = "member-details-latest"
+        const val COMPANIES_HOUSE_TAG = "companies-house-latest"
 
         private const val OWNER = "Zen0-99"
         private const val REPO = "goveye-data"

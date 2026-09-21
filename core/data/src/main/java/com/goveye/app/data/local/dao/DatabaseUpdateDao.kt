@@ -18,9 +18,15 @@ import com.goveye.app.data.local.entity.HansardContributionEntity
 import com.goveye.app.data.local.entity.HistoricalMemberEntity
 import com.goveye.app.data.local.entity.InterestEntity
 import com.goveye.app.data.local.entity.LegislationEntity
+import com.goveye.app.data.local.entity.MpAppointmentEntity
+import com.goveye.app.data.local.entity.MpCareerEventEntity
 import com.goveye.app.data.local.entity.MpCommitteeCrossRef
+import com.goveye.app.data.local.entity.MpContactEntity
 import com.goveye.app.data.local.entity.MpEntity
+import com.goveye.app.data.local.entity.MpExperienceEntity
 import com.goveye.app.data.local.entity.MpLinkEntity
+import com.goveye.app.data.local.entity.MpOfficerIdentityEntity
+import com.goveye.app.data.local.entity.MpSynopsisEntity
 import com.goveye.app.data.local.entity.PartyManifestoEntity
 import com.goveye.app.data.local.entity.PartyStatsEntity
 import com.goveye.app.data.local.entity.RecessDateEntity
@@ -199,4 +205,49 @@ interface DatabaseUpdateDao {
 
     @Query("DELETE FROM historical_members WHERE twfyPersonId = :twfyPersonId")
     suspend fun deleteHistoricalMember(twfyPersonId: Int)
+
+    // ── mp_synopsis (PK: mpId) ────────────────────────────────────────
+    @Upsert
+    suspend fun upsertMpSynopsis(synopsis: List<MpSynopsisEntity>)
+
+    @Query("DELETE FROM mp_synopsis WHERE mpId = :mpId")
+    suspend fun deleteMpSynopsis(mpId: Int)
+
+    // ── mp_contacts (PK: mpId, typeId) ────────────────────────────────
+    @Upsert
+    suspend fun upsertMpContacts(contacts: List<MpContactEntity>)
+
+    @Query("DELETE FROM mp_contacts WHERE mpId = :mpId AND typeId = :typeId")
+    suspend fun deleteMpContact(mpId: Int, typeId: Int)
+
+    // ── mp_experience (PK: id, autoGenerate) ──────────────────────────
+    @Upsert
+    suspend fun upsertMpExperience(experience: List<MpExperienceEntity>)
+
+    @Query("DELETE FROM mp_experience WHERE id = :id")
+    suspend fun deleteMpExperience(id: Int)
+
+    // ── mp_career_events (PK: id, autoGenerate) ───────────────────────
+    @Upsert
+    suspend fun upsertMpCareerEvents(events: List<MpCareerEventEntity>)
+
+    @Query("DELETE FROM mp_career_events WHERE id = :id")
+    suspend fun deleteMpCareerEvent(id: Int)
+
+    // ── mp_officer_identity (PK: mpId) ────────────────────────────────
+    @Upsert
+    suspend fun upsertOfficerIdentities(identities: List<MpOfficerIdentityEntity>)
+
+    @Query("DELETE FROM mp_officer_identity WHERE mpId = :mpId")
+    suspend fun deleteOfficerIdentity(mpId: Int)
+
+    // ── mp_appointments (PK: mpId, companyNumber, officerRole, appointedOn) ──
+    @Upsert
+    suspend fun upsertAppointments(appointments: List<MpAppointmentEntity>)
+
+    @Query(
+        "DELETE FROM mp_appointments WHERE mpId = :mpId AND companyNumber = :companyNumber " +
+            "AND officerRole = :officerRole AND appointedOn = :appointedOn"
+    )
+    suspend fun deleteAppointment(mpId: Int, companyNumber: String, officerRole: String, appointedOn: String)
 }

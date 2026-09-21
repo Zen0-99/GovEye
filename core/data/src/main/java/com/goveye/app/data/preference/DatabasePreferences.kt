@@ -86,6 +86,12 @@ class DatabasePreferences @Inject constructor(@Named("database") private val dat
     /** Current local legislation stream version, or null if never updated. */
     val legislationVersion: Flow<Int?> = dataStore.data.map { it[LEGISLATION_VERSION_KEY] }
 
+    /** Current local member-details stream version, or null if never updated. */
+    val memberDetailsVersion: Flow<Int?> = dataStore.data.map { it[MEMBER_DETAILS_VERSION_KEY] }
+
+    /** Current local companies-house stream version, or null if never updated. */
+    val companiesHouseVersion: Flow<Int?> = dataStore.data.map { it[COMPANIES_HOUSE_VERSION_KEY] }
+
     /**
      * Seed DB version — null means first launch (seed DB not yet downloaded).
      * Set to 1 after the first-launch download completes.
@@ -164,6 +170,14 @@ class DatabasePreferences @Inject constructor(@Named("database") private val dat
         dataStore.edit { it[LEGISLATION_VERSION_KEY] = version }
     }
 
+    suspend fun setMemberDetailsVersion(version: Int) {
+        dataStore.edit { it[MEMBER_DETAILS_VERSION_KEY] = version }
+    }
+
+    suspend fun setCompaniesHouseVersion(version: Int) {
+        dataStore.edit { it[COMPANIES_HOUSE_VERSION_KEY] = version }
+    }
+
     suspend fun setSeedVersion(version: Int) {
         dataStore.edit { it[SEED_VERSION_KEY] = version }
     }
@@ -209,6 +223,8 @@ class DatabasePreferences @Inject constructor(@Named("database") private val dat
         val WRITTEN_STATEMENTS_VERSION_KEY = intPreferencesKey("written_statements_version")
         val WRITTEN_QUESTIONS_VERSION_KEY = intPreferencesKey("written_questions_version")
         val LEGISLATION_VERSION_KEY = intPreferencesKey("legislation_version")
+        val MEMBER_DETAILS_VERSION_KEY = intPreferencesKey("member_details_version")
+        val COMPANIES_HOUSE_VERSION_KEY = intPreferencesKey("companies_house_version")
         val SEED_VERSION_KEY = intPreferencesKey("seed_version")
         val LAST_NOTIFIED_DIVISION_ID_KEY = intPreferencesKey("last_notified_division_id")
         val LAST_NOTIFIED_BILL_STAGES_KEY = stringPreferencesKey("last_notified_bill_stages")

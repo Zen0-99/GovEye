@@ -20,12 +20,14 @@ import com.goveye.app.data.local.entity.HansardContributionEntity
 import com.goveye.app.data.local.entity.HistoricalMemberEntity
 import com.goveye.app.data.local.entity.InterestEntity
 import com.goveye.app.data.local.entity.LegislationEntity
+import com.goveye.app.data.local.entity.MpAppointmentEntity
 import com.goveye.app.data.local.entity.MpCareerEventEntity
 import com.goveye.app.data.local.entity.MpCommitteeCrossRef
 import com.goveye.app.data.local.entity.MpContactEntity
 import com.goveye.app.data.local.entity.MpEntity
 import com.goveye.app.data.local.entity.MpExperienceEntity
 import com.goveye.app.data.local.entity.MpLinkEntity
+import com.goveye.app.data.local.entity.MpOfficerIdentityEntity
 import com.goveye.app.data.local.entity.MpSynopsisEntity
 import com.goveye.app.data.local.entity.PartyManifestoEntity
 import com.goveye.app.data.local.entity.PartyStatsEntity
@@ -669,6 +671,18 @@ class DatabaseUpdateManager @Inject constructor(
                         json.decodeFromJsonElement<MpCareerEventEntity>(it)
                     }
                 )
+
+                "mp_officer_identity" -> updateDao.upsertOfficerIdentities(
+                    upsertList.map {
+                        json.decodeFromJsonElement<MpOfficerIdentityEntity>(it)
+                    }
+                )
+
+                "mp_appointments" -> updateDao.upsertAppointments(
+                    upsertList.map {
+                        json.decodeFromJsonElement<MpAppointmentEntity>(it)
+                    }
+                )
                 // mps_fts is NOT handled — auto-synced by FTS4 triggers (Pitfall 2)
             }
         }
@@ -755,6 +769,17 @@ class DatabaseUpdateManager @Inject constructor(
                 "mp_career_events" -> updateDao.deleteMpCareerEvent(
                     obj["id"]!!.jsonPrimitive.intOrNull!!
                 )
+
+                "mp_officer_identity" -> updateDao.deleteOfficerIdentity(
+                    obj["mpId"]!!.jsonPrimitive.intOrNull!!
+                )
+
+                "mp_appointments" -> updateDao.deleteAppointment(
+                    obj["mpId"]!!.jsonPrimitive.intOrNull!!,
+                    obj["companyNumber"]!!.jsonPrimitive.content,
+                    obj["officerRole"]!!.jsonPrimitive.content,
+                    obj["appointedOn"]!!.jsonPrimitive.content
+                )
             }
         }
     }
@@ -784,7 +809,8 @@ class DatabaseUpdateManager @Inject constructor(
         DatabaseUpdateApi.WRITTEN_STATEMENTS_TAG to "written-statements",
         DatabaseUpdateApi.WRITTEN_QUESTIONS_TAG to "written-questions",
         DatabaseUpdateApi.LEGISLATION_TAG to "legislation",
-        DatabaseUpdateApi.MEMBER_DETAILS_TAG to "member-details"
+        DatabaseUpdateApi.MEMBER_DETAILS_TAG to "member-details",
+        DatabaseUpdateApi.COMPANIES_HOUSE_TAG to "companies-house"
     )
 
     private suspend fun fetchAllManifests(): List<Pair<String, DatabaseManifest>?> = coroutineScope {
@@ -827,6 +853,7 @@ class DatabaseUpdateManager @Inject constructor(
         "written-questions" -> "written_questions.db"
         "legislation" -> "legislation.db"
         "member-details" -> "member_details.db"
+        "companies-house" -> "companies_house.db"
         else -> "$streamName.db"
     }
 
@@ -854,6 +881,7 @@ class DatabaseUpdateManager @Inject constructor(
         "written-questions" -> listOf("written_questions")
         "legislation" -> listOf("legislation")
         "member-details" -> listOf("mp_synopsis", "mp_contacts", "mp_experience", "mp_career_events")
+        "companies-house" -> listOf("mp_officer_identity", "mp_appointments")
         else -> emptyList()
     }
 
@@ -880,6 +908,7 @@ class DatabaseUpdateManager @Inject constructor(
         "written-questions" -> preferences.writtenQuestionsVersion.first()
         "legislation" -> preferences.legislationVersion.first()
         "member-details" -> preferences.memberDetailsVersion.first()
+        "companies-house" -> preferences.companiesHouseVersion.first()
         else -> null
     }
 
@@ -907,6 +936,7 @@ class DatabaseUpdateManager @Inject constructor(
             "written-questions" -> preferences.setWrittenQuestionsVersion(version)
             "legislation" -> preferences.setLegislationVersion(version)
             "member-details" -> preferences.setMemberDetailsVersion(version)
+            "companies-house" -> preferences.setCompaniesHouseVersion(version)
         }
     }
 
