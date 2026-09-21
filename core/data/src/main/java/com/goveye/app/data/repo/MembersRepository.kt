@@ -5,6 +5,7 @@ import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.map
 import com.goveye.app.data.api.MembersApi
+import com.goveye.app.data.local.dao.ConstituencyElectionDao
 import com.goveye.app.data.local.dao.HistoricalMemberDao
 import com.goveye.app.data.local.dao.MpCareerEventDao
 import com.goveye.app.data.local.dao.MpContactDao
@@ -12,6 +13,8 @@ import com.goveye.app.data.local.dao.MpDao
 import com.goveye.app.data.local.dao.MpExperienceDao
 import com.goveye.app.data.local.dao.MpSynopsisDao
 import com.goveye.app.data.local.dao.SearchDao
+import com.goveye.app.data.local.entity.ConstituencyElectionCandidateEntity
+import com.goveye.app.data.local.entity.ConstituencyElectionEntity
 import com.goveye.app.data.local.entity.MpCareerEventEntity
 import com.goveye.app.data.local.entity.MpContactEntity
 import com.goveye.app.data.local.entity.MpEntity
@@ -22,8 +25,11 @@ import com.goveye.app.domain.model.BiographyExperience
 import com.goveye.app.domain.model.BiographyItem
 import com.goveye.app.domain.model.CareerCategory
 import com.goveye.app.domain.model.CareerEvent
+import com.goveye.app.domain.model.ConstituencyElection
 import com.goveye.app.domain.model.Contact
+import com.goveye.app.domain.model.ElectionCandidate
 import com.goveye.app.domain.model.Mp
+import com.goveye.app.domain.model.MpElectionResults
 import com.goveye.app.domain.model.RepositoryResult
 import com.goveye.app.domain.model.SyncStatus
 import com.goveye.app.domain.search.FtsQuerySanitizer
@@ -46,6 +52,7 @@ class MembersRepository @Inject constructor(
     private val mpSynopsisDao: MpSynopsisDao,
     private val mpContactDao: MpContactDao,
     private val mpCareerEventDao: MpCareerEventDao,
+    private val constituencyElectionDao: ConstituencyElectionDao,
     private val mpExperienceDao: MpExperienceDao
 ) {
 
@@ -409,6 +416,28 @@ class MembersRepository @Inject constructor(
         emptyList()
     }
 
+    /**
+     * Election results for the career tab (D-05): the latest result for the
+     * MP's current seat plus every election they personally contested
+     * (candidate.memberId linkage), each with its full candidate list.
+     * Bundled data only — no API fallback (D-02/out of scope: live fetch).
+     */
+    suspend fun getElectionResults(memberId: Int, currentConstituencyId: Int?): MpElectionResults {
+        suspend fun withCandidates(e: ConstituencyElectionEntity) = e.toDomain(
+            constituencyElectionDao.getCandidatesForElection(e.constituencyId, e.electionId)
+                .map { it.toDomain() }
+        )
+
+        val contested = constituencyElectionDao.getElectionsContestedByMember(memberId)
+            .map { withCandidates(it) }
+
+        val latest = currentConstituencyId
+            ?.let { constituencyElectionDao.getElectionsForConstituency(it).firstOrNull() }
+            ?.let { withCandidates(it) }
+
+        return MpElectionResults(currentSeatLatest = latest, contested = contested)
+    }
+
     suspend fun getBiography(memberId: Int): List<BiographyItem> {
         val cached = biographyCache[memberId]
         if (cached != null && System.currentTimeMillis() - cached.second < CacheTtl.MPS_MS) {
@@ -516,4 +545,35 @@ class MembersRepository @Inject constructor(
         constituencyId = constituencyId,
         source = source
     )
+
+    private fun ConstituencyElectionCandidateEntity.toDomain(): ElectionCandidate = ElectionCandidate(
+        rankOrder = rankOrder,
+        memberId = memberId,
+        name = name,
+        partyId = partyId,
+        partyName = partyName,
+        partyAbbreviation = partyAbbreviation,
+        partyColour = partyColour,
+        resultChange = resultChange,
+        votes = votes
+    )
+
+    private fun ConstituencyElectionEntity.toDomain(candidates: List<ElectionCandidate>): ConstituencyElection =
+        ConstituencyElection(
+            constituencyId = constituencyId,
+            electionId = electionId,
+            result = result,
+            isNotional = isNotional,
+            electorate = electorate,
+            turnout = turnout,
+            majority = majority,
+            winningPartyId = winningPartyId,
+            winningPartyName = winningPartyName,
+            winningPartyColour = winningPartyColour,
+            electionTitle = electionTitle,
+            electionDate = electionDate,
+            isGeneralElection = isGeneralElection,
+            constituencyName = constituencyName,
+            candidates = candidates
+        )
 }

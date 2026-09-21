@@ -12,6 +12,7 @@ import com.goveye.app.data.local.dao.BillFollowDao
 import com.goveye.app.data.local.dao.BioDataDao
 import com.goveye.app.data.local.dao.CachedPublicationDao
 import com.goveye.app.data.local.dao.CommitteeDao
+import com.goveye.app.data.local.dao.ConstituencyElectionDao
 import com.goveye.app.data.local.dao.DatabaseUpdateDao
 import com.goveye.app.data.local.dao.DebateSpeechDao
 import com.goveye.app.data.local.dao.DivisionDao
@@ -1215,6 +1216,10 @@ object DatabaseModule {
     fun provideMpCareerEventDao(database: BundledDatabase): MpCareerEventDao = database.mpCareerEventDao()
 
     @Provides
+    fun provideConstituencyElectionDao(database: BundledDatabase): ConstituencyElectionDao =
+        database.constituencyElectionDao()
+
+    @Provides
     fun provideTagDao(database: BundledDatabase): com.goveye.app.data.local.dao.TagDao = database.tagDao()
 
     @Provides
@@ -1291,6 +1296,7 @@ object DatabaseModule {
         mpSynopsisDao: com.goveye.app.data.local.dao.MpSynopsisDao,
         mpContactDao: com.goveye.app.data.local.dao.MpContactDao,
         mpCareerEventDao: com.goveye.app.data.local.dao.MpCareerEventDao,
+        constituencyElectionDao: ConstituencyElectionDao,
         mpExperienceDao: com.goveye.app.data.local.dao.MpExperienceDao
     ): MembersRepository = MembersRepository(
         mpDao,
@@ -1301,6 +1307,7 @@ object DatabaseModule {
         mpSynopsisDao,
         mpContactDao,
         mpCareerEventDao,
+        constituencyElectionDao,
         mpExperienceDao
     )
 

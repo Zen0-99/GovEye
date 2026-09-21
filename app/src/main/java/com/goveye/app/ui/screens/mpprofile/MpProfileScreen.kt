@@ -348,8 +348,10 @@ fun ProfileScreen(
                                 )
 
                                 ProfileTab.CAREER -> CareerTabContent(
+                                    memberId = memberId,
                                     experiences = uiState.experiences,
-                                    careerEvents = uiState.careerEvents
+                                    careerEvents = uiState.careerEvents,
+                                    electionResults = uiState.electionResults
                                 )
 
                                 ProfileTab.COMMITTEES -> CommitteesTabContent(
@@ -682,13 +684,22 @@ private fun ProfileTabContent(
 
 @Composable
 private fun CareerTabContent(
+    memberId: Int,
     experiences: List<com.goveye.app.domain.model.BiographyExperience>,
-    careerEvents: List<com.goveye.app.domain.model.CareerEvent>
+    careerEvents: List<com.goveye.app.domain.model.CareerEvent>,
+    electionResults: com.goveye.app.domain.model.MpElectionResults?
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 20.dp)
     ) {
+        // Election results headline first — the political context for the
+        // career timeline that follows (D-05). Hidden when tables are empty.
+        item {
+            electionResults?.let {
+                ElectionResultsSection(memberId = memberId, results = it)
+            }
+        }
         item { CareerTimelineSection(experiences = experiences, careerEvents = careerEvents) }
     }
 }

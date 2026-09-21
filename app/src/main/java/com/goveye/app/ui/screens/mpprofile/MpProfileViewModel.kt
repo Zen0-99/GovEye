@@ -34,6 +34,7 @@ import com.goveye.app.domain.model.DivisionVote
 import com.goveye.app.domain.model.Interest
 import com.goveye.app.domain.model.MemberVoteWithDivision
 import com.goveye.app.domain.model.Mp
+import com.goveye.app.domain.model.MpElectionResults
 import com.goveye.app.domain.model.SyncStatus
 import com.goveye.app.domain.stats.ActivityScore
 import com.goveye.app.domain.stats.RebellionCalculator
@@ -58,6 +59,7 @@ data class ProfileUiState(
     val committees: List<Committee> = emptyList(),
     val experiences: List<BiographyExperience> = emptyList(),
     val careerEvents: List<CareerEvent> = emptyList(),
+    val electionResults: MpElectionResults? = null,
     val samePartyMps: List<Mp> = emptyList(),
     val committeePeerMps: List<Mp> = emptyList(),
     val memberVotes: List<MemberVoteWithDivision> = emptyList(),
@@ -148,6 +150,7 @@ class ProfileViewModel @Inject constructor(
                 committees = cached.committees,
                 experiences = cached.experiences,
                 careerEvents = cached.careerEvents,
+                electionResults = cached.electionResults,
                 syncStatus = if (cached.mp != null) SyncStatus.FRESH else SyncStatus.EMPTY,
                 isLoading = false
             )
@@ -274,6 +277,14 @@ class ProfileViewModel @Inject constructor(
                     _uiState.value = _uiState.value.copy(careerEvents = careerEvents)
                 }
                 launch {
+                    // Election results for the career tab (D-05) — bundled
+                    // data only; null result leaves the section hidden.
+                    val results = runCatching {
+                        membersRepository.getElectionResults(memberId, mp?.constituency?.id)
+                    }.getOrNull()
+                    _uiState.value = _uiState.value.copy(electionResults = results)
+                }
+                launch {
                     val mpLinks = runCatching { mpLinksRepository.getLinks(memberId) }.getOrNull()
                     _uiState.value = _uiState.value.copy(mpLinks = mpLinks)
                 }
@@ -381,7 +392,8 @@ class ProfileViewModel @Inject constructor(
                     expenses = state.expenses,
                     committees = state.committees,
                     experiences = state.experiences,
-                    careerEvents = state.careerEvents
+                    careerEvents = state.careerEvents,
+                    electionResults = state.electionResults
                 )
             )
         }
@@ -523,6 +535,12 @@ class ProfileViewModel @Inject constructor(
                     }.getOrDefault(emptyList())
                     _uiState.value = _uiState.value.copy(careerEvents = careerEvents)
                 }
+                launch {
+                    val results = runCatching {
+                        membersRepository.getElectionResults(memberId, mp?.constituency?.id)
+                    }.getOrNull()
+                    _uiState.value = _uiState.value.copy(electionResults = results)
+                }
             }
 
             // Update cache with refreshed data — include ALL fields
@@ -550,7 +568,8 @@ class ProfileViewModel @Inject constructor(
                     expenses = state.expenses,
                     committees = state.committees,
                     experiences = state.experiences,
-                    careerEvents = state.careerEvents
+                    careerEvents = state.careerEvents,
+                    electionResults = state.electionResults
                 )
             )
 
