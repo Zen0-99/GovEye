@@ -67,16 +67,8 @@ class AnnouncementDetailViewModel @Inject constructor(
             } else {
                 emptyList()
             }
-            // If bodyText is missing, fetch on-demand from GOV.UK Content API (D-02)
-            var enrichedPublication = publication
-            if (publication != null && publication.bodyText.isNullOrBlank()) {
-                val bodyText = governmentAnnouncementsRepository.fetchPublicationBodyText(publication.url)
-                if (bodyText != null) {
-                    enrichedPublication = publication.copy(bodyText = bodyText)
-                }
-            }
             _state.value = AnnouncementDetailUiState(
-                publication = enrichedPublication,
+                publication = publication,
                 tags = tags,
                 isLoading = false
             )

@@ -2,6 +2,7 @@ package com.goveye.app.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.goveye.app.data.local.serialization.IntAsBooleanSerializer
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -16,6 +17,7 @@ data class InterestEntity(
     val fullCategoryName: String? = null,
     val registrationDate: String? = null,
     val publishedDate: String? = null,
+    @Serializable(with = IntAsBooleanSerializer::class)
     val rectified: Boolean,
     val fieldsJson: String,
     val lastUpdated: Long,

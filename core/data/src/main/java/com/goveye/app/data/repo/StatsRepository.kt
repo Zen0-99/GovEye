@@ -268,7 +268,6 @@ class StatsRepository @Inject constructor(
             val stats = mpStatsDao.getStats(memberId)
             if (stats != null) {
                 val monthsSinceTenure = getMonthsSinceTenureStart(memberId)
-                val committeeTenureDays = getCommitteeTenureDays(memberId)
                 // Use live participation rate (membershipStartDate-based) so
                 // the activity score's vote contribution matches the chart.
                 val liveParticipationRate = getVoteParticipationRate(memberId, house)
@@ -277,7 +276,6 @@ class StatsRepository @Inject constructor(
                     stats.questionCount,
                     stats.speechCount,
                     monthsSinceTenure,
-                    committeeTenureDays,
                     financeTraitScore
                 )
             }
@@ -288,13 +286,11 @@ class StatsRepository @Inject constructor(
         val questionCount = getQuestionCount(memberId)
         val speechCount = getSpeechCount(memberId)
         val monthsSinceTenure = getMonthsSinceTenureStart(memberId)
-        val committeeTenureDays = getCommitteeTenureDays(memberId)
         return ActivityScoreCalculator.compute(
             voteParticipationRate,
             questionCount,
             speechCount,
             monthsSinceTenure,
-            committeeTenureDays,
             financeTraitScore
         )
     }
@@ -393,124 +389,91 @@ class StatsRepository @Inject constructor(
         }
     }
 
+    /**
+     * Compute trait bars for the Performance Breakdown radar chart.
+     *
+     * Always computes from source tables — does NOT depend on mp_stats or
+     * peer_averages precomputed tables. Peer averages are obtained via
+     * SQL aggregate queries (one per metric), not 650-MP iteration.
+     *
+     * The radar chart uses:
+     * - Loyalty/Participation: mpValue (the MP's own rate 0-100) — no peer data needed
+     * - Questions/Speeches/Finance: percentile (rate-vs-average score 0-100)
+     */
     suspend fun getTraitBars(memberId: Int, house: Int, partyName: String?): List<TraitBar> {
-        if (usePrecomputed()) {
-            val stats = mpStatsDao.getStats(memberId)
-            if (stats != null) {
-                val peerAverages = getPeerAverages(house)
-                // Override participation with live computation using
-                // membershipStartDate (current unbroken tenure) so it matches
-                // the attendance chart's time window. The precomputed
-                // voteParticipationRate uses maidenSpeechDate which can span
-                // previous parliaments.
-                val liveParticipationRate = getVoteParticipationRate(memberId, house)
-
-                // Rate-based scores for Questions, Speeches, Committees.
-                // Questions/Speeches: score = (mpRate / avgRate) * 100
-                // Committees: score = (mpCount / ceiling) * 100, ceiling = 10
-                //   (5 committees = 50%, 10+ = 100%)
-                val mpYearsServed = getYearsServed(memberId)
-                val avgYearsServed = mpDao.getAverageYearsServed(house) ?: 5f
-                val mpYears = mpYearsServed.coerceAtLeast(0.5f)
-                val avgYears = avgYearsServed.coerceAtLeast(0.5f)
-                val avgQRate = peerAverages.averageQuestions / avgYears
-                val avgSRate = peerAverages.averageSpeeches / avgYears
-                val questionsScore = if (avgQRate > 0f) {
-                    ((stats.questionCount / mpYears) / avgQRate * 100f).toInt().coerceIn(0, 100)
-                } else {
-                    0
-                }
-                val speechesScore = if (avgSRate > 0f) {
-                    ((stats.speechCount / mpYears) / avgSRate * 100f).toInt().coerceIn(0, 100)
-                } else {
-                    0
-                }
-                val committeesScore = (stats.committeeCount / 10f * 100f).toInt().coerceIn(0, 100)
-
-                // Finance score: rate-vs-average, computed via shared helper for
-                // consistency with the activity score.
-                val financeScore = computeFinanceTraitScore(memberId, house)
-                val mpInterestCount = interestDao.countInterestsForMember(memberId)
-                val mpExpenseCount = expenseDao.countExpensesForMember(memberId)
-                val mpFinanceCount = (mpInterestCount + mpExpenseCount).toFloat()
-                val avgInterestCount = interestDao.getAverageInterestCount(house) ?: 0f
-                val avgExpenseCount = expenseDao.getAverageExpenseCount(house) ?: 0f
-                val avgFinanceCount = avgInterestCount + avgExpenseCount
-
-                // Build trait bars — Loyalty/Participation use percentile rank,
-                // Questions/Speeches/Committees/Finance use rate-based normalized scores.
-                return listOf(
-                    TraitBar(
-                        label = "Loyalty",
-                        percentile = 100 - stats.rebellionPercentile,
-                        mpValue = (1f - stats.rebellionRate) * 100,
-                        peerAverage = (1f - peerAverages.averageRebellion) * 100
-                    ),
-                    TraitBar(
-                        label = "Participation",
-                        percentile = stats.participationPercentile,
-                        mpValue = liveParticipationRate * 100,
-                        peerAverage = peerAverages.averageParticipation * 100
-                    ),
-                    TraitBar(
-                        label = "Questions",
-                        percentile = questionsScore,
-                        mpValue = stats.questionCount.toFloat(),
-                        peerAverage = peerAverages.averageQuestions
-                    ),
-                    TraitBar(
-                        label = "Speeches",
-                        percentile = speechesScore,
-                        mpValue = stats.speechCount.toFloat(),
-                        peerAverage = peerAverages.averageSpeeches
-                    ),
-                    TraitBar(
-                        label = "Committees",
-                        percentile = committeesScore,
-                        mpValue = stats.committeeCount.toFloat(),
-                        peerAverage = peerAverages.averageCommittees
-                    ),
-                    TraitBar(
-                        label = "Finance",
-                        percentile = financeScore,
-                        mpValue = mpFinanceCount,
-                        peerAverage = avgFinanceCount
-                    )
-                )
-            }
-        }
-
-        // Fallback: full runtime computation
+        // MP's own values — all single-row DAO calls
         val rebellionRate = getRebellionRate(memberId, partyName)
         val participationRate = getVoteParticipationRate(memberId, house)
-        val questionCount = getQuestionCount(memberId)
-        val speechCount = getSpeechCount(memberId)
-        val committeeCount = getCommitteeCount(memberId)
-        val peerAverages = getPeerAverages(house)
+        val questionCount = hansardDao.countContributionsForMember(memberId)
+        val speechCount = debateSpeechDao.countSpeechesForMember(memberId)
         val mpYearsServed = getYearsServed(memberId)
-        val avgYearsServed = mpDao.getAverageYearsServed(house) ?: 5f
+        val avgYearsServed = (mpDao.getAverageYearsServed(house) ?: 5f).coerceAtLeast(0.5f)
+        val mpYears = mpYearsServed.coerceAtLeast(0.5f)
 
-        // Finance counts (runtime — not precomputed)
+        // Peer averages — SQL aggregate queries (one per metric, near-instant)
+        val houseName = if (house == 2) "Lords" else "Commons"
+        val avgQuestionCount = hansardDao.getAverageContributionCount(houseName) ?: 0f
+        val avgSpeechCount = debateSpeechDao.getAverageSpeechCount(house) ?: 0f
         val mpInterestCount = interestDao.countInterestsForMember(memberId)
         val mpExpenseCount = expenseDao.countExpensesForMember(memberId)
-        val financeCount = mpInterestCount + mpExpenseCount
+        val mpFinanceCount = (mpInterestCount + mpExpenseCount).toFloat()
         val avgInterestCount = interestDao.getAverageInterestCount(house) ?: 0f
         val avgExpenseCount = expenseDao.getAverageExpenseCount(house) ?: 0f
         val avgFinanceCount = avgInterestCount + avgExpenseCount
 
-        val peerRebellionRates = getPeerValues("rebellionRate", house)
-        val peerParticipationRates = getPeerValues("participationRate", house)
-        val peerQuestionCounts = getPeerValues("questionCount", house).map { it.toInt() }
-        val peerSpeechCounts = getPeerValues("speechCount", house).map { it.toInt() }
-        val peerCommitteeCounts = getPeerValues("committeeCount", house).map { it.toInt() }
+        // Rate-vs-average scores for count-based traits.
+        // score = (mpRate / avgRate) * 100, where rate = count / yearsServed.
+        // An MP at the average rate scores 100%.
+        val avgQRate = avgQuestionCount / avgYearsServed
+        val avgSRate = avgSpeechCount / avgYearsServed
+        val avgFRate = avgFinanceCount / avgYearsServed
+        val questionsScore = if (avgQRate > 0f) {
+            ((questionCount / mpYears) / avgQRate * 100f).toInt().coerceIn(0, 100)
+        } else {
+            0
+        }
+        val speechesScore = if (avgSRate > 0f) {
+            ((speechCount / mpYears) / avgSRate * 100f).toInt().coerceIn(0, 100)
+        } else {
+            0
+        }
+        val financeScore = if (avgFRate > 0f) {
+            ((mpFinanceCount / mpYears) / avgFRate * 100f).toInt().coerceIn(0, 100)
+        } else {
+            0
+        }
 
-        return TraitBarCalculator.compute(
-            rebellionRate, participationRate, questionCount, speechCount, committeeCount,
-            mpYearsServed, avgYearsServed,
-            peerRebellionRates, peerParticipationRates,
-            peerQuestionCounts, peerSpeechCounts, peerCommitteeCounts,
-            peerAverages,
-            financeCount, avgFinanceCount
+        return listOf(
+            TraitBar(
+                label = "Loyalty",
+                percentile = 0, // not used by radar chart (uses mpValue)
+                mpValue = (1f - rebellionRate) * 100,
+                peerAverage = 0f // not displayed by radar chart
+            ),
+            TraitBar(
+                label = "Participation",
+                percentile = 0, // not used by radar chart (uses mpValue)
+                mpValue = participationRate * 100,
+                peerAverage = 0f
+            ),
+            TraitBar(
+                label = "Questions",
+                percentile = questionsScore,
+                mpValue = questionCount.toFloat(),
+                peerAverage = avgQuestionCount
+            ),
+            TraitBar(
+                label = "Speeches",
+                percentile = speechesScore,
+                mpValue = speechCount.toFloat(),
+                peerAverage = avgSpeechCount
+            ),
+            TraitBar(
+                label = "Finance",
+                percentile = financeScore,
+                mpValue = mpFinanceCount,
+                peerAverage = avgFinanceCount
+            )
         )
     }
 

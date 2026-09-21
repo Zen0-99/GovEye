@@ -26,6 +26,7 @@ import com.goveye.app.domain.stats.AttendanceTrend
 import com.goveye.app.domain.stats.MonthlyVotingData
 import com.goveye.app.domain.stats.RebellionTrend
 import com.goveye.app.ui.components.VoteColors
+import com.goveye.app.ui.components.cardSurfaceColor
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.compose.cartesian.axis.VerticalAxis
@@ -88,16 +89,14 @@ fun VotingBarChart(data: List<MonthlyVotingData>, modifier: Modifier = Modifier)
     }
 
     Column(modifier = modifier.fillMaxWidth()) {
-        // Title + legend above the card (heading-above-section design)
-        ChartHeaderWithLegend(
+        ChartCard(
             title = "Voting Pattern",
             legendItems = listOf(
                 "Ayes" to AyeColor,
                 "Noes" to NoColor,
                 "No vote" to NoVoteColor
             )
-        )
-        ChartCard {
+        ) {
             ProvideVicoTheme(theme = rememberM3VicoTheme()) {
                 CartesianChartHost(
                     chart = rememberCartesianChart(
@@ -158,8 +157,7 @@ fun AttendanceLineChart(data: List<AttendanceTrend>, modifier: Modifier = Modifi
     }
 
     Column(modifier = modifier.fillMaxWidth()) {
-        ChartHeader(title = "Attendance Rate")
-        ChartCard {
+        ChartCard(title = "Attendance Rate") {
             ProvideVicoTheme(theme = rememberM3VicoTheme()) {
                 CartesianChartHost(
                     chart = rememberCartesianChart(
@@ -224,8 +222,7 @@ fun RebellionLineChart(data: List<RebellionTrend>, modifier: Modifier = Modifier
     }
 
     Column(modifier = modifier.fillMaxWidth()) {
-        ChartHeader(title = "Party Loyalty Trend")
-        ChartCard {
+        ChartCard(title = "Party Loyalty Trend") {
             ProvideVicoTheme(theme = rememberM3VicoTheme()) {
                 CartesianChartHost(
                     chart = rememberCartesianChart(
@@ -257,76 +254,73 @@ fun RebellionLineChart(data: List<RebellionTrend>, modifier: Modifier = Modifier
 
 /**
  * Rounded card wrapper for chart sections.
+ * Title and optional legend are rendered inside the card.
  */
 @Composable
-fun ChartCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+fun ChartCard(
+    title: String? = null,
+    modifier: Modifier = Modifier,
+    legendItems: List<Pair<String, Color>>? = null,
+    content: @Composable () -> Unit
+) {
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer
+        color = cardSurfaceColor()
     ) {
         Column(
-            modifier = Modifier.padding(8.dp)
+            modifier = Modifier.padding(16.dp)
         ) {
-            content()
-        }
-    }
-}
-
-/**
- * Chart header with title only.
- */
-@Composable
-fun ChartHeader(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.titleSmall,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.padding(bottom = 4.dp)
-    )
-}
-
-/**
- * Chart header with title and inline legend on the same row.
- */
-@Composable
-fun ChartHeaderWithLegend(title: String, legendItems: List<Pair<String, Color>>) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            legendItems.forEach { (label, color) ->
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(3.dp)
-                ) {
-                    Box(
+            if (title != null) {
+                if (legendItems != null) {
+                    Row(
                         modifier = Modifier
-                            .size(8.dp)
-                            .clip(RoundedCornerShape(2.dp))
-                            .background(color)
-                    )
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            legendItems.forEach { (label, color) ->
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(8.dp)
+                                            .clip(RoundedCornerShape(2.dp))
+                                            .background(color)
+                                    )
+                                    Text(
+                                        text = label,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                } else {
                     Text(
-                        text = label,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = title,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(bottom = 8.dp)
                     )
                 }
             }
+            content()
         }
     }
 }

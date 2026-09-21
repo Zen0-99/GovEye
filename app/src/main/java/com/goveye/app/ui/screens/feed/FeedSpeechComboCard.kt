@@ -34,26 +34,34 @@ import com.goveye.app.ui.components.cardSurfaceColor
 import com.goveye.app.ui.components.rememberExpandState
 
 /**
- * **Speech — inverted pull-quote.**
+ * **Speech combo — multiple speech segments from the same MP on the same date.**
  *
- * The words lead. A large quiet quote glyph opens the card, the speech runs
- * at reading size in italic with generous leading, and the speaker's portrait
- * and name arrive *underneath* as an attribution — the opposite order to
- * every other card in the feed, which all announce their subject first.
+ * When an MP speaks multiple times in a debate (each segment ends when
+ * another MP starts talking), the segments are grouped into this combo card
+ * instead of showing 5 separate cards. Speech texts are joined with "[...]"
+ * separators.
  *
- * Tapping expands to the full text plus a transcript link.
+ * Closed: max 3 lines. Open: max 18 lines (excluding [...] separators)
+ * before truncating with "View full transcript".
+ *
+ * Layout mirrors [FeedSpeechCard]: quote glyph, italic text, attribution bar
+ * with avatar + name + debate title + date.
  */
 @Composable
-fun FeedSpeechCard(
-    item: FeedItem.SpeechItem,
+fun FeedSpeechComboCard(
+    item: FeedItem.SpeechComboItem,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     onNavigateToTranscript: ((Int, String, String) -> Unit)? = null,
-    onTagClick: (String) -> Unit = {},
-    onProfileClick: (() -> Unit)? = null,
-    showMember: Boolean = true
+    onProfileClick: (() -> Unit)? = null
 ) {
     val expandState = rememberExpandState()
+
+    // Join speech texts with [...] separators
+    val combinedText = item.speeches.joinToString("\n\n[...]\n\n") { it.speechText }
+
+    // First speech for metadata
+    val firstSpeech = item.speeches.first()
 
     Surface(
         modifier = modifier
@@ -73,7 +81,7 @@ fun FeedSpeechCard(
             )
 
             Text(
-                text = item.speechText,
+                text = combinedText,
                 style = MaterialTheme.typography.bodyLarge.copy(fontStyle = FontStyle.Italic),
                 lineHeight = 25.sp,
                 maxLines = if (expandState.expanded) 18 else 3,
@@ -84,7 +92,13 @@ fun FeedSpeechCard(
             ExpandableContent(state = expandState) {
                 if (onNavigateToTranscript != null) {
                     TextButton(
-                        onClick = { onNavigateToTranscript(item.divisionId, item.divisionTitle, item.speechGid) },
+                        onClick = {
+                            onNavigateToTranscript(
+                                firstSpeech.divisionId,
+                                firstSpeech.divisionTitle,
+                                firstSpeech.speechGid
+                            )
+                        },
                         modifier = Modifier.padding(start = 8.dp)
                     ) {
                         Icon(
@@ -92,16 +106,14 @@ fun FeedSpeechCard(
                             contentDescription = null,
                             modifier = Modifier.padding(end = 4.dp).height(16.dp)
                         )
-                        Text("See full transcript", style = MaterialTheme.typography.labelMedium)
+                        Text("View full transcript", style = MaterialTheme.typography.labelMedium)
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Attribution bar — tinted strip matching the statement card.
-            // Uses primary color tint for visual consistency with statement
-            // and division cards.
+            // Attribution bar — tinted strip matching the statement card
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -109,45 +121,33 @@ fun FeedSpeechCard(
                     .padding(horizontal = 16.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (showMember) {
-                    MpAvatar(
-                        thumbnailUrl = item.memberPhotoUrl,
-                        displayName = item.memberName,
-                        partyColorHex = item.memberPartyColorHex,
-                        size = 28.dp,
-                        borderWidth = 1.dp,
-                        modifier = if (onProfileClick != null) {
-                            Modifier.clickable { onProfileClick() }
-                        } else {
-                            Modifier
-                        }
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = item.memberName,
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = item.divisionTitle,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                MpAvatar(
+                    thumbnailUrl = item.memberPhotoUrl,
+                    displayName = item.memberName,
+                    partyColorHex = item.memberPartyColorHex,
+                    size = 28.dp,
+                    borderWidth = 1.dp,
+                    modifier = if (onProfileClick != null) {
+                        Modifier.clickable { onProfileClick() }
+                    } else {
+                        Modifier
                     }
-                } else {
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = item.divisionTitle,
+                        text = item.memberName,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "${item.speeches.size} speeches · ${firstSpeech.divisionTitle}",
+                        style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
                 Spacer(modifier = Modifier.width(10.dp))

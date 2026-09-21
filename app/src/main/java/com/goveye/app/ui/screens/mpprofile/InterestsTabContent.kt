@@ -1,15 +1,19 @@
-package com.goveye.app.ui.screens.mpprofile
+﻿package com.goveye.app.ui.screens.mpprofile
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -35,10 +39,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.goveye.app.data.local.dao.ExpenseBucketTotal
+import com.goveye.app.data.local.entity.ExpenseEntity
 import com.goveye.app.domain.model.Interest
+import com.goveye.app.ui.components.VoteColors
 import com.goveye.app.ui.screens.feed.BUCKET_ICONS
 import com.goveye.app.ui.screens.feed.BUCKET_ORDER
 import com.goveye.app.ui.screens.feed.bucketIcon
@@ -57,6 +64,7 @@ fun InterestsTabContent(
     memberId: Int,
     interests: List<Interest>,
     expenseBucketTotals: List<ExpenseBucketTotal> = emptyList(),
+    expenses: List<ExpenseEntity> = emptyList(),
     onNavigateToBucketDetail: (String) -> Unit,
     onNavigateToExpenseBucket: (String) -> Unit = {},
     showFilterSheet: Boolean = false,
@@ -72,12 +80,24 @@ fun InterestsTabContent(
     // global search bar's filter icon can trigger the sheet and report
     // hasActiveFilters. The values are passed in from MpProfileScreen.
 
-    // --- Monthly navigation state (D-07) ---
-    // Default to the most recent month that has interests, or current month if empty
-    val monthsWithData = remember(interests) { extractMonths(interests) }
-    var selectedMonthIndex by remember(interests) {
+    // --- Period selection ---
+    // Months are drawn from BOTH income (registrationDate) and expenses
+    // (claimDate) so switching month moves income and expenses together.
+    val monthsWithData = remember(interests, expenses) {
+        val incomeMonths = extractMonths(interests)
+        val expenseMonths = expenses.mapNotNull { e ->
+            e.claimDate?.takeIf { it.length >= 7 }?.let {
+                runCatching { YearMonth.parse(it.take(7)) }.getOrNull()
+            }
+        }
+        (incomeMonths + expenseMonths).distinct().sorted()
+    }
+    var selectedMonthIndex by remember(interests, expenses) {
         mutableStateOf(if (monthsWithData.isNotEmpty()) monthsWithData.lastIndex else 0)
     }
+    // All time is the default view — the headline figures describe the whole
+    // record, and the user opts into a single month.
+    var allTime by remember(interests, expenses) { mutableStateOf(true) }
 
     // Apply date filter to the interests list
     val filteredInterests = remember(interests, fromDate, toDate) {
@@ -114,7 +134,7 @@ fun InterestsTabContent(
         return
     }
 
-    if (interests.isEmpty() && expenseBucketTotals.isEmpty()) {
+    if (interests.isEmpty() && expenseBucketTotals.isEmpty() && expenses.isEmpty()) {
         // --- Empty state (R2) ---
         Box(
             modifier = modifier.fillMaxSize(),
@@ -187,27 +207,52 @@ fun InterestsTabContent(
         deduplicateInterests(filteredInterests)
     }
 
-    val totalPence = remember(dedupedInterests) {
-        dedupedInterests.sumOf { it.parsedAmountPence ?: 0L }
-    }
-
-    // Monthly data: interests in the selected month + previous month for trend
-    // Uses registrationDate (when the interest was actually declared), not
-    // publishedDate (which can be much later due to re-publication)
     val selectedMonth = if (monthsWithData.isNotEmpty()) monthsWithData[selectedMonthIndex] else YearMonth.now()
-    val previousMonth = selectedMonth.minusMonths(1)
-    val currentMonthPence = sumPenceForMonth(dedupedInterests, selectedMonth)
-    val previousMonthPence = sumPenceForMonth(dedupedInterests, previousMonth)
-    val percentChange = computePercentChange(currentMonthPence, previousMonthPence)
 
-    // Bucket summaries (from deduplicated interests)
-    val bucketSummaries = remember(dedupedInterests) {
-        computeBucketSummaries(dedupedInterests)
+    // --- Period-scoped income and expenses ---
+    // When [allTime] is true every entry counts; otherwise only the selected
+    // month. Income uses registrationDate (when it was actually declared),
+    // expenses use claimDate.
+    val periodInterests = remember(dedupedInterests, allTime, selectedMonth) {
+        if (allTime) {
+            dedupedInterests
+        } else {
+            dedupedInterests.filter { interestMonth(it) == selectedMonth }
+        }
+    }
+    val periodExpenses = remember(expenses, allTime, selectedMonth) {
+        if (allTime) {
+            expenses
+        } else {
+            expenses.filter { e ->
+                e.claimDate?.takeIf { it.length >= 7 }?.let {
+                    runCatching { YearMonth.parse(it.take(7)) }.getOrNull()
+                } == selectedMonth
+            }
+        }
     }
 
-    // Count only entries with a parsed monetary amount (non-null)
-    val monetaryEntryCount = remember(dedupedInterests) {
-        dedupedInterests.count { it.parsedAmountPence != null }
+    val incomePence = remember(periodInterests) { periodInterests.sumOf { it.parsedAmountPence ?: 0L } }
+    val expensesPence = remember(periodExpenses) { periodExpenses.sumOf { it.amountPence } }
+    val netPence = incomePence - expensesPence
+
+    // Bucket summaries scoped to the selected period
+    val bucketSummaries = remember(periodInterests) {
+        computeBucketSummaries(periodInterests)
+    }
+
+    // Expense bucket totals — recomputed from the period's expenses so the
+    // cards track the month selector. Falls back to the pre-aggregated
+    // totals when no dated expense rows are available (e.g. microview).
+    val periodExpenseBuckets = remember(periodExpenses, expenseBucketTotals, allTime) {
+        if (expenses.isEmpty()) {
+            expenseBucketTotals
+        } else {
+            periodExpenses
+                .groupBy { it.bucket }
+                .map { (bucket, rows) -> ExpenseBucketTotal(bucket, rows.sumOf { it.amountPence }) }
+                .sortedByDescending { it.totalPence }
+        }
     }
 
     LazyVerticalGrid(
@@ -220,43 +265,65 @@ fun InterestsTabContent(
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small)
     ) {
-        // --- Header: total + monthly navigation ---
+        // --- Header: net position + income/expenses + period selector ---
         item(span = { GridItemSpan(2) }) {
-            InterestsDashboardHeader(
-                totalPence = totalPence,
-                totalEntryCount = monetaryEntryCount,
+            FinancesSummaryHeader(
+                netPence = netPence,
+                incomePence = incomePence,
+                expensesPence = expensesPence,
+                allTime = allTime,
                 selectedMonth = selectedMonth,
-                currentMonthPence = currentMonthPence,
-                percentChange = percentChange,
+                hasMonths = monthsWithData.isNotEmpty(),
                 hasPreviousMonth = selectedMonthIndex > 0,
                 hasNextMonth = selectedMonthIndex < monthsWithData.lastIndex,
                 onPreviousMonth = { if (selectedMonthIndex > 0) selectedMonthIndex-- },
-                onNextMonth = { if (selectedMonthIndex < monthsWithData.lastIndex) selectedMonthIndex++ }
+                onNextMonth = { if (selectedMonthIndex < monthsWithData.lastIndex) selectedMonthIndex++ },
+                onAllTimeChange = { allTime = it }
             )
         }
 
         // --- Income section (registered interests) ---
-        item(span = { GridItemSpan(2) }) {
-            IncomeSectionHeader()
-        }
-        items(bucketSummaries, key = { it.bucketLabel }) { summary ->
-            BucketSummaryCard(
-                summary = summary,
-                onClick = { onNavigateToBucketDetail(summary.bucketLabel) }
-            )
+        if (bucketSummaries.isNotEmpty()) {
+            item(span = { GridItemSpan(2) }) {
+                IncomeSectionHeader()
+            }
+            items(bucketSummaries, key = { it.bucketLabel }) { summary ->
+                BucketSummaryCard(
+                    summary = summary,
+                    onClick = { onNavigateToBucketDetail(summary.bucketLabel) }
+                )
+            }
         }
 
         // --- Expenses section (IPSA) — centered cards matching income style ---
-        if (expenseBucketTotals.isNotEmpty()) {
+        if (periodExpenseBuckets.isNotEmpty()) {
             item(span = { GridItemSpan(2) }) {
                 ExpenseSectionHeader()
             }
-            items(expenseBucketTotals, key = { "expense_${it.bucket}" }) { total ->
+            items(periodExpenseBuckets, key = { "expense_${it.bucket}" }) { total ->
                 ExpenseBucketSummaryCard(
                     bucketLabel = total.bucket,
                     totalPence = total.totalPence,
                     onClick = { onNavigateToExpenseBucket(total.bucket) }
                 )
+            }
+        }
+
+        // Nothing declared in the chosen month
+        if (bucketSummaries.isEmpty() && periodExpenseBuckets.isEmpty()) {
+            item(span = { GridItemSpan(2) }) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Nothing declared in ${
+                            selectedMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy"))
+                        }",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }
@@ -277,108 +344,204 @@ fun InterestsTabContent(
     }
 }
 
+/**
+ * Finances hero card.
+ *
+ * Net position leads — income minus expenses — because that is the figure
+ * that actually answers "did this MP take more than they spent". Income and
+ * expenses then sit side by side underneath as the two halves that make it
+ * up, colour-coded with the same teal/orange pair the vote cards use.
+ *
+ * The period selector governs all three figures *and* the bucket cards below,
+ * so "All time" and a single month are the same reading at two zoom levels.
+ */
 @Composable
-private fun InterestsDashboardHeader(
-    totalPence: Long,
-    totalEntryCount: Int,
+private fun FinancesSummaryHeader(
+    netPence: Long,
+    incomePence: Long,
+    expensesPence: Long,
+    allTime: Boolean,
     selectedMonth: YearMonth,
-    currentMonthPence: Long,
-    percentChange: Float?,
+    hasMonths: Boolean,
     hasPreviousMonth: Boolean,
     hasNextMonth: Boolean,
     onPreviousMonth: () -> Unit,
-    onNextMonth: () -> Unit
+    onNextMonth: () -> Unit,
+    onAllTimeChange: (Boolean) -> Unit
 ) {
+    val incomeColor = VoteColors.aye
+    val expenseColor = VoteColors.no
+    val netColor = when {
+        netPence > 0 -> incomeColor
+        netPence < 0 -> expenseColor
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer
+        color = com.goveye.app.ui.components.cardSurfaceColor(netColor)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // Total sum
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Column {
-                    Text(
-                        text = "Total Declared",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = formatPence(totalPence),
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
                 Text(
-                    text = "$totalEntryCount entries",
-                    style = MaterialTheme.typography.bodySmall,
+                    text = "Net position",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = formatSignedPence(netPence),
+                    style = MaterialTheme.typography.displaySmall,
+                    fontWeight = FontWeight.Bold,
+                    color = netColor
+                )
+                Text(
+                    text = if (allTime) {
+                        "Declared income minus expenses, all time"
+                    } else {
+                        "Declared income minus expenses, " +
+                            selectedMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy"))
+                    },
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
-            // Monthly navigation: < March 2025 >
+            // Income / expenses split — the two halves of the net figure
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                IconButton(
-                    onClick = onPreviousMonth,
-                    enabled = hasPreviousMonth
-                ) {
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Previous month")
-                }
-                Text(
-                    text = selectedMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy")),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
+                FinanceStatTile(
+                    label = "Income",
+                    amount = formatPence(incomePence),
+                    modifier = Modifier.weight(1f)
                 )
-                IconButton(
-                    onClick = onNextMonth,
-                    enabled = hasNextMonth
-                ) {
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Next month")
-                }
+                FinanceStatTile(
+                    label = "Expenses",
+                    amount = formatPence(expensesPence),
+                    modifier = Modifier.weight(1f)
+                )
             }
 
-            // Monthly trend: GBP amount + percentage change vs previous month
-            if (currentMonthPence > 0 || percentChange != null) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = formatPence(currentMonthPence),
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.SemiBold
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Period selector — All time vs a single month, in the tinted
+            // strip the feed cards use for their attribution bar.
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                PeriodChip(
+                    label = "All time",
+                    selected = allTime,
+                    onClick = { onAllTimeChange(true) }
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                if (hasMonths) {
+                    PeriodChip(
+                        label = "By month",
+                        selected = !allTime,
+                        onClick = { onAllTimeChange(false) }
                     )
-                    if (percentChange != null) {
-                        val arrow = if (percentChange >= 0) "▲" else "▼"
-                        val color = if (percentChange >= 0) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.error
-                        }
-                        Text(
-                            text = " $arrow ${"%.0f".format(
-                                kotlin.math.abs(percentChange)
-                            )}% vs ${selectedMonth.minusMonths(1).format(DateTimeFormatter.ofPattern("MMM"))}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = color,
-                            fontWeight = FontWeight.Medium
+                }
+                Spacer(modifier = Modifier.weight(1f))
+                // Month steppers — only meaningful in by-month mode
+                if (!allTime && hasMonths) {
+                    IconButton(
+                        onClick = onPreviousMonth,
+                        enabled = hasPreviousMonth,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                            contentDescription = "Previous month",
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Text(
+                        text = selectedMonth.format(DateTimeFormatter.ofPattern("MMM yyyy")),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(horizontal = 2.dp)
+                    )
+                    IconButton(
+                        onClick = onNextMonth,
+                        enabled = hasNextMonth,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = "Next month",
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
             }
         }
+    }
+}
+
+/** One half of the income/expenses split under the net figure.
+ * Neutral surface — no accent tint. Only the Net position headline
+ * carries the surplus/shortfall colour. */
+@Composable
+private fun FinanceStatTile(label: String, amount: String, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = amount,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1
+        )
+    }
+}
+
+/** Selectable pill used by the period selector. */
+@Composable
+private fun PeriodChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    Surface(
+        shape = RoundedCornerShape(50),
+        color = if (selected) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerHigh
+        },
+        modifier = Modifier.clip(RoundedCornerShape(50)).clickable(onClick = onClick)
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+            color = if (selected) {
+                MaterialTheme.colorScheme.onPrimary
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+        )
     }
 }
 
@@ -392,7 +555,7 @@ private fun BucketSummaryCard(summary: BucketSummary, onClick: () -> Unit) {
             .clip(RoundedCornerShape(12.dp))
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer
+        color = com.goveye.app.ui.components.cardSurfaceColor()
     ) {
         Column(
             modifier = Modifier.padding(MaterialTheme.padding.medium),
@@ -434,7 +597,7 @@ private fun ExpenseBucketSummaryCard(bucketLabel: String, totalPence: Long, onCl
             .clip(RoundedCornerShape(12.dp))
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer
+        color = com.goveye.app.ui.components.cardSurfaceColor()
     ) {
         Column(
             modifier = Modifier.padding(MaterialTheme.padding.medium),
@@ -505,23 +668,11 @@ private fun extractMonths(interests: List<Interest>): List<YearMonth> = interest
     .sorted()
 
 /**
- * Sums `parsedAmountPence` for interests whose `registrationDate` falls in the given month.
- * Uses registrationDate (actual declaration date) not publishedDate.
+ * The month an interest was declared in, from `registrationDate`
+ * (actual declaration date) not `publishedDate`.
  */
-private fun sumPenceForMonth(interests: List<Interest>, month: YearMonth): Long = interests.filter { interest ->
-    val date = interest.registrationDate
-    date != null && runCatching {
-        YearMonth.from(LocalDate.parse(date.substring(0, 10)))
-    }.getOrNull() == month
-}.sumOf { it.parsedAmountPence ?: 0L }
-
-/**
- * Computes the percentage change from [previous] to [current].
- * Returns null if previous is 0 (can't compute % of zero) or both are 0.
- */
-private fun computePercentChange(current: Long, previous: Long): Float? {
-    if (previous == 0L) return null
-    return ((current - previous).toFloat() / previous.toFloat()) * 100f
+private fun interestMonth(interest: Interest): YearMonth? = interest.registrationDate?.let { date ->
+    runCatching { YearMonth.from(LocalDate.parse(date.substring(0, 10))) }.getOrNull()
 }
 
 // --- IPSA Expense section ---
@@ -561,6 +712,15 @@ private fun formatPenceToGbp(pence: Long): String {
     } else {
         "£${String.format("%,.2f", pounds)}"
     }
+}
+
+/**
+ * Formats a net figure with an explicit sign so a surplus and a shortfall are
+ * never mistaken for each other: 500000 -> "+£5,000", -500000 -> "-£5,000".
+ */
+private fun formatSignedPence(pence: Long): String = when {
+    pence > 0 -> "+${formatPence(pence)}"
+    else -> formatPence(pence)
 }
 
 /**

@@ -1,4 +1,4 @@
-package com.goveye.app.ui.screens.mpprofile
+﻿package com.goveye.app.ui.screens.mpprofile
 
 import android.content.Intent
 import android.net.Uri
@@ -34,6 +34,10 @@ import com.goveye.app.domain.model.ActivityEntry
 import com.goveye.app.domain.model.ActivityEntryType
 import com.goveye.app.ui.components.VoteColors
 import com.goveye.app.ui.screens.feed.FeedDateHeader
+import com.goveye.app.ui.screens.feed.FeedItem
+import com.goveye.app.ui.screens.feed.FeedMpVoteCard
+import com.goveye.app.ui.screens.feed.FeedSpeechCard
+import com.goveye.app.ui.screens.feed.FeedWrittenQuestionCard
 import com.goveye.app.ui.screens.feed.FinancialDetailField
 import com.goveye.app.ui.screens.feed.TagPillRow
 import com.goveye.app.ui.screens.feed.UnifiedFinancialCard
@@ -93,12 +97,52 @@ fun ActivityTabContent(
                 }
                 items(entries, key = { it.id }) { entry ->
                     when (entry.entryType) {
-                        ActivityEntryType.VOTE -> ActivityVoteCard(
-                            entry,
-                            onClick = { onNavigateToDivision(entry.divisionId!!, entry.house!!) }
+                        // Reuses the feed's vote card. showMember = false drops
+                        // the MP avatar/name — this page is already about them.
+                        ActivityEntryType.VOTE -> FeedMpVoteCard(
+                            item = FeedItem.MpVoteItem(
+                                memberId = 0,
+                                memberName = "",
+                                memberPartyColorHex = null,
+                                memberPhotoUrl = null,
+                                vote = when (entry.voteResult) {
+                                    "Aye" -> "AYE"
+                                    "No" -> "NO"
+                                    else -> "NO VOTE RECORDED"
+                                },
+                                divisionId = entry.divisionId ?: 0,
+                                divisionTitle = entry.divisionTitle ?: entry.summary,
+                                divisionHouse = entry.house ?: 1,
+                                ayeCount = 0,
+                                noCount = 0,
+                                date = entry.date
+                            ),
+                            onClick = { onNavigateToDivision(entry.divisionId!!, entry.house!!) },
+                            showMember = false
                         )
 
-                        ActivityEntryType.QUESTION -> ActivityQuestionCard(entry)
+                        // Reuses the feed's written-question card, passing the
+                        // answer fields the feed itself does not carry.
+                        ActivityEntryType.QUESTION -> FeedWrittenQuestionCard(
+                            item = FeedItem.WrittenQuestionItem(
+                                memberId = 0,
+                                memberName = "",
+                                memberPartyColorHex = null,
+                                memberPhotoUrl = null,
+                                questionText = entry.questionText ?: entry.summary,
+                                heading = entry.heading ?: "",
+                                answeringBodyName = entry.answeringBodyName ?: "",
+                                uin = entry.uin ?: "",
+                                questionId = entry.id.hashCode(),
+                                date = entry.date
+                            ),
+                            onClick = {},
+                            showMember = false,
+                            answerText = entry.answerText,
+                            answerIsHolding = entry.answerIsHolding == true,
+                            dateAnswered = entry.dateAnswered,
+                            isWithdrawn = entry.isWithdrawn == true
+                        )
 
                         ActivityEntryType.INCOME -> {
                             val whoOrWhere = entry.donorName?.takeIf { it.isNotBlank() }
@@ -153,183 +197,23 @@ fun ActivityTabContent(
 
                         ActivityEntryType.CAREER -> ActivityCareerCard(entry)
 
-                        ActivityEntryType.SPEECH -> ActivitySpeechCard(
-                            entry,
-                            onClick = { onNavigateToDivision(entry.divisionId!!, 1) }
+                        // Reuses the feed's speech pull-quote card.
+                        ActivityEntryType.SPEECH -> FeedSpeechCard(
+                            item = FeedItem.SpeechItem(
+                                memberId = 0,
+                                memberName = "",
+                                memberPartyColorHex = null,
+                                memberPhotoUrl = null,
+                                speechText = entry.speechText ?: entry.summary,
+                                divisionId = entry.divisionId ?: 0,
+                                divisionTitle = entry.divisionTitle ?: entry.summary,
+                                date = entry.date
+                            ),
+                            onClick = { onNavigateToDivision(entry.divisionId!!, 1) },
+                            showMember = false
                         )
                     }
                 }
-            }
-        }
-    }
-}
-
-// --- Vote card (D-02 — simplified: division title, aye/no badge, date only) ---
-
-@Composable
-fun ActivityVoteCard(entry: ActivityEntry, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainer)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        val ayeColor = VoteColors.aye
-        val noColor = VoteColors.no
-        val result = entry.voteResult ?: "—"
-        Box(
-            modifier = Modifier
-                .size(32.dp)
-                .clip(RoundedCornerShape(6.dp))
-                .background(
-                    when (result) {
-                        "Aye" -> ayeColor
-                        "No" -> noColor
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-                    }
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = result,
-                style = MaterialTheme.typography.labelSmall,
-                color = Color.White,
-                fontWeight = FontWeight.Bold
-            )
-        }
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = entry.divisionTitle ?: entry.summary,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = formatActivityDate(entry.date),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-// --- Question card (D-03 — truncated question text, answering body, date tabled) ---
-
-@Composable
-fun ActivityQuestionCard(entry: ActivityEntry) {
-    val context = LocalContext.current
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainer)
-            .clickable {
-                entry.uin?.let { uin ->
-                    runCatching {
-                        val intent = Intent(
-                            Intent.ACTION_VIEW,
-                            Uri.parse("https://www.theyworkforyou.com/wrans/?id=$uin")
-                        )
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        context.startActivity(intent)
-                    }
-                }
-            }
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            // Heading (topic) if available
-            entry.heading?.let { heading ->
-                Text(
-                    text = heading,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.primary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-            }
-            // Question text
-            Text(
-                text = entry.questionText ?: entry.summary,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            // Answer text (if answered)
-            val answerText = entry.answerText
-            if (!answerText.isNullOrBlank()) {
-                Spacer(modifier = Modifier.height(6.dp))
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerHighest
-                ) {
-                    Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-                        Text(
-                            text = if (entry.answerIsHolding == true) "Holding Answer" else "Answer",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = answerText,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 3,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        entry.dateAnswered?.let { dateAns ->
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = "Answered ${formatActivityDate(dateAns)}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-            } else if (entry.isWithdrawn == true) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Withdrawn",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.error
-                )
-            } else {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Awaiting answer",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            // Answering body + date tabled
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                entry.answeringBodyName?.let { body ->
-                    Text(
-                        text = body,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Text(
-                    text = formatActivityDate(entry.date),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
         }
     }
@@ -343,7 +227,7 @@ fun ActivityCommitteeCard(entry: ActivityEntry) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .background(com.goveye.app.ui.components.cardSurfaceColor())
             .padding(horizontal = 16.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -383,7 +267,7 @@ fun ActivityCareerCard(entry: ActivityEntry) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .background(com.goveye.app.ui.components.cardSurfaceColor())
             .padding(horizontal = 16.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -408,41 +292,6 @@ fun ActivityCareerCard(entry: ActivityEntry) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-        }
-    }
-}
-
-// --- Speech card (17-07 — 3 lines of speech text + inherited division tags) ---
-
-@Composable
-fun ActivitySpeechCard(entry: ActivityEntry, onClick: () -> Unit) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            // Speech text — 3 lines, truncated with ellipsis (LOCKED per UI-SPEC)
-            Text(
-                text = entry.speechText ?: entry.summary,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            // Tags inherited from the parent division
-            val tags = entry.speechTags
-            if (!tags.isNullOrEmpty()) {
-                Spacer(Modifier.height(4.dp))
-                TagPillRow(tags = tags, onTagClick = {})
-            }
         }
     }
 }

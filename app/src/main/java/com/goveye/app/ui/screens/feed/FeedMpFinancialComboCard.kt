@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import com.goveye.app.ui.components.MpAvatar
 import com.goveye.app.ui.components.VoteColors
 import com.goveye.app.ui.components.cardClickable
+import com.goveye.app.ui.components.cardSurfaceColor
 import java.util.Locale
 
 /**
@@ -70,10 +71,10 @@ fun FeedMpFinancialComboCard(
             .fillMaxWidth()
             .cardClickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
-        color = trendColor.copy(alpha = 0.08f)
+        color = cardSurfaceColor(trendColor)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            // Top row — MP avatar + name (left), total sum + trend icon (right)
+            // Top row — trend icon (left), total sum (right)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -81,34 +82,12 @@ fun FeedMpFinancialComboCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // MP avatar + name (left) — matches UnifiedFinancialCard styling
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = if (onProfileClick != null) {
-                        Modifier.clickable { onProfileClick() }
-                    } else {
-                        Modifier
-                    }
-                ) {
-                    MpAvatar(
-                        thumbnailUrl = item.memberPhotoUrl,
-                        displayName = item.memberName,
-                        partyColorHex = item.memberPartyColorHex,
-                        size = 28.dp,
-                        borderWidth = 1.dp
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = item.memberName,
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-
-                // Total sum + trend icon (right) — trend color, not white
+                Icon(
+                    imageVector = trendIcon,
+                    contentDescription = if (item.isIncomeNet) "Net income" else "Net expense",
+                    tint = trendColor,
+                    modifier = Modifier.size(22.dp)
+                )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = totalFormatted,
@@ -116,13 +95,6 @@ fun FeedMpFinancialComboCard(
                         fontWeight = FontWeight.Bold,
                         color = trendColor,
                         maxLines = 1
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Icon(
-                        imageVector = trendIcon,
-                        contentDescription = if (item.isIncomeNet) "Net income" else "Net expense",
-                        tint = trendColor,
-                        modifier = Modifier.size(22.dp)
                     )
                 }
             }
@@ -166,8 +138,8 @@ fun FeedMpFinancialComboCard(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Bottom row — bucket icon + buckets on the left, date on the right
-            // Same tint strip as UnifiedFinancialCard: pillColor.copy(alpha = 0.10f)
+            // Bottom row — MP avatar + name + buckets (left), date (right)
+            // Avatar and name are now at the bottom, with buckets as sub-text
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -178,23 +150,41 @@ fun FeedMpFinancialComboCard(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .then(
+                            if (onProfileClick != null) {
+                                Modifier.clickable { onProfileClick() }
+                            } else {
+                                Modifier
+                            }
+                        )
                 ) {
-                    Icon(
-                        imageVector = bucketIcon,
-                        contentDescription = "Bucket",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(15.dp)
+                    MpAvatar(
+                        thumbnailUrl = item.memberPhotoUrl,
+                        displayName = item.memberName,
+                        partyColorHex = item.memberPartyColorHex,
+                        size = 28.dp,
+                        borderWidth = 1.dp
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = if (buckets.isNotEmpty()) buckets.joinToString(", ") else "Financial Activity",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text(
+                            text = item.memberName,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = if (buckets.isNotEmpty()) buckets.joinToString(", ") else "Financial Activity",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(

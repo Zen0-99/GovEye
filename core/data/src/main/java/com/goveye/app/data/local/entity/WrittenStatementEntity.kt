@@ -2,6 +2,7 @@ package com.goveye.app.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.goveye.app.data.local.serialization.IntAsBooleanSerializer
 import kotlinx.serialization.Serializable
 
 /**
@@ -37,6 +38,7 @@ data class WrittenStatementEntity(
     val text: String,
     val house: Int,
     val lastUpdated: Long,
+    @Serializable(with = IntAsBooleanSerializer::class)
     val hasLinkedStatements: Boolean = false,
     val linkedStatementsJson: String? = null
 )

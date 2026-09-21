@@ -17,8 +17,10 @@ enum class CardType {
     LEGISLATION,
     FINANCIAL,
     SPEECH,
+    SPEECH_COMBO,
     MP_VOTE,
-    MP_FINANCIAL_COMBO
+    MP_FINANCIAL_COMBO,
+    WRITTEN_QUESTION
 }
 
 /**
@@ -138,6 +140,25 @@ sealed interface FeedItem {
     }
 
     /**
+     * A combo card grouping multiple [SpeechItem]s for a single followed MP
+     * from the same date. Multiple speech segments (separated when another
+     * MP starts talking) are joined with "[...]" separators. Rendered as a
+     * [FeedSpeechComboCard] in the feed.
+     */
+    data class SpeechComboItem(
+        val memberId: Int,
+        val memberName: String,
+        val memberPartyColorHex: String?,
+        val memberPhotoUrl: String?,
+        val speeches: List<SpeechItem>,
+        override val date: String,
+        override val id: Int = listOf(memberId, date, "speech_combo").hashCode()
+    ) : FeedItem {
+        override val typePrefix: String = "speech_combo"
+        override val cardType: CardType = CardType.SPEECH_COMBO
+    }
+
+    /**
      * A followed MP's vote on a division, rendered as a [FeedMpVoteCard]
      * in the feed. Shows the MP's avatar, name, vote badge (Aye/No),
      * division title, date, and house — similar to the MP profile's
@@ -160,6 +181,28 @@ sealed interface FeedItem {
     ) : FeedItem {
         override val typePrefix: String = "mp-vote"
         override val cardType: CardType = CardType.MP_VOTE
+    }
+
+    /**
+     * A followed MP's written question, rendered as a card in the feed.
+     * Shows the MP's avatar, heading (topic), question text, answering body,
+     * and date. Mirrors the speech card layout with a tinted bottom strip.
+     */
+    data class WrittenQuestionItem(
+        val memberId: Int,
+        val memberName: String,
+        val memberPartyColorHex: String?,
+        val memberPhotoUrl: String?,
+        val questionText: String,
+        val heading: String,
+        val answeringBodyName: String,
+        val uin: String,
+        val questionId: Int,
+        override val date: String,
+        override val id: Int = listOf(memberId, questionId, "wq").hashCode()
+    ) : FeedItem {
+        override val typePrefix: String = "written-question"
+        override val cardType: CardType = CardType.WRITTEN_QUESTION
     }
 }
 

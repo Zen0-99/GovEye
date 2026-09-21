@@ -117,6 +117,10 @@ class ProfileViewModel @Inject constructor(
         // first frame, no fade-in) and do a silent background refresh.
         val cached = profileCache.get(memberId)
         if (cached != null) {
+            android.util.Log.i(
+                "GovEye/Profile",
+                "loadProfile: cache hit for MP $memberId, votes=${cached.memberVotes.size}, divisions=${cached.allDivisionDates.size}"
+            )
             // Instant restore — no optimistic loading, no fade-in.
             // Restore ALL fields including votes, interests, expenses,
             // committees, and experiences so Stats/Finances/Activity tabs
@@ -151,6 +155,8 @@ class ProfileViewModel @Inject constructor(
             refreshFromDb(memberId)
             return
         }
+
+        android.util.Log.i("GovEye/Profile", "loadProfile: cache miss for MP $memberId, loading from DB")
 
         // Two-stage loading to eliminate visual jumps:
         //
@@ -198,17 +204,26 @@ class ProfileViewModel @Inject constructor(
                 isLoading = false
             )
 
-            // Stats load asynchronously — updates the activity score pill
-            // and Stats tab when ready. Does not block first paint.
-            launch {
-                val stats = runCatching {
-                    statsRepository.getActivityScore(memberId, house, partyName) to
-                        statsRepository.getTraitBars(memberId, house, partyName)
+            // Activity Score — loads independently (fast, no peer iteration).
+            // Used by the score pill in the profile header.
+            viewModelScope.launch {
+                val score = runCatching {
+                    statsRepository.getActivityScore(memberId, house, partyName)
+                }.onFailure { e ->
+                    android.util.Log.e("GovEye/Profile", "Activity score failed for MP $memberId", e)
                 }.getOrNull()
-                _uiState.value = _uiState.value.copy(
-                    activityScore = stats?.first,
-                    traitBars = stats?.second ?: emptyList()
-                )
+                _uiState.value = _uiState.value.copy(activityScore = score)
+            }
+
+            // Performance Breakdown radar chart — loads independently.
+            // Computes from source tables using SQL aggregate queries (near-instant).
+            viewModelScope.launch {
+                val bars = runCatching {
+                    statsRepository.getTraitBars(memberId, house, partyName)
+                }.onFailure { e ->
+                    android.util.Log.e("GovEye/Profile", "Trait bars failed for MP $memberId", e)
+                }.getOrDefault(emptyList())
+                _uiState.value = _uiState.value.copy(traitBars = bars)
             }
 
             // === Stage 2: Remaining data in parallel ===
@@ -280,13 +295,21 @@ class ProfileViewModel @Inject constructor(
                         // the MP was elected. Use membershipStartDate (always
                         // available) as the tenure cutoff.
                         val tenureStart = mp?.membershipStartDate?.take(10) ?: "2016-01-01"
-                        val allDates = allDatesRaw.filter { it >= tenureStart }
+                        var allDates = allDatesRaw.filter { it >= tenureStart }
                         // Also filter votes to the same window so the numerator
                         // and denominator in the attendance chart use the same
                         // time range — prevents votes from a previous parliament
                         // inflating the attendance rate for overlapping periods.
                         val allVotes = votesRepository.getMemberVotingWithDivisions(memberId)
-                        val votes = allVotes.filter { it.divisionDate >= tenureStart }
+                        var votes = allVotes.filter { it.divisionDate >= tenureStart }
+                        // Fallback: if tenure filter removes all votes but
+                        // unfiltered votes exist, use all votes/dates so
+                        // charts still render (e.g. membershipStartDate is
+                        // wrong or newer than available division data).
+                        if (votes.isEmpty() && allVotes.isNotEmpty()) {
+                            votes = allVotes
+                            allDates = allDatesRaw
+                        }
                         android.util.Log.i(
                             "GovEye/Profile",
                             "Loaded ${votes.size}/${allVotes.size} votes for MP $memberId (house=$house), " +
@@ -390,18 +413,24 @@ class ProfileViewModel @Inject constructor(
                 bioData = bioData
             )
 
-            // Stats load asynchronously — same reason as loadProfile Stage 1:
-            // the fallback runtime computation can take minutes when precomputed
-            // stats are unavailable. Don't let it block Stage 2 data.
-            launch {
-                val stats = runCatching {
-                    statsRepository.getActivityScore(memberId, house, partyName) to
-                        statsRepository.getTraitBars(memberId, house, partyName)
+            // Activity Score — loads independently (fast, no peer iteration).
+            viewModelScope.launch {
+                val score = runCatching {
+                    statsRepository.getActivityScore(memberId, house, partyName)
+                }.onFailure { e ->
+                    android.util.Log.e("GovEye/Profile", "Activity score failed (refresh) for MP $memberId", e)
                 }.getOrNull()
-                _uiState.value = _uiState.value.copy(
-                    activityScore = stats?.first,
-                    traitBars = stats?.second ?: emptyList()
-                )
+                _uiState.value = _uiState.value.copy(activityScore = score)
+            }
+
+            // Performance Breakdown radar chart — loads independently.
+            viewModelScope.launch {
+                val bars = runCatching {
+                    statsRepository.getTraitBars(memberId, house, partyName)
+                }.onFailure { e ->
+                    android.util.Log.e("GovEye/Profile", "Trait bars failed (refresh) for MP $memberId", e)
+                }.getOrDefault(emptyList())
+                _uiState.value = _uiState.value.copy(traitBars = bars)
             }
 
             // Stage 2 in parallel — reload ALL fields, not just header data
@@ -433,9 +462,20 @@ class ProfileViewModel @Inject constructor(
                 launch {
                     val votesResult = runCatching {
                         val allDatesRaw = votesRepository.getAllDivisionDates(house)
-                        val allDates = allDatesRaw.filter { it >= tenureStart }
+                        var allDates = allDatesRaw.filter { it >= tenureStart }
                         val allVotes = votesRepository.getMemberVotingWithDivisions(memberId)
-                        val votes = allVotes.filter { it.divisionDate >= tenureStart }
+                        var votes = allVotes.filter { it.divisionDate >= tenureStart }
+                        // Fallback: if tenure filter removes all votes but
+                        // unfiltered votes exist, use all votes/dates.
+                        if (votes.isEmpty() && allVotes.isNotEmpty()) {
+                            votes = allVotes
+                            allDates = allDatesRaw
+                        }
+                        android.util.Log.i(
+                            "GovEye/Profile",
+                            "refreshFromDb: ${votes.size}/${allVotes.size} votes for MP $memberId, " +
+                                "${allDates.size}/${allDatesRaw.size} divisions (tenure=$tenureStart)"
+                        )
                         Triple(allDates, votes, votes.isNotEmpty() && partyName != null)
                     }.getOrNull()
                     _uiState.value = _uiState.value.copy(

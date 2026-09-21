@@ -20,7 +20,7 @@ data class HistoricalMemberEntity(
     val startDate: String? = null,
     val endDate: String? = null,
     val constituency: String? = null,
-    val isCurrent: Int = 0,
+    val isCurrent: Boolean = false,
     val photo: ByteArray? = null,
     val lastUpdated: Long
 ) {

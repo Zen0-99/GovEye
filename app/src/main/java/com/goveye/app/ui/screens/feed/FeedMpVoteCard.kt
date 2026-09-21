@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import com.goveye.app.ui.components.MpAvatar
 import com.goveye.app.ui.components.VoteColors
 import com.goveye.app.ui.components.cardClickable
+import com.goveye.app.ui.components.cardSurfaceColor
 
 /**
  * **MP vote — verdict-led quote card.**
@@ -39,7 +40,8 @@ fun FeedMpVoteCard(
     item: FeedItem.MpVoteItem,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    onProfileClick: (() -> Unit)? = null
+    onProfileClick: (() -> Unit)? = null,
+    showMember: Boolean = true
 ) {
     val voteUpper = item.vote.uppercase()
     val isAye = voteUpper == "AYE"
@@ -60,7 +62,7 @@ fun FeedMpVoteCard(
             .fillMaxWidth()
             .cardClickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer
+        color = cardSurfaceColor(voteColor)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             // Main stage — division title + vote verdict, large and coloured
@@ -88,6 +90,9 @@ fun FeedMpVoteCard(
 
             // Attribution bar — tinted strip matching the speech card.
             // MP avatar + name on the left, house + date on the right.
+            // On the MP's own profile [showMember] is false: the identity is
+            // dropped (the whole page is about them) and the strip carries
+            // just the house and date.
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -95,32 +100,43 @@ fun FeedMpVoteCard(
                     .padding(horizontal = 16.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                MpAvatar(
-                    thumbnailUrl = item.memberPhotoUrl,
-                    displayName = item.memberName,
-                    partyColorHex = item.memberPartyColorHex,
-                    size = 28.dp,
-                    borderWidth = 1.dp,
-                    modifier = if (onProfileClick != null) {
-                        Modifier.clickable { onProfileClick() }
-                    } else {
-                        Modifier
-                    }
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = item.memberName,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                if (showMember) {
+                    MpAvatar(
+                        thumbnailUrl = item.memberPhotoUrl,
+                        displayName = item.memberName,
+                        partyColorHex = item.memberPartyColorHex,
+                        size = 28.dp,
+                        borderWidth = 1.dp,
+                        modifier = if (onProfileClick != null) {
+                            Modifier.clickable { onProfileClick() }
+                        } else {
+                            Modifier
+                        }
                     )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = item.memberName,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = if (item.divisionHouse == 2) "Lords" else "Commons",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
+                        )
+                    }
+                } else {
                     Text(
                         text = if (item.divisionHouse == 2) "Lords" else "Commons",
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1
+                        maxLines = 1,
+                        modifier = Modifier.weight(1f)
                     )
                 }
                 Spacer(modifier = Modifier.width(10.dp))

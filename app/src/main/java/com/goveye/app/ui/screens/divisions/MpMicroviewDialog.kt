@@ -54,7 +54,6 @@ import com.goveye.app.ui.components.MpAvatar
 import com.goveye.app.ui.components.VoteColors
 import com.goveye.app.ui.components.charts.AttendanceLineChart
 import com.goveye.app.ui.components.charts.ChartCard
-import com.goveye.app.ui.components.charts.ChartHeaderWithLegend
 import com.goveye.app.ui.components.charts.RebellionLineChart
 import com.goveye.app.ui.components.charts.VotingBarChart
 import com.goveye.app.ui.components.stats.VoteMapGrid
@@ -360,21 +359,18 @@ private fun VotesContent(
 
         if (voteMapTiles.isNotEmpty()) {
             item {
-                Column {
-                    ChartHeaderWithLegend(
-                        title = "Vote Map",
-                        legendItems = listOf(
-                            "With party" to VoteColors.aye,
-                            "Rebel" to VoteColors.no,
-                            "No vote" to MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-                        )
+                ChartCard(
+                    title = "Vote Map",
+                    legendItems = listOf(
+                        "With party" to VoteColors.aye,
+                        "Rebel" to VoteColors.no,
+                        "No vote" to MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
                     )
-                    ChartCard {
-                        VoteMapGrid(
-                            tiles = voteMapTiles,
-                            onTileClick = { _, _ -> }
-                        )
-                    }
+                ) {
+                    VoteMapGrid(
+                        tiles = voteMapTiles,
+                        onTileClick = { _, _ -> }
+                    )
                 }
             }
         }

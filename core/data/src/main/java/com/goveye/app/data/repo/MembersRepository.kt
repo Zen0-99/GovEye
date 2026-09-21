@@ -223,7 +223,7 @@ class MembersRepository @Inject constructor(
         constituency = constituency?.let { com.goveye.app.domain.model.Constituency(0, it) },
         house = house,
         membershipStartDate = startDate,
-        isActive = isCurrent == 1,
+        isActive = isCurrent,
         thumbnailUrl = if (parliamentMemberId != null) {
             "https://members-api.parliament.uk/api/Members/$parliamentMemberId/Portrait"
         } else {

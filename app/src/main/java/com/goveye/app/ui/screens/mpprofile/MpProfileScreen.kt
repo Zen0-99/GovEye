@@ -314,8 +314,7 @@ fun ProfileScreen(
                                     breakdown = com.goveye.app.domain.stats.ScoreBreakdown(
                                         voteParticipationContribution = 0f,
                                         questionsContribution = 0f,
-                                        speechesContribution = 0f,
-                                        committeesContribution = 0f
+                                        speechesContribution = 0f
                                     )
                                 )
                             },
@@ -363,7 +362,6 @@ fun ProfileScreen(
                                     memberVotes = uiState.memberVotes,
                                     rebellionStats = uiState.rebellionStats,
                                     allDivisionDates = uiState.allDivisionDates,
-                                    activityScore = uiState.activityScore,
                                     traitBars = uiState.traitBars,
                                     partyColor = partyColor,
                                     onNavigateToDivision = { divisionId, house ->
@@ -387,6 +385,7 @@ fun ProfileScreen(
                                     memberId = memberId,
                                     interests = uiState.interests,
                                     expenseBucketTotals = uiState.expenseBucketTotals,
+                                    expenses = uiState.expenses,
                                     onNavigateToBucketDetail = { bucketLabel ->
                                         onNavigateToInterestBucket(memberId, bucketLabel)
                                     },
@@ -662,47 +661,23 @@ private fun ProfileTabContent(
         }
         item {
             Box(modifier = Modifier.graphicsLayer { alpha = alpha1 }) {
-                Column {
-                    SectionHeader("History")
-                    ProfileStatsCard(
-                        mp = mp,
-                        bioData = bioData
-                    )
-                }
+                ProfileStatsCard(
+                    mp = mp,
+                    bioData = bioData
+                )
             }
         }
         item {
             Box(modifier = Modifier.graphicsLayer { alpha = alpha2 }) {
-                Column {
-                    SectionHeader("Contact")
-                    ContactSection(contacts = contacts, socialLinks = mpLinks)
-                }
+                ContactSection(contacts = contacts, socialLinks = mpLinks)
             }
         }
         item {
             Box(modifier = Modifier.graphicsLayer { alpha = alpha3 }) {
-                Column {
-                    if (!synopsis.isNullOrBlank()) {
-                        SectionHeader("Biography")
-                    }
-                    BioSection(synopsis = synopsis)
-                }
+                BioSection(synopsis = synopsis)
             }
         }
     }
-}
-
-@Composable
-private fun SectionHeader(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.titleMedium,
-        color = MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.padding(
-            horizontal = MaterialTheme.padding.large,
-            vertical = MaterialTheme.padding.small
-        )
-    )
 }
 
 @Composable
@@ -750,7 +725,6 @@ private fun ProfileStatsTabContent(
     memberVotes: List<MemberVoteWithDivision>,
     rebellionStats: RebellionStats?,
     allDivisionDates: List<String>,
-    activityScore: com.goveye.app.domain.stats.ActivityScore?,
     traitBars: List<com.goveye.app.domain.stats.TraitBar>,
     partyColor: Color,
     onNavigateToDivision: (Int, Int) -> Unit,
@@ -777,15 +751,6 @@ private fun ProfileStatsTabContent(
         ),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Activity score strip
-        if (activityScore != null) {
-            item {
-                com.goveye.app.ui.components.stats.ActivityScoreStrip(
-                    score = activityScore
-                )
-            }
-        }
-
         // Trait radar chart
         if (traitBars.isNotEmpty()) {
             item {
@@ -798,19 +763,10 @@ private fun ProfileStatsTabContent(
         // Summary header
         if (memberVotes.isNotEmpty()) {
             item {
-                Column {
-                    Text(
-                        text = "Voting Record",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(bottom = 4.dp)
-                    )
-                    VotesSummaryCard(
-                        totalVotes = memberVotes.size,
-                        rebellionStats = rebellionStats
-                    )
-                }
+                VotesSummaryCard(
+                    totalVotes = memberVotes.size,
+                    rebellionStats = rebellionStats
+                )
             }
         }
 
@@ -833,24 +789,21 @@ private fun ProfileStatsTabContent(
             }
         }
 
-        // Vote map — title above card, grid inside card
+        // Vote map — title inside card, grid below
         if (voteMapTiles.isNotEmpty()) {
             item {
-                Column {
-                    com.goveye.app.ui.components.charts.ChartHeaderWithLegend(
-                        title = "Vote Map",
-                        legendItems = listOf(
-                            "With party" to com.goveye.app.ui.components.VoteColors.aye,
-                            "Rebel" to com.goveye.app.ui.components.VoteColors.no,
-                            "No vote" to MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-                        )
+                com.goveye.app.ui.components.charts.ChartCard(
+                    title = "Vote Map",
+                    legendItems = listOf(
+                        "With party" to com.goveye.app.ui.components.VoteColors.aye,
+                        "Rebel" to com.goveye.app.ui.components.VoteColors.no,
+                        "No vote" to MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
                     )
-                    com.goveye.app.ui.components.charts.ChartCard {
-                        com.goveye.app.ui.components.stats.VoteMapGrid(
-                            tiles = voteMapTiles,
-                            onTileClick = onNavigateToDivision
-                        )
-                    }
+                ) {
+                    com.goveye.app.ui.components.stats.VoteMapGrid(
+                        tiles = voteMapTiles,
+                        onTileClick = onNavigateToDivision
+                    )
                 }
             }
         }
@@ -858,20 +811,11 @@ private fun ProfileStatsTabContent(
         // Recent votes summary — 5 compact rows + "See all" link (D-08)
         if (memberVotes.isNotEmpty()) {
             item {
-                Column {
-                    Text(
-                        text = "Recent votes",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(bottom = 4.dp)
-                    )
-                    RecentVotesSummary(
-                        recentVotes = memberVotes.take(5),
-                        onSeeAll = { onNavigateToVotingRecord(memberId) },
-                        onNavigateToDivision = onNavigateToDivision
-                    )
-                }
+                RecentVotesSummary(
+                    recentVotes = memberVotes.take(5),
+                    onSeeAll = { onNavigateToVotingRecord(memberId) },
+                    onNavigateToDivision = onNavigateToDivision
+                )
             }
         }
 
@@ -900,10 +844,16 @@ private fun VotesSummaryCard(totalVotes: Int, rebellionStats: RebellionStats?) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .background(com.goveye.app.ui.components.cardSurfaceColor())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        Text(
+            text = "Voting Record",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
@@ -1029,7 +979,7 @@ private fun RecentVotesSummary(
     onSeeAll: () -> Unit,
     onNavigateToDivision: (Int, Int) -> Unit
 ) {
-    com.goveye.app.ui.components.charts.ChartCard {
+    com.goveye.app.ui.components.charts.ChartCard(title = "Recent votes") {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             recentVotes.forEach { vote ->
                 RecentVoteRow(

@@ -311,6 +311,14 @@ class MainActivity : ComponentActivity() {
                         // so the DB pre-warm (local I/O) usually finishes first.
                         prewarmJob.await()
                         Log.i(TAG, "Update check result: $updateState")
+
+                        // Debug: verify publications bodyText status
+                        try {
+                            val (total, withBody) = databaseUpdateManager.countPublicationsWithBodyText()
+                            Log.i(TAG, "Publications DB: $total total, $withBody with bodyText")
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Publications DB check failed: ${e.message}")
+                        }
                         when (updateState) {
                             is DatabaseUpdateState.NeedsPatches -> {
                                 val patches = (updateState as DatabaseUpdateState.NeedsPatches).patches

@@ -42,6 +42,24 @@ interface DebateSpeechDao {
     suspend fun countSpeechesForMember(memberId: Int): Int
 
     /**
+     * Average speech count per MP for a house.
+     * Joins through divisions to filter by house (debate_speeches has no house column).
+     * Single SQL aggregate — replaces the old 650-MP iteration fallback.
+     */
+    @Query(
+        """
+        SELECT AVG(cnt) FROM (
+            SELECT COUNT(*) AS cnt
+            FROM debate_speeches ds
+            JOIN divisions d ON ds.divisionId = d.id
+            WHERE d.house = :house AND ds.isIntervention = 0
+            GROUP BY ds.memberId
+        )
+        """
+    )
+    suspend fun getAverageSpeechCount(house: Int): Float?
+
+    /**
      * Fetches recent speeches by a single member, joined with the parent
      * division's title and date. Only non-empty speech text is returned,
      * ordered by division date descending.

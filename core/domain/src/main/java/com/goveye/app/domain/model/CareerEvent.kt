@@ -47,7 +47,7 @@ data class CareerEvent(
             )
             val monthIdx = m.toIntOrNull()?.minus(1)
             if (monthIdx != null && monthIdx in monthNames.indices) {
-                "$monthNames[monthIdx] $y"
+                "${monthNames[monthIdx]} $y"
             } else {
                 y
             }

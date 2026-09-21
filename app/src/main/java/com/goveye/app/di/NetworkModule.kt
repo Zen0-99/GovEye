@@ -5,10 +5,12 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import java.net.InetAddress
 import java.util.concurrent.TimeUnit
 import javax.inject.Named
 import javax.inject.Singleton
 import kotlinx.serialization.json.Json
+import okhttp3.Dns
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -54,6 +56,7 @@ object NetworkModule {
                 chain.proceed(request)
             }.addInterceptor(RetryInterceptor())
             .addInterceptor(loggingInterceptor)
+            .dns(FallbackDns)
             .connectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .readTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .writeTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
@@ -91,7 +94,8 @@ object NetworkModule {
                     .header("User-Agent", USER_AGENT)
                     .build()
             chain.proceed(request)
-        }.connectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        }.dns(FallbackDns)
+        .connectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
         .readTimeout(DB_DOWNLOAD_TIMEOUT_MINUTES, TimeUnit.MINUTES)
         .writeTimeout(DB_DOWNLOAD_TIMEOUT_MINUTES, TimeUnit.MINUTES)
         .build()
@@ -147,4 +151,78 @@ object NetworkModule {
         .client(okHttpClient)
         .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
         .build()
+}
+
+/**
+ * Fallback DNS resolver that tries the system DNS first, then falls back
+ * to DNS-over-HTTPS (DoH) via Google's resolver if the system DNS fails.
+ *
+ * This works around Android Private DNS issues where the system DNS resolver
+ * fails for app processes (e.g. "Unable to resolve host" errors when Private
+ * DNS is set to dns.google in opportunistic mode but the DoT handshake fails).
+ *
+ * The DoH query goes to https://8.8.8.8/resolve?name=...&type=A (using the
+ * IP directly to avoid the chicken-and-egg DNS problem) with a Host header
+ * of dns.google. Returns JSON with the resolved IP addresses.
+ */
+private object FallbackDns : Dns {
+    // Known GitHub/Azure CDN IPs — used as a last resort when both system
+    // DNS and DoH fail (e.g. Private DNS misconfiguration on the device).
+    // These are stable Azure CDN endpoints used by GitHub Releases.
+    private val githubFallbackIps = listOf(
+        "20.26.156.215",
+        "20.205.243.166",
+        "140.82.114.3"
+    )
+    private val githubAssetsFallbackIps = listOf(
+        "185.199.108.133",
+        "185.199.109.133",
+        "185.199.110.133",
+        "185.199.111.133"
+    )
+
+    override fun lookup(hostname: String): List<InetAddress> = try {
+        Dns.SYSTEM.lookup(hostname)
+    } catch (e: Exception) {
+        android.util.Log.w("GovEye/Dns", "System DNS failed for $hostname: ${e.message}, using hardcoded fallback")
+        hardcodedLookup(hostname) ?: try {
+            resolveViaDoh(hostname)
+        } catch (e2: Exception) {
+            android.util.Log.e("GovEye/Dns", "DoH also failed for $hostname: ${e2.message}")
+            throw e
+        }
+    }
+
+    private fun hardcodedLookup(hostname: String): List<InetAddress>? {
+        val ips = when {
+            hostname.endsWith("github.com") -> githubFallbackIps
+            hostname.endsWith("githubusercontent.com") -> githubAssetsFallbackIps
+            hostname.endsWith("github.io") -> githubAssetsFallbackIps
+            else -> return null
+        }
+        return ips.map { InetAddress.getByName(it) }
+    }
+
+    private fun resolveViaDoh(hostname: String): List<InetAddress> {
+        // Use the IP directly to avoid needing DNS to reach the DNS server
+        val url = "https://8.8.8.8/resolve?name=$hostname&type=A"
+        val client = OkHttpClient.Builder()
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(10, TimeUnit.SECONDS)
+            .build()
+        val request = okhttp3.Request.Builder()
+            .url(url)
+            .header("Host", "dns.google")
+            .build()
+        return client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) throw java.io.IOException("DoH query failed: HTTP ${response.code}")
+            val body = response.body.string()
+            val ips = Regex("\"data\"\\s*:\\s*\"(\\d+\\.\\d+\\.\\d+\\.\\d+)\"")
+                .findAll(body)
+                .map { it.groupValues[1] }
+                .toList()
+            if (ips.isEmpty()) throw java.io.IOException("DoH returned no A records for $hostname")
+            ips.map { InetAddress.getByName(it) }
+        }
+    }
 }

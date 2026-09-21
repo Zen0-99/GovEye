@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.FormatQuote
 import androidx.compose.material.icons.outlined.Gavel
+import androidx.compose.material.icons.outlined.HowToVote
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -21,6 +22,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -28,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.goveye.app.ui.components.VoteColors
 import com.goveye.app.ui.components.cardClickable
+import com.goveye.app.ui.components.cardSurfaceColor
 
 // Theme-aware vote colors — teal for Aye, orange for No
 private val AyeColor @Composable get() = VoteColors.aye
@@ -178,6 +183,26 @@ fun UnifiedFeedCard(
     modifier: Modifier = Modifier,
     onTagClick: (String) -> Unit = {}
 ) {
+    // Division cards use a verdict-tinted surface (like income/expense cards)
+    // instead of the default CardShell, so the entire card picks up a subtle
+    // green (passed) or red (failed) tint.
+    if (item is FeedItem.DivisionItem) {
+        val division = item.division
+        val passed = division.ayeCount > division.noCount
+        val verdictColor = if (passed) AyeColor else NoColor
+        Surface(
+            modifier = modifier
+                .fillMaxWidth()
+                .cardClickable(onClick = onClick),
+            shape = RoundedCornerShape(16.dp),
+            color = cardSurfaceColor(verdictColor)
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                DivisionCardBody(item, onTagClick)
+            }
+        }
+        return
+    }
     CardShell(hasFollowedVotes = hasFollowedVotes, onClick = onClick, modifier = modifier) {
         when (item) {
             is FeedItem.DivisionItem -> DivisionCardBody(item, onTagClick)
@@ -197,6 +222,9 @@ fun UnifiedFeedCard(
 /**
  * Shared card container. Applies **no padding** — each architecture owns its
  * own insets so full-bleed images and edge-to-edge bands are possible.
+ *
+ * Card color is adjusted to stand out more against the background:
+ * slightly brighter in dark mode, slightly darker in light mode.
  */
 @Composable
 private fun CardShell(
@@ -205,10 +233,18 @@ private fun CardShell(
     modifier: Modifier = Modifier,
     content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit
 ) {
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val baseColor = MaterialTheme.colorScheme.surfaceContainer
+    // Blend toward white (dark mode) or black (light mode) for more contrast
+    val adjustedColor = if (isDark) {
+        lerp(baseColor, Color.White, 0.04f)
+    } else {
+        lerp(baseColor, Color.Black, 0.02f)
+    }
     val cardColor = if (hasFollowedVotes) {
         MaterialTheme.colorScheme.primary.copy(alpha = 0.05f)
     } else {
-        MaterialTheme.colorScheme.surfaceContainer
+        adjustedColor
     }
     Surface(
         modifier = modifier
@@ -269,11 +305,12 @@ internal fun CardFooter(
 }
 
 /**
- * **Division — verdict band.**
+ * **Division — verdict-led, attribution band at bottom.**
  *
- * The outcome word (the keeper) is promoted out of a side rail into a tinted
- * band that spans the full card width, carrying the date with it. The house
- * closes the card alone, so there is no symmetric footer.
+ * Mirrors the statement card architecture: the outcome word and vote
+ * split lead at the top with tags, then a tinted strip at the bottom
+ * carries the division title, house, and date — the same pattern as
+ * the statement's attribution bar.
  */
 @Composable
 private fun DivisionCardBody(item: FeedItem.DivisionItem, onTagClick: (String) -> Unit) {
@@ -281,93 +318,126 @@ private fun DivisionCardBody(item: FeedItem.DivisionItem, onTagClick: (String) -
     val passed = division.ayeCount > division.noCount
     val verdictColor = if (passed) AyeColor else NoColor
 
-    // Tinted band — verdict + date left, split right
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(verdictColor.copy(alpha = 0.13f))
-            .padding(horizontal = 16.dp, vertical = 9.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = if (passed) "PASSED" else "FAILED",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 0.6.sp,
-                color = verdictColor
-            )
-            Text(
-                text = "  ·  ${formatDivisionDate(division.date)}",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = "${division.ayeCount}",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = AyeColor
-            )
-            Text(
-                text = " – ",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = "${division.noCount}",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = NoColor
-            )
-        }
-    }
-
-    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-        Text(
-            text = division.title,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium,
-            maxLines = 3,
-            overflow = TextOverflow.Ellipsis
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        if (item.followedVotes.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(10.dp))
-            item.followedVotes.take(10).forEach { vote ->
-                val isAye = vote.vote.equals("Aye", ignoreCase = true)
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = vote.memberName,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Text(
-                        text = if (isAye) "Aye" else "No",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (isAye) AyeColor else NoColor
-                    )
-                }
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // Top row: verdict (left, fixed), tags (middle, scrollable weight),
+        // X-Y split (right, fixed) — numbers have priority, tags scroll.
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Left: icon + verdict (fixed width)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Outlined.HowToVote,
+                    contentDescription = "Division",
+                    tint = verdictColor,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = if (passed) "PASSED" else "FAILED",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 0.6.sp,
+                    color = verdictColor
+                )
             }
-        }
-        Spacer(modifier = Modifier.height(10.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = if (division.house == 2) "Lords" else "Commons",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            // Middle: tags — take remaining space, horizontally scrollable
             if (item.tags.isNotEmpty()) {
                 Spacer(modifier = Modifier.width(10.dp))
-                FeedTagPillRow(tags = item.tags, onTagClick = onTagClick, maxTags = 2)
+                FeedTagPillRow(
+                    tags = item.tags,
+                    onTagClick = onTagClick,
+                    maxTags = 2,
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+            } else {
+                Spacer(modifier = Modifier.weight(1f))
             }
+            // Right: X-Y vote split (fixed width, never compressed)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "${division.ayeCount}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = AyeColor
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "–",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "${division.noCount}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = NoColor
+                )
+            }
+        }
+
+        // Followed votes (if any)
+        if (item.followedVotes.isNotEmpty()) {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                item.followedVotes.take(10).forEach { vote ->
+                    val isAye = vote.vote.equals("Aye", ignoreCase = true)
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = vote.memberName,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            text = if (isAye) "Aye" else "No",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (isAye) AyeColor else NoColor
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+
+        // Bottom: tinted attribution band — title + house left, date right
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(verdictColor.copy(alpha = 0.13f))
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = division.title,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = if (division.house == 2) "Lords" else "Commons",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
+                )
+            }
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+                text = formatDivisionDate(division.date),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1
+            )
         }
     }
 }
@@ -469,13 +539,13 @@ private fun StatementCardBody(item: FeedItem.StatementItem, onTagClick: (String)
     Column(modifier = Modifier.fillMaxWidth()) {
         // Quote glyph + tags row — the quote mark on the left, top 3 tags
         // in the empty space on the right.
-        // Quote glyph + linked statement label + tags row
+        // Quote glyph + linked statement label + tags row — all left-aligned
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 14.dp, end = 16.dp, top = 10.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Icon(
                 imageVector = Icons.Outlined.FormatQuote,
@@ -483,31 +553,26 @@ private fun StatementCardBody(item: FeedItem.StatementItem, onTagClick: (String)
                 tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
                 modifier = Modifier.size(30.dp)
             )
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                if (statement.hasLinkedStatements) {
-                    val linkTypes = statement.linkedStatements
-                        ?.map { it.linkType }
-                        ?.distinct()
-                        ?: listOf("JointStatement")
-                    val label = linkTypes.joinToString(", ") { formatLinkType(it) }
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.primary,
-                        maxLines = 1
-                    )
-                }
-                if (item.tags.isNotEmpty()) {
-                    FeedTagPillRow(
-                        tags = item.tags,
-                        onTagClick = onTagClick,
-                        maxTags = 3
-                    )
-                }
+            if (statement.hasLinkedStatements) {
+                val linkTypes = statement.linkedStatements
+                    ?.map { it.linkType }
+                    ?.distinct()
+                    ?: listOf("JointStatement")
+                val label = linkTypes.joinToString(", ") { formatLinkType(it) }
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1
+                )
+            }
+            if (item.tags.isNotEmpty()) {
+                FeedTagPillRow(
+                    tags = item.tags,
+                    onTagClick = onTagClick,
+                    maxTags = 3
+                )
             }
         }
 
@@ -541,7 +606,7 @@ private fun StatementCardBody(item: FeedItem.StatementItem, onTagClick: (String)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.10f))
                 .padding(horizontal = 16.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -614,7 +679,7 @@ private fun LegislationCardBody(item: FeedItem.LegislationItem) {
             if (item.tags.isNotEmpty()) {
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = item.tags.take(3).joinToString(" · ") { "${it.tag} ${it.hitCount}" },
+                    text = item.tags.take(3).joinToString(" · ") { it.tag },
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary,
                     maxLines = 1,

@@ -41,8 +41,10 @@ import com.goveye.app.ui.screens.feed.FeedNoActivityEmptyState
 import com.goveye.app.ui.screens.feed.FeedNoFollowsEmptyState
 import com.goveye.app.ui.screens.feed.FeedRecessEmptyState
 import com.goveye.app.ui.screens.feed.FeedSpeechCard
+import com.goveye.app.ui.screens.feed.FeedSpeechComboCard
 import com.goveye.app.ui.screens.feed.FeedUiState
 import com.goveye.app.ui.screens.feed.FeedViewModel
+import com.goveye.app.ui.screens.feed.FeedWrittenQuestionCard
 import com.goveye.app.ui.screens.feed.UnifiedFeedCard
 
 /**
@@ -56,7 +58,16 @@ import com.goveye.app.ui.screens.feed.UnifiedFeedCard
  * All tabs remain date-sorted — the top of each tab is always "today".
  */
 private enum class FeedTab(val title: String, val cardTypes: Set<CardType>) {
-    MPS("MPs", setOf(CardType.SPEECH, CardType.FINANCIAL, CardType.MP_FINANCIAL_COMBO)),
+    MPS(
+        "MPs",
+        setOf(
+            CardType.SPEECH,
+            CardType.SPEECH_COMBO,
+            CardType.FINANCIAL,
+            CardType.MP_FINANCIAL_COMBO,
+            CardType.WRITTEN_QUESTION
+        )
+    ),
     DEBATES("Debates", setOf(CardType.DIVISION, CardType.STATEMENT)),
     GOVERNMENT("Government", setOf(CardType.PUBLICATION, CardType.LEGISLATION))
 }
@@ -406,9 +417,26 @@ private fun FeedItemCard(
             }
         )
 
+        is FeedItem.SpeechComboItem -> FeedSpeechComboCard(
+            item = item,
+            onClick = { onNavigateToDivision(item.speeches.first().divisionId, 1) },
+            onNavigateToTranscript = onNavigateToTranscript,
+            onProfileClick = {
+                onProfileClick(item.memberId, item.memberName, item.memberPartyColorHex, MpMicroviewMode.VOTES)
+            }
+        )
+
         is FeedItem.MpVoteItem -> FeedMpVoteCard(
             item = item,
             onClick = { onNavigateToDivision(item.divisionId, item.divisionHouse) },
+            onProfileClick = {
+                onProfileClick(item.memberId, item.memberName, item.memberPartyColorHex, MpMicroviewMode.VOTES)
+            }
+        )
+
+        is FeedItem.WrittenQuestionItem -> FeedWrittenQuestionCard(
+            item = item,
+            onClick = { /* written question detail — future */ },
             onProfileClick = {
                 onProfileClick(item.memberId, item.memberName, item.memberPartyColorHex, MpMicroviewMode.VOTES)
             }

@@ -142,7 +142,7 @@ class MpMicroviewViewModel @Inject constructor(
                         },
                         house = house,
                         membershipStartDate = historicalMember.startDate,
-                        isActive = historicalMember.isCurrent == 1,
+                        isActive = historicalMember.isCurrent,
                         thumbnailUrl = null
                     )
                     _uiState.value = _uiState.value.copy(mp = mp)

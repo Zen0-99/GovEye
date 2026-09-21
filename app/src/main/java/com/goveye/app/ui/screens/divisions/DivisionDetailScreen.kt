@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -103,8 +104,9 @@ class DivisionDetailViewModel @Inject constructor(
         if (loadedDivisionId == divisionId) return
         loadedDivisionId = divisionId
 
-        // Stage 1: Load just the division entity (title, date, house, outcome)
-        // so the header card renders instantly. This is a single Room query.
+        // Stage 1: Load JUST the division entity so the header card
+        // renders instantly. This is a single Room query — the fastest
+        // path to getting content on screen.
         viewModelScope.launch {
             val divisionResult = votesRepository.observeDivision(divisionId).first()
             val division = divisionResult.data
@@ -120,18 +122,24 @@ class DivisionDetailViewModel @Inject constructor(
             )
         }
 
-        // Stage 2: Load votes, party breakdown, speech count, and tags
-        // in parallel. These fade in via staggered animation as they arrive.
+        // Stage 2: Load speech count, tags, votes, and party breakdown
+        // in parallel. The transcript button and tags appear in the
+        // header as they arrive; party breakdown and voter list fade in
+        // via staggered animation.
         viewModelScope.launch {
-            val votes = votesRepository.getVotesForDivision(divisionId)
-            val breakdown = votesRepository.getPartyBreakdown(divisionId)
             val speechCount = votesRepository.countSpeechesForDivision(divisionId)
             val tags = tagDao.getTagsForDivision(divisionId)
             _state.value = _state.value.copy(
+                speechCount = speechCount,
+                tags = tags
+            )
+        }
+        viewModelScope.launch {
+            val votes = votesRepository.getVotesForDivision(divisionId)
+            val breakdown = votesRepository.getPartyBreakdown(divisionId)
+            _state.value = _state.value.copy(
                 votes = votes,
                 partyBreakdown = breakdown,
-                speechCount = speechCount,
-                tags = tags,
                 isContentLoaded = true
             )
         }
@@ -334,14 +342,20 @@ private fun DivisionDetailContent(
     val ayes = state.votes.filter { it.vote == VoteType.AYE }
     val noes = state.votes.filter { it.vote == VoteType.NO }
 
-    // Staggered fade-in alpha for content sections. The header card
-    // is always visible (optimistic). Content sections fade in once
-    // isContentLoaded becomes true, with a smooth 300ms transition.
+    // Staggered domino alpha: each section gets a 60ms delay after the
+    // previous one, creating a top-to-bottom cascade when content loads.
+    // The header card is always visible (optimistic). Party breakdown
+    // header, each breakdown bar, and voter groups fade in sequentially.
+    val target = if (state.isContentLoaded) 1f else 0f
     val contentAlpha by animateFloatAsState(
-        targetValue = if (state.isContentLoaded) 1f else 0f,
+        targetValue = target,
         animationSpec = tween(durationMillis = 300),
         label = "divisionContentFade"
     )
+    // Party breakdown header animates first, then each bar cascades in
+    // from top (most votes) to bottom, each with its own staggered delay.
+    val breakdownHeaderAlpha by animateFloatAsState(target, tween(250, delayMillis = 0), label = "bdHeader")
+    val sortedBreakdown = state.partyBreakdown.sortedByDescending { it.ayeCount + it.noCount }
 
     LazyColumn(
         modifier = modifier,
@@ -362,10 +376,10 @@ private fun DivisionDetailContent(
 
         // Party breakdown — collapsible. Hidden while searching so the user
         // only sees the people matching their query (the main result bar in
-        // the header card remains visible). Fades in with contentAlpha.
+        // the header card remains visible). Fades in with staggered animation.
         if (state.partyBreakdown.isNotEmpty() && searchQuery.isBlank()) {
             item {
-                Column(modifier = Modifier.graphicsLayer(alpha = contentAlpha)) {
+                Column(modifier = Modifier.graphicsLayer(alpha = breakdownHeaderAlpha)) {
                     SectionHeader(
                         title = "Party Breakdown",
                         expanded = breakdownExpanded,
@@ -374,11 +388,18 @@ private fun DivisionDetailContent(
                 }
             }
             if (breakdownExpanded) {
-                items(
-                    state.partyBreakdown.sortedByDescending { it.ayeCount + it.noCount },
-                    key = { it.partyName }
-                ) { party ->
-                    Column(modifier = Modifier.graphicsLayer(alpha = contentAlpha)) {
+                itemsIndexed(
+                    sortedBreakdown,
+                    key = { _, party -> party.partyName }
+                ) { index, party ->
+                    // Each bar gets its own staggered delay — 80ms per bar
+                    // from top (most votes) to bottom
+                    val barAlpha by animateFloatAsState(
+                        target,
+                        tween(250, delayMillis = 80 + index * 80),
+                        label = "bar$index"
+                    )
+                    Column(modifier = Modifier.graphicsLayer(alpha = barAlpha)) {
                         PartyBreakdownBar(party = party)
                     }
                 }
@@ -544,7 +565,7 @@ private fun DivisionHeaderCard(
                     )
                     androidx.compose.foundation.layout.Spacer(modifier = Modifier.size(8.dp))
                     Text(
-                        text = "View Transcript ($speechCount speeches)",
+                        text = "View Transcript",
                         style = MaterialTheme.typography.labelLarge
                     )
                 }

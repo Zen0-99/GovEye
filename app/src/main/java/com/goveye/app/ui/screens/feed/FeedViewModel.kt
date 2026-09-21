@@ -13,6 +13,7 @@ import com.goveye.app.data.repo.FeedRepository
 import com.goveye.app.data.repo.GovernmentAnnouncementsRepository
 import com.goveye.app.data.repo.InterestsRepository
 import com.goveye.app.data.repo.MembersRepository
+import com.goveye.app.data.repo.WrittenQuestionsRepository
 import com.goveye.app.domain.model.Division
 import com.goveye.app.domain.model.Interest
 import com.goveye.app.domain.util.DateUtils
@@ -56,6 +57,7 @@ class FeedViewModel @Inject constructor(
     private val expensesRepository: ExpensesRepository,
     private val membersRepository: MembersRepository,
     private val debateSpeechDao: DebateSpeechDao,
+    private val writtenQuestionsRepository: WrittenQuestionsRepository,
     private val onboardingPreferences: OnboardingPreferences
 ) : ViewModel() {
 
@@ -252,6 +254,7 @@ class FeedViewModel @Inject constructor(
                 val financialItems = mutableListOf<FeedItem.FinancialItem>()
                 val speechItems = mutableListOf<FeedItem.SpeechItem>()
                 val mpVoteItems = mutableListOf<FeedItem.MpVoteItem>()
+                val writtenQuestionItems = mutableListOf<FeedItem.WrittenQuestionItem>()
                 if (followedIds.isNotEmpty()) {
                     // Load MP profile data (name, party color, photo) for followed members
                     val memberProfiles: Map<Int, MpEntity> = try {
@@ -368,29 +371,40 @@ class FeedViewModel @Inject constructor(
                         Log.w("GovEye/Feed", "Failed to load speeches for followed MPs", e)
                     }
 
-                    // MP votes — build individual vote cards from followedMpVotes
-                    // data (already fetched in FeedRepository). Each followed MP's
-                    // vote on a division becomes a separate card in the feed.
-                    feedData.followedMpVotes.forEach { (divisionId, votes) ->
-                        votes.forEach { vote ->
-                            val profile = memberProfiles[vote.memberId] ?: return@forEach
-                            mpVoteItems.add(
-                                FeedItem.MpVoteItem(
-                                    memberId = vote.memberId,
-                                    memberName = profile.nameDisplayAs,
-                                    memberPartyColorHex = profile.partyBackgroundColour,
-                                    memberPhotoUrl = profile.thumbnailUrl,
-                                    vote = vote.vote,
-                                    divisionId = vote.divisionId,
-                                    divisionTitle = vote.divisionTitle,
-                                    divisionHouse = vote.divisionHouse,
-                                    ayeCount = vote.ayeCount,
-                                    noCount = vote.noCount,
-                                    date = vote.divisionDate,
-                                    tags = feedData.divisionTags[vote.divisionId] ?: emptyList()
+                    // Written questions — batch query for all followed members
+                    try {
+                        var totalQuestions = 0
+                        followedIds.forEach { memberId ->
+                            val profile = memberProfiles[memberId] ?: return@forEach
+                            val sixMonthsAgo = java.time.LocalDate.now()
+                                .minusMonths(6)
+                                .toString()
+                            val questions = writtenQuestionsRepository
+                                .getQuestionsByMemberAndDateRange(memberId, sixMonthsAgo)
+                            totalQuestions += questions.size
+                            questions.take(20).forEach { q ->
+                                writtenQuestionItems.add(
+                                    FeedItem.WrittenQuestionItem(
+                                        memberId = memberId,
+                                        memberName = profile.nameDisplayAs,
+                                        memberPartyColorHex = profile.partyBackgroundColour,
+                                        memberPhotoUrl = profile.thumbnailUrl,
+                                        questionText = q.questionText,
+                                        heading = q.heading,
+                                        answeringBodyName = q.answeringBodyName,
+                                        uin = q.uin,
+                                        questionId = q.id,
+                                        date = q.dateTabled
+                                    )
                                 )
-                            )
+                            }
                         }
+                        Log.i(
+                            "GovEye/Feed",
+                            "Written questions: $totalQuestions total for ${followedIds.size} followed MPs, ${writtenQuestionItems.size} items added"
+                        )
+                    } catch (e: Exception) {
+                        Log.w("GovEye/Feed", "Failed to load written questions for followed MPs", e)
                     }
                 }
 
@@ -426,11 +440,36 @@ class FeedViewModel @Inject constructor(
                 if (filter.typeFilter.isEmpty() || CardType.MP_FINANCIAL_COMBO in filter.typeFilter) {
                     allItems.addAll(comboItems)
                 }
-                if (filter.typeFilter.isEmpty() || CardType.SPEECH in filter.typeFilter) {
-                    allItems.addAll(speechItems)
+                if (filter.typeFilter.isEmpty() || CardType.SPEECH in filter.typeFilter ||
+                    CardType.SPEECH_COMBO in filter.typeFilter
+                ) {
+                    // Group speeches by (memberId, date) — if an MP has
+                    // multiple speech segments on the same date (from the
+                    // same debate or different debates), combine them into
+                    // a SpeechComboItem. Single speeches stay as SpeechItem.
+                    val speechComboItems = mutableListOf<FeedItem.SpeechComboItem>()
+                    val grouped = speechItems.groupBy { it.memberId to it.date }
+                    grouped.forEach { (_, items) ->
+                        if (items.size > 1) {
+                            val first = items.first()
+                            speechComboItems.add(
+                                FeedItem.SpeechComboItem(
+                                    memberId = first.memberId,
+                                    memberName = first.memberName,
+                                    memberPartyColorHex = first.memberPartyColorHex,
+                                    memberPhotoUrl = first.memberPhotoUrl,
+                                    speeches = items,
+                                    date = first.date
+                                )
+                            )
+                        } else {
+                            allItems.addAll(items)
+                        }
+                    }
+                    allItems.addAll(speechComboItems)
                 }
-                if (filter.typeFilter.isEmpty() || CardType.MP_VOTE in filter.typeFilter) {
-                    allItems.addAll(mpVoteItems)
+                if (filter.typeFilter.isEmpty() || CardType.WRITTEN_QUESTION in filter.typeFilter) {
+                    allItems.addAll(writtenQuestionItems)
                 }
 
                 // Limit feed to a reasonable size (200 items) to avoid performance
@@ -473,6 +512,7 @@ class FeedViewModel @Inject constructor(
                         "publications=${publicationItems.size} statements=${statementItems.size} " +
                         "legislation=${legislationItems.size} financial=${financialItems.size} " +
                         "combo=${comboItems.size} speeches=${speechItems.size} mpVotes=${mpVoteItems.size} " +
+                        "writtenQuestions=${writtenQuestionItems.size} " +
                         "isEmpty=$isEmpty isRecessEmpty=$isRecessEmpty hasMore=$hasMore " +
                         "processingTime=${processingTime}ms"
                 )
@@ -518,7 +558,7 @@ class FeedViewModel @Inject constructor(
             .onEach { state -> FeedCache.update(state) }
             .stateIn(
                 viewModelScope,
-                SharingStarted.WhileSubscribed(5_000),
+                SharingStarted.Eagerly,
                 FeedCache.cached ?: FeedUiState()
             )
 

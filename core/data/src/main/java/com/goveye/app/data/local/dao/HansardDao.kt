@@ -19,4 +19,20 @@ interface HansardDao {
 
     @Query("SELECT COUNT(*) FROM hansard_contributions WHERE memberId = :memberId")
     suspend fun countContributionsForMember(memberId: Int): Int
+
+    /**
+     * Average contribution count per MP for a house.
+     * Single SQL aggregate — replaces the old 650-MP iteration fallback.
+     */
+    @Query(
+        """
+        SELECT AVG(cnt) FROM (
+            SELECT COUNT(*) AS cnt
+            FROM hansard_contributions
+            WHERE house = :houseName
+            GROUP BY memberId
+        )
+        """
+    )
+    suspend fun getAverageContributionCount(houseName: String): Float?
 }

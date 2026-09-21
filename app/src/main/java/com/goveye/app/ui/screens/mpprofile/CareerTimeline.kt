@@ -68,12 +68,6 @@ fun CareerTimelineSection(
             .fillMaxWidth()
             .padding(horizontal = MaterialTheme.padding.large, vertical = MaterialTheme.padding.medium)
     ) {
-        Text(
-            text = "Political Career",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-
         when (viewMode) {
             CareerViewMode.TIMELINE -> ConnectedTimelineView(unifiedTimeline)
             CareerViewMode.TABLE -> TableView(unifiedTimeline)
@@ -131,18 +125,8 @@ private fun buildUnifiedTimeline(
 
 // --- Category visual properties ---
 
-private fun CareerCategory.color(): Color = when (this) {
-    CareerCategory.GOVERNMENT_POST -> Color(0xFF1A73E8)
-    CareerCategory.OPPOSITION_POST -> Color(0xFFD93025)
-    CareerCategory.OTHER_POST -> Color(0xFFE8710A)
-    CareerCategory.COMMITTEE -> Color(0xFF0D904F)
-    CareerCategory.REPRESENTATION -> Color(0xFF9334E6)
-    CareerCategory.PARTY_AFFILIATION -> Color(0xFFE8710A)
-    CareerCategory.HOUSE_MEMBERSHIP -> Color(0xFF5F6368)
-    CareerCategory.EDUCATION -> Color(0xFF1A56DB)
-    CareerCategory.OCCUPATION -> Color(0xFF8D6E63)
-    CareerCategory.EXPERIENCE -> Color(0xFF5F6368)
-}
+@Composable
+private fun CareerCategory.color(): Color = MaterialTheme.colorScheme.primary
 
 private fun CareerCategory.icon(): ImageVector = when (this) {
     CareerCategory.GOVERNMENT_POST -> Icons.Outlined.AccountBalance
@@ -176,103 +160,164 @@ private fun CareerCategory.badgeLabel(): String = when (this) {
 private fun ConnectedTimelineView(items: List<UnifiedTimelineItem>) {
     val lineColor = MaterialTheme.colorScheme.outlineVariant
 
+    val currentItems = items.filter { it.isCurrent }
+    val pastItems = items.filter { !it.isCurrent }
+
     Column(
         modifier = Modifier
             .padding(top = MaterialTheme.padding.medium)
             .fillMaxWidth()
     ) {
-        items.forEachIndexed { index, item ->
-            val isFirst = index == 0
-            val isLast = index == items.lastIndex
-            val dotColor = item.category.color()
-            val dotRadius = 7.dp
-            val dotTopPadding = 8.dp
+        if (currentItems.isNotEmpty()) {
+            Text(
+                text = "Current",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(bottom = MaterialTheme.padding.small)
+            )
+            TimelineItems(currentItems, lineColor)
+        }
 
-            Row(
+        if (pastItems.isNotEmpty()) {
+            if (currentItems.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(MaterialTheme.padding.medium))
+            }
+            Text(
+                text = "Past",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(bottom = MaterialTheme.padding.small)
+            )
+            TimelineItems(pastItems, lineColor)
+        }
+    }
+}
+
+@Composable
+private fun TimelineItems(items: List<UnifiedTimelineItem>, lineColor: Color) {
+    items.forEachIndexed { index, item ->
+        val isFirst = index == 0
+        val isLast = index == items.lastIndex
+        val dotColor = item.category.color()
+        val dotRadius = 7.dp
+        val dotTopPadding = 8.dp
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.medium)
+        ) {
+            // Left column: vertical line + dot
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(IntrinsicSize.Min),
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.medium)
-            ) {
-                // Left column: vertical line + dot
-                Box(
-                    modifier = Modifier
-                        .width(28.dp)
-                        .fillMaxHeight()
-                        .drawBehind {
-                            val centerX = size.width / 2
-                            val dotCenterY = dotTopPadding.toPx() + dotRadius.toPx()
-                            val dotDiameter = dotRadius.toPx() * 2
+                    .width(28.dp)
+                    .fillMaxHeight()
+                    .drawBehind {
+                        val centerX = size.width / 2
+                        val dotCenterY = dotTopPadding.toPx() + dotRadius.toPx()
+                        val dotDiameter = dotRadius.toPx() * 2
 
-                            // Draw connecting line
-                            // Top segment: from top to dot center (skip for first item)
-                            if (!isFirst) {
-                                drawLine(
-                                    color = lineColor,
-                                    start = Offset(centerX, 0f),
-                                    end = Offset(centerX, dotCenterY),
-                                    strokeWidth = 2.dp.toPx()
-                                )
-                            }
-                            // Bottom segment: from dot center to bottom (skip for last item)
-                            if (!isLast) {
-                                drawLine(
-                                    color = lineColor,
-                                    start = Offset(centerX, dotCenterY),
-                                    end = Offset(centerX, size.height),
-                                    strokeWidth = 2.dp.toPx()
-                                )
-                            }
-
-                            // Draw dot
-                            drawCircle(
-                                color = dotColor,
-                                radius = dotRadius.toPx(),
-                                center = Offset(centerX, dotCenterY)
-                            )
-                            // Inner white circle for ring effect
-                            drawCircle(
-                                color = Color.White,
-                                radius = dotRadius.toPx() * 0.4f,
-                                center = Offset(centerX, dotCenterY)
+                        // Draw connecting line
+                        // Top segment: from top to dot center (skip for first item)
+                        if (!isFirst) {
+                            drawLine(
+                                color = lineColor,
+                                start = Offset(centerX, 0f),
+                                end = Offset(centerX, dotCenterY),
+                                strokeWidth = 2.dp.toPx()
                             )
                         }
-                )
+                        // Bottom segment: from dot center to bottom (skip for last item)
+                        if (!isLast) {
+                            drawLine(
+                                color = lineColor,
+                                start = Offset(centerX, dotCenterY),
+                                end = Offset(centerX, size.height),
+                                strokeWidth = 2.dp.toPx()
+                            )
+                        }
 
-                // Right column: date title + info card
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    // Date title
+                        // Draw dot
+                        drawCircle(
+                            color = dotColor,
+                            radius = dotRadius.toPx(),
+                            center = Offset(centerX, dotCenterY)
+                        )
+                        // Inner white circle for ring effect
+                        drawCircle(
+                            color = Color.White,
+                            radius = dotRadius.toPx() * 0.4f,
+                            center = Offset(centerX, dotCenterY)
+                        )
+                    }
+            )
+
+            // Right column: date title + info card
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                // Date title — only show when a date is available
+                if (item.dateLabel.isNotBlank()) {
                     Text(
-                        text = item.dateLabel.ifBlank { "Date unknown" },
+                        text = item.dateLabel,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
-                        color = item.category.color()
+                        color = MaterialTheme.colorScheme.onSurface
                     )
+                }
 
-                    // Info card
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                        )
+                // Info card
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Column(
-                            modifier = Modifier.padding(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        // Title
+                        Text(
+                            text = item.title,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+
+                        // Subtitle (department, "Elected N times", etc.) + category badge on the right
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            // Category badge + current indicator
+                            item.subtitle?.let { sub ->
+                                if (sub.isNotBlank()) {
+                                    Text(
+                                        text = sub,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                } else {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
+                            } ?: Spacer(modifier = Modifier.weight(1f))
+
+                            // Category badge — bottom right
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                horizontalArrangement = Arrangement.spacedBy(3.dp)
                             ) {
                                 Icon(
                                     imageVector = item.category.icon(),
                                     contentDescription = null,
-                                    modifier = Modifier.size(14.dp),
+                                    modifier = Modifier.size(12.dp),
                                     tint = item.category.color()
                                 )
                                 Text(
@@ -281,43 +326,15 @@ private fun ConnectedTimelineView(items: List<UnifiedTimelineItem>) {
                                     color = item.category.color(),
                                     fontWeight = FontWeight.Medium
                                 )
-                                if (item.isCurrent) {
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = "● Current",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                }
-                            }
-
-                            // Title
-                            Text(
-                                text = item.title,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-
-                            // Subtitle (department, "Elected N times", etc.)
-                            item.subtitle?.let { sub ->
-                                if (sub.isNotBlank()) {
-                                    Text(
-                                        text = sub,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
                             }
                         }
                     }
+                }
 
-                    // Gap before next item — this space is where the line
-                    // continues to the next dot
-                    if (!isLast) {
-                        Spacer(modifier = Modifier.height(MaterialTheme.padding.medium))
-                    }
+                // Gap before next item — this space is where the line
+                // continues to the next dot
+                if (!isLast) {
+                    Spacer(modifier = Modifier.height(MaterialTheme.padding.medium))
                 }
             }
         }

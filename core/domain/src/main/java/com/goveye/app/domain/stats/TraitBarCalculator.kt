@@ -24,10 +24,6 @@ data class TraitBar(
  * Questions/Speeches/Finance use rate-based scoring:
  *   score = (mpCount / mpYearsServed) / (avgCount / avgYearsServed) * 100
  *   An MP at the average rate scores 100%.
- *
- * Committees use count-based scoring:
- *   score = (mpCount / ceiling) * 100, ceiling = 10
- *   5 committees = 50%, 10+ = 100%.
  */
 object TraitBarCalculator {
     /**
@@ -35,14 +31,12 @@ object TraitBarCalculator {
      * @param participationRate MP's vote participation rate (0-1)
      * @param questionCount MP's question count
      * @param speechCount MP's speech count
-     * @param committeeCount MP's committee count
      * @param mpYearsServed MP's years served in Parliament
      * @param avgYearsServed Average years served across peers
      * @param peerRebellionRates All peers' rebellion rates
      * @param peerParticipationRates All peers' participation rates
      * @param peerQuestionCounts All peers' question counts
      * @param peerSpeechCounts All peers' speech counts
-     * @param peerCommitteeCounts All peers' committee counts
      * @param peerAverages Peer averages for display
      * @param financeCount MP's total financial declarations (interests + expenses)
      * @param avgFinanceCount Average total declarations across peers
@@ -52,14 +46,12 @@ object TraitBarCalculator {
         participationRate: Float,
         questionCount: Int,
         speechCount: Int,
-        committeeCount: Int,
         mpYearsServed: Float,
         avgYearsServed: Float,
         peerRebellionRates: List<Float>,
         peerParticipationRates: List<Float>,
         peerQuestionCounts: List<Int>,
         peerSpeechCounts: List<Int>,
-        peerCommitteeCounts: List<Int>,
         peerAverages: PeerAverages,
         financeCount: Int = 0,
         avgFinanceCount: Float = 0f
@@ -87,11 +79,6 @@ object TraitBarCalculator {
             0
         }
 
-        // Count-based score for Committees.
-        // score = (count / ceiling) * 100, ceiling = 10
-        // (5 committees = 50%, 10+ = 100%)
-        val committeesScore = (committeeCount / 10f * 100f).toInt().coerceIn(0, 100)
-
         return listOf(
             // Loyalty = 100% - rebellionRate. Percentile inverted:
             // 0% rebellion = 100th percentile loyalty (most loyal).
@@ -118,12 +105,6 @@ object TraitBarCalculator {
                 percentile = speechesScore,
                 mpValue = speechCount.toFloat(),
                 peerAverage = peerAverages.averageSpeeches
-            ),
-            TraitBar(
-                label = "Committees",
-                percentile = committeesScore,
-                mpValue = committeeCount.toFloat(),
-                peerAverage = peerAverages.averageCommittees
             ),
             TraitBar(
                 label = "Finance",
