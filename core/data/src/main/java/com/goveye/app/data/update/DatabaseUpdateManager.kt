@@ -11,6 +11,8 @@ import com.goveye.app.data.local.entity.BillEntity
 import com.goveye.app.data.local.entity.BillStageEntity
 import com.goveye.app.data.local.entity.BioDataEntity
 import com.goveye.app.data.local.entity.CommitteeEntity
+import com.goveye.app.data.local.entity.ConstituencyElectionCandidateEntity
+import com.goveye.app.data.local.entity.ConstituencyElectionEntity
 import com.goveye.app.data.local.entity.DebateSpeechEntity
 import com.goveye.app.data.local.entity.DivisionEntity
 import com.goveye.app.data.local.entity.DivisionVoteEntity
@@ -683,6 +685,18 @@ class DatabaseUpdateManager @Inject constructor(
                         json.decodeFromJsonElement<MpAppointmentEntity>(it)
                     }
                 )
+
+                "constituency_elections" -> updateDao.upsertConstituencyElections(
+                    upsertList.map {
+                        json.decodeFromJsonElement<ConstituencyElectionEntity>(it)
+                    }
+                )
+
+                "constituency_election_candidates" -> updateDao.upsertConstituencyElectionCandidates(
+                    upsertList.map {
+                        json.decodeFromJsonElement<ConstituencyElectionCandidateEntity>(it)
+                    }
+                )
                 // mps_fts is NOT handled — auto-synced by FTS4 triggers (Pitfall 2)
             }
         }
@@ -780,6 +794,17 @@ class DatabaseUpdateManager @Inject constructor(
                     obj["officerRole"]!!.jsonPrimitive.content,
                     obj["appointedOn"]!!.jsonPrimitive.content
                 )
+
+                "constituency_elections" -> updateDao.deleteConstituencyElection(
+                    obj["constituencyId"]!!.jsonPrimitive.intOrNull!!,
+                    obj["electionId"]!!.jsonPrimitive.intOrNull!!
+                )
+
+                "constituency_election_candidates" -> updateDao.deleteConstituencyElectionCandidate(
+                    obj["constituencyId"]!!.jsonPrimitive.intOrNull!!,
+                    obj["electionId"]!!.jsonPrimitive.intOrNull!!,
+                    obj["rankOrder"]!!.jsonPrimitive.intOrNull!!
+                )
             }
         }
     }
@@ -863,25 +888,52 @@ class DatabaseUpdateManager @Inject constructor(
      */
     private fun perApiTables(streamName: String): List<String> = when (streamName) {
         "mps" -> listOf("mps", "mps_fts")
+
         "commons-votes" -> listOf("divisions", "division_votes")
+
         "lords-votes" -> listOf("divisions", "division_votes")
+
         "bills" -> listOf("bills", "bill_stages")
+
         "committees" -> listOf("committees", "mp_committee_cross_ref")
+
         "recess" -> listOf("recess_dates", "recess_dates_meta")
+
         "interests" -> listOf("interests")
+
         "debates" -> listOf("debate_speeches")
+
         "bio-data" -> listOf("bio_data")
+
         "expenses" -> listOf("expenses")
+
         "mp-links" -> listOf("mp_links")
+
         "manifestos" -> listOf("party_manifestos")
+
         "party-stats" -> listOf("party_stats")
+
         "historical-members" -> listOf("historical_members", "historical_members_fts4")
+
         "gov-publications" -> listOf("government_publications")
+
         "written-statements" -> listOf("written_statements")
+
         "written-questions" -> listOf("written_questions")
+
         "legislation" -> listOf("legislation")
-        "member-details" -> listOf("mp_synopsis", "mp_contacts", "mp_experience", "mp_career_events")
+
+        "member-details" -> listOf(
+            "mp_synopsis",
+            "mp_contacts",
+            "mp_experience",
+            "mp_career_events",
+            "constituency_elections",
+            "constituency_election_candidates"
+        )
+
         "companies-house" -> listOf("mp_officer_identity", "mp_appointments")
+
         else -> emptyList()
     }
 

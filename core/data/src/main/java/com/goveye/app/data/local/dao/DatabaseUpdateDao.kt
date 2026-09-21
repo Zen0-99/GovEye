@@ -9,6 +9,8 @@ import com.goveye.app.data.local.entity.BillEntity
 import com.goveye.app.data.local.entity.BillStageEntity
 import com.goveye.app.data.local.entity.BioDataEntity
 import com.goveye.app.data.local.entity.CommitteeEntity
+import com.goveye.app.data.local.entity.ConstituencyElectionCandidateEntity
+import com.goveye.app.data.local.entity.ConstituencyElectionEntity
 import com.goveye.app.data.local.entity.DebateSpeechEntity
 import com.goveye.app.data.local.entity.DivisionEntity
 import com.goveye.app.data.local.entity.DivisionVoteEntity
@@ -250,4 +252,21 @@ interface DatabaseUpdateDao {
             "AND officerRole = :officerRole AND appointedOn = :appointedOn"
     )
     suspend fun deleteAppointment(mpId: Int, companyNumber: String, officerRole: String, appointedOn: String)
+
+    // ── constituency_elections (PK: constituencyId, electionId) ────────
+    @Upsert
+    suspend fun upsertConstituencyElections(elections: List<ConstituencyElectionEntity>)
+
+    @Query("DELETE FROM constituency_elections WHERE constituencyId = :constituencyId AND electionId = :electionId")
+    suspend fun deleteConstituencyElection(constituencyId: Int, electionId: Int)
+
+    // ── constituency_election_candidates (PK: constituencyId, electionId, rankOrder) ──
+    @Upsert
+    suspend fun upsertConstituencyElectionCandidates(candidates: List<ConstituencyElectionCandidateEntity>)
+
+    @Query(
+        "DELETE FROM constituency_election_candidates WHERE constituencyId = :constituencyId " +
+            "AND electionId = :electionId AND rankOrder = :rankOrder"
+    )
+    suspend fun deleteConstituencyElectionCandidate(constituencyId: Int, electionId: Int, rankOrder: Int)
 }

@@ -982,6 +982,56 @@ object DatabaseModule {
         }
     }
 
+    // v36 → v37: per-constituency election results (latest + history) with
+    // per-candidate rows. member_details stream tables (D-01/D-03).
+    private val MIGRATION_36_37 = object : Migration(36, 37) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS `constituency_elections` (
+                    `constituencyId` INTEGER NOT NULL,
+                    `electionId` INTEGER NOT NULL,
+                    `result` TEXT,
+                    `isNotional` INTEGER NOT NULL,
+                    `electorate` INTEGER,
+                    `turnout` INTEGER,
+                    `majority` INTEGER,
+                    `winningPartyId` INTEGER,
+                    `winningPartyName` TEXT,
+                    `winningPartyColour` TEXT,
+                    `electionTitle` TEXT,
+                    `electionDate` TEXT,
+                    `isGeneralElection` INTEGER NOT NULL,
+                    `constituencyName` TEXT,
+                    `lastUpdated` INTEGER NOT NULL,
+                    PRIMARY KEY(`constituencyId`, `electionId`)
+                )"""
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS index_constituency_elections_constituencyId ON constituency_elections(constituencyId)"
+            )
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS `constituency_election_candidates` (
+                    `constituencyId` INTEGER NOT NULL,
+                    `electionId` INTEGER NOT NULL,
+                    `rankOrder` INTEGER NOT NULL,
+                    `memberId` INTEGER,
+                    `name` TEXT,
+                    `partyId` INTEGER,
+                    `partyName` TEXT,
+                    `partyAbbreviation` TEXT,
+                    `partyColour` TEXT,
+                    `resultChange` TEXT,
+                    `votes` INTEGER,
+                    `lastUpdated` INTEGER NOT NULL,
+                    PRIMARY KEY(`constituencyId`, `electionId`, `rankOrder`)
+                )"""
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS index_constituency_election_candidates_memberId ON constituency_election_candidates(memberId)"
+            )
+        }
+    }
+
     @Provides
     @Singleton
     fun provideBundledDatabase(@ApplicationContext context: Context): BundledDatabase {
@@ -1048,7 +1098,8 @@ object DatabaseModule {
                 MIGRATION_32_33,
                 MIGRATION_33_34,
                 MIGRATION_34_35,
-                MIGRATION_35_36
+                MIGRATION_35_36,
+                MIGRATION_36_37
             )
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
