@@ -67,7 +67,8 @@ enum class CareerCategory(val apiName: String, val displayName: String) {
     HOUSE_MEMBERSHIP("house_membership", "Parliament"),
     EDUCATION("education", "Education"),
     OCCUPATION("occupation", "Career"),
-    EXPERIENCE("experience", "Experience");
+    EXPERIENCE("experience", "Experience"),
+    COMPANY_APPOINTMENT("company_appointment", "Company");
 
     companion object {
         fun fromApiName(name: String): CareerCategory = entries.find { it.apiName == name } ?: EXPERIENCE

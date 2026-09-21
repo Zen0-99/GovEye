@@ -17,6 +17,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.goveye.app.data.local.entity.BioDataEntity
 import com.goveye.app.domain.model.Mp
+import com.goveye.app.domain.model.OfficerIdentity
 import com.goveye.app.ui.theme.padding
 import com.goveye.app.ui.utils.formatDob
 import java.time.LocalDate
@@ -24,7 +25,12 @@ import java.time.Period
 import java.time.format.DateTimeFormatter
 
 @Composable
-fun ProfileStatsCard(mp: Mp, bioData: BioDataEntity? = null, modifier: Modifier = Modifier) {
+fun ProfileStatsCard(
+    mp: Mp,
+    bioData: BioDataEntity? = null,
+    officerIdentity: OfficerIdentity? = null,
+    modifier: Modifier = Modifier
+) {
     val yearsInParliament = mp.membershipStartDate?.let { startDate ->
         try {
             val start = LocalDate.parse(startDate.take(10))
@@ -51,9 +57,13 @@ fun ProfileStatsCard(mp: Mp, bioData: BioDataEntity? = null, modifier: Modifier 
         birthDateFormatted?.let { add("Year of\nBirth" to it) }
         maidenSpeechFormatted?.let { add("Maiden\nSpeech" to it) }
         yearsInParliament?.let { add("Years in\nParliament" to "$it years") }
+        officerIdentity?.nationality?.takeIf { it.isNotBlank() }?.let { add("Nationality" to it) }
+        officerIdentity?.countryOfResidence?.takeIf { it.isNotBlank() }?.let { add("Residence" to it) }
     }
 
-    if (stats.isEmpty()) return
+    // Wider than just stats: an MP whose only CH fact is a disqualification
+    // must still render the card so the flag isn't swallowed.
+    if (stats.isEmpty() && officerIdentity?.isDisqualified != true) return
 
     Surface(
         modifier = modifier
@@ -72,17 +82,28 @@ fun ProfileStatsCard(mp: Mp, bioData: BioDataEntity? = null, modifier: Modifier 
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                stats.forEach { (label, value) ->
-                    StatItem(
-                        label = label,
-                        value = value,
-                        modifier = Modifier.weight(1f)
-                    )
+            // ≤4 stats per row — Nationality/Residence push past the
+            // original 3, so a second row appears only when needed.
+            stats.chunked(4).forEach { rowStats ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    rowStats.forEach { (label, value) ->
+                        StatItem(
+                            label = label,
+                            value = value,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
+            }
+            if (officerIdentity?.isDisqualified == true) {
+                Text(
+                    text = "Barred from acting as a company director",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
             }
         }
     }

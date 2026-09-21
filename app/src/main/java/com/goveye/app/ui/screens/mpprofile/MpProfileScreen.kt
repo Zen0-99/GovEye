@@ -343,6 +343,7 @@ fun ProfileScreen(
                                     mpLinks = uiState.mpLinks,
                                     mpTags = uiState.mpTags,
                                     traitBars = uiState.traitBars,
+                                    officerIdentity = uiState.corporateFootprint?.officerIdentity,
                                     onNavigateToMpTagBrowse = onNavigateToMpTagBrowse,
                                     contentVisible = !isOptimistic
                                 )
@@ -351,7 +352,8 @@ fun ProfileScreen(
                                     memberId = memberId,
                                     experiences = uiState.experiences,
                                     careerEvents = uiState.careerEvents,
-                                    electionResults = uiState.electionResults
+                                    electionResults = uiState.electionResults,
+                                    appointments = uiState.corporateFootprint?.appointments ?: emptyList()
                                 )
 
                                 ProfileTab.COMMITTEES -> CommitteesTabContent(
@@ -637,6 +639,7 @@ private fun ProfileTabContent(
     bioData: com.goveye.app.data.local.entity.BioDataEntity? = null,
     mpLinks: com.goveye.app.data.local.entity.MpLinkEntity? = null,
     mpTags: List<MpTagEntity> = emptyList(),
+    officerIdentity: com.goveye.app.domain.model.OfficerIdentity? = null,
     @Suppress("UNUSED_PARAMETER") traitBars: List<com.goveye.app.domain.stats.TraitBar> = emptyList(),
     onNavigateToMpTagBrowse: (String) -> Unit = {},
     contentVisible: Boolean = true
@@ -665,7 +668,8 @@ private fun ProfileTabContent(
             Box(modifier = Modifier.graphicsLayer { alpha = alpha1 }) {
                 ProfileStatsCard(
                     mp = mp,
-                    bioData = bioData
+                    bioData = bioData,
+                    officerIdentity = officerIdentity
                 )
             }
         }
@@ -687,7 +691,8 @@ private fun CareerTabContent(
     memberId: Int,
     experiences: List<com.goveye.app.domain.model.BiographyExperience>,
     careerEvents: List<com.goveye.app.domain.model.CareerEvent>,
-    electionResults: com.goveye.app.domain.model.MpElectionResults?
+    electionResults: com.goveye.app.domain.model.MpElectionResults?,
+    appointments: List<com.goveye.app.domain.model.CompanyAppointment> = emptyList()
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -700,7 +705,13 @@ private fun CareerTabContent(
                 ElectionResultsSection(memberId = memberId, results = it)
             }
         }
-        item { CareerTimelineSection(experiences = experiences, careerEvents = careerEvents) }
+        item {
+            CareerTimelineSection(
+                experiences = experiences,
+                careerEvents = careerEvents,
+                appointments = appointments
+            )
+        }
     }
 }
 

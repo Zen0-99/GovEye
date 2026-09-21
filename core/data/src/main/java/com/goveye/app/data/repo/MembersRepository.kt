@@ -7,29 +7,36 @@ import androidx.paging.map
 import com.goveye.app.data.api.MembersApi
 import com.goveye.app.data.local.dao.ConstituencyElectionDao
 import com.goveye.app.data.local.dao.HistoricalMemberDao
+import com.goveye.app.data.local.dao.MpAppointmentDao
 import com.goveye.app.data.local.dao.MpCareerEventDao
 import com.goveye.app.data.local.dao.MpContactDao
 import com.goveye.app.data.local.dao.MpDao
 import com.goveye.app.data.local.dao.MpExperienceDao
+import com.goveye.app.data.local.dao.MpOfficerIdentityDao
 import com.goveye.app.data.local.dao.MpSynopsisDao
 import com.goveye.app.data.local.dao.SearchDao
 import com.goveye.app.data.local.entity.ConstituencyElectionCandidateEntity
 import com.goveye.app.data.local.entity.ConstituencyElectionEntity
+import com.goveye.app.data.local.entity.MpAppointmentEntity
 import com.goveye.app.data.local.entity.MpCareerEventEntity
 import com.goveye.app.data.local.entity.MpContactEntity
 import com.goveye.app.data.local.entity.MpEntity
 import com.goveye.app.data.local.entity.MpExperienceEntity
+import com.goveye.app.data.local.entity.MpOfficerIdentityEntity
 import com.goveye.app.data.local.entity.MpSynopsisEntity
 import com.goveye.app.data.mapper.MemberMapper
 import com.goveye.app.domain.model.BiographyExperience
 import com.goveye.app.domain.model.BiographyItem
 import com.goveye.app.domain.model.CareerCategory
 import com.goveye.app.domain.model.CareerEvent
+import com.goveye.app.domain.model.CompanyAppointment
 import com.goveye.app.domain.model.ConstituencyElection
 import com.goveye.app.domain.model.Contact
+import com.goveye.app.domain.model.CorporateFootprint
 import com.goveye.app.domain.model.ElectionCandidate
 import com.goveye.app.domain.model.Mp
 import com.goveye.app.domain.model.MpElectionResults
+import com.goveye.app.domain.model.OfficerIdentity
 import com.goveye.app.domain.model.RepositoryResult
 import com.goveye.app.domain.model.SyncStatus
 import com.goveye.app.domain.search.FtsQuerySanitizer
@@ -41,6 +48,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonPrimitive
 
 @Singleton
 class MembersRepository @Inject constructor(
@@ -53,7 +64,9 @@ class MembersRepository @Inject constructor(
     private val mpContactDao: MpContactDao,
     private val mpCareerEventDao: MpCareerEventDao,
     private val constituencyElectionDao: ConstituencyElectionDao,
-    private val mpExperienceDao: MpExperienceDao
+    private val mpExperienceDao: MpExperienceDao,
+    private val mpOfficerIdentityDao: MpOfficerIdentityDao,
+    private val mpAppointmentDao: MpAppointmentDao
 ) {
 
     suspend fun getMpsByIds(ids: List<Int>): List<MpEntity> = mpDao.getMpsByIds(ids)
@@ -438,6 +451,18 @@ class MembersRepository @Inject constructor(
         return MpElectionResults(currentSeatLatest = latest, contested = contested)
     }
 
+    /**
+     * Companies House footprint for the MP profile (Phase 20): officer
+     * appointments for the career timeline (CHUI-01, D-01) and quiet
+     * identity facts for the bio card (CHUI-02, D-02).
+     * Bundled data only — no API fallback; empty tables → empty bundle.
+     */
+    suspend fun getCorporateFootprint(memberId: Int): CorporateFootprint {
+        val appointments = mpAppointmentDao.getByMpId(memberId).map { it.toDomain() }
+        val identity = mpOfficerIdentityDao.getByMpId(memberId)?.toDomain()
+        return CorporateFootprint(appointments = appointments, officerIdentity = identity)
+    }
+
     suspend fun getBiography(memberId: Int): List<BiographyItem> {
         val cached = biographyCache[memberId]
         if (cached != null && System.currentTimeMillis() - cached.second < CacheTtl.MPS_MS) {
@@ -576,4 +601,32 @@ class MembersRepository @Inject constructor(
             constituencyName = constituencyName,
             candidates = candidates
         )
+
+    private fun MpAppointmentEntity.toDomain(): CompanyAppointment = CompanyAppointment(
+        companyNumber = companyNumber,
+        companyName = companyName,
+        officerRole = officerRole,
+        appointedOn = appointedOn,
+        resignedOn = resignedOn,
+        isCurrent = isCurrent && resignedOn == null,
+        companyStatus = companyStatus,
+        companyType = companyType,
+        sicCodes = parseJsonStringArray(companySicCodes),
+        pscNatures = parseJsonStringArray(pscNatures)
+    )
+
+    private fun MpOfficerIdentityEntity.toDomain(): OfficerIdentity = OfficerIdentity(
+        nationality = nationality,
+        countryOfResidence = countryOfResidence,
+        isDisqualified = isDisqualified
+    )
+
+    /** Parse a stored JSON array of strings; malformed/null → emptyList. */
+    private fun parseJsonStringArray(raw: String?): List<String> {
+        if (raw.isNullOrBlank()) return emptyList()
+        return runCatching {
+            // contentOrNull (not .content) so literal JSON nulls can't leak "null" strings
+            Json.parseToJsonElement(raw).jsonArray.mapNotNull { it.jsonPrimitive.contentOrNull }
+        }.getOrDefault(emptyList())
+    }
 }

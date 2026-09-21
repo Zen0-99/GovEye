@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalance
+import androidx.compose.material.icons.outlined.Apartment
 import androidx.compose.material.icons.outlined.BusinessCenter
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.HowToVote
@@ -45,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import com.goveye.app.domain.model.BiographyExperience
 import com.goveye.app.domain.model.CareerCategory
 import com.goveye.app.domain.model.CareerEvent
+import com.goveye.app.domain.model.CompanyAppointment
 import com.goveye.app.ui.theme.padding
 
 enum class CareerViewMode { TIMELINE, TABLE }
@@ -53,10 +55,11 @@ enum class CareerViewMode { TIMELINE, TABLE }
 fun CareerTimelineSection(
     experiences: List<BiographyExperience>,
     careerEvents: List<CareerEvent> = emptyList(),
+    appointments: List<CompanyAppointment> = emptyList(),
     modifier: Modifier = Modifier
 ) {
-    val unifiedTimeline = remember(experiences, careerEvents) {
-        buildUnifiedTimeline(experiences, careerEvents)
+    val unifiedTimeline = remember(experiences, careerEvents, appointments) {
+        buildUnifiedTimeline(experiences, careerEvents, appointments)
     }
 
     if (unifiedTimeline.isEmpty()) return
@@ -88,7 +91,8 @@ private data class UnifiedTimelineItem(
 
 private fun buildUnifiedTimeline(
     experiences: List<BiographyExperience>,
-    careerEvents: List<CareerEvent>
+    careerEvents: List<CareerEvent>,
+    appointments: List<CompanyAppointment>
 ): List<UnifiedTimelineItem> {
     val items = mutableListOf<UnifiedTimelineItem>()
 
@@ -118,6 +122,67 @@ private fun buildUnifiedTimeline(
         )
     }
 
+    for (appt in appointments) {
+        // Blank-label guard: a row without a usable company name or
+        // appointedOn date can't produce a coherent entry — skip it
+        // rather than render "Appointed of" or a bare year-less card.
+        if (appt.companyName.isBlank() || appt.roleDisplay.isBlank() ||
+            appt.appointedLabel.isBlank()
+        ) {
+            continue
+        }
+
+        // D-05: terse company context in the subtitle — tenure span
+        // always; status only when not plainly "active"; type when present.
+        val contextBits = buildList {
+            add(appt.tenureLabel)
+            appt.companyType?.takeIf { it.isNotBlank() }?.let { add(it.uppercase()) }
+            appt.companyStatus
+                ?.takeIf { it.isNotBlank() && !it.equals("active", ignoreCase = true) }
+                ?.let { add(it.replaceFirstChar { c -> c.uppercaseChar() }) }
+        }.joinToString(" · ")
+
+        if (appt.isCurrent) {
+            // Single ongoing entry — the "current" marker (D-01).
+            items.add(
+                UnifiedTimelineItem(
+                    dateLabel = "since ${appt.appointedLabel}",
+                    title = "${appt.roleDisplay} of ${appt.companyName}",
+                    subtitle = contextBits,
+                    category = CareerCategory.COMPANY_APPOINTMENT,
+                    link = null,
+                    isCurrent = true
+                )
+            )
+        } else {
+            // Two dated entries: appointed at appointedOn, resigned at resignedOn (D-01).
+            items.add(
+                UnifiedTimelineItem(
+                    dateLabel = appt.appointedLabel,
+                    title = "Appointed ${appt.roleDisplaySentence} of ${appt.companyName}",
+                    subtitle = contextBits,
+                    category = CareerCategory.COMPANY_APPOINTMENT,
+                    link = null,
+                    isCurrent = false
+                )
+            )
+            // A resignedOn that fails to parse yields a blank label — skip
+            // the resignation entry rather than render an undated card.
+            if (appt.resignedLabel.isNotBlank()) {
+                items.add(
+                    UnifiedTimelineItem(
+                        dateLabel = appt.resignedLabel,
+                        title = "Resigned as ${appt.roleDisplaySentence} of ${appt.companyName}",
+                        subtitle = contextBits,
+                        category = CareerCategory.COMPANY_APPOINTMENT,
+                        link = null,
+                        isCurrent = false
+                    )
+                )
+            }
+        }
+    }
+
     return items.sortedByDescending { item ->
         Regex("(\\d{4})").find(item.dateLabel)?.value?.toIntOrNull() ?: 0
     }
@@ -139,6 +204,7 @@ private fun CareerCategory.icon(): ImageVector = when (this) {
     CareerCategory.EDUCATION -> Icons.Outlined.School
     CareerCategory.OCCUPATION -> Icons.Outlined.Work
     CareerCategory.EXPERIENCE -> Icons.Outlined.BusinessCenter
+    CareerCategory.COMPANY_APPOINTMENT -> Icons.Outlined.Apartment
 }
 
 private fun CareerCategory.badgeLabel(): String = when (this) {
@@ -152,6 +218,7 @@ private fun CareerCategory.badgeLabel(): String = when (this) {
     CareerCategory.EDUCATION -> "Education"
     CareerCategory.OCCUPATION -> "Career"
     CareerCategory.EXPERIENCE -> "Experience"
+    CareerCategory.COMPANY_APPOINTMENT -> "Company"
 }
 
 // --- Connected Timeline View ---

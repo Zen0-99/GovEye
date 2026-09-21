@@ -24,12 +24,14 @@ import com.goveye.app.data.local.dao.HistoricalMemberDao
 import com.goveye.app.data.local.dao.InterestDao
 import com.goveye.app.data.local.dao.LegislationDao
 import com.goveye.app.data.local.dao.ManifestoDao
+import com.goveye.app.data.local.dao.MpAppointmentDao
 import com.goveye.app.data.local.dao.MpCareerEventDao
 import com.goveye.app.data.local.dao.MpContactDao
 import com.goveye.app.data.local.dao.MpDao
 import com.goveye.app.data.local.dao.MpExperienceDao
 import com.goveye.app.data.local.dao.MpLinkDao
 import com.goveye.app.data.local.dao.MpNotificationPreferenceDao
+import com.goveye.app.data.local.dao.MpOfficerIdentityDao
 import com.goveye.app.data.local.dao.MpStatsDao
 import com.goveye.app.data.local.dao.MpSynopsisDao
 import com.goveye.app.data.local.dao.MpTagDao
@@ -1220,6 +1222,12 @@ object DatabaseModule {
         database.constituencyElectionDao()
 
     @Provides
+    fun provideMpOfficerIdentityDao(database: BundledDatabase): MpOfficerIdentityDao = database.mpOfficerIdentityDao()
+
+    @Provides
+    fun provideMpAppointmentDao(database: BundledDatabase): MpAppointmentDao = database.mpAppointmentDao()
+
+    @Provides
     fun provideTagDao(database: BundledDatabase): com.goveye.app.data.local.dao.TagDao = database.tagDao()
 
     @Provides
@@ -1297,7 +1305,9 @@ object DatabaseModule {
         mpContactDao: com.goveye.app.data.local.dao.MpContactDao,
         mpCareerEventDao: com.goveye.app.data.local.dao.MpCareerEventDao,
         constituencyElectionDao: ConstituencyElectionDao,
-        mpExperienceDao: com.goveye.app.data.local.dao.MpExperienceDao
+        mpExperienceDao: com.goveye.app.data.local.dao.MpExperienceDao,
+        mpOfficerIdentityDao: MpOfficerIdentityDao,
+        mpAppointmentDao: MpAppointmentDao
     ): MembersRepository = MembersRepository(
         mpDao,
         searchDao,
@@ -1308,7 +1318,9 @@ object DatabaseModule {
         mpContactDao,
         mpCareerEventDao,
         constituencyElectionDao,
-        mpExperienceDao
+        mpExperienceDao,
+        mpOfficerIdentityDao,
+        mpAppointmentDao
     )
 
     @Provides

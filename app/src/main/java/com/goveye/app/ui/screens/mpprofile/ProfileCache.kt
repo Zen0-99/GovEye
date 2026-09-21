@@ -9,6 +9,7 @@ import com.goveye.app.domain.model.BiographyExperience
 import com.goveye.app.domain.model.CareerEvent
 import com.goveye.app.domain.model.Committee
 import com.goveye.app.domain.model.Contact
+import com.goveye.app.domain.model.CorporateFootprint
 import com.goveye.app.domain.model.DivisionVote
 import com.goveye.app.domain.model.Interest
 import com.goveye.app.domain.model.MemberVoteWithDivision
@@ -51,7 +52,8 @@ data class CachedProfileData(
     val committees: List<Committee>,
     val experiences: List<BiographyExperience>,
     val careerEvents: List<CareerEvent> = emptyList(),
-    val electionResults: MpElectionResults? = null
+    val electionResults: MpElectionResults? = null,
+    val corporateFootprint: CorporateFootprint? = null
 )
 
 /**

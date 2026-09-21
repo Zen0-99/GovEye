@@ -39,7 +39,11 @@ class MembersRepositoryTest {
             mockk(relaxed = true),
             database.mpSynopsisDao(),
             database.mpContactDao(),
-            database.mpExperienceDao()
+            database.mpCareerEventDao(),
+            database.constituencyElectionDao(),
+            database.mpExperienceDao(),
+            database.mpOfficerIdentityDao(),
+            database.mpAppointmentDao()
         )
     }
 

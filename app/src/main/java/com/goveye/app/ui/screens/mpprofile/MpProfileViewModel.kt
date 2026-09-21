@@ -30,6 +30,7 @@ import com.goveye.app.domain.model.CareerCategory
 import com.goveye.app.domain.model.CareerEvent
 import com.goveye.app.domain.model.Committee
 import com.goveye.app.domain.model.Contact
+import com.goveye.app.domain.model.CorporateFootprint
 import com.goveye.app.domain.model.DivisionVote
 import com.goveye.app.domain.model.Interest
 import com.goveye.app.domain.model.MemberVoteWithDivision
@@ -60,6 +61,7 @@ data class ProfileUiState(
     val experiences: List<BiographyExperience> = emptyList(),
     val careerEvents: List<CareerEvent> = emptyList(),
     val electionResults: MpElectionResults? = null,
+    val corporateFootprint: CorporateFootprint? = null,
     val samePartyMps: List<Mp> = emptyList(),
     val committeePeerMps: List<Mp> = emptyList(),
     val memberVotes: List<MemberVoteWithDivision> = emptyList(),
@@ -151,6 +153,7 @@ class ProfileViewModel @Inject constructor(
                 experiences = cached.experiences,
                 careerEvents = cached.careerEvents,
                 electionResults = cached.electionResults,
+                corporateFootprint = cached.corporateFootprint,
                 syncStatus = if (cached.mp != null) SyncStatus.FRESH else SyncStatus.EMPTY,
                 isLoading = false
             )
@@ -285,6 +288,15 @@ class ProfileViewModel @Inject constructor(
                     _uiState.value = _uiState.value.copy(electionResults = results)
                 }
                 launch {
+                    // Companies House footprint — appointments for the career
+                    // timeline + quiet identity facts (CHUI-01/02). Bundled data
+                    // only; null result leaves both surfaces hidden (D-04).
+                    val footprint = runCatching {
+                        membersRepository.getCorporateFootprint(memberId)
+                    }.getOrNull()
+                    _uiState.value = _uiState.value.copy(corporateFootprint = footprint)
+                }
+                launch {
                     val mpLinks = runCatching { mpLinksRepository.getLinks(memberId) }.getOrNull()
                     _uiState.value = _uiState.value.copy(mpLinks = mpLinks)
                 }
@@ -393,7 +405,8 @@ class ProfileViewModel @Inject constructor(
                     committees = state.committees,
                     experiences = state.experiences,
                     careerEvents = state.careerEvents,
-                    electionResults = state.electionResults
+                    electionResults = state.electionResults,
+                    corporateFootprint = state.corporateFootprint
                 )
             )
         }
@@ -541,6 +554,14 @@ class ProfileViewModel @Inject constructor(
                     }.getOrNull()
                     _uiState.value = _uiState.value.copy(electionResults = results)
                 }
+                launch {
+                    // Companies House footprint — career timeline entries +
+                    // quiet identity facts (CHUI-01/02). Bundled data only.
+                    val footprint = runCatching {
+                        membersRepository.getCorporateFootprint(memberId)
+                    }.getOrNull()
+                    _uiState.value = _uiState.value.copy(corporateFootprint = footprint)
+                }
             }
 
             // Update cache with refreshed data — include ALL fields
@@ -569,7 +590,8 @@ class ProfileViewModel @Inject constructor(
                     committees = state.committees,
                     experiences = state.experiences,
                     careerEvents = state.careerEvents,
-                    electionResults = state.electionResults
+                    electionResults = state.electionResults,
+                    corporateFootprint = state.corporateFootprint
                 )
             )
 
