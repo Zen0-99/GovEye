@@ -16,6 +16,8 @@ import com.goveye.app.data.local.entity.ConstituencyElectionEntity
 import com.goveye.app.data.local.entity.DebateSpeechEntity
 import com.goveye.app.data.local.entity.DivisionEntity
 import com.goveye.app.data.local.entity.DivisionVoteEntity
+import com.goveye.app.data.local.entity.EarlyDayMotionEntity
+import com.goveye.app.data.local.entity.EdmSponsorEntity
 import com.goveye.app.data.local.entity.ExpenseEntity
 import com.goveye.app.data.local.entity.GovernmentPublicationEntity
 import com.goveye.app.data.local.entity.HansardContributionEntity
@@ -66,14 +68,13 @@ import okhttp3.Request
  * Core orchestrator for the bundled DB update flow (D-04, D-05, D-10, D-10a, DATA-01, DATA-03).
  *
  * Implements the hybrid 2-database architecture (D-10a):
- * - Checks 7 per-API manifests (mps-latest, commons-votes-latest,
- *   lords-votes-latest, bills-latest, committees-latest, recess-latest,
- *   interests-latest) in parallel.
- * - Downloads up to 7 patch.json files, merges their changes maps (no conflicts
+ * - Checks all per-API manifests (see [streamTags]: mps-latest,
+ *   commons-votes-latest, ..., edms-latest) in parallel.
+ * - Downloads the patch.json files, merges their changes maps (no conflicts
  *   — each patch only touches its own tables), and applies all to [BundledDatabase]
  *   in a single Room transaction.
- * - First-launch downloads all 7 per-API .db files and merges them on-device
- *   into goveye.db (no separate seed release needed).
+ * - First-launch downloads a single pre-built seed goveye.db (seed-latest
+ *   release) — no on-device per-API merge.
  *
  * [LocalDatabase] (local.db, user data) is NEVER touched by this manager —
  * user data persists across all DB updates and DB swaps.
@@ -148,7 +149,7 @@ class DatabaseUpdateManager @Inject constructor(
     }
 
     /**
-     * Fetches all 7 per-API manifests in parallel and compares each against the
+     * Fetches all per-API manifests in parallel and compares each against the
      * corresponding local version key (D-10, D-10a).
      *
      * Returns the appropriate [DatabaseUpdateState]:
@@ -298,7 +299,7 @@ class DatabaseUpdateManager @Inject constructor(
     }
 
     /**
-     * Downloads up to 7 patch.json files, merges their changes maps, and applies
+     * Downloads the patch.json files, merges their changes maps, and applies
      * all to [BundledDatabase] in a single Room transaction (D-10a).
      *
      * Each patch only touches its own tables (mps patch → mps changes, votes
@@ -697,6 +698,18 @@ class DatabaseUpdateManager @Inject constructor(
                         json.decodeFromJsonElement<ConstituencyElectionCandidateEntity>(it)
                     }
                 )
+
+                "early_day_motions" -> updateDao.upsertEarlyDayMotions(
+                    upsertList.map {
+                        json.decodeFromJsonElement<EarlyDayMotionEntity>(it)
+                    }
+                )
+
+                "edm_sponsors" -> updateDao.upsertEdmSponsors(
+                    upsertList.map {
+                        json.decodeFromJsonElement<EdmSponsorEntity>(it)
+                    }
+                )
                 // mps_fts is NOT handled — auto-synced by FTS4 triggers (Pitfall 2)
             }
         }
@@ -805,14 +818,23 @@ class DatabaseUpdateManager @Inject constructor(
                     obj["electionId"]!!.jsonPrimitive.intOrNull!!,
                     obj["rankOrder"]!!.jsonPrimitive.intOrNull!!
                 )
+
+                "early_day_motions" -> updateDao.deleteEarlyDayMotion(
+                    obj["edmId"]!!.jsonPrimitive.intOrNull!!
+                )
+
+                "edm_sponsors" -> updateDao.deleteEdmSponsor(
+                    obj["edmId"]!!.jsonPrimitive.intOrNull!!,
+                    obj["memberId"]!!.jsonPrimitive.intOrNull!!
+                )
             }
         }
     }
 
     /**
-     * Fetches all 7 per-API manifests in parallel (D-10).
+     * Fetches all per-API manifests in parallel (D-10).
      *
-     * Returns a list of 7 nullable (streamName, manifest) pairs — null entries
+     * Returns a list of nullable (streamName, manifest) pairs — null entries
      * indicate streams whose fetch failed (partial failure is OK).
      */
     private val streamTags = listOf(
@@ -835,7 +857,8 @@ class DatabaseUpdateManager @Inject constructor(
         DatabaseUpdateApi.WRITTEN_QUESTIONS_TAG to "written-questions",
         DatabaseUpdateApi.LEGISLATION_TAG to "legislation",
         DatabaseUpdateApi.MEMBER_DETAILS_TAG to "member-details",
-        DatabaseUpdateApi.COMPANIES_HOUSE_TAG to "companies-house"
+        DatabaseUpdateApi.COMPANIES_HOUSE_TAG to "companies-house",
+        DatabaseUpdateApi.EDMS_TAG to "edms"
     )
 
     private suspend fun fetchAllManifests(): List<Pair<String, DatabaseManifest>?> = coroutineScope {
@@ -879,6 +902,7 @@ class DatabaseUpdateManager @Inject constructor(
         "legislation" -> "legislation.db"
         "member-details" -> "member_details.db"
         "companies-house" -> "companies_house.db"
+        "edms" -> "edms.db"
         else -> "$streamName.db"
     }
 
@@ -934,6 +958,8 @@ class DatabaseUpdateManager @Inject constructor(
 
         "companies-house" -> listOf("mp_officer_identity", "mp_appointments")
 
+        "edms" -> listOf("early_day_motions", "edm_sponsors")
+
         else -> emptyList()
     }
 
@@ -961,6 +987,7 @@ class DatabaseUpdateManager @Inject constructor(
         "legislation" -> preferences.legislationVersion.first()
         "member-details" -> preferences.memberDetailsVersion.first()
         "companies-house" -> preferences.companiesHouseVersion.first()
+        "edms" -> preferences.edmsVersion.first()
         else -> null
     }
 
@@ -989,6 +1016,7 @@ class DatabaseUpdateManager @Inject constructor(
             "legislation" -> preferences.setLegislationVersion(version)
             "member-details" -> preferences.setMemberDetailsVersion(version)
             "companies-house" -> preferences.setCompaniesHouseVersion(version)
+            "edms" -> preferences.setEdmsVersion(version)
         }
     }
 

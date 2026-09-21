@@ -12,6 +12,7 @@ import com.goveye.app.data.local.dao.CouncilDao
 import com.goveye.app.data.local.dao.DatabaseUpdateDao
 import com.goveye.app.data.local.dao.DebateSpeechDao
 import com.goveye.app.data.local.dao.DivisionDao
+import com.goveye.app.data.local.dao.EdmDao
 import com.goveye.app.data.local.dao.ExpenseDao
 import com.goveye.app.data.local.dao.GovernmentPublicationDao
 import com.goveye.app.data.local.dao.HansardDao
@@ -50,6 +51,8 @@ import com.goveye.app.data.local.entity.DebateSpeechEntity
 import com.goveye.app.data.local.entity.DivisionEntity
 import com.goveye.app.data.local.entity.DivisionTagEntity
 import com.goveye.app.data.local.entity.DivisionVoteEntity
+import com.goveye.app.data.local.entity.EarlyDayMotionEntity
+import com.goveye.app.data.local.entity.EdmSponsorEntity
 import com.goveye.app.data.local.entity.ExpenseEntity
 import com.goveye.app.data.local.entity.GovernmentPublicationEntity
 import com.goveye.app.data.local.entity.HansardContributionEntity
@@ -147,9 +150,11 @@ import com.goveye.app.data.local.entity.WrittenStatementEntity
         MpOfficerIdentityEntity::class,
         MpAppointmentEntity::class,
         ConstituencyElectionEntity::class,
-        ConstituencyElectionCandidateEntity::class
+        ConstituencyElectionCandidateEntity::class,
+        EarlyDayMotionEntity::class,
+        EdmSponsorEntity::class
     ],
-    version = 37,
+    version = 38,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -189,6 +194,7 @@ abstract class BundledDatabase : RoomDatabase() {
     abstract fun mpOfficerIdentityDao(): MpOfficerIdentityDao
     abstract fun mpAppointmentDao(): MpAppointmentDao
     abstract fun constituencyElectionDao(): ConstituencyElectionDao
+    abstract fun edmDao(): EdmDao
 
     companion object {
         const val DATABASE_NAME = "goveye.db"

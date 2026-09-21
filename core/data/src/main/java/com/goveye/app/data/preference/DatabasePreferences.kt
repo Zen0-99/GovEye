@@ -14,15 +14,9 @@ import kotlinx.coroutines.flow.map
 /**
  * Stores per-API DB version keys in DataStore (DATA-03, D-10a).
  *
- * Six per-API version keys track which patch stream version the local
- * BundledDatabase is at:
- * - [mpsVersion] — mps-latest stream
- * - [commonsVotesVersion] — commons-votes-latest stream
- * - [lordsVotesVersion] — lords-votes-latest stream
- * - [billsVersion] — bills-latest stream
- * - [committeesVersion] — committees-latest stream
- * - [recessVersion] — recess-latest stream
- * - [interestsVersion] — interests-latest stream
+ * Per-API version keys track which patch stream version the local
+ * BundledDatabase is at — one Flow per stream (e.g. [mpsVersion] for
+ * mps-latest, [edmsVersion] for edms-latest).
  *
  * The [seedVersion] key tracks whether the first-launch seed DB download has
  * been completed (null = first launch, not yet downloaded).
@@ -91,6 +85,9 @@ class DatabasePreferences @Inject constructor(@Named("database") private val dat
 
     /** Current local companies-house stream version, or null if never updated. */
     val companiesHouseVersion: Flow<Int?> = dataStore.data.map { it[COMPANIES_HOUSE_VERSION_KEY] }
+
+    /** Current local edms stream version, or null if never updated. */
+    val edmsVersion: Flow<Int?> = dataStore.data.map { it[EDMS_VERSION_KEY] }
 
     /**
      * Seed DB version — null means first launch (seed DB not yet downloaded).
@@ -178,6 +175,10 @@ class DatabasePreferences @Inject constructor(@Named("database") private val dat
         dataStore.edit { it[COMPANIES_HOUSE_VERSION_KEY] = version }
     }
 
+    suspend fun setEdmsVersion(version: Int) {
+        dataStore.edit { it[EDMS_VERSION_KEY] = version }
+    }
+
     suspend fun setSeedVersion(version: Int) {
         dataStore.edit { it[SEED_VERSION_KEY] = version }
     }
@@ -225,6 +226,7 @@ class DatabasePreferences @Inject constructor(@Named("database") private val dat
         val LEGISLATION_VERSION_KEY = intPreferencesKey("legislation_version")
         val MEMBER_DETAILS_VERSION_KEY = intPreferencesKey("member_details_version")
         val COMPANIES_HOUSE_VERSION_KEY = intPreferencesKey("companies_house_version")
+        val EDMS_VERSION_KEY = intPreferencesKey("edms_version")
         val SEED_VERSION_KEY = intPreferencesKey("seed_version")
         val LAST_NOTIFIED_DIVISION_ID_KEY = intPreferencesKey("last_notified_division_id")
         val LAST_NOTIFIED_BILL_STAGES_KEY = stringPreferencesKey("last_notified_bill_stages")

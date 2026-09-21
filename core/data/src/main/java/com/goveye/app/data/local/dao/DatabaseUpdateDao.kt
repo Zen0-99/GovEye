@@ -14,6 +14,8 @@ import com.goveye.app.data.local.entity.ConstituencyElectionEntity
 import com.goveye.app.data.local.entity.DebateSpeechEntity
 import com.goveye.app.data.local.entity.DivisionEntity
 import com.goveye.app.data.local.entity.DivisionVoteEntity
+import com.goveye.app.data.local.entity.EarlyDayMotionEntity
+import com.goveye.app.data.local.entity.EdmSponsorEntity
 import com.goveye.app.data.local.entity.ExpenseEntity
 import com.goveye.app.data.local.entity.GovernmentPublicationEntity
 import com.goveye.app.data.local.entity.HansardContributionEntity
@@ -269,4 +271,18 @@ interface DatabaseUpdateDao {
             "AND electionId = :electionId AND rankOrder = :rankOrder"
     )
     suspend fun deleteConstituencyElectionCandidate(constituencyId: Int, electionId: Int, rankOrder: Int)
+
+    // ── early_day_motions (PK: edmId) ──────────────────────────────────
+    @Upsert
+    suspend fun upsertEarlyDayMotions(edms: List<EarlyDayMotionEntity>)
+
+    @Query("DELETE FROM early_day_motions WHERE edmId = :edmId")
+    suspend fun deleteEarlyDayMotion(edmId: Int)
+
+    // ── edm_sponsors (PK: edmId, memberId) ─────────────────────────────
+    @Upsert
+    suspend fun upsertEdmSponsors(sponsors: List<EdmSponsorEntity>)
+
+    @Query("DELETE FROM edm_sponsors WHERE edmId = :edmId AND memberId = :memberId")
+    suspend fun deleteEdmSponsor(edmId: Int, memberId: Int)
 }

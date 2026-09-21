@@ -11,7 +11,7 @@ import retrofit2.http.Path
  * Fetches releases from the `Zen0-99/goveye-data` repo. The repo must be
  * public so that `browser_download_url` works without auth (Pitfall 6).
  *
- * Seven per-API release tags are used for both first-launch DB downloads
+ * Each per-API release tag is used for both first-launch DB downloads
  * and incremental patch updates:
  * - [MPS_TAG] (mps-latest) — MP data
  * - [COMMONS_VOTES_TAG] (commons-votes-latest) — Commons divisions + division_votes (house=1)
@@ -21,8 +21,9 @@ import retrofit2.http.Path
  * - [RECESS_TAG] (recess-latest) — recess_dates + recess_dates_meta
  * - [INTERESTS_TAG] (interests-latest) — interests
  * - [DEBATES_TAG] (debates-latest) — debate_speeches (transcripts scraped from TWFY)
+ * - [EDMS_TAG] (edms-latest) — early_day_motions + edm_sponsors
  *
- * First launch downloads all 7 per-API .db files and merges them on-device
+ * First launch downloads the per-API .db files and merges them on-device
  * into goveye.db. No separate seed release is needed.
  */
 interface DatabaseUpdateApi {
@@ -59,6 +60,7 @@ interface DatabaseUpdateApi {
         const val LEGISLATION_TAG = "legislation-latest"
         const val MEMBER_DETAILS_TAG = "member-details-latest"
         const val COMPANIES_HOUSE_TAG = "companies-house-latest"
+        const val EDMS_TAG = "edms-latest"
 
         private const val OWNER = "Zen0-99"
         private const val REPO = "goveye-data"

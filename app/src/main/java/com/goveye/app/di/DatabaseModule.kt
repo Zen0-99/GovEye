@@ -1035,6 +1035,54 @@ object DatabaseModule {
         }
     }
 
+    // v37 → v38: Early Day Motions (this parliament) + all signatories.
+    // New edms-latest stream tables (D-01/D-03). Column affinities match the
+    // live API types verified by probe: status/uin/siNumber are JSON numbers
+    // (INTEGER), siYear is a JSON string "2026" (TEXT).
+    private val MIGRATION_37_38 = object : Migration(37, 38) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS `early_day_motions` (
+                    `edmId` INTEGER NOT NULL,
+                    `uin` INTEGER,
+                    `uinDisplay` TEXT,
+                    `title` TEXT,
+                    `motionText` TEXT,
+                    `dateTabled` TEXT,
+                    `statusDate` TEXT,
+                    `status` INTEGER,
+                    `primarySponsorMemberId` INTEGER,
+                    `sponsorsCount` INTEGER,
+                    `amendmentToMotionId` INTEGER,
+                    `prayingAgainstSiId` INTEGER,
+                    `siNumber` INTEGER,
+                    `siYear` TEXT,
+                    `siTitle` TEXT,
+                    `lastUpdated` INTEGER NOT NULL,
+                    PRIMARY KEY(`edmId`)
+                )"""
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS index_early_day_motions_primarySponsorMemberId ON early_day_motions(primarySponsorMemberId)"
+            )
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS `edm_sponsors` (
+                    `edmId` INTEGER NOT NULL,
+                    `memberId` INTEGER NOT NULL,
+                    `sponsoringOrder` INTEGER,
+                    `signedAt` TEXT,
+                    `isWithdrawn` INTEGER NOT NULL,
+                    `withdrawnDate` TEXT,
+                    `lastUpdated` INTEGER NOT NULL,
+                    PRIMARY KEY(`edmId`, `memberId`)
+                )"""
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS index_edm_sponsors_memberId ON edm_sponsors(memberId)"
+            )
+        }
+    }
+
     @Provides
     @Singleton
     fun provideBundledDatabase(@ApplicationContext context: Context): BundledDatabase {
@@ -1102,7 +1150,8 @@ object DatabaseModule {
                 MIGRATION_33_34,
                 MIGRATION_34_35,
                 MIGRATION_35_36,
-                MIGRATION_36_37
+                MIGRATION_36_37,
+                MIGRATION_37_38
             )
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
