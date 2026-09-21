@@ -154,7 +154,7 @@ import com.goveye.app.data.local.entity.WrittenStatementEntity
         EarlyDayMotionEntity::class,
         EdmSponsorEntity::class
     ],
-    version = 38,
+    version = 39,
     exportSchema = true
 )
 @TypeConverters(Converters::class)

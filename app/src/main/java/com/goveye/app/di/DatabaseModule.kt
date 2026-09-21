@@ -1083,6 +1083,33 @@ object DatabaseModule {
         }
     }
 
+    // Fix corrupt party_leaders. build_party_leaders.py matched leader titles
+    // by loose substring on ALL posts (including ended ones): "Chief Secretary
+    // to the Prime Minister" → Darren Jones became Labour's 'Prime Minister',
+    // "…Prime Minister's Policy Unit" → Andrew Griffith became Conservative's
+    // 'Prime Minister' (making Conservative look like the ruling party), and
+    // "…Office of the Deputy Prime Minister" → Ed Davey as Lib Dem 'PM'.
+    // Seeds built since the loose matcher shipped contain those rows, and the
+    // 27→28 fix only ran on upgrade paths — never on fresh seeds. The pipeline
+    // script is now fixed (current posts only + strict prefix matching); this
+    // migration rewrites the table on every existing device.
+    private val MIGRATION_38_39 = object : Migration(38, 39) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("DELETE FROM party_leaders")
+            db.execSQL(
+                """INSERT INTO party_leaders (partyId, memberId, title, leaderSinceDate) VALUES
+                    (15, 1427, 'Prime Minister', '2026-07-20'),
+                    (4, 4597, 'Leader of the Opposition', '2024-11-02'),
+                    (17, 188, 'Leader of the Liberal Democrats', '2019-12-22'),
+                    (29, 1440, 'Leader of the Scottish National Party', '2024-07-10'),
+                    (7, 4360, 'Leader of the Democratic Unionist Party', '2024-02-03'),
+                    (22, 4521, 'Leader of Plaid Cymru', '2017-06-08'),
+                    (44, 5320, 'Leader of the Green Party', '2021-09-04'),
+                    (1036, 5091, 'Leader of Reform UK', '2024-06-11')"""
+            )
+        }
+    }
+
     @Provides
     @Singleton
     fun provideBundledDatabase(@ApplicationContext context: Context): BundledDatabase {
@@ -1151,7 +1178,8 @@ object DatabaseModule {
                 MIGRATION_34_35,
                 MIGRATION_35_36,
                 MIGRATION_36_37,
-                MIGRATION_37_38
+                MIGRATION_37_38,
+                MIGRATION_38_39
             )
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
