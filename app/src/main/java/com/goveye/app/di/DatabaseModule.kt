@@ -1271,6 +1271,9 @@ object DatabaseModule {
         database.constituencyElectionDao()
 
     @Provides
+    fun provideEdmDao(database: BundledDatabase): com.goveye.app.data.local.dao.EdmDao = database.edmDao()
+
+    @Provides
     fun provideMpOfficerIdentityDao(database: BundledDatabase): MpOfficerIdentityDao = database.mpOfficerIdentityDao()
 
     @Provides

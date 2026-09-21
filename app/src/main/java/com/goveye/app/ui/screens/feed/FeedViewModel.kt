@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.goveye.app.data.local.dao.DebateSpeechDao
+import com.goveye.app.data.local.dao.EdmDao
 import com.goveye.app.data.local.dao.SpeechWithDivision
 import com.goveye.app.data.local.entity.MpEntity
 import com.goveye.app.data.local.entity.RecessDateEntity
@@ -58,6 +59,7 @@ class FeedViewModel @Inject constructor(
     private val membersRepository: MembersRepository,
     private val debateSpeechDao: DebateSpeechDao,
     private val writtenQuestionsRepository: WrittenQuestionsRepository,
+    private val edmDao: EdmDao,
     private val onboardingPreferences: OnboardingPreferences
 ) : ViewModel() {
 
@@ -255,6 +257,7 @@ class FeedViewModel @Inject constructor(
                 val speechItems = mutableListOf<FeedItem.SpeechItem>()
                 val mpVoteItems = mutableListOf<FeedItem.MpVoteItem>()
                 val writtenQuestionItems = mutableListOf<FeedItem.WrittenQuestionItem>()
+                val edmItems = mutableListOf<FeedItem.EdmItem>()
                 if (followedIds.isNotEmpty()) {
                     // Load MP profile data (name, party color, photo) for followed members
                     val memberProfiles: Map<Int, MpEntity> = try {
@@ -406,6 +409,33 @@ class FeedViewModel @Inject constructor(
                     } catch (e: Exception) {
                         Log.w("GovEye/Feed", "Failed to load written questions for followed MPs", e)
                     }
+
+                    // Early Day Motions — only where a followed MP is the PRIMARY
+                    // sponsor (D-04). One batch query; signature events not surfaced.
+                    try {
+                        val edms = edmDao.getEdmsPrimarySponsoredBy(followedIds.toList(), 100)
+                        edms.forEach { edm ->
+                            val profile = edm.primarySponsorMemberId?.let { memberProfiles[it] }
+                                ?: return@forEach
+                            edmItems.add(
+                                FeedItem.EdmItem(
+                                    memberId = profile.id,
+                                    memberName = profile.nameDisplayAs,
+                                    memberPartyColorHex = profile.partyBackgroundColour,
+                                    memberPhotoUrl = profile.thumbnailUrl,
+                                    edmId = edm.edmId,
+                                    uinDisplay = edm.uinDisplay,
+                                    title = edm.title ?: "",
+                                    motionText = edm.motionText ?: "",
+                                    sponsorsCount = edm.sponsorsCount ?: 0,
+                                    status = edmStatusLabel(edm.status),
+                                    date = edm.dateTabled ?: ""
+                                )
+                            )
+                        }
+                    } catch (e: Exception) {
+                        Log.w("GovEye/Feed", "Failed to load EDMs for followed MPs", e)
+                    }
                 }
 
                 // Group financial items by (memberId, date) — if an MP has
@@ -471,6 +501,9 @@ class FeedViewModel @Inject constructor(
                 if (filter.typeFilter.isEmpty() || CardType.WRITTEN_QUESTION in filter.typeFilter) {
                     allItems.addAll(writtenQuestionItems)
                 }
+                if (filter.typeFilter.isEmpty() || CardType.EDM in filter.typeFilter) {
+                    allItems.addAll(edmItems)
+                }
 
                 // Limit feed to a reasonable size (200 items) to avoid performance
                 // issues — sort by date descending first so the most recent items
@@ -512,7 +545,7 @@ class FeedViewModel @Inject constructor(
                         "publications=${publicationItems.size} statements=${statementItems.size} " +
                         "legislation=${legislationItems.size} financial=${financialItems.size} " +
                         "combo=${comboItems.size} speeches=${speechItems.size} mpVotes=${mpVoteItems.size} " +
-                        "writtenQuestions=${writtenQuestionItems.size} " +
+                        "writtenQuestions=${writtenQuestionItems.size} edms=${edmItems.size} " +
                         "isEmpty=$isEmpty isRecessEmpty=$isRecessEmpty hasMore=$hasMore " +
                         "processingTime=${processingTime}ms"
                 )
@@ -616,6 +649,17 @@ class FeedViewModel @Inject constructor(
 private fun formatFeedPence(pence: Long): String {
     val pounds = pence / 100.0
     return "£${String.format(Locale.UK, "%,.0f", pounds)}"
+}
+
+/**
+ * Maps the EDM status enum ordinal (JSON number per 21-01 probe — the API's
+ * `statuses` filter lists "Published | Withdrawn") to a display label.
+ * Unknown ordinals return null so the card omits the status suffix.
+ */
+private fun edmStatusLabel(status: Int?): String? = when (status) {
+    0 -> "Published"
+    1 -> "Withdrawn"
+    else -> null
 }
 
 /**

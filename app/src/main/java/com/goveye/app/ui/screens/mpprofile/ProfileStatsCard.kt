@@ -29,6 +29,8 @@ fun ProfileStatsCard(
     mp: Mp,
     bioData: BioDataEntity? = null,
     officerIdentity: OfficerIdentity? = null,
+    edmSponsoredCount: Int = 0,
+    edmSignedCount: Int = 0,
     modifier: Modifier = Modifier
 ) {
     val yearsInParliament = mp.membershipStartDate?.let { startDate ->
@@ -59,6 +61,8 @@ fun ProfileStatsCard(
         yearsInParliament?.let { add("Years in\nParliament" to "$it years") }
         officerIdentity?.nationality?.takeIf { it.isNotBlank() }?.let { add("Nationality" to it) }
         officerIdentity?.countryOfResidence?.takeIf { it.isNotBlank() }?.let { add("Residence" to it) }
+        if (edmSponsoredCount > 0) add("EDMs\nSponsored" to "$edmSponsoredCount")
+        if (edmSignedCount > 0) add("EDMs\nSigned" to "$edmSignedCount")
     }
 
     // Wider than just stats: an MP whose only CH fact is a disqualification

@@ -344,6 +344,8 @@ fun ProfileScreen(
                                     mpTags = uiState.mpTags,
                                     traitBars = uiState.traitBars,
                                     officerIdentity = uiState.corporateFootprint?.officerIdentity,
+                                    edmSponsoredCount = uiState.edmSponsoredCount,
+                                    edmSignedCount = uiState.edmSignedCount,
                                     onNavigateToMpTagBrowse = onNavigateToMpTagBrowse,
                                     contentVisible = !isOptimistic
                                 )
@@ -640,6 +642,8 @@ private fun ProfileTabContent(
     mpLinks: com.goveye.app.data.local.entity.MpLinkEntity? = null,
     mpTags: List<MpTagEntity> = emptyList(),
     officerIdentity: com.goveye.app.domain.model.OfficerIdentity? = null,
+    edmSponsoredCount: Int = 0,
+    edmSignedCount: Int = 0,
     @Suppress("UNUSED_PARAMETER") traitBars: List<com.goveye.app.domain.stats.TraitBar> = emptyList(),
     onNavigateToMpTagBrowse: (String) -> Unit = {},
     contentVisible: Boolean = true
@@ -669,7 +673,9 @@ private fun ProfileTabContent(
                 ProfileStatsCard(
                     mp = mp,
                     bioData = bioData,
-                    officerIdentity = officerIdentity
+                    officerIdentity = officerIdentity,
+                    edmSponsoredCount = edmSponsoredCount,
+                    edmSignedCount = edmSignedCount
                 )
             }
         }

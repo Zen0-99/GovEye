@@ -2,6 +2,7 @@ package com.goveye.app.ui.screens.mpprofile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.goveye.app.data.local.dao.EdmDao
 import com.goveye.app.data.local.dao.ExpenseBucketTotal
 import com.goveye.app.data.local.dao.MpDao
 import com.goveye.app.data.local.dao.MpTagDao
@@ -61,6 +62,8 @@ data class ProfileUiState(
     val experiences: List<BiographyExperience> = emptyList(),
     val careerEvents: List<CareerEvent> = emptyList(),
     val electionResults: MpElectionResults? = null,
+    val edmSponsoredCount: Int = 0,
+    val edmSignedCount: Int = 0,
     val corporateFootprint: CorporateFootprint? = null,
     val samePartyMps: List<Mp> = emptyList(),
     val committeePeerMps: List<Mp> = emptyList(),
@@ -109,6 +112,7 @@ class ProfileViewModel @Inject constructor(
     private val activityFilterPreferences: ActivityFilterPreferences,
     private val tagDao: TagDao,
     private val mpTagDao: MpTagDao,
+    private val edmDao: EdmDao,
     private val profileCache: ProfileCache
 ) : ViewModel() {
 
@@ -153,6 +157,8 @@ class ProfileViewModel @Inject constructor(
                 experiences = cached.experiences,
                 careerEvents = cached.careerEvents,
                 electionResults = cached.electionResults,
+                edmSponsoredCount = cached.edmSponsoredCount,
+                edmSignedCount = cached.edmSignedCount,
                 corporateFootprint = cached.corporateFootprint,
                 syncStatus = if (cached.mp != null) SyncStatus.FRESH else SyncStatus.EMPTY,
                 isLoading = false
@@ -288,6 +294,13 @@ class ProfileViewModel @Inject constructor(
                     _uiState.value = _uiState.value.copy(electionResults = results)
                 }
                 launch {
+                    // EDM counts for the stats card (D-05) — bundled data only;
+                    // 0/0 leaves the entries hidden.
+                    val sponsored = runCatching { edmDao.countPrimarySponsoredByMember(memberId) }.getOrDefault(0)
+                    val signed = runCatching { edmDao.countSignedByMember(memberId) }.getOrDefault(0)
+                    _uiState.value = _uiState.value.copy(edmSponsoredCount = sponsored, edmSignedCount = signed)
+                }
+                launch {
                     // Companies House footprint — appointments for the career
                     // timeline + quiet identity facts (CHUI-01/02). Bundled data
                     // only; null result leaves both surfaces hidden (D-04).
@@ -406,6 +419,8 @@ class ProfileViewModel @Inject constructor(
                     experiences = state.experiences,
                     careerEvents = state.careerEvents,
                     electionResults = state.electionResults,
+                    edmSponsoredCount = state.edmSponsoredCount,
+                    edmSignedCount = state.edmSignedCount,
                     corporateFootprint = state.corporateFootprint
                 )
             )
@@ -555,6 +570,13 @@ class ProfileViewModel @Inject constructor(
                     _uiState.value = _uiState.value.copy(electionResults = results)
                 }
                 launch {
+                    // EDM counts for the stats card (D-05) — bundled data only;
+                    // 0/0 leaves the entries hidden.
+                    val sponsored = runCatching { edmDao.countPrimarySponsoredByMember(memberId) }.getOrDefault(0)
+                    val signed = runCatching { edmDao.countSignedByMember(memberId) }.getOrDefault(0)
+                    _uiState.value = _uiState.value.copy(edmSponsoredCount = sponsored, edmSignedCount = signed)
+                }
+                launch {
                     // Companies House footprint — career timeline entries +
                     // quiet identity facts (CHUI-01/02). Bundled data only.
                     val footprint = runCatching {
@@ -591,6 +613,8 @@ class ProfileViewModel @Inject constructor(
                     experiences = state.experiences,
                     careerEvents = state.careerEvents,
                     electionResults = state.electionResults,
+                    edmSponsoredCount = state.edmSponsoredCount,
+                    edmSignedCount = state.edmSignedCount,
                     corporateFootprint = state.corporateFootprint
                 )
             )

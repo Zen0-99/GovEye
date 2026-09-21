@@ -53,6 +53,8 @@ data class CachedProfileData(
     val experiences: List<BiographyExperience>,
     val careerEvents: List<CareerEvent> = emptyList(),
     val electionResults: MpElectionResults? = null,
+    val edmSponsoredCount: Int = 0,
+    val edmSignedCount: Int = 0,
     val corporateFootprint: CorporateFootprint? = null
 )
 

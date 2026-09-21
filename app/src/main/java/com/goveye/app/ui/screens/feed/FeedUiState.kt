@@ -20,7 +20,8 @@ enum class CardType {
     SPEECH_COMBO,
     MP_VOTE,
     MP_FINANCIAL_COMBO,
-    WRITTEN_QUESTION
+    WRITTEN_QUESTION,
+    EDM
 }
 
 /**
@@ -203,6 +204,29 @@ sealed interface FeedItem {
     ) : FeedItem {
         override val typePrefix: String = "written-question"
         override val cardType: CardType = CardType.WRITTEN_QUESTION
+    }
+
+    /**
+     * An Early Day Motion whose primary sponsor is a followed MP (D-04).
+     * Signature events are deliberately not feed items — only primary
+     * sponsorship. Rendered as a [FeedEdmCard].
+     */
+    data class EdmItem(
+        val memberId: Int,
+        val memberName: String,
+        val memberPartyColorHex: String?,
+        val memberPhotoUrl: String?,
+        val edmId: Int,
+        val uinDisplay: String?, // e.g. "123" or "123A1" for amendments
+        val title: String,
+        val motionText: String,
+        val sponsorsCount: Int,
+        val status: String?,
+        override val date: String, // dateTabled, ISO
+        override val id: Int = edmId
+    ) : FeedItem {
+        override val typePrefix: String = "edm"
+        override val cardType: CardType = CardType.EDM
     }
 }
 

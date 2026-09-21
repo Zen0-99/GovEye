@@ -33,6 +33,7 @@ import com.goveye.app.ui.screens.divisions.TagMicroviewDialog
 import com.goveye.app.ui.screens.feed.CardType
 import com.goveye.app.ui.screens.feed.FeedDateGroup
 import com.goveye.app.ui.screens.feed.FeedDateHeader
+import com.goveye.app.ui.screens.feed.FeedEdmCard
 import com.goveye.app.ui.screens.feed.FeedFinancialCard
 import com.goveye.app.ui.screens.feed.FeedItem
 import com.goveye.app.ui.screens.feed.FeedMpFinancialComboCard
@@ -65,7 +66,8 @@ private enum class FeedTab(val title: String, val cardTypes: Set<CardType>) {
             CardType.SPEECH_COMBO,
             CardType.FINANCIAL,
             CardType.MP_FINANCIAL_COMBO,
-            CardType.WRITTEN_QUESTION
+            CardType.WRITTEN_QUESTION,
+            CardType.EDM
         )
     ),
     DEBATES("Debates", setOf(CardType.DIVISION, CardType.STATEMENT)),
@@ -437,6 +439,14 @@ private fun FeedItemCard(
         is FeedItem.WrittenQuestionItem -> FeedWrittenQuestionCard(
             item = item,
             onClick = { /* written question detail — future */ },
+            onProfileClick = {
+                onProfileClick(item.memberId, item.memberName, item.memberPartyColorHex, MpMicroviewMode.VOTES)
+            }
+        )
+
+        is FeedItem.EdmItem -> FeedEdmCard(
+            item = item,
+            onClick = { /* EDM detail — future; card self-expands */ },
             onProfileClick = {
                 onProfileClick(item.memberId, item.memberName, item.memberPartyColorHex, MpMicroviewMode.VOTES)
             }
