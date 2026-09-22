@@ -350,6 +350,13 @@ private fun FeedList(
         contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        state.currentRecess?.let { recess ->
+            if (dateGroups.isNotEmpty()) {
+                item(key = "recess-banner", contentType = "recess_banner") {
+                    com.goveye.app.ui.screens.feed.FeedRecessBanner(recess = recess)
+                }
+            }
+        }
         dateGroups.forEach { group ->
             stickyHeader(key = "header-${group.dateKey}") {
                 FeedDateHeader(dateHeader = group.dateHeader)
