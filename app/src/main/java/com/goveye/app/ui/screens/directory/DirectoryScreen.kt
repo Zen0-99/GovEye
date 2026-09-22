@@ -138,13 +138,6 @@ fun DirectoryScreen(
     // Track current page for search bar config and filter sheet
     var currentPage by remember { mutableIntStateOf(savedTabIndex) }
 
-    Log.i(
-        "GovEye/Directory",
-        "DirectoryScreen compose — searchQuery='$searchQuery' pagingItems=${lazyPagingItems.itemCount} " +
-            "searchResults=${searchResults.size} filteredMps=${filteredMps.size} " +
-            "hasFilters=${filterState.hasActiveFilters} currentPage=$currentPage"
-    )
-
     // Context-aware placeholder based on current tab
     val currentTab = DirectoryTab.entries[currentPage]
     val searchPlaceholder = when (currentTab) {
@@ -190,7 +183,6 @@ fun DirectoryScreen(
             },
             modifier = Modifier.fillMaxWidth()
         ) { page ->
-            Log.i("GovEye/Directory", "Pager composing page $page: ${DirectoryTab.entries[page]}")
             when (DirectoryTab.entries[page]) {
                 DirectoryTab.OFFICIALS -> OfficialsTabContent(
                     searchQuery = searchQuery,
@@ -300,10 +292,6 @@ private fun OfficialsTabContent(
     onNavigateToProfile: (com.goveye.app.domain.model.Mp) -> Unit,
     postcodeState: PostcodeSearchState = PostcodeSearchState.Idle
 ) {
-    Log.i(
-        "GovEye/Directory",
-        "OfficialsTabContent compose — searchQuery='$searchQuery' pagingItems=${lazyPagingItems.itemCount} searchResults=${searchResults.size} filteredMps=${filteredMps.size} hasFilters=$hasActiveFilters"
-    )
     // Priority: search results > filtered browsing > paged browsing
     if (searchQuery.isNotBlank()) {
         // Show loading state for postcode search
@@ -436,12 +424,15 @@ private fun OfficialsTabContent(
 
         // Cache the first page of MPs when paging loads, so the next
         // VM recreation (tab switch) can show them instantly instead
-        // of a spinner while paging re-queries.
+        // of a spinner while paging re-queries. Snapshot only the first
+        // page (30) — lazyPagingItems[idx] materialises each accessed
+        // item on the main thread, so iterating the whole loaded window
+        // on every itemCount change causes jank on tab switch. Once the
+        // cache is populated, skip.
         LaunchedEffect(lazyPagingItems.itemCount) {
-            if (lazyPagingItems.itemCount > 0) {
-                val items = (0 until lazyPagingItems.itemCount).mapNotNull { idx ->
-                    lazyPagingItems[idx]
-                }
+            if (DirectoryCache.firstPageMps == null && lazyPagingItems.itemCount > 0) {
+                val count = minOf(lazyPagingItems.itemCount, 30)
+                val items = (0 until count).mapNotNull { lazyPagingItems[it] }
                 if (items.isNotEmpty()) {
                     DirectoryCache.updateFirstPageMps(items)
                 }

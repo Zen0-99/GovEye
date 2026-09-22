@@ -91,7 +91,7 @@ class DirectoryViewModel @Inject constructor(
 
     val viewMode: StateFlow<DirectoryViewMode> =
         directoryPreferences.viewMode
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DirectoryViewMode.LIST)
+            .stateIn(viewModelScope, SharingStarted.Eagerly, DirectoryViewMode.LIST)
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
@@ -128,12 +128,12 @@ class DirectoryViewModel @Inject constructor(
             departmentFilter = extras.departments,
             typeFilter = extras.type
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DirectoryFilterState())
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, DirectoryFilterState())
 
     // Distinct party names for the filter bottom sheet's Party section
     val distinctParties: StateFlow<List<String>> =
         membersRepository.observeDistinctParties()
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     // Active parties with seat counts — for the Parties tab.
     // Uses SharingStarted.Eagerly so the one-shot query runs once and the
@@ -194,17 +194,17 @@ class DirectoryViewModel @Inject constructor(
     val governmentPublications: StateFlow<List<com.goveye.app.domain.model.GovernmentPublication>> =
         governmentAnnouncementsRepository.observePublications(100)
             .onEach { DirectoryCache.updatePublications(it) }
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DirectoryCache.publications ?: emptyList())
+            .stateIn(viewModelScope, SharingStarted.Eagerly, DirectoryCache.publications ?: emptyList())
 
     val governmentStatements: StateFlow<List<com.goveye.app.domain.model.WrittenStatement>> =
         governmentAnnouncementsRepository.observeStatements(100)
             .onEach { DirectoryCache.updateStatements(it) }
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DirectoryCache.statements ?: emptyList())
+            .stateIn(viewModelScope, SharingStarted.Eagerly, DirectoryCache.statements ?: emptyList())
 
     val governmentLegislation: StateFlow<List<com.goveye.app.domain.model.Legislation>> =
         governmentAnnouncementsRepository.observeLegislation(100)
             .onEach { DirectoryCache.updateLegislation(it) }
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DirectoryCache.legislation ?: emptyList())
+            .stateIn(viewModelScope, SharingStarted.Eagerly, DirectoryCache.legislation ?: emptyList())
 
     val governmentLoading: StateFlow<Boolean> =
         combine(governmentPublications, governmentStatements, governmentLegislation) { pubs, stmts, leg ->
@@ -215,7 +215,7 @@ class DirectoryViewModel @Inject constructor(
             false
         }.stateIn(
             viewModelScope,
-            SharingStarted.WhileSubscribed(5_000),
+            SharingStarted.Eagerly,
             // If we have cached government data, don't show loading on VM recreation.
             DirectoryCache.publications != null
         )
@@ -229,19 +229,19 @@ class DirectoryViewModel @Inject constructor(
     /** All distinct announcement tags for the FilterBottomSheet Tags section. */
     val allAnnouncementTags: StateFlow<List<String>> =
         governmentAnnouncementsRepository.observeAllAnnouncementTags()
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     /** All distinct department (organisation) names from publications. */
     val allDepartments: StateFlow<List<String>> =
         governmentPublications
             .map { pubs -> pubs.map { it.organisation }.distinct().sorted() }
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     /** All source recommendation names (department-stream pairs) for the FilterBottomSheet Sources section. */
     val allSources: StateFlow<List<String>> =
         governmentAnnouncementsRepository.observeAllRecommendations()
             .map { recs -> recs.map { it.organisationName }.distinct().sorted() }
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     // FTS search results with filters applied in Kotlin (RESEARCH.md §5.3 Approach B)
     // Skip debounce for empty queries — avoids a 300ms delayed no-op emission
@@ -297,7 +297,7 @@ class DirectoryViewModel @Inject constructor(
             }
         }
         .flowOn(Dispatchers.Default)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     // Paged MP list — used when NO filters are active (efficient lazy loading
     // via Room paging source + remote mediator). When filters ARE active, the
@@ -324,7 +324,7 @@ class DirectoryViewModel @Inject constructor(
             }
         }
         .flowOn(Dispatchers.Default)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     // Tab counts — show badges during active search OR when filters are active
     val tabCounts: StateFlow<Map<Int, Int>> =
@@ -340,7 +340,7 @@ class DirectoryViewModel @Inject constructor(
                     4 to 0 // DEBATES
                 )
             }
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
     fun updateSearchQuery(query: String) {
         _searchQuery.value = query
