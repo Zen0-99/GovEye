@@ -37,10 +37,7 @@ import com.goveye.app.ui.components.cardSurfaceColor
  * otherwise looks silently stale.
  */
 @Composable
-fun FeedRecessBanner(
-    recess: RecessDateEntity,
-    modifier: Modifier = Modifier
-) {
+fun FeedRecessBanner(recess: RecessDateEntity, modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),

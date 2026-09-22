@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
@@ -40,6 +41,7 @@ import com.goveye.app.ui.screens.feed.FeedMpFinancialComboCard
 import com.goveye.app.ui.screens.feed.FeedMpVoteCard
 import com.goveye.app.ui.screens.feed.FeedNoActivityEmptyState
 import com.goveye.app.ui.screens.feed.FeedNoFollowsEmptyState
+import com.goveye.app.ui.screens.feed.FeedRecessBanner
 import com.goveye.app.ui.screens.feed.FeedRecessEmptyState
 import com.goveye.app.ui.screens.feed.FeedSpeechCard
 import com.goveye.app.ui.screens.feed.FeedSpeechComboCard
@@ -158,103 +160,113 @@ fun FeedScreen(
             showDateHeader = true
         )
     } else {
-        SubTabPager(
-            tabs = listOf(
-                SubTab(FeedTab.MPS.title, mpsCount.takeIf { it > 0 }),
-                SubTab(FeedTab.DEBATES.title, debatesCount.takeIf { it > 0 }),
-                SubTab(FeedTab.GOVERNMENT.title, governmentCount.takeIf { it > 0 })
-            ),
-            initialPage = savedTabIndex,
-            scrollable = false,
-            edgePadding = 0.dp,
-            onPageChange = { page ->
-                currentPage = page
-                savedTabIndex = page
-            },
-            modifier = modifier.fillMaxSize()
-        ) { page ->
-            val tab = FeedTab.entries[page]
-            when (tab) {
-                FeedTab.MPS -> {
-                    if (state.followedMemberIds.isEmpty()) {
-                        FeedNoFollowsEmptyState()
-                    } else if (mpsGroups.isEmpty() && state.isRecessEmpty) {
-                        FeedRecessEmptyState(
-                            recessEndDate = state.currentRecess?.endDate ?: "",
-                            lastDivisions = state.recentDivisionsForRecess,
-                            onDivisionClick = onNavigateToDivision
-                        )
-                    } else if (mpsGroups.isEmpty()) {
-                        FeedNoActivityEmptyState()
-                    } else {
-                        FeedList(
-                            dateGroups = mpsGroups,
-                            state = state,
-                            onNavigateToDivision = onNavigateToDivision,
-                            onNavigateToPublicationDetail = onNavigateToPublicationDetail,
-                            onNavigateToStatementDetail = onNavigateToStatementDetail,
-                            onNavigateToLegislationDetail = onNavigateToLegislationDetail,
-                            onNavigateToTranscript = onNavigateToTranscript,
-                            onTagClick = { tag -> selectedTag = tag },
-                            onProfileClick = { memberId, name, partyColor, mode ->
-                                microviewMemberId = memberId
-                                microviewName = name
-                                microviewPartyColor = partyColor
-                                microviewMode = mode
-                            }
-                        )
+        // Recess banner lives ABOVE the pager — a single instance that stays
+        // put while the user swipes between feed tabs (not one banner per page).
+        Column(modifier = Modifier.fillMaxSize()) {
+            state.currentRecess?.let { recess ->
+                FeedRecessBanner(
+                    recess = recess,
+                    modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 4.dp)
+                )
+            }
+            SubTabPager(
+                tabs = listOf(
+                    SubTab(FeedTab.MPS.title, mpsCount.takeIf { it > 0 }),
+                    SubTab(FeedTab.DEBATES.title, debatesCount.takeIf { it > 0 }),
+                    SubTab(FeedTab.GOVERNMENT.title, governmentCount.takeIf { it > 0 })
+                ),
+                initialPage = savedTabIndex,
+                scrollable = false,
+                edgePadding = 0.dp,
+                onPageChange = { page ->
+                    currentPage = page
+                    savedTabIndex = page
+                },
+                modifier = modifier.fillMaxSize()
+            ) { page ->
+                val tab = FeedTab.entries[page]
+                when (tab) {
+                    FeedTab.MPS -> {
+                        if (state.followedMemberIds.isEmpty()) {
+                            FeedNoFollowsEmptyState()
+                        } else if (mpsGroups.isEmpty() && state.isRecessEmpty) {
+                            FeedRecessEmptyState(
+                                recessEndDate = state.currentRecess?.endDate ?: "",
+                                lastDivisions = state.recentDivisionsForRecess,
+                                onDivisionClick = onNavigateToDivision
+                            )
+                        } else if (mpsGroups.isEmpty()) {
+                            FeedNoActivityEmptyState()
+                        } else {
+                            FeedList(
+                                dateGroups = mpsGroups,
+                                state = state,
+                                onNavigateToDivision = onNavigateToDivision,
+                                onNavigateToPublicationDetail = onNavigateToPublicationDetail,
+                                onNavigateToStatementDetail = onNavigateToStatementDetail,
+                                onNavigateToLegislationDetail = onNavigateToLegislationDetail,
+                                onNavigateToTranscript = onNavigateToTranscript,
+                                onTagClick = { tag -> selectedTag = tag },
+                                onProfileClick = { memberId, name, partyColor, mode ->
+                                    microviewMemberId = memberId
+                                    microviewName = name
+                                    microviewPartyColor = partyColor
+                                    microviewMode = mode
+                                }
+                            )
+                        }
                     }
-                }
 
-                FeedTab.DEBATES -> {
-                    if (debatesGroups.isEmpty() && state.isRecessEmpty) {
-                        FeedRecessEmptyState(
-                            recessEndDate = state.currentRecess?.endDate ?: "",
-                            lastDivisions = state.recentDivisionsForRecess,
-                            onDivisionClick = onNavigateToDivision
-                        )
-                    } else if (debatesGroups.isEmpty()) {
-                        FeedNoActivityEmptyState()
-                    } else {
-                        FeedList(
-                            dateGroups = debatesGroups,
-                            state = state,
-                            onNavigateToDivision = onNavigateToDivision,
-                            onNavigateToPublicationDetail = onNavigateToPublicationDetail,
-                            onNavigateToStatementDetail = onNavigateToStatementDetail,
-                            onNavigateToLegislationDetail = onNavigateToLegislationDetail,
-                            onNavigateToTranscript = onNavigateToTranscript,
-                            onTagClick = { tag -> selectedTag = tag },
-                            onProfileClick = { memberId, name, partyColor, mode ->
-                                microviewMemberId = memberId
-                                microviewName = name
-                                microviewPartyColor = partyColor
-                                microviewMode = mode
-                            }
-                        )
+                    FeedTab.DEBATES -> {
+                        if (debatesGroups.isEmpty() && state.isRecessEmpty) {
+                            FeedRecessEmptyState(
+                                recessEndDate = state.currentRecess?.endDate ?: "",
+                                lastDivisions = state.recentDivisionsForRecess,
+                                onDivisionClick = onNavigateToDivision
+                            )
+                        } else if (debatesGroups.isEmpty()) {
+                            FeedNoActivityEmptyState()
+                        } else {
+                            FeedList(
+                                dateGroups = debatesGroups,
+                                state = state,
+                                onNavigateToDivision = onNavigateToDivision,
+                                onNavigateToPublicationDetail = onNavigateToPublicationDetail,
+                                onNavigateToStatementDetail = onNavigateToStatementDetail,
+                                onNavigateToLegislationDetail = onNavigateToLegislationDetail,
+                                onNavigateToTranscript = onNavigateToTranscript,
+                                onTagClick = { tag -> selectedTag = tag },
+                                onProfileClick = { memberId, name, partyColor, mode ->
+                                    microviewMemberId = memberId
+                                    microviewName = name
+                                    microviewPartyColor = partyColor
+                                    microviewMode = mode
+                                }
+                            )
+                        }
                     }
-                }
 
-                FeedTab.GOVERNMENT -> {
-                    if (governmentGroups.isEmpty()) {
-                        FeedNoActivityEmptyState()
-                    } else {
-                        FeedList(
-                            dateGroups = governmentGroups,
-                            state = state,
-                            onNavigateToDivision = onNavigateToDivision,
-                            onNavigateToPublicationDetail = onNavigateToPublicationDetail,
-                            onNavigateToStatementDetail = onNavigateToStatementDetail,
-                            onNavigateToLegislationDetail = onNavigateToLegislationDetail,
-                            onNavigateToTranscript = onNavigateToTranscript,
-                            onTagClick = { tag -> selectedTag = tag },
-                            onProfileClick = { memberId, name, partyColor, mode ->
-                                microviewMemberId = memberId
-                                microviewName = name
-                                microviewPartyColor = partyColor
-                                microviewMode = mode
-                            }
-                        )
+                    FeedTab.GOVERNMENT -> {
+                        if (governmentGroups.isEmpty()) {
+                            FeedNoActivityEmptyState()
+                        } else {
+                            FeedList(
+                                dateGroups = governmentGroups,
+                                state = state,
+                                onNavigateToDivision = onNavigateToDivision,
+                                onNavigateToPublicationDetail = onNavigateToPublicationDetail,
+                                onNavigateToStatementDetail = onNavigateToStatementDetail,
+                                onNavigateToLegislationDetail = onNavigateToLegislationDetail,
+                                onNavigateToTranscript = onNavigateToTranscript,
+                                onTagClick = { tag -> selectedTag = tag },
+                                onProfileClick = { memberId, name, partyColor, mode ->
+                                    microviewMemberId = memberId
+                                    microviewName = name
+                                    microviewPartyColor = partyColor
+                                    microviewMode = mode
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -350,13 +362,6 @@ private fun FeedList(
         contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        state.currentRecess?.let { recess ->
-            if (dateGroups.isNotEmpty()) {
-                item(key = "recess-banner", contentType = "recess_banner") {
-                    com.goveye.app.ui.screens.feed.FeedRecessBanner(recess = recess)
-                }
-            }
-        }
         dateGroups.forEach { group ->
             stickyHeader(key = "header-${group.dateKey}") {
                 FeedDateHeader(dateHeader = group.dateHeader)
